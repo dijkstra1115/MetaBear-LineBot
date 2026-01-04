@@ -1,30 +1,30 @@
-from pydantic_settings import BaseSettings
+import os
+from dotenv import load_dotenv
+
+# 載入 .env 檔案
+load_dotenv()
 
 
-class Settings(BaseSettings):
+class Settings:
     """應用程式配置"""
     
     # Database
-    database_url: str
+    database_url: str = os.getenv("DATABASE_URL", "")
     
     # LINE Bot
-    line_channel_access_token: str
-    line_channel_secret: str
+    line_channel_access_token: str = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
+    line_channel_secret: str = os.getenv("LINE_CHANNEL_SECRET", "")
     
     # LLM
-    llm_api_key: str
-    llm_api_base: str = "https://openrouter.ai/api/v1"  # OpenRouter API
-    llm_model: str = "deepseek/deepseek-r1-0528:free"  # DeepSeek R1 免費模型
-    llm_http_referer: str = ""  # OpenRouter 可選：HTTP-Referer header
-    llm_x_title: str = "Investment Q&A Bot"  # OpenRouter 可選：X-Title header (必須為 ASCII)
+    llm_api_key: str = os.getenv("LLM_API_KEY", "")
+    llm_api_base: str = os.getenv("LLM_API_BASE", "https://openrouter.ai/api/v1")  # OpenRouter API
+    llm_model: str = os.getenv("LLM_MODEL", "deepseek/deepseek-r1-0528:free")  # DeepSeek R1 免費模型
+    llm_http_referer: str = os.getenv("LLM_HTTP_REFERER", "")  # OpenRouter 可選：HTTP-Referer header
+    llm_x_title: str = os.getenv("LLM_X_TITLE", "Investment Q&A Bot")  # OpenRouter 可選：X-Title header (必須為 ASCII)
     
     # Server
-    host: str = "0.0.0.0"
-    port: int = 8000
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    host: str = os.getenv("HOST", "0.0.0.0")
+    port: int = int(os.getenv("PORT", "8000"))
 
 
 settings = Settings()
