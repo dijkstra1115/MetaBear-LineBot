@@ -1,12 +1,10 @@
-import logging
+from loguru import logger
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from alembic import command
 from alembic.config import Config
 from app.config import settings
-
-logger = logging.getLogger(__name__)
 
 # 建立資料庫引擎
 engine = create_engine(

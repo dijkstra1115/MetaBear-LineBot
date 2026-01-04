@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
@@ -6,14 +6,6 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.db.session import run_migrations
 from app.line.handlers import handle_line_webhook
-
-# 設定 logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    force=True
-)
-logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

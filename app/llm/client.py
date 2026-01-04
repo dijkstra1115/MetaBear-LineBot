@@ -1,10 +1,8 @@
-import logging
+from loguru import logger
 import httpx
 from app.config import settings
 from app.llm.prompts import build_user_message
 from app.llm.output_checker import is_trading_question, FALLBACK_RESPONSE
-
-logger = logging.getLogger(__name__)
 
 
 class LLMClient:

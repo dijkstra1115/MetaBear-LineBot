@@ -1,6 +1,6 @@
 import yaml
 import os
-import logging
+from loguru import logger
 import httpx
 from pathlib import Path
 from typing import Dict, List
@@ -17,8 +17,6 @@ from linebot.v3.messaging import (
 )
 from app.config import settings
 from app.line.schemas import TopicInfo
-
-logger = logging.getLogger(__name__)
 
 # LINE Bot API 配置
 configuration = Configuration(access_token=settings.line_channel_access_token)

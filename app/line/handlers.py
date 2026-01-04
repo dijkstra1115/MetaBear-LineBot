@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 import hmac
 import hashlib
 import json
@@ -15,8 +15,6 @@ from app.db.session import SessionLocal
 from app.db import crud
 from app.line.client import line_client, question_manager
 from app.llm.client import llm_client
-
-logger = logging.getLogger(__name__)
 
 
 def verify_signature(body: str, signature: str) -> bool:

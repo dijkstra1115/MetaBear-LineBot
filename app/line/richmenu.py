@@ -4,7 +4,7 @@ Rich Menu 上傳功能
 在應用程式啟動時自動上傳 Rich Menu 到 LINE Bot
 """
 import os
-import logging
+from loguru import logger
 from pathlib import Path
 from linebot.v3.messaging import (
     Configuration,
@@ -18,8 +18,6 @@ from linebot.v3.messaging import (
     UriAction
 )
 from app.config import settings
-
-logger = logging.getLogger(__name__)
 
 # LINE Bot API 配置
 configuration = Configuration(access_token=settings.line_channel_access_token)
