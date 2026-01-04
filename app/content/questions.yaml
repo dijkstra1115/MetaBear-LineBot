@@ -1,0 +1,49 @@
+menu:
+  title: "你可以問我這些概念 👇"
+  topics:
+    - key: OI
+      label: "OI（未平倉量）"
+    - key: VOLUME
+      label: "成交量（Volume）"
+    - key: CVD
+      label: "CVD（主動買賣量）"
+    - key: DEPTH
+      label: "委託簿深度（Order Book Depth）"
+    - key: RSI
+      label: "RSI 指標"
+
+topics:
+  OI:
+    display_name: "OI（Open Interest）"
+    questions:
+      - "OI 是什麼？可以用白話解釋嗎？"
+      - "OI 上升或下降通常代表什麼意思？"
+      - "OI 最常被新手誤解的地方是什麼？"
+
+  VOLUME:
+    display_name: "成交量（Volume）"
+    questions:
+      - "成交量是什麼？跟價格有什麼關係？"
+      - "量增價不漲、量縮價上漲可能代表什麼？"
+      - "成交量在哪些情況下特別容易誤判？"
+
+  CVD:
+    display_name: "CVD（Cumulative Volume Delta）"
+    questions:
+      - "CVD 是什麼？跟成交量有什麼不同？"
+      - "CVD 和價格出現背離通常在暗示什麼？"
+      - "哪些情況下其實不太適合看 CVD？"
+
+  DEPTH:
+    display_name: "委託簿深度（Order Book Depth）"
+    questions:
+      - "什麼是委託簿深度？看它有什麼用？"
+      - "買牆或賣牆出現通常代表什麼？"
+      - "為什麼委託簿的掛單常常是假的？"
+
+  RSI:
+    display_name: "RSI 指標"
+    questions:
+      - "RSI 是什麼？70 和 30 代表什麼意思？"
+      - "RSI 顯示超買或超賣時，為什麼常常不準？"
+      - "RSI 背離通常是在提醒什麼風險？"
