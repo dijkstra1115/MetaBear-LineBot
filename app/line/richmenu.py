@@ -113,7 +113,7 @@ def upload_rich_menu():
     """上傳 Rich Menu 到 LINE"""
     
     # 檢查圖片檔案是否存在（在 app/line/ 目錄下）
-    current_dir = Path(__file__).parent
+    current_dir = Path(__file__).resolve().parent
     image_path = current_dir / "rich_menu.png"
     
     if not image_path.exists():

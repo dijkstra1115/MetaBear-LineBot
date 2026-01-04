@@ -2,6 +2,7 @@ import yaml
 import os
 import logging
 import httpx
+from pathlib import Path
 from typing import Dict, List
 from linebot.v3.messaging import (
     Configuration,
@@ -26,8 +27,10 @@ configuration = Configuration(access_token=settings.line_channel_access_token)
 class QuestionManager:
     """題庫管理器"""
     
-    def __init__(self, yaml_path: str = "app/content/questions.yaml"):
-        self.yaml_path = yaml_path
+    def __init__(self):
+        # 自動抓取目前檔案 (client.py) 的上兩層目錄找到 app/content
+        current_dir = Path(__file__).parent.parent  # 指向 app/
+        self.yaml_path = current_dir / "content" / "questions.yaml"
         self.data = self._load_yaml()
     
     def _load_yaml(self) -> dict:
