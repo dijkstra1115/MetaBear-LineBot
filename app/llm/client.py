@@ -2,7 +2,7 @@ import logging
 import httpx
 from app.config import settings
 from app.llm.prompts import build_user_message
-from app.llm.output_checker import check_output_safety, is_trading_question, FALLBACK_RESPONSE
+from app.llm.output_checker import is_trading_question, FALLBACK_RESPONSE
 
 logger = logging.getLogger(__name__)
 
@@ -101,13 +101,8 @@ class LLMClient:
             llm_output = data["choices"][0]["message"]["content"].strip()
             logger.info(f"LLM 原始回應: {llm_output[:100]}...")
             
-            # 安全檢查（硬限制）
-            is_safe, final_output = check_output_safety(llm_output)
-            
-            if not is_safe:
-                logger.warning(f"LLM 輸出未通過安全檢查，使用 fallback")
-            
-            return final_output
+            # 直接返回 LLM 輸出（已移除輸出後的安全檢查）
+            return llm_output
             
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP 錯誤: {e.response.status_code} - {e.response.text}")
