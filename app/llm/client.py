@@ -26,7 +26,21 @@ class LLMClient:
             if settings.llm_http_referer:
                 headers["HTTP-Referer"] = settings.llm_http_referer
             if settings.llm_x_title:
-                headers["X-Title"] = settings.llm_x_title
+                # 確保 header 值只包含 ASCII 字符，避免編碼錯誤
+                # httpx 要求 header 值必須是 ASCII 兼容的
+                x_title = settings.llm_x_title
+                # 如果包含非 ASCII 字符，使用 ASCII 替代或移除
+                try:
+                    # 嘗試編碼為 ASCII，如果失敗則使用替代方案
+                    x_title.encode('ascii')
+                    headers["X-Title"] = x_title
+                except UnicodeEncodeError:
+                    # 如果包含非 ASCII 字符，使用 ASCII 替代或只保留 ASCII 部分
+                    # 使用 'ignore' 或 'replace' 錯誤處理
+                    headers["X-Title"] = x_title.encode('ascii', errors='ignore').decode('ascii')
+                    if not headers["X-Title"]:
+                        # 如果全部被移除，使用預設的 ASCII 值
+                        headers["X-Title"] = "Investment Q&A Bot"
             logger.info(f"使用 OpenRouter，設定 headers: {headers}")
         
         # 使用 httpx.AsyncClient 支援異步高併發

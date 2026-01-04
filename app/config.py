@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     llm_api_base: str = "https://openrouter.ai/api/v1"  # OpenRouter API
     llm_model: str = "deepseek/deepseek-r1-0528:free"  # DeepSeek R1 免費模型
     llm_http_referer: str = ""  # OpenRouter 可選：HTTP-Referer header
-    llm_x_title: str = "投資概念問答 Bot"  # OpenRouter 可選：X-Title header
+    llm_x_title: str = "Investment Q&A Bot"  # OpenRouter 可選：X-Title header (必須為 ASCII)
     
     # Server
     host: str = "0.0.0.0"
