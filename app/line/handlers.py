@@ -2,6 +2,7 @@ import logging
 import hmac
 import hashlib
 import json
+import base64
 from urllib.parse import parse_qs
 from linebot.v3.webhooks import (
     MessageEvent,
@@ -20,12 +21,18 @@ logger = logging.getLogger(__name__)
 
 def verify_signature(body: str, signature: str) -> bool:
     """驗證 LINE webhook signature"""
+    # 1. 計算 HMAC-SHA256 (取得二進位 digest)
     hash_digest = hmac.new(
         settings.line_channel_secret.encode('utf-8'),
         body.encode('utf-8'),
         hashlib.sha256
     ).digest()
-    expected_signature = hashlib.sha256(hash_digest).hexdigest()
+    
+    # 2. 將二進位結果轉為 Base64 字串 (LINE 的標準)
+    # 這裡移除了多餘的 hashlib.sha256() 呼叫
+    expected_signature = base64.b64encode(hash_digest).decode('utf-8')
+    
+    # 3. 比對簽章
     return hmac.compare_digest(signature, expected_signature)
 
 
