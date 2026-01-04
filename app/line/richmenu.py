@@ -39,16 +39,25 @@ def create_rich_menu():
     # IG 和 Threads 連結：你的社群媒體帳號連結
     
     # 從環境變數讀取連結（如果沒有設定則使用預設值）
-    chat_group_url = os.getenv("LINE_CHAT_GROUP_URL", "") or "https://line.me/ti/g/你的閒聊社群連結"
-    notes_group_url = os.getenv("LINE_NOTES_GROUP_URL", "") or "https://line.me/ti/g/你的點位筆記群連結"
-    instagram_url = os.getenv("INSTAGRAM_URL", "") or "https://www.instagram.com/你的_ig_帳號/"
-    threads_url = os.getenv("THREADS_URL", "") or "https://www.threads.net/@你的_threads_帳號"
+    chat_group_url = os.getenv("LINE_CHAT_GROUP_URL", "")
+    notes_group_url = os.getenv("LINE_NOTES_GROUP_URL", "")
+    instagram_url = os.getenv("INSTAGRAM_URL", "")
+    threads_url = os.getenv("THREADS_URL", "")
     
-    # 檢查是否還是預設值（自動模式：如果沒有設定就跳過）
-    if "你的" in chat_group_url or "你的" in notes_group_url or "你的" in instagram_url or "你的" in threads_url:
-        logger.warning("檢測到預設連結，Rich Menu 上傳已跳過")
-        logger.info("如需上傳 Rich Menu，請在 .env 中設定實際連結")
-        return None
+    # 如果沒有設定連結，使用佔位符（Rich Menu 仍可上傳，但點擊會無效）
+    # 這樣可以讓 Rich Menu 先顯示，之後再補上實際連結
+    if not chat_group_url:
+        chat_group_url = "https://line.me/"
+        logger.info("LINE_CHAT_GROUP_URL 未設定，使用預設連結")
+    if not notes_group_url:
+        notes_group_url = "https://line.me/"
+        logger.info("LINE_NOTES_GROUP_URL 未設定，使用預設連結")
+    if not instagram_url:
+        instagram_url = "https://www.instagram.com/"
+        logger.info("INSTAGRAM_URL 未設定，使用預設連結")
+    if not threads_url:
+        threads_url = "https://www.threads.net/"
+        logger.info("THREADS_URL 未設定，使用預設連結")
     
     rich_menu = RichMenuRequest(
         size=RichMenuSize(width=810, height=1200),

@@ -71,19 +71,26 @@ async def handle_message_event(event: dict):
     user_text = message.get('text', '').strip()
     
     logger.info(f"收到訊息 from {user_id}: {user_text}")
+    logger.debug(f"訊息處理 - 原始文字: '{user_text}', 小寫: '{user_text.lower()}'")
     
     db = SessionLocal()
     try:
         # 確保使用者存在
         crud.get_or_create_user(db, user_id)
         
-        # 檢查是否為選單觸發關鍵字
-        if user_text.lower() in ['menu', '選單', 'メニュー']:
+        # 檢查是否為選單觸發關鍵字（更寬鬆的匹配）
+        menu_keywords = ['menu', '選單', 'メニュー', '選項', '選項單']
+        user_text_lower = user_text.lower().strip()
+        
+        if user_text_lower in menu_keywords:
+            logger.info(f"觸發選單顯示，關鍵字: '{user_text_lower}'")
             # 顯示主選單
             quick_reply = line_client.create_menu_quick_reply()
             menu_title = question_manager.data.get('menu', {}).get('title', '請選擇主題')
             line_client.reply_text(reply_token, menu_title, quick_reply)
             return
+        else:
+            logger.debug(f"不是選單關鍵字，繼續處理為一般訊息")
         
         # 一般文字訊息：呼叫 LLM
         await handle_llm_query(db, user_id, reply_token, user_text)
