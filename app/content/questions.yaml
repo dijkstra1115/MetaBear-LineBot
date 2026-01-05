@@ -28,7 +28,7 @@ topics:
       - "成交量在哪些情況下特別容易誤判？"
 
   CVD:
-    display_name: "Cumulative Volume Delta"
+    display_name: "CVD"
     questions:
       - "CVD 是什麼？跟成交量有什麼不同？"
       - "CVD 和價格出現背離通常在暗示什麼？"
