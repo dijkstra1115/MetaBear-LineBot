@@ -28,14 +28,14 @@ topics:
       - "成交量在哪些情況下特別容易誤判？"
 
   CVD:
-    display_name: "CVD（Cumulative Volume Delta）"
+    display_name: "Cumulative Volume Delta"
     questions:
       - "CVD 是什麼？跟成交量有什麼不同？"
       - "CVD 和價格出現背離通常在暗示什麼？"
       - "哪些情況下其實不太適合看 CVD？"
 
   DEPTH:
-    display_name: "委託簿深度（Order Book Depth）"
+    display_name: "Order Book Depth"
     questions:
       - "什麼是委託簿深度？看它有什麼用？"
       - "買牆或賣牆出現通常代表什麼？"
