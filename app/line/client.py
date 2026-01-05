@@ -13,7 +13,8 @@ from linebot.v3.messaging import (
     QuickReply,
     QuickReplyItem,
     MessageAction,
-    PostbackAction
+    PostbackAction,
+    ApiException
 )
 from app.config import settings
 from app.line.schemas import TopicInfo
@@ -75,7 +76,7 @@ class LINEClient:
     def reply_text(self, reply_token: str, text: str, quick_reply: QuickReply = None):
         """回覆文字訊息"""
         try:
-            message = TextMessage(text=text, quickReply=quick_reply)
+            message = TextMessage(text=text, quick_reply=quick_reply)
             request = ReplyMessageRequest(
                 replyToken=reply_token,
                 messages=[message]
@@ -84,6 +85,18 @@ class LINEClient:
             logger.info(f"已回覆文字訊息: {text[:50]}...")
             if quick_reply:
                 logger.info(f"已附加 Quick Reply，包含 {len(quick_reply.items)} 個選項")
+        except ApiException as e:
+            # 這裡可以拿到真正的 LINE API 回應
+            logger.error(
+                "LINE Messaging API 錯誤: status=%s, reason=%s, body=%s, headers=%s",
+                getattr(e, "status", None),
+                getattr(e, "reason", None),
+                getattr(e, "body", None),
+                getattr(e, "headers", None),
+                exc_info=True,
+            )
+            # 往外拋，讓 handlers 那層去決定要不要回「選單顯示失敗」
+            raise
         except Exception as e:
             logger.error(f"回覆訊息失敗: {e}", exc_info=True)
             raise
