@@ -59,15 +59,14 @@ def create_rich_menu():
         logger.info("THREADS_URL 未設定，使用預設連結")
     
     rich_menu = RichMenuRequest(
-        size=RichMenuSize(width=810, height=1200),
+        size=RichMenuSize(width=2500, height=1686),
         selected=True,
         name="MetaBear 投資問答選單",
         chat_bar_text="開啟選單",
         areas=[
-            # 第一列
             # 1. 左上：開啟 LLM
             RichMenuArea(
-                bounds=RichMenuBounds(x=0, y=0, width=270, height=600),
+                bounds=RichMenuBounds(x=0, y=0, width=833, height=843),
                 action=PostbackAction(
                     data="action_type=TOGGLE_LLM&enabled=true",
                     display_text="開啟 LLM 解釋模式"
@@ -75,7 +74,7 @@ def create_rich_menu():
             ),
             # 2. 中上：預約真人回應（關閉 LLM）
             RichMenuArea(
-                bounds=RichMenuBounds(x=270, y=0, width=270, height=600),
+                bounds=RichMenuBounds(x=833, y=0, width=834, height=843),
                 action=PostbackAction(
                     data="action_type=TOGGLE_LLM&enabled=false",
                     display_text="預約真人回應"
@@ -83,23 +82,22 @@ def create_rich_menu():
             ),
             # 3. 右上：加入閒聊社群
             RichMenuArea(
-                bounds=RichMenuBounds(x=540, y=0, width=270, height=600),
+                bounds=RichMenuBounds(x=1667, y=0, width=833, height=843),
                 action=URIAction(uri=chat_group_url)
             ),
-            # 第二列
             # 4. 左下：加入點位筆記群
             RichMenuArea(
-                bounds=RichMenuBounds(x=0, y=600, width=270, height=600),
+                bounds=RichMenuBounds(x=0, y=843, width=833, height=843),
                 action=URIAction(uri=notes_group_url)
             ),
             # 5. 中下：MetaBear IG
             RichMenuArea(
-                bounds=RichMenuBounds(x=270, y=600, width=270, height=600),
+                bounds=RichMenuBounds(x=833, y=843, width=834, height=843),
                 action=URIAction(uri=instagram_url)
             ),
             # 6. 右下：MetaBear Threads
             RichMenuArea(
-                bounds=RichMenuBounds(x=540, y=600, width=270, height=600),
+                bounds=RichMenuBounds(x=1667, y=843, width=833, height=843),
                 action=URIAction(uri=threads_url)
             ),
         ]
