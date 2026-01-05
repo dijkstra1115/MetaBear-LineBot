@@ -6,10 +6,15 @@ Rich Menu 上傳功能
 import os
 from loguru import logger
 from pathlib import Path
+# 第一組：API 客戶端與設定 (從 messaging 根目錄匯入)
 from linebot.v3.messaging import (
     Configuration,
     ApiClient,
-    MessagingApi,
+    MessagingApi
+)
+
+# 第二組：資料模型、Rich Menu 結構、動作 (從 messaging.models 匯入)
+from linebot.v3.messaging.models import (
     RichMenuRequest,
     RichMenuSize,
     RichMenuArea,
