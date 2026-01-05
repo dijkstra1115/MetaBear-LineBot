@@ -114,6 +114,11 @@ def upload_rich_menu():
     current_dir = Path(__file__).resolve().parent
     image_path = current_dir / "rich_menu.png"
     
+    logger.debug(f"Rich Menu 上傳 - 當前檔案: {__file__}")
+    logger.debug(f"Rich Menu 上傳 - 解析路徑: {image_path}")
+    logger.debug(f"Rich Menu 上傳 - 路徑是否存在: {image_path.exists()}")
+    logger.debug(f"Rich Menu 上傳 - 當前工作目錄: {os.getcwd()}")
+    
     if not image_path.exists():
         logger.warning(f"找不到 Rich Menu 圖片：{image_path}")
         logger.info("Rich Menu 上傳已跳過（圖片檔案不存在）")

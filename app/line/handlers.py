@@ -82,10 +82,27 @@ async def handle_message_event(event: dict):
         
         if user_text_lower in menu_keywords:
             logger.info(f"觸發選單顯示，關鍵字: '{user_text_lower}'")
-            # 顯示主選單
-            quick_reply = line_client.create_menu_quick_reply()
-            menu_title = question_manager.data.get('menu', {}).get('title', '請選擇主題')
-            line_client.reply_text(reply_token, menu_title, quick_reply)
+            try:
+                # 顯示主選單
+                quick_reply = line_client.create_menu_quick_reply()
+                topics = question_manager.get_menu_topics()
+                logger.info(f"選單主題數量: {len(topics)}")
+                if not topics:
+                    logger.warning("選單主題列表為空，無法顯示選單")
+                    line_client.reply_text(reply_token, "選單資料尚未設定，請聯繫管理員。")
+                    return
+                
+                menu_title = question_manager.data.get('menu', {}).get('title', '請選擇主題')
+                logger.info(f"準備發送選單，標題: '{menu_title}', Quick Reply 項目數: {len(quick_reply.items)}")
+                line_client.reply_text(reply_token, menu_title, quick_reply)
+                logger.info("選單已成功發送")
+            except Exception as e:
+                logger.error(f"發送選單時發生錯誤: {e}", exc_info=True)
+                # 嘗試發送錯誤訊息給使用者
+                try:
+                    line_client.reply_text(reply_token, "選單顯示失敗，請稍後再試。")
+                except:
+                    pass
             return
         else:
             logger.debug(f"不是選單關鍵字，繼續處理為一般訊息")

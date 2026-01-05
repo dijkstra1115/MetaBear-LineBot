@@ -27,18 +27,26 @@ class QuestionManager:
     
     def __init__(self):
         # 自動抓取目前檔案 (client.py) 的上兩層目錄找到 app/content
-        current_dir = Path(__file__).parent.parent  # 指向 app/
+        current_dir = Path(__file__).resolve().parent.parent  # 指向 app/
         self.yaml_path = current_dir / "content" / "questions.yaml"
+        logger.debug(f"QuestionManager 初始化 - 當前檔案: {__file__}")
+        logger.debug(f"QuestionManager 初始化 - 解析路徑: {self.yaml_path}")
+        logger.debug(f"QuestionManager 初始化 - 路徑是否存在: {self.yaml_path.exists()}")
         self.data = self._load_yaml()
     
     def _load_yaml(self) -> dict:
         """載入 YAML 題庫"""
         if not os.path.exists(self.yaml_path):
             logger.error(f"找不到題庫檔案: {self.yaml_path}")
+            logger.error(f"當前工作目錄: {os.getcwd()}")
             return {"menu": {"topics": []}, "topics": {}}
         
+        logger.info(f"成功載入題庫檔案: {self.yaml_path}")
         with open(self.yaml_path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+            data = yaml.safe_load(f)
+            topics_count = len(data.get("menu", {}).get("topics", []))
+            logger.info(f"題庫載入完成，選單主題數量: {topics_count}")
+            return data
     
     def get_menu_topics(self) -> List[dict]:
         """取得選單主題列表"""
@@ -66,29 +74,47 @@ class LINEClient:
     
     def reply_text(self, reply_token: str, text: str, quick_reply: QuickReply = None):
         """回覆文字訊息"""
-        message = TextMessage(text=text, quickReply=quick_reply)
-        request = ReplyMessageRequest(
-            replyToken=reply_token,
-            messages=[message]
-        )
-        self.messaging_api.reply_message(request)
-        logger.info(f"已回覆文字訊息: {text[:50]}...")
+        try:
+            message = TextMessage(text=text, quickReply=quick_reply)
+            request = ReplyMessageRequest(
+                replyToken=reply_token,
+                messages=[message]
+            )
+            self.messaging_api.reply_message(request)
+            logger.info(f"已回覆文字訊息: {text[:50]}...")
+            if quick_reply:
+                logger.info(f"已附加 Quick Reply，包含 {len(quick_reply.items)} 個選項")
+        except Exception as e:
+            logger.error(f"回覆訊息失敗: {e}", exc_info=True)
+            raise
     
     def create_menu_quick_reply(self) -> QuickReply:
         """建立主選單 Quick Reply（五個主題）"""
         items = []
         topics = question_manager.get_menu_topics()
         
+        logger.info(f"建立選單 Quick Reply，主題數量: {len(topics)}")
+        logger.debug(f"主題列表: {topics}")
+        
         for topic in topics:
+            label = topic.get('label', '')
+            key = topic.get('key', '')
+            logger.debug(f"  添加主題: {label} (key: {key})")
             items.append(
                 QuickReplyItem(
                     action=PostbackAction(
-                        label=topic['label'],
-                        data=f"action_type=SHOW_TOPIC&topic={topic['key']}"
+                        label=label,
+                        data=f"action_type=SHOW_TOPIC&topic={key}"
                     )
                 )
             )
         
+        if not items:
+            logger.warning("選單 Quick Reply 項目為空")
+            logger.warning(f"題庫資料: {question_manager.data}")
+            raise ValueError("選單主題列表為空，無法建立 Quick Reply")
+        
+        logger.info(f"已建立 {len(items)} 個 Quick Reply 項目")
         return QuickReply(items=items)
     
     def create_topic_quick_reply(self, topic_key: str) -> QuickReply:
