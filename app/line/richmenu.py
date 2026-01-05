@@ -11,6 +11,7 @@ from linebot.v3.messaging import (
     ApiClient,
     MessagingApi,
     MessagingApiBlob,
+    ApiException,
     RichMenuRequest,
     RichMenuSize,
     RichMenuArea,
@@ -18,7 +19,6 @@ from linebot.v3.messaging import (
     PostbackAction,
     URIAction,
 )
-from linebot.v3.exceptions import ApiException
 from app.config import settings
 
 configuration = Configuration(access_token=settings.line_channel_access_token)
