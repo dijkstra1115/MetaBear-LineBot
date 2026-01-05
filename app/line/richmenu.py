@@ -6,21 +6,16 @@ Rich Menu 上傳功能
 import os
 from loguru import logger
 from pathlib import Path
-# 第一組：API 客戶端與設定 (從 messaging 根目錄匯入)
 from linebot.v3.messaging import (
     Configuration,
     ApiClient,
-    MessagingApi
-)
-
-# 第二組：資料模型、Rich Menu 結構、動作 (從 messaging.models 匯入)
-from linebot.v3.messaging.models import (
+    MessagingApi,
     RichMenuRequest,
     RichMenuSize,
     RichMenuArea,
     RichMenuBounds,
     PostbackAction,
-    UriAction
+    URIAction
 )
 from app.config import settings
 
@@ -88,23 +83,23 @@ def create_rich_menu():
             # 3. 右上：加入閒聊社群
             RichMenuArea(
                 bounds=RichMenuBounds(x=540, y=0, width=270, height=600),
-                action=UriAction(uri=chat_group_url)
+                action=URIAction(uri=chat_group_url)
             ),
             # 第二列
             # 4. 左下：加入點位筆記群
             RichMenuArea(
                 bounds=RichMenuBounds(x=0, y=600, width=270, height=600),
-                action=UriAction(uri=notes_group_url)
+                action=URIAction(uri=notes_group_url)
             ),
             # 5. 中下：MetaBear IG
             RichMenuArea(
                 bounds=RichMenuBounds(x=270, y=600, width=270, height=600),
-                action=UriAction(uri=instagram_url)
+                action=URIAction(uri=instagram_url)
             ),
             # 6. 右下：MetaBear Threads
             RichMenuArea(
                 bounds=RichMenuBounds(x=540, y=600, width=270, height=600),
-                action=UriAction(uri=threads_url)
+                action=URIAction(uri=threads_url)
             ),
         ]
     )
