@@ -97,12 +97,12 @@ async def handle_message_event(event: dict):
                 line_client.reply_text(reply_token, menu_title, quick_reply)
                 logger.info("選單已成功發送")
             except Exception as e:
-                logger.error(f"發送選單時發生錯誤: {e}", exc_info=True)
+                logger.error(f"發送選單時發生錯誤", exc_info=True)
                 # 嘗試發送錯誤訊息給使用者
                 try:
                     line_client.reply_text(reply_token, "選單顯示失敗，請稍後再試。")
-                except:
-                    pass
+                except Exception:
+                    logger.warning("回覆錯誤訊息給使用者時也失敗", exc_info=True)
             return
         else:
             logger.debug(f"不是選單關鍵字，繼續處理為一般訊息")

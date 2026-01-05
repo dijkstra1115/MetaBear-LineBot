@@ -67,7 +67,7 @@ async def webhook(request: Request):
         return JSONResponse(content={"status": "ok"})
     except Exception as e:
         logger.error(f"Webhook 處理錯誤: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 if __name__ == "__main__":

@@ -86,16 +86,15 @@ class LINEClient:
             if quick_reply:
                 logger.info(f"已附加 Quick Reply，包含 {len(quick_reply.items)} 個選項")
         except ApiException as e:
-            # 這裡可以拿到真正的 LINE API 回應
+            status = getattr(e, "status", None)
+            reason = getattr(e, "reason", None)
+            body = getattr(e, "body", None)
+            headers = getattr(e, "headers", None)
+
             logger.error(
-                "LINE Messaging API 錯誤: status=%s, reason=%s, body=%s, headers=%s",
-                getattr(e, "status", None),
-                getattr(e, "reason", None),
-                getattr(e, "body", None),
-                getattr(e, "headers", None),
+                f"LINE Messaging API 錯誤: status={status}, reason={reason}, body={body}, headers={headers}",
                 exc_info=True,
             )
-            # 往外拋，讓 handlers 那層去決定要不要回「選單顯示失敗」
             raise
         except Exception as e:
             logger.error(f"回覆訊息失敗: {e}", exc_info=True)
