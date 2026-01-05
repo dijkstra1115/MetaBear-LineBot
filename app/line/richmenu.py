@@ -10,20 +10,21 @@ from linebot.v3.messaging import (
     Configuration,
     ApiClient,
     MessagingApi,
+    MessagingApiBlob,
     RichMenuRequest,
     RichMenuSize,
     RichMenuArea,
     RichMenuBounds,
     PostbackAction,
-    URIAction
+    URIAction,
 )
+from linebot.v3.exceptions import ApiException
 from app.config import settings
 
-# LINE Bot API 配置
 configuration = Configuration(access_token=settings.line_channel_access_token)
 api_client = ApiClient(configuration)
 messaging_api = MessagingApi(api_client)
-
+blob_api = MessagingApiBlob(api_client)
 
 def create_rich_menu():
     """建立 Rich Menu 定義"""
@@ -132,25 +133,52 @@ def upload_rich_menu():
         if rich_menu is None:
             logger.warning("Rich Menu 建立已取消（預設連結未設定）")
             return False
-        
-        rich_menu_id = messaging_api.create_rich_menu(rich_menu_request=rich_menu)
-        logger.info(f"Rich Menu 已建立，ID: {rich_menu_id}")
-        
-        # 2. 上傳圖片
-        logger.info(f"正在上傳圖片：{image_path}")
-        with open(image_path, "rb") as f:
-            messaging_api.set_rich_menu_image(
+
+        try:
+            response = messaging_api.create_rich_menu(rich_menu_request=rich_menu)
+            rich_menu_id = response.rich_menu_id
+            logger.info(f"Rich Menu 已建立，ID: {rich_menu_id}")
+        except ApiException as e:
+            logger.error(f"建立 Rich Menu 失敗 (API 錯誤): status={e.status}, reason={e.reason}, body={e.body}")
+            return False
+        except Exception as e:
+            logger.error(f"建立 Rich Menu 失敗: {type(e).__name__}: {e}", exc_info=True)
+            return False
+
+        # 2. 上傳圖片（改用 blob_api + Content-Type）
+        try:
+            logger.info(f"正在上傳圖片：{image_path}")
+            image_size = image_path.stat().st_size
+            logger.debug(f"圖片大小: {image_size} bytes")
+            with open(image_path, "rb") as f:
+                image_data = f.read()
+
+            blob_api.set_rich_menu_image(
                 rich_menu_id=rich_menu_id,
-                body=f.read()
+                body=image_data,
+                _headers={"Content-Type": "image/png"},
             )
-        logger.info("圖片已上傳")
-        
-        # 3. 設為預設 Rich Menu
-        logger.info("正在設為預設 Rich Menu...")
-        messaging_api.set_default_rich_menu(rich_menu_id=rich_menu_id)
-        logger.info("✅ Rich Menu 上傳成功！")
-        logger.info(f"Rich Menu ID: {rich_menu_id}")
-        return True
+            logger.info("圖片已上傳")
+        except ApiException as e:
+            logger.error(f"上傳 Rich Menu 圖片失敗 (API 錯誤): status={e.status}, reason={e.reason}, body={e.body}")
+            return False
+        except Exception as e:
+            logger.error(f"上傳 Rich Menu 圖片失敗: {type(e).__name__}: {e}", exc_info=True)
+            return False
+
+        # 3. 設為預設 Rich Menu（用真正的 rich_menu_id 字串）
+        try:
+            logger.info("正在設為預設 Rich Menu...")
+            messaging_api.set_default_rich_menu(rich_menu_id=rich_menu_id)
+            logger.info("✅ Rich Menu 上傳成功！")
+            logger.info(f"Rich Menu ID: {rich_menu_id}")
+            return True
+        except ApiException as e:
+            logger.error(f"設定預設 Rich Menu 失敗 (API 錯誤): status={e.status}, reason={e.reason}, body={e.body}")
+            return False
+        except Exception as e:
+            logger.error(f"設定預設 Rich Menu 失敗: {type(e).__name__}: {e}", exc_info=True)
+            return False
         
     except Exception as e:
         logger.error(f"Rich Menu 上傳失敗：{e}", exc_info=True)
