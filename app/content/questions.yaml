@@ -8,7 +8,7 @@ menu:
     - key: CVD
       label: "CVD（主動買賣量）"
     - key: DEPTH
-      label: "委託簿深度（Order Book Depth）"
+      label: "Order Book Depth"
     - key: RSI
       label: "RSI 指標"
 
