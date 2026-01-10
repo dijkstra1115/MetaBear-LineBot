@@ -141,7 +141,8 @@ class LINEClient:
                 QuickReplyItem(
                     action=PostbackAction(
                         label=label,
-                        data=f"action_type=ASK_QUESTION&topic={topic_key}&question_text={question}"
+                        data=f"action_type=ASK_QUESTION&topic={topic_key}&question_text={question}",
+                        display_text=question  # 點擊後顯示完整問題，並清除 Quick Reply 按鈕
                     )
                 )
             )

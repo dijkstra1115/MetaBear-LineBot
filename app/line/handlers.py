@@ -181,8 +181,8 @@ async def handle_llm_query(db, user_id: str, reply_token: str, user_text: str):
         )
         return
     
-    # 顯示載入動畫（設定 30 秒，如果 LLM 回應較快會自動消失）
-    line_client.start_loading(user_id, loading_seconds=30)
+    # 顯示載入動畫（設定 60 秒，如果 LLM 回應較快會自動消失）
+    line_client.start_loading(user_id, loading_seconds=60)
     
     # 取得最近對話歷史
     chat_history = crud.get_recent_chat_history(db, user_id, limit=4)
