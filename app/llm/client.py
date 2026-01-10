@@ -81,7 +81,8 @@ class LLMClient:
                     for msg in messages
                 ],
                 "temperature": 0.7,
-                "max_tokens": 500
+                "max_tokens": settings.max_tokens,
+                "reasoning": {"enabled": True}
             }
             
             # 呼叫 LLM API（異步，不阻塞）

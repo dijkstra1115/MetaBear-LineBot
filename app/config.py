@@ -21,6 +21,7 @@ class Settings:
     llm_model: str = os.getenv("LLM_MODEL", "deepseek/deepseek-r1-0528:free")  # DeepSeek R1 免費模型
     llm_http_referer: str = os.getenv("LLM_HTTP_REFERER", "")  # OpenRouter 可選：HTTP-Referer header
     llm_x_title: str = os.getenv("LLM_X_TITLE", "Investment Q&A Bot")  # OpenRouter 可選：X-Title header (必須為 ASCII)
+    max_tokens: int = int(os.getenv("MAX_TOKENS", "5000"))
     
     # Server
     host: str = os.getenv("HOST", "0.0.0.0")
