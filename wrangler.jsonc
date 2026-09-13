@@ -1,0 +1,118 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "metabear-line-crm",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "metabear-crm",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "vars": {
+    "LINE_DELIVERY_MODE": "disabled",
+    "PUBLIC_BASE_URL": "",
+    "OPENAI_MODEL": "gpt-4.1-mini",
+    "ENVIRONMENT": "development",
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+    "ADMIN_EMAIL": "",
+  },
+  "queues": {
+    "producers": [
+      { "binding": "LINE_EVENTS", "queue": "metabear-line-events" },
+      { "binding": "CAMPAIGN_EVENTS", "queue": "metabear-campaigns" },
+    ],
+    "consumers": [
+      {
+        "queue": "metabear-campaigns",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 5,
+        "dead_letter_queue": "metabear-campaigns-dead",
+        "max_concurrency": 1,
+        "retry_delay": 5,
+      },
+      {
+        "queue": "metabear-line-events",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 5,
+        "dead_letter_queue": "metabear-line-events-dead",
+        "max_concurrency": 1,
+        "retry_delay": 2,
+      },
+    ],
+  },
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "env": {
+    "staging": {
+      "name": "metabear-line-crm-staging",
+      "workers_dev": true,
+      "triggers": { "crons": ["*/5 * * * *"] },
+      "preview_urls": false,
+      "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
+        "run_worker_first": true,
+        "html_handling": "none",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "metabear-crm-staging",
+          "database_id": "60f13265-4f4d-4086-9851-ed027c968ee6",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "vars": {
+        "LINE_DELIVERY_MODE": "live",
+        "PUBLIC_BASE_URL": "https://metabear-line-crm-staging.style78432.workers.dev",
+        "OPENAI_MODEL": "gpt-4.1-mini",
+        "ENVIRONMENT": "staging",
+        "ACCESS_TEAM_DOMAIN": "id3a.cloudflareaccess.com",
+        "ACCESS_AUD": "79523763b0ca921e1bdfee166bc4b14bdc9cc8cf6d31650ed388b957c25dc7f9",
+        "ADMIN_EMAIL": "style78432@gmail.com",
+      },
+      "queues": {
+        "producers": [
+          { "binding": "LINE_EVENTS", "queue": "metabear-line-events-staging" },
+          {
+            "binding": "CAMPAIGN_EVENTS",
+            "queue": "metabear-campaigns-staging",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "metabear-campaigns-staging",
+            "max_batch_size": 1,
+            "max_batch_timeout": 1,
+            "max_retries": 5,
+            "dead_letter_queue": "metabear-campaigns-dead-staging",
+            "max_concurrency": 1,
+            "retry_delay": 5,
+          },
+          {
+            "queue": "metabear-line-events-staging",
+            "max_batch_size": 1,
+            "max_batch_timeout": 1,
+            "max_retries": 5,
+            "dead_letter_queue": "metabear-line-events-dead-staging",
+            "max_concurrency": 1,
+            "retry_delay": 2,
+          },
+        ],
+      },
+    },
+  },
+}

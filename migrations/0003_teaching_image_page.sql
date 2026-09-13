@@ -1,0 +1,1 @@
+ALTER TABLE teaching_context ADD COLUMN image_page INTEGER NOT NULL DEFAULT 0;

@@ -1,4 +1,8 @@
-# 快速設定指南
+# 舊版 Python / Zeabur 操作說明
+
+新版 Cloudflare Workers + CRM 請見 [README](README.md) 與 [Cloudflare 部署說明](docs/CLOUDFLARE.md)。以下保留舊版內容供參考。
+
+## 快速設定指南
 
 ## 📋 前置需求
 

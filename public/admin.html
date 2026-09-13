@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MetaBear · 客戶工作台</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div id="login" class="login-shell" hidden>
+      <div class="login-brand">
+        <div class="brand-mark">mb.</div>
+        <p class="eyebrow">METABEAR / PARTNER DESK</p>
+        <h1>從第一次提問，<br />到每一次信任。</h1>
+        <p>把註冊引導、推薦核實與客戶關係，放在同一個工作台。</p>
+        <div class="login-path">
+          <span>註冊引導</span><i>→</i><span>UID 核實</span><i>→</i
+          ><span>持續服務</span>
+        </div>
+      </div>
+      <form id="login-form" class="login-card">
+        <span class="eyebrow">管理員登入</span>
+        <h2>回到你的工作台</h2>
+        <p class="muted">
+          此金鑰僅用於本機開發。雲端後台使用 Cloudflare Email OTP 登入。
+        </p>
+        <label
+          >管理金鑰<input
+            id="token"
+            type="password"
+            required
+            autocomplete="off"
+            placeholder="輸入管理金鑰" /></label
+        ><button class="primary" type="submit">
+          進入工作台 <span>↗</span>
+        </button>
+        <p id="login-error" role="alert"></p>
+        <a href="/guide.html">查看用戶註冊教學 ↗</a>
+      </form>
+    </div>
+    <div id="workspace" class="workspace" hidden>
+      <aside class="sidebar">
+        <a href="/" class="brand"
+          ><span class="brand-mark">mb.</span
+          ><span>MetaBear<small>客戶工作台</small></span></a
+        >
+        <div class="workspace-name">
+          <span class="status-dot"></span> BingX 推薦夥伴
+        </div>
+        <nav aria-label="主導覽">
+          <button class="nav-item active" data-view="customers">
+            ◫ <span>客戶名單</span></button
+          ><button class="nav-item" data-view="campaigns">
+            ↗ <span>受眾與推播</span></button
+          ><button class="nav-item" data-view="content">
+            ▤ <span>教學內容</span></button
+          ><button class="nav-item" data-view="simulator" id="sim-nav">
+            ⌁ <span>對話測試</span>
+          </button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="referral-card">
+            <small>專屬邀請碼</small><strong>ZD0CQ0</strong
+            ><span>入群門檻 200 USDT</span>
+          </div>
+          <button class="quiet" id="logout">登出工作台 ↗</button>
+        </div>
+      </aside>
+      <main>
+        <header class="topbar">
+          <span
+            >PARTNER DESK <span class="slash">/</span>
+            <span id="breadcrumb">客戶名單</span></span
+          ><span id="environment" class="pill">本機測試</span>
+        </header>
+        <section id="customers-view" class="view">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">YOUR COMMUNITY, IN FOCUS</p>
+              <h1>每一位用戶，<span>下一步都清楚。</span></h1>
+              <p class="muted">
+                從註冊到入群，追蹤進度、核實推薦關係，接住每個問題。
+              </p>
+            </div>
+            <button id="load-demo" class="secondary">載入示範名單</button>
+          </div>
+          <div
+            id="stage-strip"
+            class="stage-strip"
+            aria-label="用戶流程分布"
+          ></div>
+          <div class="section-heading">
+            <div>
+              <h2>客戶名單 <span id="customer-count" class="count">0</span></h2>
+              <p id="list-description" class="muted">
+                選擇用戶查看完整資料與核實紀錄。
+              </p>
+            </div>
+            <button id="refresh" class="quiet">重新整理 ↻</button>
+          </div>
+          <form id="filters" class="filters">
+            <label class="search-label"
+              >搜尋<input name="q" placeholder="姓名、LINE ID 或 UID" /></label
+            ><label
+              >進度<select name="stage">
+                <option value="">全部進度</option>
+                <option value="new">新加入</option>
+                <option value="registering">註冊中</option>
+                <option value="kyc">KYC 教學</option>
+                <option value="deposit">入金教學</option>
+                <option value="review">待核實</option>
+                <option value="joined">已入群</option>
+              </select></label
+            ><label
+              >交易偏好<select name="preference">
+                <option value="">全部偏好</option>
+                <option value="spot">現貨</option>
+                <option value="futures">合約</option>
+                <option value="both">現貨＋合約</option>
+                <option value="learning">先學基礎</option>
+                <option value="unknown">未設定</option>
+              </select></label
+            ><label
+              >交易量月份<input name="month" type="month" required /></label
+            ><label
+              >最低交易量<input
+                name="min"
+                type="number"
+                min="0"
+                placeholder="USDT" /></label
+            ><label
+              >最高交易量<input
+                name="max"
+                type="number"
+                min="0"
+                placeholder="USDT" /></label
+            ><button class="primary" type="submit">篩選</button
+            ><button class="quiet" type="button" id="reset-filters">
+              重設
+            </button>
+          </form>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>用戶</th>
+                  <th>BingX UID</th>
+                  <th>進度／核實</th>
+                  <th>交易偏好</th>
+                  <th>當月交易量</th>
+                  <th>通知</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="customer-rows"></tbody>
+            </table>
+            <div id="empty" class="empty" hidden>
+              <div class="empty-symbol">◌</div>
+              <h3>還沒有符合條件的用戶</h3>
+              <p>
+                用戶開始與 LINE Bot 對話後，會出現在這裡。也可以調整篩選條件。
+              </p>
+            </div>
+          </div>
+          <div class="pagination">
+            <button id="prev-page" class="quiet">← 上一頁</button
+            ><span id="page-label"></span
+            ><button id="next-page" class="quiet">下一頁 →</button>
+          </div>
+          <div class="insight-note">
+            <span>↳</span>
+            <p>
+              UID 登記、推薦關係、入金核實各自獨立。先確認資料，再安排入群。<br /><small
+                >「未紀錄」代表尚無交易量資料；金額為你選擇月份的手動紀錄。</small
+              >
+            </p>
+          </div>
+        </section>
+        <section id="campaigns-view" class="view" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">A MESSAGE WITH A PURPOSE</p>
+              <h1>先找到對的人。</h1>
+              <p class="muted">
+                沿用客戶名單的篩選條件，只納入已訂閱且未封鎖的用戶。
+              </p>
+            </div>
+          </div>
+          <div class="campaign-grid">
+            <div class="panel">
+              <div class="section-heading">
+                <h2>受眾預覽</h2>
+                <button id="audience-refresh" class="quiet">更新 ↻</button>
+              </div>
+              <strong id="audience-count" class="large-number">0</strong>
+              <p class="muted">位符合條件的用戶</p>
+              <p id="audience-filters" class="callout"></p>
+              <div id="audience-names" class="name-list"></div>
+            </div>
+            <form id="draft-form" class="panel">
+              <h2>建立通知草稿</h2>
+              <label
+                >草稿名稱<input
+                  name="title"
+                  required
+                  maxlength="80"
+                  placeholder="例如：合約基礎教學更新" /></label
+              ><label
+                >訊息內容<textarea
+                  name="body"
+                  required
+                  maxlength="4500"
+                  rows="8"
+                  placeholder="輸入你想提供給這群用戶的內容…"
+                ></textarea>
+              </label>
+              <p class="muted">
+                先儲存草稿，再預覽訊息與名單並確認發送。每次最多 500 位；會占用
+                LINE 官方帳號訊息額度。
+              </p>
+              <button class="primary" type="submit">儲存草稿</button>
+            </form>
+          </div>
+          <div class="section-heading"><h2>最近草稿</h2></div>
+          <div id="drafts" class="draft-list"></div>
+          <div class="section-heading">
+            <h2>推播紀錄</h2>
+            <button id="runs-refresh" class="quiet">更新狀態 ↻</button>
+          </div>
+          <p class="muted">
+            「LINE
+            已接受」不代表個別用戶已收到或已讀。退訂、封鎖或條件變更的用戶會略過。
+          </p>
+          <div id="campaign-runs" class="draft-list"></div>
+        </section>
+        <section id="content-view" class="view" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">A CLEAR PATH TO GETTING STARTED</p>
+              <h1>用戶的下一步，<span>寫在這裡。</span></h1>
+              <p class="muted">
+                文字與圖片共用同一套流程，邀請碼與入群門檻保持一致。
+              </p>
+            </div>
+            <a
+              class="secondary"
+              href="/guide.html"
+              target="_blank"
+              rel="noreferrer"
+              >開啟用戶教學 ↗</a
+            >
+          </div>
+          <div id="content-cards" class="content-grid"></div>
+        </section>
+        <section id="simulator-view" class="view" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">TRY THE CONVERSATION</p>
+              <h1>先把流程走一遍。</h1>
+              <p class="muted">
+                模擬訊息會更新本機 CRM，不會傳送到 LINE。正式環境不提供此功能。
+              </p>
+              <p class="muted" id="assistant-status"></p>
+            </div>
+          </div>
+          <div class="sim-layout">
+            <div class="panel">
+              <h2>測試身分</h2>
+              <label
+                >LINE userId<input
+                  id="sim-user"
+                  value="U00000000000000000000000000000009"
+                  maxlength="33"
+              /></label>
+              <p class="muted">
+                這是測試識別碼，資料會出現在客戶名單。可測試 UID
+                登記、通知訂閱和交易偏好。
+              </p>
+              <div class="sim-shortcuts">
+                <button class="secondary" data-sim="選單">顯示選單</button
+                ><button class="secondary" data-sim="我的進度">查看進度</button>
+              </div>
+            </div>
+            <div class="chat-shell">
+              <div class="chat-header">
+                <span class="avatar">mb.</span>
+                <div>MetaBear 小幫手<small>本機對話預覽</small></div>
+              </div>
+              <div id="chat" class="chat" aria-live="polite"></div>
+              <form id="sim-form">
+                <input
+                  id="sim-text"
+                  required
+                  placeholder="直接問「我該如何註冊？」"
+                  maxlength="1500"
+                  aria-label="測試訊息"
+                /><button class="primary" type="submit">送出</button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <dialog id="customer-dialog">
+      <form id="customer-form">
+        <div class="drawer-header">
+          <div>
+            <p class="eyebrow">CUSTOMER PROFILE</p>
+            <h2 id="detail-title">客戶資料</h2>
+          </div>
+          <button
+            type="button"
+            id="close-detail"
+            class="quiet"
+            aria-label="關閉客戶資料"
+          >
+            ✕
+          </button>
+        </div>
+        <p id="detail-id" class="mono muted"></p>
+        <div class="form-grid">
+          <label>客服稱呼<input name="display_name" maxlength="80" /></label
+          ><label
+            >個人 LINE ID（選填）<input
+              name="line_handle"
+              maxlength="100" /></label
+          ><label
+            >目前進度<select name="stage">
+              <option value="new">新加入</option>
+              <option value="registering">註冊中</option>
+              <option value="kyc">KYC 教學</option>
+              <option value="deposit">入金教學</option>
+              <option value="review">待核實</option>
+              <option value="joined">已入群</option>
+            </select></label
+          ><label
+            >交易偏好<select name="preference">
+              <option value="unknown">未設定</option>
+              <option value="spot">現貨</option>
+              <option value="futures">合約</option>
+              <option value="both">現貨＋合約</option>
+              <option value="learning">先學基礎</option>
+            </select></label
+          >
+        </div>
+        <label class="checkbox"
+          ><input type="checkbox" name="support_requested" />需要人工協助</label
+        >
+        <p id="detail-consent" class="callout"></p>
+        <h3>推薦與入群核實</h3>
+        <label
+          >BingX UID<input
+            name="uid"
+            inputmode="numeric"
+            maxlength="30"
+            placeholder="尚未提交"
+        /></label>
+        <p class="muted">
+          更正 UID 會重設核實結果；需要重新核對，並將進度改回「待核實」。
+        </p>
+        <div class="form-grid">
+          <label
+            >推薦關係<select name="referral_status">
+              <option value="pending">待核實</option>
+              <option value="verified">已核實</option>
+              <option value="rejected">需補正</option>
+            </select></label
+          ><label
+            >200 USDT 入金門檻<select name="deposit_status">
+              <option value="pending">待核實</option>
+              <option value="verified">已核實</option>
+              <option value="rejected">需補正</option>
+            </select></label
+          >
+        </div>
+        <label
+          >推薦關係核對依據<textarea
+            name="verification_note"
+            rows="2"
+            maxlength="1000"
+            placeholder="例如：人工核對代理後台，日期與結果"
+          ></textarea></label
+        ><label
+          >入金核對依據<textarea
+            name="deposit_note"
+            rows="2"
+            maxlength="1000"
+            placeholder="例如：核對 LINE 對話中的入金證明，日期與結果"
+          ></textarea></label
+        ><label
+          >客服備註<textarea name="notes" rows="3" maxlength="3000"></textarea>
+        </label>
+        <p id="detail-error" role="alert"></p>
+        <button class="primary" type="submit">儲存客戶資料</button>
+      </form>
+      <hr />
+      <form id="volume-form">
+        <h3>每月交易量</h3>
+        <p class="muted">
+          填寫所選月份的累計成交額（USDT
+          等值）。再次儲存同月資料會覆蓋該月金額，並留下操作紀錄。
+        </p>
+        <div class="form-grid">
+          <label>月份<input name="month" type="month" required /></label
+          ><label
+            >交易量 / USDT<input
+              name="volume_usdt"
+              type="number"
+              min="0"
+              max="1000000000000"
+              step="0.01"
+              required
+          /></label>
+        </div>
+        <label
+          >資料來源<select name="source">
+            <option value="manual">手動紀錄</option>
+            <option value="affiliate_report">代理報表（人工核對）</option>
+          </select></label
+        ><label>資料備註<input name="note" maxlength="500" /></label
+        ><button class="secondary" type="submit">儲存本月交易量</button>
+        <p id="volume-error" role="alert"></p>
+      </form>
+      <div id="volume-history"></div>
+      <h3>最近操作紀錄</h3>
+      <div id="audit-history" class="audit-history"></div>
+    </dialog>
+    <dialog id="campaign-dialog">
+      <div class="drawer-header">
+        <h2>確認這次推播</h2>
+        <button id="campaign-close" class="quiet" aria-label="關閉推播預覽">
+          ✕
+        </button>
+      </div>
+      <h3 id="campaign-title"></h3>
+      <p id="campaign-body" class="campaign-message"></p>
+      <p id="campaign-summary" class="callout"></p>
+      <details>
+        <summary>查看這次受眾名單</summary>
+        <div id="campaign-recipients" class="name-list"></div>
+      </details>
+      <p id="campaign-error" role="alert"></p>
+      <button id="campaign-send" class="primary">確認發送</button>
+      <p class="muted">
+        預覽有效 10
+        分鐘。按下確認後會排入發送佇列；網路中斷可重新整理查看紀錄，重按同一次確認不會重複建立推播。
+      </p>
+    </dialog>
+    <div id="auth-state" class="auth-state">
+      <h1>正在驗證登入…</h1>
+      <p>Cloudflare 正在確認你的工作階段。</p>
+      <a href="/admin">重新登入 ↗</a><a href="/">回到首頁</a>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>

@@ -26,6 +26,12 @@ wheels/
 # Environment
 .env
 .env.local
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+node_modules/
+.wrangler/
+test-output/
 
 # IDE
 .vscode/

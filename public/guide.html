@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="MetaBear 圖文教學：BingX 註冊、邀請碼、KYC、BitoPro 台幣入金、信用卡買幣與合約基礎。"
+    />
+    <title>學習中心｜MetaBear</title>
+    <link rel="icon" href="/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/site.css" />
+    <link rel="stylesheet" href="/learn.css" />
+    <script src="/guide.js" defer></script>
+  </head>
+  <body class="learn-page">
+    <header class="site-header">
+      <a class="site-brand" href="/"
+        ><img src="/mark.svg" alt="" width="36" height="36" />MetaBear<span
+          >探索市場的起點</span
+        ></a
+      >
+      <nav aria-label="主要導覽">
+        <a href="/">回到首頁</a
+        ><a class="header-line" href="https://lin.ee/cbyuRJv"
+          >問 LINE 小幫手 ↗</a
+        >
+      </nav>
+    </header>
+    <main class="learn-main">
+      <div class="learn-heading">
+        <p class="eyebrow">THE LEARNING DESK / 01</p>
+        <h1>把每一步，<em>弄清楚。</em></h1>
+        <p>從開戶到理解一筆交易。選一個主題，照自己的速度開始。</p>
+      </div>
+      <div class="learn-layout">
+        <aside class="learn-sidebar">
+          <h2>開始使用 BingX</h2>
+          <nav id="guide-tabs" aria-label="開戶與入金教學"></nav>
+          <h2>理解合約與市場</h2>
+          <nav id="lesson-tabs" aria-label="合約知識"></nav>
+          <a class="learn-lab-link" href="/#lab">試試損益計算 →</a>
+        </aside>
+        <section class="learn-content" aria-live="polite">
+          <p id="guide-category" class="eyebrow"></p>
+          <h2 id="guide-title" tabindex="-1">正在載入教學…</h2>
+          <div id="guide-copy" class="learn-copy"></div>
+          <div id="method-options" class="method-options" hidden>
+            <a href="/learn?step=deposit_bitopro"
+              ><small>01 / TWD → USDT</small><strong>BitoPro 台幣入金 ↗</strong
+              ><span>銀行轉帳、買入 USDT、轉入 BingX</span></a
+            ><a href="/learn?step=deposit_card"
+              ><small>02 / CARD → USDT</small><strong>BingX 信用卡買幣 ↗</strong
+              ><span>快捷買幣、付款驗證、確認到帳</span></a
+            >
+          </div>
+          <div class="learn-actions">
+            <a
+              id="register-link"
+              class="button button-primary"
+              href="https://bingx.com/invite/ZD0CQ0"
+              target="_blank"
+              rel="noreferrer"
+              >開啟 BingX 註冊 ↗</a
+            ><a
+              id="next-step"
+              class="button button-quiet"
+              href="/learn?step=code"
+              >下一步 →</a
+            >
+          </div>
+          <section id="gallery-section" hidden>
+            <div class="gallery-heading">
+              <h3>跟著圖片看</h3>
+              <span id="gallery-count"></span>
+            </div>
+            <p class="learn-note">
+              點選圖片可放大。這些是既有教學畫面，功能、費用與介面以目前交易所為準。圖中的
+              100 USDT 為舊示例，MetaBear 入群門檻為 200 USDT。
+            </p>
+            <div id="guide-media" class="learn-gallery"></div>
+          </section>
+          <div class="learn-support">
+            <p>卡在某個步驟？</p>
+            <a href="https://lin.ee/cbyuRJv">把問題留給 LINE 小幫手 ↗</a>
+          </div>
+          <p id="guide-error" role="alert"></p>
+        </section>
+      </div>
+      <footer class="learn-footer">
+        MetaBear
+        可能因你的推薦註冊與交易獲得佣金。教學不構成投資建議，合約與槓桿交易可能造成重大損失。<a
+          href="/"
+          >回到 MetaBear ↗</a
+        >
+      </footer>
+    </main>
+    <dialog id="image-dialog" aria-labelledby="image-caption">
+      <div class="viewer-tools">
+        <span id="image-position"></span
+        ><button id="close-image" aria-label="關閉圖片">關閉 ✕</button>
+      </div>
+      <img id="full-image" alt="" />
+      <p id="image-caption"></p>
+      <div class="viewer-nav">
+        <button id="previous-image">← 上一張</button
+        ><button id="next-image">下一張 →</button>
+      </div>
+    </dialog>
+  </body>
+</html>
