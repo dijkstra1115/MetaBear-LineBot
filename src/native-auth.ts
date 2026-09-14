@@ -2,8 +2,6 @@ import { HttpError, json, readJson } from "./http";
 
 declare global {
   interface Env {
-    AUTH_MODE?: string;
-    AUTH_CHANNEL?: string;
     AUTH_EMAIL_FROM?: string;
     AUTH_EMAIL?: {
       send(message: {
