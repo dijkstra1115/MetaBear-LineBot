@@ -4,8 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>MetaBear · 客戶工作台</title>
+    <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="64x64" />
     <link rel="stylesheet" href="/styles.css" />
     <script src="/app.js" defer></script>
+    <script src="/crm-automation.js" defer></script>
+    <script src="/crm-knowledge.js" defer></script>
   </head>
   <body>
     <div id="login" class="login-shell" hidden>
@@ -49,12 +52,17 @@
           <span class="status-dot"></span> BingX 推薦夥伴
         </div>
         <nav aria-label="主導覽">
+          <button class="nav-item" data-view="automation">
+            ◎ <span>自動審核與同步</span>
+          </button>
           <button class="nav-item active" data-view="customers">
             ◫ <span>客戶名單</span></button
           ><button class="nav-item" data-view="campaigns">
             ↗ <span>受眾與推播</span></button
           ><button class="nav-item" data-view="content">
             ▤ <span>教學內容</span></button
+          ><button class="nav-item" data-view="knowledge">
+            ? <span>常見問題知識庫</span></button
           ><button class="nav-item" data-view="simulator" id="sim-nav">
             ⌁ <span>對話測試</span>
           </button>
@@ -62,7 +70,7 @@
         <div class="sidebar-bottom">
           <div class="referral-card">
             <small>專屬邀請碼</small><strong>ZD0CQ0</strong
-            ><span>入群門檻 200 USDT</span>
+            ><span>已入金即可 · 允許內部轉帳</span>
           </div>
           <button class="quiet" id="logout">登出工作台 ↗</button>
         </div>
@@ -100,6 +108,24 @@
             <button id="refresh" class="quiet">重新整理 ↻</button>
           </div>
           <form id="filters" class="filters">
+            <label
+              >資格<select name="qualification">
+                <option value="">全部資格</option>
+                <option value="eligible">已通過</option>
+                <option value="needs_action">待完成條件</option>
+                <option value="pending">待確認</option>
+              </select></label
+            >
+            <label
+              >近期未交易<select name="inactive">
+                <option value="">不限制</option>
+                <option value="7">7 天</option>
+                <option value="14">14 天</option>
+                <option value="30">30 天</option>
+              </select></label
+            >
+            <label>客服<input name="owner" placeholder="負責客服" /></label>
+            <label>標籤<input name="tag" placeholder="例如：新手" /></label>
             <label class="search-label"
               >搜尋<input name="q" placeholder="姓名、LINE ID 或 UID" /></label
             ><label
@@ -172,7 +198,8 @@
             <span>↳</span>
             <p>
               UID 登記、推薦關係、入金核實各自獨立。先確認資料，再安排入群。<br /><small
-                >「未紀錄」代表尚無交易量資料；金額為你選擇月份的手動紀錄。</small
+                >「未紀錄」代表尚無資料；交易量標示 API 或人工來源，API
+                統計至前一日。</small
               >
             </p>
           </div>
@@ -234,6 +261,104 @@
           </p>
           <div id="campaign-runs" class="draft-list"></div>
         </section>
+        <section id="automation-view" class="view" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">AUTOMATION / BINGX</p>
+              <h1>審核、同步與邀請。</h1>
+              <p class="muted">
+                UID 回報後自動查詢；資料不完整或查詢失敗會等待重試。
+              </p>
+            </div>
+            <button id="crm-dispatch" class="primary">同步待更新名單</button>
+          </div>
+          <p id="crm-readiness" class="callout" role="status"></p>
+          <div id="crm-overview" class="crm-metrics"></div>
+          <div class="campaign-grid">
+            <form id="team-form" class="panel">
+              <h2>團隊與審核設定</h2>
+              <label
+                >團隊名稱<input name="name" required maxlength="80"
+              /></label>
+              <div class="form-grid">
+                <label
+                  >允許的邀請碼<input
+                    name="referral_code"
+                    required
+                    maxlength="40" /></label
+                ><label
+                  >邀請人 UID（選填）<input
+                    name="inviter_uid"
+                    inputmode="numeric"
+                    maxlength="30"
+                /></label>
+              </div>
+              <label
+                >VIP 社群連結<input
+                  name="vip_url"
+                  type="url"
+                  placeholder="https://…"
+                  maxlength="1000"
+              /></label>
+              <label
+                >客服連結<input name="support_url" type="url" maxlength="1000"
+              /></label>
+              <label class="checkbox"
+                ><input
+                  name="allow_internal_transfer"
+                  type="checkbox"
+                />允許內部轉帳入金</label
+              >
+              <label class="checkbox"
+                ><input
+                  name="allow_indirect"
+                  type="checkbox"
+                />允許間接邀請（仍需符合邀請碼）</label
+              >
+              <label class="checkbox"
+                ><input
+                  name="automation_enabled"
+                  type="checkbox"
+                />啟用資料同步、資格審核與 VIP 自動發送</label
+              >
+              <p class="muted">
+                通過条件：邀請歸屬符合、KYC 完成、已入金。不設最低金額，也不要求
+                LINE 帳號持有證明。同一 UID 不重複發送。
+              </p>
+              <button class="primary" type="submit">儲存設定</button>
+              <p id="team-error" role="alert"></p>
+            </form>
+            <div class="panel">
+              <h2>系統如何運作</h2>
+              <ol class="crm-flow">
+                <li>用戶在 LINE 提交 UID</li>
+                <li>BingX 核對邀請關係、KYC 與入金</li>
+                <li>資格通過後自動送出社群連結</li>
+                <li>客服確認入群，持續同步每日資料</li>
+              </ol>
+              <p class="muted">
+                API
+                憑證由部署環境的秘密設定提供，頁面只顯示是否已設定。每個團隊使用獨立的
+                Worker、資料庫與 LINE 官方帳號。
+              </p>
+              <h3>同步範圍</h3>
+              <p>
+                每日重整最近 60
+                天的交易量、佣金及入金明細；保留已同步的歷史交易資料。尚未通過的
+                UID 約每 15 分鐘複查，更新延遲以交易所為準。
+              </p>
+              <p>
+                VIP 的「LINE
+                已接受」與「已確認入群」分開記錄。行銷推播仍需用戶訂閱，並由你預覽確認。
+              </p>
+            </div>
+          </div>
+          <div class="section-heading">
+            <h2>最近同步工作</h2>
+            <button id="crm-reload" class="quiet">更新狀態 ↻</button>
+          </div>
+          <div id="crm-jobs" class="table-wrap"></div>
+        </section>
         <section id="content-view" class="view" hidden>
           <div class="page-heading">
             <div>
@@ -252,6 +377,23 @@
             >
           </div>
           <div id="content-cards" class="content-grid"></div>
+        </section>
+        <section id="knowledge-view" class="view" hidden>
+          <div class="page-heading">
+            <div>
+              <h1>常見問題知識庫</h1>
+              <p class="muted">
+                只有已發布的解法會提供給
+                Bot。先回答問題，需要核實時再標記人工協助。
+              </p>
+            </div>
+            <button class="primary" id="kb-new">新增常見問題</button>
+          </div>
+          <p class="callout">
+            對話不會自動變成正確答案。請核對解法與依據後發布；帳號資格與推薦歸屬仍由原本的審核流程決定。
+          </p>
+          <div id="kb-list" class="content-grid"></div>
+          <p id="kb-status" role="status"></p>
         </section>
         <section id="simulator-view" class="view" hidden>
           <div class="page-heading">
@@ -320,6 +462,10 @@
         </div>
         <p id="detail-id" class="mono muted"></p>
         <div class="form-grid">
+          <label>負責客服<input name="owner_name" maxlength="80" /></label
+          ><label
+            >標籤（以逗號分隔）<input name="tags" maxlength="500"
+          /></label>
           <label>客服稱呼<input name="display_name" maxlength="80" /></label
           ><label
             >個人 LINE ID（選填）<input
@@ -367,7 +513,7 @@
               <option value="rejected">需補正</option>
             </select></label
           ><label
-            >200 USDT 入金門檻<select name="deposit_status">
+            >已入金<select name="deposit_status">
               <option value="pending">待核實</option>
               <option value="verified">已核實</option>
               <option value="rejected">需補正</option>
@@ -394,6 +540,7 @@
         <p id="detail-error" role="alert"></p>
         <button class="primary" type="submit">儲存客戶資料</button>
       </form>
+      <section id="crm-customer" class="crm-customer"></section>
       <hr />
       <form id="volume-form">
         <h3>每月交易量</h3>
@@ -423,8 +570,75 @@
         <p id="volume-error" role="alert"></p>
       </form>
       <div id="volume-history"></div>
+      <h3>對話紀錄</h3>
+      <p class="muted">
+        自功能上線起保留 90 天的用戶訊息與 Bot 回覆。附件記錄類型，原檔請到 LINE
+        查看；客服在 LINE
+        官方介面手動發出的訊息不會自動出現在這裡。登入綁定碼及可辨識的憑證會隱藏。
+      </p>
+      <div class="conversation-toolbar">
+        <button id="conversation-refresh" class="quiet" type="button">
+          更新對話</button
+        ><button id="conversation-older" class="quiet" type="button" hidden>
+          載入更早訊息
+        </button>
+      </div>
+      <div id="conversation-list" class="conversation-list"></div>
       <h3>最近操作紀錄</h3>
       <div id="audit-history" class="audit-history"></div>
+    </dialog>
+    <dialog id="kb-dialog">
+      <div class="drawer-header">
+        <h2 id="kb-title">編輯解法</h2>
+        <button
+          type="button"
+          id="kb-close"
+          class="quiet"
+          aria-label="關閉知識編輯"
+        >
+          ✕
+        </button>
+      </div>
+      <form id="kb-form">
+        <label>常見問題<input name="title" required maxlength="150" /></label>
+        <label
+          >關鍵詞／常見問法（一行一個）<textarea
+            name="keywords"
+            rows="4"
+            maxlength="1000"
+          ></textarea>
+        </label>
+        <label
+          >回覆解法<textarea
+            name="answer"
+            required
+            rows="10"
+            maxlength="3000"
+          ></textarea>
+        </label>
+        <label
+          >解法依據與適用限制<textarea
+            name="source_note"
+            rows="3"
+            maxlength="1000"
+            placeholder="例如：團隊現行規則、官方說明網址與確認日期"
+          ></textarea>
+        </label>
+        <label class="checkbox"
+          ><input
+            name="requires_support"
+            type="checkbox"
+          />回答後仍需人工核實（已標記者不重複提示）</label
+        >
+        <label
+          >發布狀態<select name="status">
+            <option value="draft">草稿 · Bot 不使用</option>
+            <option value="published">已發布 · Bot 可使用</option>
+          </select></label
+        >
+        <button class="primary" type="submit">儲存解法</button>
+        <p id="kb-error" role="alert"></p>
+      </form>
     </dialog>
     <dialog id="campaign-dialog">
       <div class="drawer-header">
@@ -449,7 +663,7 @@
     </dialog>
     <div id="auth-state" class="auth-state">
       <h1>正在驗證登入…</h1>
-      <p>Cloudflare 正在確認你的工作階段。</p>
+      <p>正在確認你的工作階段。</p>
       <a href="/admin">重新登入 ↗</a><a href="/">回到首頁</a>
     </div>
     <div id="toast" class="toast" role="status" hidden></div>

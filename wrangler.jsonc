@@ -26,6 +26,8 @@
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": "",
     "ADMIN_EMAIL": "",
+    "AUTH_MODE": "cloudflare",
+    "AUTH_CHANNEL": "line",
   },
   "queues": {
     "producers": [
@@ -83,6 +85,8 @@
         "ACCESS_TEAM_DOMAIN": "id3a.cloudflareaccess.com",
         "ACCESS_AUD": "79523763b0ca921e1bdfee166bc4b14bdc9cc8cf6d31650ed388b957c25dc7f9",
         "ADMIN_EMAIL": "style78432@gmail.com",
+        "AUTH_MODE": "native",
+        "AUTH_CHANNEL": "line",
       },
       "queues": {
         "producers": [

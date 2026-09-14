@@ -3,6 +3,14 @@ import { respond } from "./bot";
 import { ensureCustomer, now } from "./db";
 import { HttpError, json, readBody, signatureValid } from "./http";
 import type { LineEvent, LineMessage } from "./types";
+import { getTeam, personalize } from "./team";
+import { startLoading } from "./line-loading";
+import { enrollFromLine } from "./auth-enrollment";
+import {
+  recordIncoming,
+  recordOutgoing,
+  setOutgoingStatus,
+} from "./conversations";
 
 export async function webhook(request: Request, env: Env) {
   const raw = await readBody(request, 262144);
@@ -27,10 +35,12 @@ export async function webhook(request: Request, env: Env) {
   for (const event of events) {
     if (
       !event ||
-      !["follow", "unfollow", "message", "postback"].includes(event.type)
+      !["follow", "unfollow", "message", "postback", "unsend"].includes(
+        event.type,
+      )
     )
       continue;
-    // CRM identity and account proofs are only processed in one-to-one chats.
+    // CRM registration is only processed in one-to-one chats.
     if (
       event.source?.type !== "user" ||
       !/^U[a-f0-9]{32}$/i.test(event.source.userId ?? "")
@@ -87,6 +97,13 @@ export async function processLineEvent(event: LineEvent, env: Env) {
       .first();
     if (!customerClaim)
       throw new HttpError(503, "Customer is processing; retry later");
+    await recordIncoming(env, event);
+    if (
+      !claim.messages_json &&
+      ["message", "postback"].includes(event.type) &&
+      Date.now() - event.timestamp < 60000
+    )
+      await startLoading(env, userId);
     let messages: LineMessage[] = [];
     if (claim.messages_json)
       messages = JSON.parse(claim.messages_json) as LineMessage[];
@@ -104,25 +121,24 @@ export async function processLineEvent(event: LineEvent, env: Env) {
             event.timestamp,
           )
           .run();
-        if (event.type === "unfollow") {
+        if (event.type === "unsend") {
+          // The transcript tombstone is recorded even for out-of-order events.
+        } else if (event.type === "unfollow") {
           await env.DB.prepare(
             "UPDATE customers SET marketing_consent=0, consent_at=? WHERE line_user_id=? AND last_event_at=?",
           )
             .bind(now(), userId, event.timestamp)
             .run();
-        } else if (event.type === "follow") messages = [menu()];
+        } else if (event.type === "follow")
+          messages = personalize([menu()], await getTeam(env.DB));
         else if (event.type === "message") {
           if (
             event.message?.type === "text" &&
             typeof event.message.text === "string"
           )
-            messages = await respond(
-              env.DB,
-              userId,
-              event.message.text,
-              env,
-              id,
-            );
+            messages =
+              (await enrollFromLine(env, userId, event.message.text, id)) ??
+              (await respond(env.DB, userId, event.message.text, env, id));
           else if (["image", "video"].includes(event.message?.type ?? "")) {
             await env.DB.prepare(
               "UPDATE customers SET support_requested=1 WHERE line_user_id=?",
@@ -151,6 +167,7 @@ export async function processLineEvent(event: LineEvent, env: Env) {
         .bind(JSON.stringify(messages), id)
         .run();
     }
+    await recordOutgoing(env, userId, id, messages);
     if (
       env.LINE_DELIVERY_MODE === "live" &&
       messages.length &&
@@ -175,9 +192,10 @@ export async function processLineEvent(event: LineEvent, env: Env) {
           messageTypes: messages.map((message) => message.type),
         }),
       );
+      await setOutgoingStatus(env, id, response.ok ? "accepted" : "failed");
       await response.body?.cancel();
       if (!response.ok) throw new Error(`LINE reply HTTP ${response.status}`);
-    }
+    } else await setOutgoingStatus(env, id, "not_sent");
     await env.DB.prepare(
       "UPDATE webhook_events SET status='done', messages_json=NULL WHERE event_id=?",
     )
@@ -185,6 +203,7 @@ export async function processLineEvent(event: LineEvent, env: Env) {
       .run();
     console.log(JSON.stringify({ event: "webhook.processed", eventId: id }));
   } catch (error) {
+    await setOutgoingStatus(env, id, "unconfirmed");
     await env.DB.prepare(
       "UPDATE webhook_events SET lease_until=0 WHERE event_id=?",
     )

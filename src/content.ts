@@ -4,7 +4,7 @@ export const BUSINESS = {
   exchange: "BingX",
   code: "ZD0CQ0",
   inviteUrl: "https://bingx.com/invite/ZD0CQ0",
-  depositUsdt: 200,
+  depositRequirement: "已入金即可，允許內部轉帳",
   supportUrl: "https://lin.ee/cbyuRJv",
   notion: "https://app.notion.com/p/26fe08720786805185bde4952de1d9d7",
   kycVideo: "https://www.youtube.com/watch?v=NIjpeGilxBE",
@@ -17,37 +17,37 @@ export const STEPS: Record<
     image?: string;
     images?: { src: string; caption: string }[];
     parent?: Step;
-    next?: string;
+    related: Step[];
   }
 > = {
   register: {
-    title: "建立 BingX 帳號",
+    title: "如何註冊 BingX？",
     image: "/guides/register.jpg",
-    next: "邀請碼教學",
+    related: ["code", "kyc"],
     text: `從專屬連結開啟 BingX：\n${BUSINESS.inviteUrl}\n\n選擇 Email 或手機註冊。送出前展開「Referral Code／推薦碼」，確認是 ${BUSINESS.code}，再依畫面完成驗證。\n\n透過此邀請碼註冊並交易，MetaBear 可能獲得推薦佣金。密碼與驗證碼只輸入在交易所。`,
   },
   code: {
-    title: "確認邀請碼",
+    title: "邀請碼填在哪裡？",
     image: "/guides/register.jpg",
-    next: "KYC 教學",
+    related: ["register", "kyc"],
     text: `在註冊頁找到「Referral Code (Optional)／推薦碼」，填入 ${BUSINESS.code}。中間與最後的 0 都是數字零。\n\n用邀請連結開啟後也請再確認一次。已註冊、漏填或綁定其他邀請碼的情況，請選「人工協助」確認交易所現行規則；提交 UID 不代表推薦關係已核實。`,
   },
   kyc: {
-    title: "完成身分驗證",
+    title: "如何完成 KYC？",
     image: "/guides/kyc.jpg",
-    next: "入金教學",
+    related: ["deposit", "uid"],
     text: `在 BingX 帳戶的「身分認證」依官方畫面提交資料，並確認審核結果。實際要求與可用功能以你的帳戶頁面為準。\n\n原有 KYC 影片：${BUSINESS.kycVideo}\n\n身分證、自拍與銀行資料請只交給交易所；LINE 客服不需要這些資料。`,
   },
   deposit: {
-    title: "入金與入群門檻",
-    next: "綁定 UID",
-    text: `MetaBear 入群門檻：BingX 入金至少 ${BUSINESS.depositUsdt} USDT，並由小幫手核實。這是社群條件，不是交易所最低入金額。\n\n有兩種圖文教學可選：\n① BitoPro：綁定銀行 → 台幣入金 → 買 USDT → 轉入自己的 BingX。\n② BingX 信用卡：完成 KYC → 快捷買幣 → 信用卡／簽帳金融卡 → 查看訂單與到帳。\n\n回覆「BitoPro 入金」或「信用卡入金」，再說「看圖」。費用、支援地區與可用支付方式以你帳戶當前畫面為準。`,
+    title: "入金多少才能入群？",
+    related: ["deposit_bitopro", "deposit_card", "uid"],
+    text: `MetaBear 入群條件：邀請關係符合、KYC 完成，且 BingX 已入金即可；不設最低金額，允許內部轉帳。提交 UID 後由系統查詢資格。\n\n有兩種圖文教學可選：\n① BitoPro：綁定銀行 → 台幣入金 → 買 USDT → 轉入自己的 BingX。\n② BingX 信用卡：完成 KYC → 快捷買幣 → 信用卡／簽帳金融卡 → 查看訂單與到帳。\n\n點選「BitoPro 如何入金？」或「如何用信用卡入金？」查看對應教學。費用、支援地區與可用支付方式以你帳戶當前畫面為準。`,
   },
   deposit_bitopro: {
-    title: "BitoPro 台幣入金與轉入 BingX",
+    title: "BitoPro 如何入金？",
     parent: "deposit",
-    next: "綁定 UID",
-    text: `1. 完成 BitoPro 身分驗證並綁定自己的銀行帳戶。在「資產 → 加值 → TWD → 銀行匯款」查看你帳戶指定的收款資訊，用已綁定銀行轉入台幣。\n2. 台幣到帳後選 USDT/TWD，確認委託價格、數量、費用與預估收到的 USDT。\n3. BingX「充值／加密貨幣充值」選 USDT，選擇兩邊均支援且開放充提的同一網路，複製你自己的充值地址。\n4. 回 BitoPro「資產 → 提領 → USDT」，選完全一致的網路，貼入自己的 BingX 地址，核對地址、Memo／Tag（如有）、最低入金額及扣費後到帳數量，再決定是否送出。\n5. 查看 BitoPro 提領紀錄與 BingX 到帳紀錄；送出不等於到帳。\n\n原圖 TRC20 為操作範例，不保證目前可用；不要抄圖中的帳號、地址或金額。MetaBear 入群門檻仍為 ${BUSINESS.depositUsdt} USDT，需人工核實。`,
+    related: ["deposit", "deposit_card", "uid"],
+    text: `1. 完成 BitoPro 身分驗證並綁定自己的銀行帳戶。在「資產 → 加值 → TWD → 銀行匯款」查看你帳戶指定的收款資訊，用已綁定銀行轉入台幣。\n2. 台幣到帳後選 USDT/TWD，確認委託價格、數量、費用與預估收到的 USDT。\n3. BingX「充值／加密貨幣充值」選 USDT，選擇兩邊均支援且開放充提的同一網路，複製你自己的充值地址。\n4. 回 BitoPro「資產 → 提領 → USDT」，選完全一致的網路，貼入自己的 BingX 地址，核對地址、Memo／Tag（如有）、最低入金額及扣費後到帳數量，再決定是否送出。\n5. 查看 BitoPro 提領紀錄與 BingX 到帳紀錄；送出不等於到帳。\n\n原圖 TRC20 為操作範例，不保證目前可用；不要抄圖中的帳號、地址或金額。MetaBear 已入金即可，允許內部轉帳；提交 UID 後查詢邀請關係、KYC 與入金狀態。`,
     images: [
       { src: "/guides/bitopro-02.jpg", caption: "BitoPro 市場選擇 USDT/TWD" },
       {
@@ -74,16 +74,16 @@ export const STEPS: Record<
     ],
   },
   deposit_card: {
-    title: "BingX 信用卡／簽帳金融卡買 USDT",
+    title: "如何用信用卡入金？",
     parent: "deposit",
-    next: "綁定 UID",
-    text: `1. 登入 BingX，先完成帳戶要求的身分驗證；到首頁「充值 → 快捷買幣」。\n2. 選擇法幣及 USDT，輸入金額，查看實際匯率、手續費及預計收到的 USDT。\n3. 選擇帳戶可用的「信用卡／簽帳金融卡」，閱讀支付條款後自行決定是否繼續。\n4. 若畫面要求，填自己的英文帳單地址與持卡人資訊，再由銀行完成驗證。卡號與 OTP 只填在官方付款／銀行頁面，不傳給 LINE。\n5. 「授權成功」只代表付款方式驗證，不等於買幣完成；回到訂單與資產頁確認購買狀態及 USDT 到帳。\n\n圖中 100 USDT、匯率與 1 TWD 驗證均為舊畫面示例，並非本次承諾；MetaBear 入群門檻為 ${BUSINESS.depositUsdt} USDT，需人工核實。可用卡別、費率與付款供應商以當前帳戶為準。`,
+    related: ["deposit", "deposit_bitopro", "uid"],
+    text: `1. 登入 BingX，先完成帳戶要求的身分驗證；到首頁「充值 → 快捷買幣」。\n2. 選擇法幣及 USDT，輸入金額，查看實際匯率、手續費及預計收到的 USDT。\n3. 選擇帳戶可用的「信用卡／簽帳金融卡」，閱讀支付條款後自行決定是否繼續。\n4. 若畫面要求，填自己的英文帳單地址與持卡人資訊，再由銀行完成驗證。卡號與 OTP 只填在官方付款／銀行頁面，不傳給 LINE。\n5. 「授權成功」只代表付款方式驗證，不等於買幣完成；回到訂單與資產頁確認購買狀態及 USDT 到帳。\n\n圖中 100 USDT、匯率與 1 TWD 驗證均為舊畫面示例，並非本次承諾；MetaBear 已入金即可，允許內部轉帳；提交 UID 後查詢資格。可用卡別、費率與付款供應商以當前帳戶為準。`,
     images: [
       { src: "/guides/credit-01.jpg", caption: "BingX 首頁選擇充值" },
       { src: "/guides/credit-02.jpg", caption: "選擇快捷買幣" },
       {
         src: "/guides/credit-03.jpg",
-        caption: "輸入法幣或 USDT 金額；100 USDT 為舊示例，入群門檻為 200 USDT",
+        caption: "輸入法幣或 USDT 金額；100 USDT 為舊示例，社群不設最低入金金額",
       },
       {
         src: "/guides/credit-04.jpg",
@@ -102,8 +102,9 @@ export const STEPS: Record<
     ],
   },
   uid: {
-    title: "提交 UID，等待核實",
-    text: "在 BingX 個人資料頁複製 UID，回覆「UID 你的數字」，例如 UID 123456789。\n\n提交後，我們會把你的 LINE 使用者識別碼與 BingX UID 配對，供客服核實推薦關係、入群資格與後續服務。行銷通知可另外選擇訂閱或退訂。\n\n接著可在這個一對一對話提供 UID、推薦關係與入金證明，遮住姓名、信箱及無關資產。小幫手核實後安排入群；不要提交密碼、驗證碼或 API 金鑰。",
+    title: "如何查找及提交 UID？",
+    related: ["deposit", "code"],
+    text: "在 BingX 個人資料頁複製 UID，回覆「UID 你的數字」，例如 UID 123456789。\n\n提交後，系統會把你的 LINE 使用者識別碼與 BingX UID 配對，查詢邀請關係、KYC 與入金。三項通過後自動發送 VIP 社群連結；已入金即可，允許內部轉帳。\n\n可回覆「我的進度」查看結果，或「重新查詢」更新狀態。遇到例外由小幫手協助；不要提交密碼、驗證碼或 API 金鑰。行銷通知另由你選擇訂閱或退訂。",
   },
 };
 export const LESSONS: Record<string, string> = {
@@ -157,13 +158,9 @@ export const reply = (text: string, actions: Action[] = []): LineMessage => ({
 });
 export const menu = () =>
   reply(
-    "我是 MetaBear 小幫手。\n你可以直接問我「我該如何註冊？」或「邀請碼填在哪裡？」。我會在這裡一步步說明；想看教學圖片，直接說「看圖」就可以。也能問合約與開倉的基本概念。",
+    "我是 MetaBear 小幫手。\n直接點選你想問的問題，或告訴我卡在哪個畫面。每個問題都能獨立查看，有教學圖片會一起附上。也能問合約與開倉的基本概念。",
     [
-      "開始註冊",
-      "邀請碼教學",
-      "KYC 教學",
-      "入金教學",
-      "綁定 UID",
+      ...Object.values(STEPS).map((item) => item.title),
       "我的進度",
       "合約基礎",
       "交易偏好",
@@ -174,7 +171,6 @@ export const menu = () =>
 export function guide(
   step: Step,
   baseUrl: string,
-  images = false,
   allowLocalImages = false,
   page = 0,
 ): LineMessage[] {
@@ -184,27 +180,21 @@ export function guide(
     (item.image ? [{ src: item.image, caption: item.title }] : []);
   const pages = Math.max(1, Math.ceil(gallery.length / 3));
   page = Math.max(0, Math.min(pages - 1, Math.floor(page)));
+  const canSendImages =
+    gallery.length > 0 &&
+    (/^https:\/\//.test(baseUrl) ||
+      (allowLocalImages &&
+        /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(baseUrl)));
   const actions = [
-    ...(step === "deposit"
-      ? [command("BitoPro 入金"), command("信用卡入金")]
-      : []),
-    ...(images && page + 1 < pages
+    ...(canSendImages && page + 1 < pages
       ? [command("看下一組圖", `圖片教學 ${step} ${page + 1}`)]
       : []),
-    ...(gallery.length
-      ? [
-          command(
-            images ? "看文字" : "看圖片",
-            `${images ? "文字" : "圖片"}教學 ${step}`,
-          ),
-        ]
-      : []),
-    ...(item.next ? [command("下一步", item.next)] : []),
+    ...item.related.map((topic) => command(STEPS[topic].title)),
     command("人工協助"),
     command("選單"),
   ];
   const pageCaption =
-    images && gallery.length > 1
+    canSendImages && gallery.length > 1
       ? `\n\n圖片 ${page + 1}/${pages} 組：\n${gallery
           .slice(page * 3, page * 3 + 3)
           .map((p, i) => `${page * 3 + i + 1}. ${p.caption}`)
@@ -213,13 +203,7 @@ export function guide(
   const messages = [
     reply(`【${item.title}】\n\n${item.text}${pageCaption}`, actions),
   ];
-  if (
-    images &&
-    gallery.length &&
-    (/^https:\/\//.test(baseUrl) ||
-      (allowLocalImages &&
-        /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(baseUrl)))
-  )
+  if (canSendImages)
     return [
       ...gallery.slice(page * 3, page * 3 + 3).map((picture): LineMessage => ({
         type: "image",
@@ -228,16 +212,5 @@ export function guide(
       })),
       ...messages,
     ];
-  if (images)
-    messages.push(
-      reply(
-        gallery.length
-          ? "教學圖片暫時無法提供，先依上面的文字操作；你也可以告訴我卡在哪個畫面。"
-          : step === "deposit"
-            ? "入金有兩套圖片。請先選「BitoPro 入金」或「信用卡入金」，我會接著提供對應圖片。"
-            : "這一步目前有文字教材，還沒有對應的教學圖片。你可以告訴我卡在哪個畫面，小幫手能協助確認。",
-        actions,
-      ),
-    );
   return messages;
 }

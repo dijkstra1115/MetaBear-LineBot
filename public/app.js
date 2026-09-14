@@ -134,6 +134,19 @@ async function loadCustomers() {
           "cell-secondary",
         ),
       );
+    if (c.qualification)
+      stage.append(
+        el(
+          "span",
+          {
+            eligible: "資格通過",
+            needs_action: "待完成條件",
+            pending: "待確認",
+          }[c.qualification] +
+            (c.vip_status === "accepted" ? " · 邀請已發送" : ""),
+          "cell-secondary",
+        ),
+      );
     tr.append(stage, el("td", prefNames[c.preference]));
     const v = el("td", amount(c.volume_usdt), "mono");
     if (c.volume_usdt !== null)
@@ -141,7 +154,11 @@ async function loadCustomers() {
         el(
           "span",
           "USDT · " +
-            (c.volume_source === "affiliate_report" ? "報表核對" : "手動"),
+            (c.volume_source === "bingx_api"
+              ? "BingX API"
+              : c.volume_source === "affiliate_report"
+                ? "報表核對"
+                : "手動"),
           "cell-secondary",
         ),
       );
@@ -203,9 +220,13 @@ async function showView(view) {
     campaigns: "受眾與推播",
     content: "教學內容",
     simulator: "對話測試",
+    automation: "自動審核與同步",
+    knowledge: "常見問題知識庫",
   }[view];
   if (view === "campaigns")
     await Promise.all([loadAudience(), loadDrafts(), loadRuns()]);
+  if (view === "automation") await window.CrmAutomation.load();
+  if (view === "knowledge") await window.CrmKnowledge.load();
 }
 const localMode = ["localhost", "127.0.0.1"].includes(location.hostname);
 function authFailure() {
@@ -214,8 +235,7 @@ function authFailure() {
   $("#login").hidden = true;
   $("#auth-state").hidden = false;
   $("#auth-state h1").textContent = "請重新登入";
-  $("#auth-state p").textContent =
-    "登入工作階段已結束，請透過 Cloudflare Email OTP 重新驗證。";
+  $("#auth-state p").textContent = "登入工作階段已結束，請重新驗證後繼續操作。";
 }
 async function enterWorkspace() {
   config = await api("/api/config");
@@ -234,6 +254,8 @@ async function enterWorkspace() {
   field($("#filters"), "month").value = month();
   filters = serializeFilters();
   renderContent();
+  $(".referral-card strong").textContent = config.business.code;
+  await window.CrmAutomation?.ready();
   await refresh();
 }
 $("#login-form").addEventListener("submit", async (e) => {
@@ -249,8 +271,17 @@ $("#login-form").addEventListener("submit", async (e) => {
     e.submitter.disabled = false;
   }
 });
-$("#logout").onclick = () => {
+$("#logout").onclick = async () => {
   token = "";
+  if (config?.identity?.mode === "native") {
+    try {
+      await api("/auth/logout", { method: "POST", body: "{}" });
+      location.replace("/login");
+    } catch (error) {
+      toast(error.message);
+    }
+    return;
+  }
   if (!localMode) {
     location.href = "/cdn-cgi/access/logout";
     return;
@@ -303,6 +334,7 @@ async function openCustomer(id) {
   detailId = id;
   $("#detail-title").textContent = data.customer.display_name || "待補稱呼";
   $("#detail-id").textContent = id;
+  window.CrmKnowledge.conversation(id);
   const f = $("#customer-form");
   f.reset();
   for (const key of [
@@ -311,6 +343,8 @@ async function openCustomer(id) {
     "stage",
     "preference",
     "notes",
+    "owner_name",
+    "tags",
   ])
     field(f, key).value = data.customer[key];
   field(f, "support_requested").checked = !!data.customer.support_requested;
@@ -355,6 +389,7 @@ async function openCustomer(id) {
     );
   }
   if (!$("#customer-dialog").open) $("#customer-dialog").showModal();
+  await window.CrmAutomation.customer(id, data.account?.uid);
 }
 $("#close-detail").onclick = () => $("#customer-dialog").close();
 $("#customer-form").addEventListener("submit", async (e) => {
@@ -367,6 +402,8 @@ $("#customer-form").addEventListener("submit", async (e) => {
     "stage",
     "preference",
     "notes",
+    "owner_name",
+    "tags",
   ])
     data[key] = field(f, key).value;
   data.support_requested = field(f, "support_requested").checked;

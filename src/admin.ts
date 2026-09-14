@@ -6,6 +6,11 @@ import type { Customer, Account } from "./types";
 import { adminIdentity } from "./auth";
 import { audienceQuery, validMonth } from "./audience";
 import { campaignApi } from "./campaigns";
+import { automationApi, eligibleSnapshot, enqueueSync } from "./automation";
+import { getTeam, personalize } from "./team";
+import { enrollmentApi } from "./auth-enrollment";
+import { knowledgeApi } from "./knowledge";
+import { conversationApi } from "./conversations";
 
 const stages = [
   "new",
@@ -27,15 +32,30 @@ const validId = (id: string) => {
 };
 export async function admin(request: Request, env: Env): Promise<Response> {
   const identity = await adminIdentity(request, env);
+  const knowledgeResponse = await knowledgeApi(request, env, identity.email);
+  if (knowledgeResponse) return knowledgeResponse;
+  const conversationResponse = await conversationApi(request, env);
+  if (conversationResponse) return conversationResponse;
+  const enrollmentResponse = await enrollmentApi(request, env, identity.email);
+  if (enrollmentResponse) return enrollmentResponse;
   const url = new URL(request.url);
   const path = url.pathname;
+  if (path === "/api/line/rich-menu" && request.method === "POST") {
+    if (env.LINE_DELIVERY_MODE !== "live" || !env.LINE_CHANNEL_ACCESS_TOKEN)
+      throw new HttpError(400, "請先設定 LINE 發送環境");
+    const id = crypto.randomUUID();
+    await env.CAMPAIGN_EVENTS.send({ kind: "line-menu-install", id });
+    return json({ operationId: id }, 202);
+  }
+  const automationResponse = await automationApi(request, env, identity.email);
+  if (automationResponse) return automationResponse;
   const campaignResponse = await campaignApi(request, env, identity.email);
   if (campaignResponse) return campaignResponse;
   if (request.method === "GET" && path === "/api/config")
     return json({
-      business: BUSINESS,
+      business: personalize(BUSINESS, await getTeam(env.DB)),
       identity,
-      steps: STEPS,
+      steps: personalize(STEPS, await getTeam(env.DB)),
       lessons: LESSONS,
       development: env.ENVIRONMENT === "development",
       deliveryMode: env.LINE_DELIVERY_MODE,
@@ -149,6 +169,8 @@ export async function admin(request: Request, env: Env): Promise<Response> {
       const name = textField(data.display_name, 80, customer.display_name);
       const handle = textField(data.line_handle, 100, customer.line_handle);
       const notes = textField(data.notes, 3000, customer.notes);
+      const ownerName = textField(data.owner_name, 80, customer.owner_name);
+      const tags = textField(data.tags, 500, customer.tags);
       const stage =
         data.stage === undefined ? customer.stage : choice(data.stage, stages);
       const preference =
@@ -203,7 +225,7 @@ export async function admin(request: Request, env: Env): Promise<Response> {
         if (referral === "verified" && !verificationNote)
           throw new HttpError(400, "核實推薦關係前，請填寫核對依據");
         if (deposit === "verified" && !depositNote)
-          throw new HttpError(400, "核實 200 USDT 入金門檻前，請填寫核對依據");
+          throw new HttpError(400, "核實已入金前，請填寫核對依據");
         const collision = await env.DB.prepare(
           "SELECT line_user_id FROM exchange_accounts WHERE exchange=? AND uid=? AND line_user_id<>?",
         )
@@ -231,6 +253,25 @@ export async function admin(request: Request, env: Env): Promise<Response> {
         (referral !== "verified" || deposit !== "verified")
       )
         throw new HttpError(400, "先核實推薦關係與入金門檻，才能標記已入群");
+      if (stage === "joined" && (await getTeam(env.DB)).automation_enabled) {
+        const requested = data.account as Record<string, unknown> | undefined;
+        if (
+          !(await eligibleSnapshot(
+            env,
+            id,
+            typeof requested?.uid === "string" ? requested.uid : account?.uid,
+          ))
+        )
+          throw new HttpError(
+            400,
+            "需先取得此 UID 最新的邀請、KYC 與入金通過結果",
+          );
+      }
+      statements.push(
+        env.DB.prepare(
+          "UPDATE customers SET owner_name=?,tags=? WHERE line_user_id=?",
+        ).bind(ownerName, tags, id),
+      );
       statements.push(
         env.DB.prepare(
           "UPDATE customers SET display_name=?,line_handle=?,notes=?,stage=?,preference=?,support_requested=?,updated_at=? WHERE line_user_id=?",
@@ -260,6 +301,8 @@ export async function admin(request: Request, env: Env): Promise<Response> {
       );
       try {
         await env.DB.batch(statements);
+        if (data.account && (await getTeam(env.DB)).automation_enabled)
+          await enqueueSync(env, id);
       } catch (error) {
         if (String(error).includes("UNIQUE constraint"))
           throw new HttpError(409, "UID 已有登記");

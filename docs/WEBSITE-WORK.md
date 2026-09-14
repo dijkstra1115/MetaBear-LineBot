@@ -9,7 +9,7 @@
 - [x] 22 項整合測試、桌機／手機、圖片放大翻頁與動態暫停檢查。
 - [x] 部署既有 staging Worker，保留 webhook 與客戶資料；官方 LINE 圖文／webhook、雲端 AI 入金分頁及使用者實際 OTP 登入均已驗證。
 
-入群 200 USDT 為準，舊圖 100 USDT 宣傳不沿用。不使用範例帳號或地址代替用戶自己的帳戶。
+最新入群規則為已入金即可，允許內部轉帳，舊圖 100 USDT 宣傳不沿用。不使用範例帳號或地址代替用戶自己的帳戶。
 
 Cloudflare 組織與 OTP provider 沿用既有設定，MetaBear 建立獨立 Access application，不更動 ID3A 政策。雲端只允許 style78432@gmail.com。開發測試未發送真實推播。
 

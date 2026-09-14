@@ -1,24 +1,50 @@
-import { BUSINESS, LESSONS, command, guide, menu, reply } from "./content";
+import {
+  BUSINESS,
+  LESSONS,
+  STEPS,
+  command,
+  guide,
+  menu,
+  reply,
+} from "./content";
 import { ensureCustomer, now } from "./db";
 import { isStep, routeQuestion, type TeachingContext } from "./assistant";
 import type { Account, LineMessage } from "./types";
+import { enqueueSync, customerAutomation } from "./automation";
+import { getTeam, personalize } from "./team";
+import { publishedKnowledge } from "./knowledge";
+import { recentConversation } from "./conversations";
 
 async function handoff(db: D1Database, userId: string): Promise<LineMessage[]> {
-  await db
+  const marked = await db
     .prepare(
-      "UPDATE customers SET support_requested=1, updated_at=? WHERE line_user_id=?",
+      "UPDATE customers SET support_requested=1, updated_at=? WHERE line_user_id=? AND support_requested=0",
     )
     .bind(now(), userId)
     .run();
   return [
     reply(
-      "已在後台標記需要小幫手協助。請在這裡描述卡住的畫面，客服會在 LINE 官方帳號對話中處理。\n\n漏填邀請碼、舊帳號推薦歸屬或身分轉移，需先確認交易所當前規則。你也可以繼續問我註冊與合約基礎。",
+      marked.meta.changes
+        ? "已在後台標記需要人工協助。請直接在這裡描述遇到的問題，客服可到 LINE 官方帳號對話查看；這不代表已有人接手。\n\n你也可以繼續詢問，我會先提供已有的解法。請勿提供密碼或登入驗證碼。"
+        : "你的人工協助需求仍保留在後台，不必重複申請。請繼續描述卡住的地方；已有解法的問題，我會先回答。",
       [command("選單")],
     ),
   ];
 }
 
 export async function respond(
+  db: D1Database,
+  userId: string,
+  input: string,
+  env: Env,
+  eventId: string,
+): Promise<LineMessage[]> {
+  return personalize(
+    await respondBase(db, userId, input, env, eventId),
+    await getTeam(db),
+  );
+}
+async function respondBase(
   db: D1Database,
   userId: string,
   input: string,
@@ -70,7 +96,7 @@ export async function respond(
       ),
     ];
   if (
-    /人工|客服|漏填|填錯|其他.*邀請碼|別人.*邀請碼|身份轉移|身分轉移|舊帳號/.test(
+    /^(?:我要|我想|請|幫我)?(?:找|轉|聯絡)?(?:人工協助|人工客服|真人客服|真人|人工|客服)[！!。?？\s]*$/.test(
       text,
     )
   ) {
@@ -102,8 +128,15 @@ export async function respond(
       reply("已更新你的交易偏好。", [command("通知設定"), command("選單")]),
     ];
   }
-  if (/^UID(?:\s*[:：]|\s+\d|\s*$)/i.test(text)) {
-    const uid = text.replace(/^UID\s*[:：]?\s*/i, "");
+  if (
+    /^UID(?:\s*[:：]|\s+\d|\s*$)/i.test(text) ||
+    /^\d{4,30}$/.test(text) ||
+    /(?:我的|BingX).*UID\s*[:：]?\s*\d{4,30}\s*$/i.test(text)
+  ) {
+    const uid = text.replace(
+      /^(?:我的\s*|BingX\s*)?UID\s*(?:是|[:：])?\s*/i,
+      "",
+    );
     if (!/^\d{4,30}$/.test(uid))
       return [
         reply(
@@ -168,14 +201,50 @@ export async function respond(
         ];
       throw error;
     }
+    const automated = (await getTeam(db)).automation_enabled;
+    if (automated) await enqueueSync(env, userId, "full");
     return [
       reply(
-        `已登記 BingX UID：${uid}\n狀態：${existing?.referral_status === "verified" ? "推薦關係已核實" : "待人工核實推薦關係"}。\n\n入金至少 ${BUSINESS.depositUsdt} USDT 的證明也需另外核實，完成後由小幫手安排入群。`,
+        `已登記 BingX UID：${uid}\n\n${automated ? "正在查詢邀請關係、KYC 與入金狀態。通過後會自動傳送 VIP 社群連結。" : "推薦關係、KYC 與入金待小幫手核實。"}\n入金不設最低金額，允許內部轉帳。可回覆「我的進度」查看結果。`,
         [command("我的進度"), command("通知設定"), command("人工協助")],
       ),
     ];
   }
-  if (text === "我的進度") {
+  if (
+    text === "我的進度" ||
+    /^(重新審核|我已入金|入金完成|KYC完成|我已完成KYC|我已完成入金|重新查詢)$/i.test(
+      text.replace(/\s/g, ""),
+    )
+  ) {
+    if ((await getTeam(db)).automation_enabled) {
+      if (text !== "我的進度") await enqueueSync(env, userId);
+      const info = await customerAutomation(env, userId);
+      const snapshot = info.snapshot;
+      const vip = info.deliveries[0];
+      const pending = info.jobs.some((job) =>
+        ["pending", "running"].includes(String(job.status)),
+      );
+      const syncFailed = info.jobs.some(
+        (job) =>
+          job.error &&
+          ["pending", "running", "failed"].includes(String(job.status)),
+      );
+      const detail = !snapshot
+        ? syncFailed
+          ? "交易所查詢暫時失敗，系統會重試；你的 UID 已保留，無須重複登記。"
+          : "等待交易所查詢"
+        : snapshot.stale
+          ? "資料更新中，暫待確認"
+          : snapshot.qualification === "eligible"
+            ? "邀請關係、KYC 與入金已通過"
+            : snapshot.reasons.join("；");
+      return [
+        reply(
+          `${detail}${pending ? "\n已排入查詢，稍後可再查看。" : ""}\nVIP 邀請：${vip?.status === "accepted" ? "LINE 已接受發送（不代表已入群）" : customer.stage === "joined" ? "已確認入群" : "通過後自動安排"}\n\n已入金即可，允許內部轉帳。`,
+          [command("重新查詢"), command("人工協助"), command("選單")],
+        ),
+      ];
+    }
     const a = await db
       .prepare("SELECT * FROM exchange_accounts WHERE line_user_id=?")
       .bind(userId)
@@ -189,7 +258,7 @@ export async function respond(
       reply(
         `BingX UID：${a?.uid ?? "尚未提交"}\n推薦關係：${labels[a?.referral_status ?? ""] ?? "尚未提交"}\n入金門檻：${labels[a?.deposit_status ?? ""] ?? "尚未提交"}\n入群：${customer.stage === "joined" ? "已完成" : "待小幫手安排"}\n\n瀏覽教學不代表已通過驗證。`,
         [
-          command("繼續教學", `文字教學 ${customer.guide_step}`),
+          command(STEPS[customer.guide_step].title),
           command("人工協助"),
           command("選單"),
         ],
@@ -206,9 +275,56 @@ export async function respond(
     /^(?:看?(?:下一張|下張|下一組|下一組圖)|繼續看圖)[！!。?？]*$/.test(text) &&
     context &&
     isStep(context.topic);
+  const [articles, history] = await Promise.all([
+    publishedKnowledge(db),
+    recentConversation(db, userId, eventId),
+  ]);
   const route = nextImage
     ? { topic: context.topic, format: "image" as const }
-    : await routeQuestion(text, context, env);
+    : await routeQuestion(text, context, env, articles, history);
+  if (route.topic.startsWith("kb:")) {
+    const article = articles.find((a) => "kb:" + a.id === route.topic);
+    if (article) {
+      let marked = false;
+      if (article.requires_support) {
+        const result = await db
+          .prepare(
+            "UPDATE customers SET support_requested=1,updated_at=? WHERE line_user_id=? AND support_requested=0",
+          )
+          .bind(now(), userId)
+          .run();
+        marked = result.meta.changes === 1;
+      }
+      await db
+        .prepare(
+          "INSERT INTO teaching_context(line_user_id,topic,format,updated_at) VALUES (?,?,'text',?) ON CONFLICT(line_user_id) DO UPDATE SET topic=excluded.topic,format='text',image_page=0,updated_at=excluded.updated_at",
+        )
+        .bind(userId, route.topic, now())
+        .run();
+      await db
+        .prepare(
+          "INSERT INTO audit_log(line_user_id,action,detail) VALUES (?,'knowledge.answer',?)",
+        )
+        .bind(
+          userId,
+          JSON.stringify({
+            eventId,
+            articleId: article.id,
+            revision: article.revision,
+          }),
+        )
+        .run();
+      return [
+        reply(
+          article.answer +
+            (marked
+              ? "\n\n這項問題需要人工核實，已加入後台的需協助名單。"
+              : ""),
+          [command("我的進度"), command("人工協助"), command("選單")],
+        ),
+      ];
+    }
+  }
   const explicitPage = text.match(/^圖片教學 \w+ (\d+)$/);
   const imagePage = nextImage
     ? (context.image_page ?? 0) + 1
@@ -220,11 +336,10 @@ export async function respond(
     return [
       reply(
         context
-          ? "你想了解剛才哪個部分？可以直接說「邀請碼填在哪裡」「看圖片」，或告訴我你目前卡住的畫面。"
-          : "你想了解註冊帳號、填邀請碼，還是合約基礎？直接告訴我就可以，例如「我該如何註冊」，我會一步步帶你操作。",
+          ? "你想了解剛才哪個部分？可以直接點選問題，或告訴我你目前卡住的畫面。"
+          : "你想了解哪個問題？可以直接點選，不需要從註冊開始。也能直接問我合約基礎。",
         [
-          command("開始註冊"),
-          command("邀請碼教學"),
+          ...Object.values(STEPS).map((item) => command(item.title)),
           command("合約基礎"),
           command("人工協助"),
         ],
@@ -256,7 +371,6 @@ export async function respond(
     return guide(
       route.topic,
       base,
-      route.format === "image",
       env.ENVIRONMENT === "development" &&
         env.LINE_DELIVERY_MODE === "disabled",
       imagePage,
@@ -264,13 +378,7 @@ export async function respond(
   }
   return [
     reply(
-      "【" +
-        route.topic +
-        "】\n\n" +
-        LESSONS[route.topic] +
-        (route.format === "image"
-          ? "\n\n這個主題目前有文字教材，還沒有對應的教學圖片。"
-          : ""),
+      "【" + route.topic + "】\n\n" + LESSONS[route.topic],
       [
         "開倉流程",
         "槓桿",

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>設定 LINE 登入 · MetaBear</title>
+    <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="64x64" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/login.css" />
+    <script src="/login-setup.js" defer></script>
+  </head>
+  <body class="native-login">
+    <main class="login-shell">
+      <section class="login-brand">
+        <a class="brand" href="/" aria-label="MetaBear 首頁"
+          ><span class="brand-mark">mb.</span><span>MetaBear</span></a
+        >
+        <h1>登入驗證，<br />在 LINE 就能完成。</h1>
+        <p>先綁定你自己的 LINE，之後就能在這裡接收工作台的登入驗證碼。</p>
+      </section>
+      <section class="login-card">
+        <h2>綁定管理員 LINE</h2>
+        <p id="binding-status" class="muted">正在確認管理員身分…</p>
+        <button id="generate" class="primary" hidden>取得綁定碼</button>
+        <div id="binding-command" hidden>
+          <p>
+            複製下方整段文字，傳給「MetaBear 小幫手」。綁定碼有效 10
+            分鐘，請勿轉傳給別人。
+          </p>
+          <textarea
+            id="command"
+            readonly
+            rows="4"
+            aria-label="LINE 綁定指令"
+          ></textarea>
+          <button id="copy" class="secondary">複製綁定指令</button>
+          <a
+            href="https://lin.ee/cbyuRJv"
+            target="_blank"
+            rel="noopener noreferrer"
+            >開啟 MetaBear LINE</a
+          >
+        </div>
+        <button id="refresh-binding" class="quiet" hidden>
+          我已傳送，確認綁定狀態
+        </button>
+        <a id="test-login" href="/login" hidden>測試 LINE 驗證碼登入</a>
+        <p id="login-message" role="status" aria-live="polite"></p>
+        <a href="/admin">回到工作台</a>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,9 +1,20 @@
 import { admin } from "./admin";
+import { getRate } from "./rates";
 import { webhook, processLineEvent } from "./webhook";
 import { BUSINESS, STEPS, LESSONS } from "./content";
 import { HttpError, json } from "./http";
 import type { LineEvent } from "./types";
 import { adminIdentity } from "./auth";
+import { authRoute, cleanupAuth } from "./native-auth";
+import { cleanupConversations } from "./conversations";
+import {
+  dispatchCrm,
+  processSync,
+  processVip,
+  type CrmMessage,
+} from "./automation";
+import { getTeam, personalize } from "./team";
+import { installRichMenu, type MenuInstallMessage } from "./line-rich-menu";
 import {
   processCampaign,
   dispatchCampaigns,
@@ -13,14 +24,28 @@ import {
 export default {
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
     await dispatchCampaigns(env);
+    await dispatchCrm(env);
+    await cleanupAuth(env);
+    await cleanupConversations(env);
   },
   async queue(
-    batch: MessageBatch<LineEvent | CampaignMessage>,
+    batch: MessageBatch<
+      LineEvent | CampaignMessage | CrmMessage | MenuInstallMessage
+    >,
     env: Env,
   ): Promise<void> {
     for (const message of batch.messages) {
       try {
-        if ("kind" in message.body && message.body.kind === "campaign-delivery")
+        if ("kind" in message.body && message.body.kind === "line-menu-install")
+          await installRichMenu(message.body, env);
+        else if ("kind" in message.body && message.body.kind === "crm-sync")
+          await processSync(message.body, env);
+        else if ("kind" in message.body && message.body.kind === "vip-delivery")
+          await processVip(message.body, env);
+        else if (
+          "kind" in message.body &&
+          message.body.kind === "campaign-delivery"
+        )
           await processCampaign(message.body, env);
         else await processLineEvent(message.body as LineEvent, env);
         message.ack();
@@ -43,6 +68,8 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     try {
+      if (url.pathname.startsWith("/auth/"))
+        return await authRoute(request, env);
       if (url.pathname === "/health")
         return json({ status: "ok", service: "metabear-line-crm" });
       if (url.pathname === "/webhook/line") {
@@ -54,25 +81,58 @@ export default {
         return await webhook(request, env);
       }
       if (url.pathname === "/content.json" && request.method === "GET")
-        return json({ business: BUSINESS, steps: STEPS, lessons: LESSONS });
+        return json(
+          personalize(
+            { business: BUSINESS, steps: STEPS, lessons: LESSONS },
+            await getTeam(env.DB),
+          ),
+        );
+      if (url.pathname === "/rates/usdt-twd") {
+        if (request.method !== "GET")
+          return new Response(null, { status: 405, headers: { Allow: "GET" } });
+        return await getRate();
+      }
       if (url.pathname.startsWith("/api/")) return await admin(request, env);
       if (!["GET", "HEAD"].includes(request.method))
         throw new HttpError(405, "Method not allowed");
       const target = new URL(request.url);
-      const privatePage = ["/admin", "/admin/", "/admin.html"].includes(
-        decodeURIComponent(target.pathname),
-      );
+      const privatePage = [
+        "/admin",
+        "/admin/",
+        "/admin.html",
+        "/admin/login-setup",
+      ].includes(decodeURIComponent(target.pathname));
       if (privatePage) {
-        if (env.ENVIRONMENT !== "development")
-          await adminIdentity(request, env);
-        target.pathname = "/admin.html";
+        if (env.ENVIRONMENT !== "development" || env.AUTH_MODE === "native") {
+          try {
+            await adminIdentity(request, env);
+          } catch (error) {
+            if (
+              env.AUTH_MODE === "native" &&
+              error instanceof HttpError &&
+              error.status === 401
+            )
+              return new Response(null, {
+                status: 302,
+                headers: { Location: "/login", "Cache-Control": "no-store" },
+              });
+            throw error;
+          }
+        }
+        target.pathname =
+          target.pathname === "/admin/login-setup"
+            ? "/login-setup.html"
+            : "/admin.html";
       }
+      if (["/login", "/login/"].includes(target.pathname))
+        target.pathname = "/login.html";
       if (target.pathname === "/") target.pathname = "/index.html";
       if (target.pathname === "/learn" || target.pathname === "/learn/")
         target.pathname = "/guide.html";
       const response = await env.ASSETS.fetch(new Request(target, request));
       const headers = new Headers(response.headers);
-      if (privatePage) headers.set("Cache-Control", "no-store");
+      if (privatePage || target.pathname === "/login.html")
+        headers.set("Cache-Control", "no-store");
       headers.set(
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
@@ -93,4 +153,7 @@ export default {
       return json({ error: "服務暫時無法完成操作，請稍後重試" }, 500);
     }
   },
-} satisfies ExportedHandler<Env, LineEvent | CampaignMessage>;
+} satisfies ExportedHandler<
+  Env,
+  LineEvent | CampaignMessage | CrmMessage | MenuInstallMessage
+>;

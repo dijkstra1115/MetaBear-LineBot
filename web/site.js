@@ -1,3 +1,4 @@
+import { drawMarket } from "./market-snapshot.js";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
@@ -22,82 +23,12 @@ const poses = [
   { rotationX: 8, rotationY: -13, rotationZ: 2 },
 ];
 const captions = [
-  "市場，有跡可循。",
-  "每一步，都確認清楚。",
-  "從自己的帳戶，到自己的帳戶。",
-  "先看懂曝險，再決定方向。",
-  "把問題說出來，讓理解接著發生。",
+  "BTC・ETH・美股行情",
+  "邀請碼 ZD0CQ0 · 手續費 25% 返現",
+  "台幣入金與信用卡買幣",
+  "合約基礎與損益試算",
+  "註冊、入金問題，LINE 問我",
 ];
-const markets = {
-  btc: {
-    name: "BTC / USDT",
-    icon: "₿",
-    closes: [
-      99, 100.4, 100.1, 102, 101, 100.6, 103, 102.5, 104.1, 103.4, 105, 104,
-      103, 104.8, 106.4, 105.6, 107.1, 106.2, 108.42,
-    ],
-  },
-  eth: {
-    name: "ETH / USDT",
-    icon: "◇",
-    closes: [
-      100, 99, 98.5, 99.4, 98, 97.5, 99, 100.5, 101, 99.8, 101.1, 102.4, 101.5,
-      103.8, 104, 103.2, 105.3, 104.6, 106.21,
-    ],
-  },
-  nasdaq: {
-    name: "NASDAQ",
-    icon: "N",
-    closes: [
-      100, 101.3, 100.8, 102, 102.6, 101.8, 100.9, 101.4, 100, 98.8, 99.7,
-      100.1, 99.6, 98.3, 99.1, 100.4, 101.7, 101.2, 102.64,
-    ],
-  },
-};
-function drawMarket(key) {
-  const m = markets[key];
-  if (!m) return;
-  const area = $("[data-candles]"),
-    volume = $("[data-volumes]");
-  area.replaceChildren();
-  volume.replaceChildren();
-  let open = 100;
-  m.closes.forEach((close, i) => {
-    const candle = document.createElement("i"),
-      up = close >= open;
-    candle.className = "candle" + (up ? "" : " down");
-    candle.style.left = i * 5.16 + 1 + "%";
-    candle.style.top = ((112 - Math.max(open, close)) / 16) * 100 + "%";
-    candle.style.height =
-      Math.max(3, (Math.abs(close - open) / 16) * 100) + "%";
-    area.append(candle);
-    const bar = document.createElement("i");
-    bar.className = up ? "" : "down";
-    bar.style.height = 25 + ((i * 23) % 70) + "%";
-    volume.append(bar);
-    open = close;
-  });
-  const last = m.closes.at(-1),
-    prior = m.closes.at(-2);
-  $("[data-market-name]").textContent = m.name;
-  $(".asset-icon").textContent = m.icon;
-  $("[data-index]").replaceChildren(
-    document.createTextNode(last.toFixed(2)),
-    Object.assign(document.createElement("span"), { textContent: " INDEX" }),
-  );
-  $("[data-market-move]").textContent = "+" + (last - 100).toFixed(2) + "%";
-  $("[data-open]").textContent = prior.toFixed(2);
-  $("[data-high]").textContent = (Math.max(prior, last) + 0.94).toFixed(2);
-  $("[data-low]").textContent = (Math.min(prior, last) - 0.32).toFixed(2);
-  $("[data-close]").textContent = last.toFixed(2);
-  $(".price-marker").textContent = last.toFixed(2);
-  $(".price-marker").style.top = ((112 - last) / 16) * 100 + "%";
-  document
-    .querySelectorAll("[data-market]")
-    .forEach((b) =>
-      b.setAttribute("aria-pressed", String(b.dataset.market === key)),
-    );
-}
 document
   .querySelectorAll("[data-market]")
   .forEach((b) =>

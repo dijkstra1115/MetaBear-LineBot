@@ -3,3 +3,7 @@ ADMIN_TOKEN=replace-with-a-random-token-at-least-32-characters
 LINE_CHANNEL_SECRET=local-test-secret
 LINE_CHANNEL_ACCESS_TOKEN=
 OPENAI_API_KEY=
+
+BINGX_API_KEY=
+
+BINGX_SECRET_KEY=

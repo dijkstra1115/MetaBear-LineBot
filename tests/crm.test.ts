@@ -4,7 +4,12 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { fallbackRoute } from "../src/assistant";
-import { guide } from "../src/content";
+import {
+  redactConversation,
+  recentConversation,
+  cleanupConversations,
+} from "../src/conversations";
+import { guide, menu, STEPS } from "../src/content";
 import { createHmac } from "node:crypto";
 import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
@@ -86,7 +91,7 @@ async function webhook(
     for (const e of events as any[]) {
       if (
         e?.source?.type === "user" &&
-        ["follow", "unfollow", "message", "postback"].includes(e.type)
+        ["follow", "unfollow", "message", "postback", "unsend"].includes(e.type)
       )
         await waitForEvent(e.webhookEventId);
     }
@@ -357,7 +362,7 @@ test("webhook verifies original body before processing; LINE verification accept
 });
 test("registration and original image reply use fixed invitation code and public HTTPS", async () => {
   assert.equal((await webhook([event("我要註冊")])).status, 200);
-  assert.match(String(calls.at(-1)?.messages[0].text), /ZD0CQ0/);
+  assert.match(String(calls.at(-1)?.messages.at(-1)?.text), /ZD0CQ0/);
   assert.equal((await getCustomer()).customer.stage, "registering");
   assert.equal((await webhook([event("圖片教學 code")])).status, 200);
   assert.equal(calls.at(-1)?.messages[0].type, "image");
@@ -366,16 +371,17 @@ test("registration and original image reply use fixed invitation code and public
     "https://crm.test/guides/register.jpg",
   );
 });
-test("postback buttons preserve step context without exposing internal commands", async () => {
+test("related question buttons open the named answer directly", async () => {
   await webhook([event("選單")]);
   await webhook([event("開始註冊")]);
-  const message = calls.at(-1)?.messages[0] as any;
+  const message = calls.at(-1)?.messages.at(-1) as any;
   const action = message.quickReply.items[0].action;
-  assert.equal(action.type, "postback");
-  assert.equal(action.displayText, "看圖片");
-  const e = { ...event(""), type: "postback", postback: { data: action.data } };
-  await webhook([e]);
+  assert.equal(action.type, "message");
+  assert.equal(action.label, "邀請碼填在哪裡？");
+  assert.equal(action.text, action.label);
+  await webhook([event(action.text)]);
   assert.equal(calls.at(-1)?.messages[0].type, "image");
+  assert.equal((await getCustomer()).customer.guide_step, "code");
 });
 test("same webhook is processed only once and group UID messages are ignored", async () => {
   const e = event("UID 12345678");
@@ -603,11 +609,11 @@ test("AI selects approved native images for semantic questions", async () => {
   assert.equal((await getCustomer()).customer.guide_step, "code");
 });
 
-test("natural follow-ups preserve format, advance teaching, and keep each user's context separate", async () => {
+test("natural follow-ups attach available images and keep each user's context separate", async () => {
   const learner = "Ucccccccccccccccccccccccccccccccc";
   const other = "Udddddddddddddddddddddddddddddddd";
   await webhook([event("我該如何註冊？", learner)]);
-  assert.equal(calls.at(-1)!.messages[0].type, "text");
+  assert.equal(calls.at(-1)!.messages[0].type, "image");
   await webhook([event("給我看圖", learner)]);
   assert.equal(calls.at(-1)!.messages[0].type, "image");
   await webhook([event("看圖", other)]);
@@ -619,7 +625,7 @@ test("natural follow-ups preserve format, advance teaching, and keep each user's
   await webhook([event("文字就好", learner)]);
   assert.equal(
     calls.at(-1)!.messages.some((m) => m.type === "image"),
-    false,
+    true,
   );
   await webhook([event("我已經註冊好了，接下來呢？", learner)]);
   const c = await getCustomer(learner);
@@ -640,7 +646,8 @@ test("natural follow-ups preserve format, advance teaching, and keep each user's
     calls.at(-1)!.messages.some((m) => m.type === "image"),
     false,
   );
-  assert.match(String(calls.at(-1)!.messages[0].text), /還沒有對應/);
+  assert.match(String(calls.at(-1)!.messages[0].text), /名義倉位/);
+  assert.doesNotMatch(String(calls.at(-1)!.messages[0].text), /還沒有對應/);
 });
 
 test("unavailable or invalid AI output falls back to approved content without changing consent", async () => {
@@ -661,18 +668,58 @@ test("unavailable or invalid AI output falls back to approved content without ch
   }
 });
 
+test("every menu question works independently without AI or prior registration", async () => {
+  const entry = menu();
+  assert.equal(entry.type, "text");
+  if (entry.type !== "text") return;
+  const labels = entry.quickReply!.items.map(({ action }) => action.label);
+  assert.ok(labels.length <= 13);
+  try {
+    aiMode = "unavailable";
+    for (const [topic, item] of Object.entries(STEPS)) {
+      assert.ok(labels.includes(item.title));
+      assert.ok(item.title.length <= 20);
+      const user = "U" + crypto.randomUUID().replaceAll("-", "");
+      await webhook([event(item.title, user)]);
+      assert.equal((await getCustomer(user)).customer.guide_step, topic);
+      assert.equal((await getCustomer(user)).account, null);
+      const messages = calls.at(-1)!.messages;
+      const expectedImages = Math.min(
+        3,
+        item.images?.length ?? (item.image ? 1 : 0),
+      );
+      assert.equal(
+        messages.filter((m) => m.type === "image").length,
+        expectedImages,
+      );
+      assert.ok(messages.length <= 5);
+      const answer = messages.at(-1) as any;
+      assert.match(answer.text, new RegExp(item.title.replace(/[？?]/g, "")));
+      const actions = answer.quickReply.items.map((i: any) => i.action);
+      assert.ok(
+        actions.every(
+          (a: any) => !["下一步", "看文字", "看圖片"].includes(a.label),
+        ),
+      );
+      for (const related of item.related)
+        assert.ok(actions.some((a: any) => a.text === STEPS[related].title));
+    }
+  } finally {
+    aiMode = "normal";
+  }
+});
+
 test("LINE images require HTTPS; missing images stay in the conversation with text", () => {
   assert.equal(
-    guide("register", "http://localhost:8787", true).some(
-      (m) => m.type === "image",
-    ),
+    guide("register", "http://localhost:8787").some((m) => m.type === "image"),
     false,
   );
   assert.equal(
-    guide("register", "http://localhost:8787", true, true)[0].type,
+    guide("register", "http://localhost:8787", true)[0].type,
     "image",
   );
-  const messages = guide("deposit", "https://crm.test", true);
+  const messages = guide("deposit", "https://crm.test");
+  assert.equal(messages.length, 1);
   assert.equal(
     messages.some((m) => m.type === "image"),
     false,
@@ -689,7 +736,6 @@ test("deposit teaching selects each method and paginates approved images in LINE
     ["信用卡入金", "credit-", 8],
   ] as const) {
     await webhook([event(method, id)]);
-    await webhook([event("看圖", id)]);
     const images = () =>
       calls.at(-1)!.messages.filter((m) => m.type === "image");
     assert.equal(images().length, 3);
@@ -712,9 +758,9 @@ test("deposit teaching selects each method and paginates approved images in LINE
     ]);
     assert.equal(images().length, last - 6);
     assert.ok(calls.at(-1)!.messages.length <= 5);
-    assert.match(JSON.stringify(calls.at(-1)!.messages), /200 USDT/);
+    assert.match(JSON.stringify(calls.at(-1)!.messages), /已入金即可/);
     await webhook([event("看文字", id)]);
-    assert.equal(images().length, 0);
+    assert.equal(images().length, 3);
   }
 });
 async function newPreview(id = alice) {
@@ -862,4 +908,198 @@ test("durable outbox recovers interrupted queue submission and expired processin
   assert.equal(pushes.length, before + 1);
   await dispatchCampaigns(env, id);
   assert.equal(pushes.length, before + 1);
+});
+
+test("knowledge answers referral questions first, keeps context and marks only once", async () => {
+  const user = 'U'+crypto.randomUUID().replaceAll('-','');
+  const first = event("我已經有綁定其他人的邀請碼該怎麼辦", user);
+  await webhook([first]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /推薦歸屬問題/);
+  assert.match(String(calls.at(-1)!.messages[0].text), /已加入後台/);
+  assert.equal((await getCustomer(user)).customer.support_requested, 1);
+  await webhook([event("可以改嗎", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /不能直接承諾/);
+  assert.doesNotMatch(
+    String(calls.at(-1)!.messages[0].text),
+    /已加入後台|已標記/,
+  );
+  await webhook([event("槓桿", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /槓桿/);
+  const count = calls.length;
+  await webhook([first]);
+  assert.equal(calls.length, count);
+  const transcript = (await (
+    await call(`/api/customers/${user}/messages`)
+  ).json()) as any;
+  assert.equal(transcript.messages.length, 6);
+  assert.equal(
+    transcript.messages.filter(
+      (m: any) => m.direction === "bot" && m.delivery_status === "accepted",
+    ).length,
+    3,
+  );
+  assert.equal(
+    (await call(`/api/customers/${user}/messages`, "GET", undefined, false))
+      .status,
+    401,
+  );
+});
+
+test("knowledge drafts, publish, revision conflicts and withdrawn context", async () => {
+  const body = {
+    title: "測試專屬問題",
+    keywords: "特殊測試詞",
+    answer: "經核對的專屬解法",
+    source_note: "團隊測試",
+    status: "draft",
+    requires_support: false,
+  };
+  assert.equal(
+    (await call("/api/knowledge", "GET", undefined, false)).status,
+    401,
+  );
+  assert.equal(
+    (
+      await call("/api/knowledge", "POST", {
+        ...body,
+        status: "published",
+        source_note: "",
+      })
+    ).status,
+    400,
+  );
+  const created = (await (
+    await call("/api/knowledge", "POST", body)
+  ).json()) as any;
+  const user = "Udddddddddddddddddddddddddddddddd";
+  await webhook([event("特殊測試詞", user)]);
+  assert.doesNotMatch(
+    String(calls.at(-1)!.messages[0].text),
+    /經核對的專屬解法/,
+  );
+  assert.equal(
+    (
+      await call("/api/knowledge/" + created.id, "PUT", {
+        ...body,
+        status: "published",
+        revision: 1,
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await call("/api/knowledge/" + created.id, "PUT", {
+        ...body,
+        revision: 1,
+      })
+    ).status,
+    409,
+  );
+  await webhook([event("特殊測試詞", user)]);
+  assert.equal(calls.at(-1)!.messages[0].text, body.answer);
+  assert.equal(
+    (
+      await call("/api/knowledge/" + created.id, "PUT", {
+        ...body,
+        revision: 2,
+      })
+    ).status,
+    200,
+  );
+  aiMode = "unavailable";
+  try {
+    await webhook([event("看不懂", user)]);
+    assert.doesNotMatch(
+      String(calls.at(-1)!.messages[0].text),
+      /經核對的專屬解法|undefined/,
+    );
+  } finally {
+    aiMode = "normal";
+  }
+});
+
+test("transcripts redact credentials, scope context, paginate and expire", async () => {
+  const user = 'U'+crypto.randomUUID().replaceAll('-','');
+  assert.doesNotMatch(
+    redactConversation("Secret: test-sensitive-value\n驗證碼 123456"),
+    /test-sensitive-value|123456/,
+  );
+  assert.equal(
+    redactConversation("綁定後台 abcd-1234"),
+    "[後台登入綁定指令已隱藏]",
+  );
+  await db.batch(
+    Array.from({ length: 55 }, (_, i) =>
+      db
+        .prepare(
+          "INSERT INTO conversation_messages(message_key,line_user_id,event_id,direction,message_type,content,delivery_status,occurred_at) VALUES (?,?,?,'user','text',?,'received',?)",
+        )
+        .bind("page:" + i, user, "page:" + i, "問題" + i, Date.now()),
+    ),
+  );
+  const first = (await (
+    await call(`/api/customers/${user}/messages`)
+  ).json()) as any;
+  assert.equal(first.messages.length, 50);
+  assert.equal(first.messages[0].content, "問題5");
+  const second = (await (
+    await call(`/api/customers/${user}/messages?before=${first.nextBefore}`)
+  ).json()) as any;
+  assert.equal(second.messages.length, 5);
+  assert.equal(second.messages[0].content, "問題0");
+  assert.equal(second.nextBefore, null);
+  assert.equal(
+    (await call(`/api/customers/${user}/messages?before=-1`)).status,
+    400,
+  );
+  const recent = await recentConversation(db as any, user, "page:54");
+  assert.equal(recent.length, 6);
+  assert.equal(recent.at(-1)!.text, "問題53");
+  await db
+    .prepare(
+      "UPDATE conversation_messages SET occurred_at=1 WHERE line_user_id=?",
+    )
+    .bind(user)
+    .run();
+  await cleanupConversations({ DB: db } as unknown as Env);
+  assert.equal(
+    ((await (await call(`/api/customers/${user}/messages`)).json()) as any)
+      .messages.length,
+    0,
+  );
+});
+
+test("unsends remove received text and suppress late-arriving original content", async () => {
+  const user = "Uffffffffffffffffffffffffffffffff";
+  const original = {
+    ...event("槓桿", user),
+    message: { type: "text", text: "槓桿", id: "withdraw-one" },
+  };
+  await webhook([original]);
+  const unsend = (messageId: string) => ({
+    ...event("", user),
+    type: "unsend",
+    message: undefined,
+    replyToken: undefined,
+    unsend: { messageId },
+  });
+  await webhook([unsend("withdraw-one")]);
+  const late = {
+    ...event("不應保留的文字", user),
+    message: { type: "text", text: "不應保留的文字", id: "withdraw-two" },
+  };
+  await webhook([unsend("withdraw-two")]);
+  await webhook([late]);
+  const transcript = (await (
+    await call(`/api/customers/${user}/messages`)
+  ).json()) as any;
+  assert.equal(
+    transcript.messages.filter((m: any) => m.message_type === "unsent").length,
+    2,
+  );
+  assert.equal(
+    transcript.messages.some((m: any) => m.content === "不應保留的文字"),
+    false,
+  );
 });

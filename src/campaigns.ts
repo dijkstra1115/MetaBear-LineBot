@@ -1,4 +1,5 @@
 import { HttpError, json, readJson, textField } from "./http";
+import { recordOutgoing, setOutgoingStatus } from "./conversations";
 import { now } from "./db";
 import { audienceQuery } from "./audience";
 
@@ -193,11 +194,9 @@ export async function dispatchCampaigns(env: Env, runId?: string) {
     .all<{ id: string }>();
   for (let i = 0; i < rows.results.length; i += 100)
     await env.CAMPAIGN_EVENTS.sendBatch(
-      rows.results
-        .slice(i, i + 100)
-        .map((r) => ({
-          body: { kind: "campaign-delivery" as const, id: r.id },
-        })),
+      rows.results.slice(i, i + 100).map((r) => ({
+        body: { kind: "campaign-delivery" as const, id: r.id },
+      })),
     );
   await env.DB.prepare(
     "UPDATE campaign_runs SET status='completed' WHERE status='queued' AND NOT EXISTS (SELECT 1 FROM campaign_deliveries d WHERE d.run_id=campaign_runs.id AND d.status IN ('pending','sending'))",
@@ -221,6 +220,11 @@ export async function processCampaign(message: CampaignMessage, env: Env) {
     .run();
   if (!claimed.meta.changes) return;
   const finish = async (status: string, detail: string) => {
+    await setOutgoingStatus(
+      env,
+      "campaign:" + delivery.id,
+      status === "skipped" ? "not_sent" : status,
+    );
     await env.DB.prepare(
       "UPDATE campaign_deliveries SET status=?,detail=?,finished_at=?,lease_until=NULL WHERE id=?",
     )
@@ -256,6 +260,12 @@ export async function processCampaign(message: CampaignMessage, env: Env) {
       await finish("skipped", "已退訂、封鎖或不再符合原篩選條件");
       return;
     }
+    await recordOutgoing(
+      env,
+      delivery.line_user_id,
+      "campaign:" + delivery.id,
+      [{ type: "text", text: run.body }],
+    );
     const response = await fetch(apiBase + "/push", {
       method: "POST",
       headers: {
@@ -283,6 +293,7 @@ export async function processCampaign(message: CampaignMessage, env: Env) {
       `LINE 拒絕請求（HTTP ${response.status}），請核對帳戶額度或設定`,
     );
   } catch (error) {
+    await setOutgoingStatus(env, "campaign:" + delivery.id, "unconfirmed");
     await env.DB.prepare(
       "UPDATE campaign_deliveries SET status='pending',lease_until=NULL WHERE id=? AND status='sending'",
     )

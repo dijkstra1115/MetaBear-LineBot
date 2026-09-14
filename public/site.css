@@ -5,6 +5,12 @@
   --muted: #94a8b9;
   --line: #b9d8eb1a;
 }
+.line-entry-note { max-width:440px; margin-top:18px; font-size:13px; line-height:1.8; color:var(--muted); }
+.line-floating { position:fixed; right:24px; bottom:28px; z-index:35; display:flex; align-items:center; gap:13px; padding:15px 20px; border:1px solid #78e1d570; border-radius:16px; color:#edf2f4; background:#0b1926f5; box-shadow:0 12px 35px #0005; }
+.line-floating small { display:block; margin-top:4px; color:var(--muted); font-size:11px; }
+.line-dot { width:10px; height:10px; border-radius:50%; background:var(--teal); }
+.line-floating:hover { border-color:var(--teal); background:#12283a; }
+@media(max-width:700px) { .line-floating { right:14px; bottom:86px; padding:12px 15px; font-size:13px; } .line-entry-note{max-width:320px;} }
 * {
   box-sizing: border-box;
 }
@@ -104,6 +110,43 @@ summary:focus-visible {
   border-bottom: 1px solid var(--line);
   background: #080e18cb;
   backdrop-filter: blur(18px);
+}
+.brand-emblem,
+.site-brand > .brand-emblem {
+  display: inline-block;
+  position: relative;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 1px solid #bb944b;
+  background: #161616;
+}
+.brand-emblem > img {
+  position: absolute;
+  width: 202%;
+  height: 202%;
+  max-width: none;
+  left: -51%;
+  top: -33%;
+}
+.brand-emblem.panel-emblem {
+  width: 90px;
+  height: 90px;
+}
+.brand-full {
+  display: block;
+  width: 140px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+.market-source-note {
+  max-width: 360px;
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--muted);
 }
 .wordmark {
   display: flex;
@@ -1788,3 +1831,81 @@ input[type="range"] {
     transition: none !important;
   }
 }
+.snapshot-market {
+  padding: 20px 24px 12px;
+}
+.snapshot-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#snapshot-price {
+  font-size: 36px;
+  font-weight: 550;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+.snapshot-currency {
+  color: #94a8b9;
+  font-size: 12px;
+}
+#snapshot-date,
+#snapshot-series {
+  font-size: 11px;
+  color: #94a8b9;
+  margin: 6px 0 10px;
+}
+.snapshot-market a {
+  pointer-events: auto;
+  color: #78e1d5;
+  font-size: 10px;
+}
+#snapshot-chart {
+  width: 100%;
+  height: 195px;
+  display: block;
+}
+.snapshot-footer {
+  display: flex;
+  justify-content: space-between;
+  color: #94a8b9;
+  font-size: 10px;
+  padding-top: 9px;
+  border-top: 1px solid #263c4d;
+}
+
+.exchange-logo {
+  display: inline-block;
+  width: 78px;
+  height: 27px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+.bingx-logo {
+  background: #fff;
+  padding: 4px 7px;
+  border-radius: 4px;
+}
+.bitopro-logo {
+  padding: 3px 0;
+}
+.route-link .route-icon {
+  width: 82px;
+  flex: 0 0 82px;
+}
+.question-app {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+/* Preserve the original white bear while masking its near-white outer canvas. */
+.brand-emblem > img, .brand-full {
+  -webkit-mask-image: url('/brand-mask.svg');
+  mask-image: url('/brand-mask.svg');
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+.brand-full { background: transparent; border-radius: 0; }
+.bingx-logo { background: transparent; filter: invert(1); }

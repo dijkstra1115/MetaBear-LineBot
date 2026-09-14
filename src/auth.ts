@@ -1,14 +1,16 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { authorized, HttpError } from "./http";
+import { nativeIdentity } from "./native-auth";
 
 // Cache public signing keys only; never store a user's JWT or identity globally.
 const keySets = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
-export type AdminIdentity = { email: string; mode: "cloudflare" | "local" };
+export type AdminIdentity = { email: string; mode: "cloudflare" | "local" | "native" };
 
 export async function adminIdentity(
   request: Request,
   env: Env,
 ): Promise<AdminIdentity> {
+  if (env.AUTH_MODE === "native") return nativeIdentity(request, env);
   if (
     env.ENVIRONMENT === "development" &&
     env.LINE_DELIVERY_MODE === "disabled"

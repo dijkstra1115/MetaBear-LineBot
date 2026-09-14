@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>登入 · MetaBear 客戶工作台</title>
+    <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="64x64" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/login.css" />
+    <script src="/login.js" defer></script>
+  </head>
+  <body class="native-login">
+    <main class="login-shell">
+      <section class="login-brand">
+        <a class="brand" href="/" aria-label="MetaBear 首頁"
+          ><span class="brand-mark">mb.</span><span>MetaBear</span></a
+        >
+        <h1>每一段關係，<br />都值得好好經營。</h1>
+        <p>回到你的客戶工作台，掌握審核進度，接住每一次提問。</p>
+        <div class="login-path">
+          <span>註冊引導</span><i>→</i><span>UID 審核</span><i>→</i
+          ><span>持續服務</span>
+        </div>
+      </section>
+      <section class="login-card" aria-labelledby="login-title">
+        <p class="eyebrow">夥伴工作台</p>
+        <h2 id="login-title">歡迎回來</h2>
+        <p id="login-description" class="muted">正在確認登入方式…</p>
+        <form id="request-code" hidden>
+          <label for="email">管理員 Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="username"
+            required
+            maxlength="254"
+            placeholder="your@email.com"
+          />
+          <button class="primary" type="submit">取得登入驗證碼</button>
+        </form>
+        <form id="verify-code" hidden>
+          <label for="code">6 位數驗證碼</label>
+          <input
+            id="code"
+            name="code"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            pattern="[0-9]{6}"
+            minlength="6"
+            maxlength="6"
+            required
+            placeholder="000000"
+          />
+          <button class="primary" type="submit">登入工作台</button>
+          <button id="restart" class="quiet" type="button">
+            重新索取或更換 Email
+          </button>
+        </form>
+        <p id="login-message" role="status" aria-live="polite"></p>
+        <a id="existing-login" href="/admin" hidden>繼續使用目前的登入方式</a>
+        <a class="login-home" href="/">回到 MetaBear 首頁</a>
+      </section>
+    </main>
+  </body>
+</html>

@@ -8,17 +8,16 @@
       content="MetaBear 圖文教學：BingX 註冊、邀請碼、KYC、BitoPro 台幣入金、信用卡買幣與合約基礎。"
     />
     <title>學習中心｜MetaBear</title>
-    <link rel="icon" href="/mark.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="64x64" />
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/learn.css" />
-    <script src="/guide.js" defer></script>
+    <script src="/guide.js" type="module"></script>
   </head>
   <body class="learn-page">
     <header class="site-header">
       <a class="site-brand" href="/"
-        ><img src="/mark.svg" alt="" width="36" height="36" />MetaBear<span
-          >探索市場的起點</span
-        ></a
+        ><span class="brand-emblem"><img src="/logo.webp" alt="" /></span
+        >MetaBear<span>探索市場的起點</span></a
       >
       <nav aria-label="主要導覽">
         <a href="/">回到首頁</a
@@ -30,21 +29,95 @@
     <main class="learn-main">
       <div class="learn-heading">
         <p class="eyebrow">THE LEARNING DESK / 01</p>
-        <h1>把每一步，<em>弄清楚。</em></h1>
-        <p>從開戶到理解一筆交易。選一個主題，照自己的速度開始。</p>
+        <h1>註冊入金，<em>圖文教學。</em></h1>
+        <p>選你遇到的問題，查看操作步驟。</p>
       </div>
       <div class="learn-layout">
         <aside class="learn-sidebar">
           <h2>開始使用 BingX</h2>
           <nav id="guide-tabs" aria-label="開戶與入金教學"></nav>
-          <h2>理解合約與市場</h2>
+          <h2>合約操作教學</h2>
           <nav id="lesson-tabs" aria-label="合約知識"></nav>
+          <h2>盤面教學</h2>
+          <nav id="market-tabs" aria-label="盤面教學"></nav>
           <a class="learn-lab-link" href="/#lab">試試損益計算 →</a>
         </aside>
         <section class="learn-content" aria-live="polite">
           <p id="guide-category" class="eyebrow"></p>
           <h2 id="guide-title" tabindex="-1">正在載入教學…</h2>
           <div id="guide-copy" class="learn-copy"></div>
+          <section
+            id="support-lesson"
+            hidden
+            aria-label="支撐與壓力互動教學"
+          ></section>
+          <section
+            id="deposit-calculator"
+            hidden
+            aria-label="入群門檻與匯率試算"
+          >
+            <p class="deposit-threshold">
+              入群條件 <strong>已入金即可</strong>
+            </p>
+            <p>已入金即可，允許內部轉帳；提交 UID 後由系統核對邀請關係、KYC 與入金。</p>
+            <div class="rate-box">
+              <h3>台幣 ⇄ USDT 試算</h3>
+              <p id="rate-value">正在取得行情…</p>
+              <div class="rate-inputs">
+                <label
+                  >台幣 TWD<input
+                    id="amount-twd"
+                    type="number"
+                    min="0"
+                    max="1000000000"
+                    step="any"
+                    inputmode="decimal"
+                    placeholder="輸入台幣金額"
+                    disabled
+                /></label>
+                <span aria-hidden="true">⇄</span>
+                <label
+                  >USDT<input
+                    id="amount-usdt"
+                    type="number"
+                    min="0"
+                    max="1000000000"
+                    step="any"
+                    inputmode="decimal"
+                    value="200"
+                    disabled
+                /></label>
+              </div>
+              <div class="rate-controls">
+                <button id="rate-threshold" type="button" disabled>
+                  試算範例：200 USDT</button
+                ><button id="rate-refresh" type="button">更新匯率</button>
+              </div>
+              <p id="rate-status" role="status"></p>
+              <p class="learn-note">
+                來源：<a
+                  href="https://www.bitopro.com/ns/api-docs"
+                  target="_blank"
+                  rel="noreferrer"
+                  >BitoPro USDT/TWD 最新成交價</a
+                >，每 30
+                秒更新。估算未含手續費與價差，不是信用卡或實際成交報價。
+              </p>
+            </div>
+            <h3>想用哪種方式入金？</h3>
+          </section>
+          <section id="question-guide" hidden aria-label="分題教學">
+            <p class="question-hint">選你卡住的地方，直接看。</p>
+            <nav id="question-nav" aria-label="入金問題"></nav>
+            <h3 id="question-title" tabindex="-1"></h3>
+            <p id="question-intro"></p>
+            <div id="question-rows"></div>
+            <p id="question-check"></p>
+            <p class="learn-note">
+              圖片可點開放大。舊畫面僅供對照，介面與費用以帳戶當下顯示為準。
+            </p>
+          </section>
+          <section id="lesson-notes" hidden aria-label="詳細教學"></section>
           <div id="method-options" class="method-options" hidden>
             <a href="/learn?step=deposit_bitopro"
               ><small>01 / TWD → USDT</small><strong>BitoPro 台幣入金 ↗</strong
@@ -66,7 +139,7 @@
               id="next-step"
               class="button button-quiet"
               href="/learn?step=code"
-              >下一步 →</a
+              >邀請碼填在哪裡？ →</a
             >
           </div>
           <section id="gallery-section" hidden>
@@ -76,7 +149,7 @@
             </div>
             <p class="learn-note">
               點選圖片可放大。這些是既有教學畫面，功能、費用與介面以目前交易所為準。圖中的
-              100 USDT 為舊示例，MetaBear 入群門檻為 200 USDT。
+              100 USDT 為舊示例；已入金即可，允許內部轉帳。
             </p>
             <div id="guide-media" class="learn-gallery"></div>
           </section>
@@ -97,10 +170,13 @@
     </main>
     <dialog id="image-dialog" aria-labelledby="image-caption">
       <div class="viewer-tools">
-        <span id="image-position"></span
-        ><button id="close-image" aria-label="關閉圖片">關閉 ✕</button>
+        <span id="image-position"></span>
+        <button id="zoom-image" aria-pressed="false">放大看細節</button>
+        <button id="close-image" aria-label="關閉圖片">關閉 ✕</button>
       </div>
-      <img id="full-image" alt="" />
+      <div id="image-scroll" tabindex="0" aria-label="圖片區，放大後可左右捲動">
+        <img id="full-image" alt="" />
+      </div>
       <p id="image-caption"></p>
       <div class="viewer-nav">
         <button id="previous-image">← 上一張</button

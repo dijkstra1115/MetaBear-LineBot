@@ -1,0 +1,104 @@
+.native-login {
+  background: #080e18;
+}
+.native-login .login-brand {
+  background: #080e18;
+  color: #f0f3f5;
+}
+.native-login .login-brand .brand {
+  color: #f0f3f5;
+  font-size: 22px;
+  text-decoration: none;
+}
+.native-login .login-brand .brand-mark {
+  background: #78e1d5;
+  color: #080e18;
+}
+.native-login .login-brand h1 {
+  color: #f0f3f5;
+  max-width: 620px;
+  font-size: clamp(32px, 4.2vw, 62px);
+  line-height: 1.4;
+  letter-spacing: -0.03em;
+}
+.native-login .login-brand .brand-mark {
+  margin-bottom: 0;
+}
+.native-login .login-brand .brand {
+  margin-bottom: 48px;
+}
+.native-login #binding-command {
+  margin: 20px 0;
+}
+.native-login #binding-command a {
+  display: block;
+  margin-top: 16px;
+}
+.native-login #command {
+  font-family: monospace;
+  width: 100%;
+  margin-bottom: 16px;
+  resize: none;
+}
+.native-login .login-brand > p {
+  color: #b9c6ce;
+}
+.native-login .login-path {
+  color: #78e1d5;
+}
+.native-login .login-card {
+  background: #f7f9fb;
+  align-self: center;
+  width: min(440px, calc(100% - 48px));
+  padding: 40px;
+  margin: 40px auto;
+  border-radius: 20px;
+}
+.native-login form {
+  display: grid;
+  gap: 16px;
+}
+.native-login form[hidden] {
+  display: none;
+}
+.native-login form label {
+  margin: 0;
+}
+.native-login .primary {
+  width: 100%;
+  background: #143c3c;
+  color: #fff;
+}
+.native-login #code {
+  font-size: 28px;
+  letter-spacing: 0.25em;
+  font-variant-numeric: tabular-nums;
+}
+.native-login #login-message {
+  min-height: 24px;
+  color: #485766;
+  line-height: 1.7;
+}
+.native-login #login-message[data-error="true"] {
+  color: #9c2929;
+}
+.native-login .login-home {
+  display: block;
+  margin-top: 24px;
+}
+@media (max-width: 720px) {
+  .native-login .login-brand {
+    padding: 32px 24px 8px;
+  }
+  .native-login .login-brand h1 {
+    margin: 28px 0 18px;
+  }
+  .native-login .login-card {
+    margin: 28px auto 36px;
+    padding: 28px;
+  }
+  .native-login .login-path {
+    font-size: 12px;
+    gap: 10px;
+  }
+}

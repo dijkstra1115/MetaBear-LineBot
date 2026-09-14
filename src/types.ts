@@ -17,6 +17,8 @@ export type Customer = {
   guide_step: Step;
   preference: Preference;
   notes: string;
+  owner_name: string;
+  tags: string;
   support_requested: number;
   marketing_consent: number;
   consent_at: string | null;
@@ -42,8 +44,9 @@ export type LineEvent = {
   timestamp: number;
   source?: { type: string; userId?: string };
   replyToken?: string;
-  message?: { type: string; text?: string };
+  message?: { type: string; text?: string; id?: string };
   postback?: { data: string };
+  unsend?: { messageId: string };
 };
 export type Account = {
   uid: string;

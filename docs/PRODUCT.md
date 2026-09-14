@@ -5,9 +5,9 @@
 ## 已確認
 
 - 交易所先支援 BingX，邀請碼 `ZD0CQ0`，邀請連結 `https://bingx.com/invite/ZD0CQ0`。
-- 社群入群門檻為入金至少 **200 USDT**。原信用卡教學的「七日內首次充值 100U」不沿用。
+- 社群要求已入金，不設最低金額，允許內部轉帳；仍須符合推薦歸屬與 KYC。依使用者最新決策，不要求 LINE 帳號持有證明。
 - 目前仍在測試，無須遷移既有客戶資料；保留 Python 舊程式作參考。
-- 交易量先由管理員按月手動紀錄，未串接交易所代理 API。
+- 已實作 BingX 代理 API 同步與自動審核；啟用及限制見 [自動化上線](AUTOMATION.md)。
 
 ## 用戶流程
 
@@ -17,8 +17,9 @@ flowchart LR
     B --> C[文字或原始圖片]
     C --> D[KYC 與入金教學]
     D --> E[用戶提交 UID]
-    E --> F[後台核實推薦關係與入金]
-    F --> G[人工安排入群]
+    E --> F[BingX API 核實邀請、KYC 與已入金]
+    F --> G[通過後自動發送 VIP 連結]
+    G --> K[客服確認已入群]
     A --> H[合約概念與開倉欄位說明]
     A --> I[交易偏好與通知意願]
     I --> J[CRM 分群、草稿、預覽與確認推播]
@@ -35,8 +36,8 @@ flowchart LR
 | 客服稱呼     | 管理員手動填寫，第一版不主動取得 LINE 個人資料                    |
 | BingX UID    | 用戶或管理員提交；同一 UID 不允許綁定多位 LINE 用戶               |
 | 推薦狀態     | 待核實／已核實／需補正，已核實需有人工核對依據                    |
-| 入金狀態     | 獨立核實 200 USDT 門檻，與推薦狀態分開                            |
-| 已入群       | 僅推薦與入金都已核實時才能標記；邀請入群由人工執行                |
+| 入金狀態     | 獨立核實已入金，允許內部轉帳，與推薦狀態分開                            |
+| 已入群       | 邀請發送與已入群分開；客服依社群名單核對，保存依據與操作人         |
 | 月交易量     | 指定月份的成交總額、USDT 等值、來源與備註；同月更新為覆蓋而非相加 |
 | 偏好         | 現貨／合約／兩者／先學基礎／未設定                                |
 | 訂閱         | 預設未訂閱，只能由用戶在 LINE 主動設定，封鎖時撤銷                |
@@ -63,7 +64,7 @@ flowchart LR
 
 - [原註冊／入群流程](https://app.notion.com/p/26fe08720786805185bde4952de1d9d7)：BingX、邀請碼、客服 LINE、200 USDT 與人工核實流程。註冊和 KYC 原圖已取得並轉為 JPEG；未用 AI 重繪交易所畫面。
 - [原 BitoPro 入金教學](https://app.notion.com/p/BitoPro-311e0872078680f59fbbec1cecb2e648)：原文步驟順序有 1、2、4、3，不直接照搬。
-- [原信用卡入金教學](https://app.notion.com/p/BingX-USDT-26fe0872078680c39518eb3509bd0246)：100 USDT 促銷與主頁衝突，已依使用者回覆統一為 200 USDT；舊銀行推薦與到帳時間未當成現行規則。
+- [原信用卡入金教學](https://app.notion.com/p/BingX-USDT-26fe0872078680c39518eb3509bd0246)：100 USDT 促銷與主頁衝突，原採 200 USDT，最新規則已取消最低金額；舊銀行推薦與到帳時間未當成現行規則。
 - [LINE 使用者識別碼](https://developers.line.biz/en/docs/messaging-api/getting-user-ids/)：userId 與個人 LINE ID 不同。
 - [LINE webhook 驗證](https://developers.line.biz/en/docs/messaging-api/verify-webhook-signature/)與[接收事件](https://developers.line.biz/en/docs/messaging-api/receiving-messages/)：簽章驗證、重送與事件識別。
 - [BingX 保證金名詞](https://bingx.com/en/support/articles/360045900114-margin-terms-of-perpetual-swap)與[逐倉／全倉說明](https://login.bingx.com/en/support/articles/36368664788377)：基礎教學參考；具體數值以當前合約規則為準。
