@@ -4,6 +4,8 @@ import {
   STEPS,
   command,
   guide,
+  guidePage,
+  navigation,
   menu,
   moreMenu,
   reply,
@@ -16,6 +18,8 @@ import { getTeam, personalize } from "./team";
 import { knowledgeCandidates } from "./knowledge";
 import { recentConversation } from "./conversations";
 import { activeSupportCase, requestSupport, resumeBot } from "./support";
+import { isGreeting } from "./greetings";
+import { faqMenu, knowledgeActions } from "./faq";
 
 async function handoff(
   env: Env,
@@ -31,7 +35,7 @@ async function handoff(
         : claimed
           ? `客服${support.owner_name ? `「${support.owner_name}」` : ""}已接手。你可以繼續留言；若想先使用自動教學，請點「繼續使用小幫手」。`
           : "你的人工協助需求仍在等待認領，不必重複申請。可以繼續描述卡住的地方。",
-      [command("選單")],
+      [...(claimed ? [command("繼續使用小幫手")] : []), command("選單")],
     ),
   ];
 }
@@ -60,7 +64,7 @@ async function respondBase(
   const customer = await ensureCustomer(db, userId);
   const text = input.trim();
   const base = env.PUBLIC_BASE_URL.replace(/\/$/, "");
-  if (/^(選單|menu|開始|你好)$/i.test(text)) {
+  if (/^(選單|menu|開始)$/i.test(text)) {
     await db
       .prepare("DELETE FROM teaching_context WHERE line_user_id=?")
       .bind(userId)
@@ -177,6 +181,7 @@ async function respondBase(
       return [
         reply(
           "你已登記其他 UID。為避免覆蓋已核實的資料，已標記由小幫手協助更正。",
+          [command("人工協助"), command("我的進度"), command("選單")],
         ),
       ];
     }
@@ -234,6 +239,24 @@ async function respondBase(
       text.replace(/\s/g, ""),
     )
   ) {
+    const account = await db
+      .prepare(
+        "SELECT uid FROM exchange_accounts WHERE line_user_id=? AND exchange='bingx'",
+      )
+      .bind(userId)
+      .first<{ uid: string }>();
+    if (!account)
+      return [
+        reply(
+          "你還沒有提交 BingX UID。請先在個人資料頁複製 UID，再回覆「UID 你的數字」，即可查詢資格。",
+          [
+            command("提交 UID"),
+            command("入金教學"),
+            command("人工協助"),
+            command("選單"),
+          ],
+        ),
+      ];
     if ((await getTeam(db)).automation_enabled) {
       if (text !== "我的進度") await enqueueSync(env, userId);
       const info = await customerAutomation(env, userId);
@@ -291,14 +314,31 @@ async function respondBase(
         [command("繼續使用小幫手"), command("選單")],
       ),
     ];
+  if (isGreeting(text))
+    return [
+      menu(
+        "哈囉！我是 MetaBear 小幫手 👋 今天有什麼想了解的？可以直接問我，或點下面的選項。",
+      ),
+    ];
+  const faq = await faqMenu(db, text);
+  if (faq) return faq;
   const context = await db
     .prepare(
       "SELECT topic, format, image_page FROM teaching_context WHERE line_user_id=?",
     )
     .bind(userId)
     .first<TeachingContext>();
+  const previousImage =
+    /^(?:上一張|上一步|上一組圖)[！!。?？]*$/.test(text) &&
+    context &&
+    isStep(context.topic);
+  const progressive =
+    context?.topic === "deposit_bitopro" || context?.topic === "deposit_card";
   const nextImage =
-    /^(?:看?(?:下一張|下張|下一組|下一組圖)|繼續看圖)[！!。?？]*$/.test(text) &&
+    (/^(?:看?(?:下一張|下張|下一組|下一組圖)|繼續看圖)[！!。?？]*$/.test(
+      text,
+    ) ||
+      (progressive && /^下一步[！!。?？]*$/.test(text))) &&
     context &&
     isStep(context.topic);
   const routedAt = Date.now();
@@ -306,14 +346,15 @@ async function respondBase(
     knowledgeCandidates(db, text, context?.topic, 5),
     recentConversation(db, userId, eventId),
   ]);
-  const route = nextImage
-    ? {
-        topic: context.topic,
-        format: "image" as const,
-        method: "direct" as const,
-        candidateCount: articles.length,
-      }
-    : await routeQuestion(text, context, env, articles, history);
+  const route =
+    nextImage || previousImage
+      ? {
+          topic: context.topic,
+          format: "image" as const,
+          method: "direct" as const,
+          candidateCount: articles.length,
+        }
+      : await routeQuestion(text, context, env, articles, history);
   await db
     .prepare(
       "INSERT OR IGNORE INTO route_events(event_id,method,topic,candidate_count,latency_ms,queue_delay_ms,created_at) VALUES (?,?,?,?,?,?,?)",
@@ -361,17 +402,23 @@ async function respondBase(
             (marked
               ? "\n\n這項問題需要人工核實，已通知客服並加入需協助名單。"
               : ""),
-          [command("我的進度"), command("人工協助"), command("選單")],
+          knowledgeActions(article),
         ),
+        navigation(knowledgeActions(article)),
       ];
     }
   }
   const explicitPage = text.match(/^圖片教學 \w+ (\d+)$/);
-  const imagePage = nextImage
-    ? (context.image_page ?? 0) + 1
-    : explicitPage
-      ? Number(explicitPage[1])
-      : 0;
+  const requestedPage = previousImage
+    ? (context.image_page ?? 0) - 1
+    : nextImage
+      ? (context.image_page ?? 0) + 1
+      : explicitPage
+        ? Number(explicitPage[1])
+        : 0;
+  const imagePage = isStep(route.topic)
+    ? guidePage(route.topic, requestedPage)
+    : 0;
   if (route.topic === "support") return handoff(env, userId, eventId);
   if (route.topic === "clarify") {
     return [

@@ -15,3 +15,6 @@ Bot 的順序是：明確指令 → 知識庫詞彙與同義說法排序 → 高
 後台首頁顯示最近 7 天的路由量、釐清比例、路由延遲、佇列等待時間，以及 direct／knowledge／rule／model／context／clarify 的分布。事件只記錄分類與時間，不保存訊息文字或 LINE 使用者 ID。
 
 部署順序：依序套用 `0007_conversations_knowledge.sql` 到 `0010_support_knowledge.sql`，再部署 Worker 及 public 資產。初始五則問題包含其他人的邀請碼、變更推薦歸屬、漏填邀請碼、入金後未收到邀請、人工協助流程。推薦歸屬變更均要求依交易所當前規則核實，不承諾可變更。
+
+
+2026-09-14 官方 FAQ 擴充：新增 migration `0011_bingx_faq.sql`，內容與維護方式見 [BINGX-FAQ.md](BINGX-FAQ.md)。同義說法使用相同正規化參與候選檢索與最終比對；僅有上下文的簡短追問不當成全域問題。LINE 常見問題提供四類入口，直接回答細節並保留來源與下一步操作。

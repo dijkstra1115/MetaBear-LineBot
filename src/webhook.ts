@@ -1,4 +1,4 @@
-import { menu, reply } from "./content";
+import { command, menu, reply } from "./content";
 import { respond } from "./bot";
 import { ensureCustomer, now } from "./db";
 import { HttpError, json, readBody, signatureValid } from "./http";
@@ -161,6 +161,7 @@ export async function processLineEvent(event: LineEvent, env: Env) {
                 support.created
                   ? "已收到圖片／影片並通知客服查看。附件不會由 Bot 自動核實，也不會因此自動通過入群。"
                   : "已收到圖片／影片，現有人工協助案件仍保留。附件不會由 Bot 自動核實，也不會因此自動通過入群。",
+                [command("人工協助"), command("選單")],
               ),
             ];
           }

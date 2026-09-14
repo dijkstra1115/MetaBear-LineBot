@@ -1,3 +1,5 @@
+import { bitoproQuestions } from "../public/guide-bitopro.js";
+import { cardQuestions } from "../public/guide-card.js";
 import type { Step, LineMessage, Action } from "./types";
 
 export const BUSINESS = {
@@ -48,59 +50,22 @@ export const STEPS: Record<
     parent: "deposit",
     related: ["deposit", "deposit_card", "uid"],
     text: `1. 完成 BitoPro 身分驗證並綁定自己的銀行帳戶。在「資產 → 加值 → TWD → 銀行匯款」查看你帳戶指定的收款資訊，用已綁定銀行轉入台幣。\n2. 台幣到帳後選 USDT/TWD，確認委託價格、數量、費用與預估收到的 USDT。\n3. BingX「充值／加密貨幣充值」選 USDT，選擇兩邊均支援且開放充提的同一網路，複製你自己的充值地址。\n4. 回 BitoPro「資產 → 提領 → USDT」，選完全一致的網路，貼入自己的 BingX 地址，核對地址、Memo／Tag（如有）、最低入金額及扣費後到帳數量，再決定是否送出。\n5. 查看 BitoPro 提領紀錄與 BingX 到帳紀錄；送出不等於到帳。\n\n原圖 TRC20 為操作範例，不保證目前可用；不要抄圖中的帳號、地址或金額。MetaBear 已入金即可，允許內部轉帳；提交 UID 後查詢邀請關係、KYC 與入金狀態。`,
-    images: [
-      { src: "/guides/bitopro-02.jpg", caption: "BitoPro 市場選擇 USDT/TWD" },
-      {
-        src: "/guides/bitopro-03.jpg",
-        caption: "查看買入 USDT 的數量、價格與費用",
-      },
-      { src: "/guides/bitopro-05.jpg", caption: "BingX 充值選擇 USDT" },
-      {
-        src: "/guides/bitopro-06.jpg",
-        caption: "選擇兩邊均支援的同一充值網路；原圖 TRC20 僅為範例",
-      },
-      {
-        src: "/guides/bitopro-07.jpg",
-        caption: "複製自己 BingX 帳戶的充值地址，勿抄圖中地址",
-      },
-      {
-        src: "/guides/bitopro-08.jpg",
-        caption: "回到 BitoPro 資產頁，選擇提領",
-      },
-      {
-        src: "/guides/bitopro-09.jpg",
-        caption: "選 USDT 後，核對網路、自己的地址與到帳數量",
-      },
-    ],
+    images: bitoproQuestions.flatMap(({ rows }) =>
+      rows.flatMap((row) =>
+        "src" in row && row.src ? [{ src: row.src, caption: row.title }] : [],
+      ),
+    ),
   },
   deposit_card: {
     title: "如何用信用卡入金？",
     parent: "deposit",
     related: ["deposit", "deposit_bitopro", "uid"],
     text: `1. 登入 BingX，先完成帳戶要求的身分驗證；到首頁「充值 → 快捷買幣」。\n2. 選擇法幣及 USDT，輸入金額，查看實際匯率、手續費及預計收到的 USDT。\n3. 選擇帳戶可用的「信用卡／簽帳金融卡」，閱讀支付條款後自行決定是否繼續。\n4. 若畫面要求，填自己的英文帳單地址與持卡人資訊，再由銀行完成驗證。卡號與 OTP 只填在官方付款／銀行頁面，不傳給 LINE。\n5. 「授權成功」只代表付款方式驗證，不等於買幣完成；回到訂單與資產頁確認購買狀態及 USDT 到帳。\n\n圖中 100 USDT、匯率與 1 TWD 驗證均為舊畫面示例，並非本次承諾；MetaBear 已入金即可，允許內部轉帳；提交 UID 後查詢資格。可用卡別、費率與付款供應商以當前帳戶為準。`,
-    images: [
-      { src: "/guides/credit-01.jpg", caption: "BingX 首頁選擇充值" },
-      { src: "/guides/credit-02.jpg", caption: "選擇快捷買幣" },
-      {
-        src: "/guides/credit-03.jpg",
-        caption:
-          "輸入法幣或 USDT 金額；100 USDT 為舊示例，社群不設最低入金金額",
-      },
-      {
-        src: "/guides/credit-04.jpg",
-        caption: "選信用卡／簽帳金融卡，核對匯率與支付條款",
-      },
-      { src: "/guides/credit-05.jpg", caption: "完成畫面要求的身分與帳單資料" },
-      { src: "/guides/credit-06.jpg", caption: "填寫自己信用卡的英文帳單地址" },
-      {
-        src: "/guides/credit-07.jpg",
-        caption: "在付款供應商頁輸入自己的卡片資料，並依銀行要求驗證",
-      },
-      {
-        src: "/guides/credit-09.jpg",
-        caption: "授權成功不等於 USDT 已到帳，還需查看購買訂單與資產",
-      },
-    ],
+    images: cardQuestions.flatMap(({ rows }) =>
+      rows.flatMap((row) =>
+        "src" in row && row.src ? [{ src: row.src, caption: row.title }] : [],
+      ),
+    ),
   },
   uid: {
     title: "如何查找及提交 UID？",
@@ -157,20 +122,20 @@ export const reply = (text: string, actions: Action[] = []): LineMessage => ({
       }
     : {}),
 });
-export const menu = () =>
-  reply(
-    "我是 MetaBear 小幫手。你可以直接說卡在哪裡，或先選一個最接近的需求。",
-    [
-      command("開始註冊"),
-      command("入金教學"),
-      command("查詢進度", "我的進度"),
-      command("遇到問題", "人工協助"),
-      command("更多教學"),
-    ],
-  );
+export const menu = (
+  welcome = "我是 MetaBear 小幫手。你可以直接說卡在哪裡，或先選一個最接近的需求。",
+) =>
+  reply(welcome, [
+    command("開始註冊"),
+    command("入金教學"),
+    command("查詢進度", "我的進度"),
+    command("遇到問題", "人工協助"),
+    command("更多教學"),
+  ]);
 
 export const moreMenu = () =>
   reply("你想看哪一項？每個問題都能獨立查看。", [
+    command("常見問題"),
     command(STEPS.code.title),
     command(STEPS.kyc.title),
     command(STEPS.deposit_bitopro.title),
@@ -182,6 +147,76 @@ export const moreMenu = () =>
     command("人工協助"),
     command("選單"),
   ]);
+// The website and LINE deliberately share the same ordered image/explanation rows.
+export function guidePages(step: Step) {
+  const questions =
+    step === "deposit_bitopro"
+      ? bitoproQuestions
+      : step === "deposit_card"
+        ? cardQuestions
+        : null;
+  return (
+    questions?.flatMap((q) =>
+      q.rows.map((row, index) => ({
+        title: row.title,
+        src: "src" in row ? row.src : undefined,
+        text: [
+          index === 0 ? q.intro : "",
+          row.action,
+          row.reason,
+          index === q.rows.length - 1 ? q.check : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+      })),
+    ) ?? [
+      {
+        title: STEPS[step].title,
+        src: STEPS[step].image,
+        text: STEPS[step].text,
+      },
+    ]
+  );
+}
+export function guidePage(step: Step, page: number) {
+  return Math.max(
+    0,
+    Math.min(
+      guidePages(step).length - 1,
+      Number.isFinite(page) ? Math.floor(page) : 0,
+    ),
+  );
+}
+export function navigation(
+  actions: Action[],
+  text = "接下來想做什麼？",
+): Extract<LineMessage, { type: "flex" }> {
+  return {
+    type: "flex",
+    altText: text,
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [{ type: "text", text, wrap: true }],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        contents: actions.map((action, i) => ({
+          type: "button",
+          action,
+          style: i === 0 ? "primary" : "link",
+          height: "sm",
+        })),
+      },
+    },
+    quickReply: {
+      items: actions.map((action) => ({ type: "action", action })),
+    },
+  };
+}
 export function guide(
   step: Step,
   baseUrl: string,
@@ -189,42 +224,77 @@ export function guide(
   page = 0,
 ): LineMessage[] {
   const item = STEPS[step];
-  const gallery =
-    item.images ??
-    (item.image ? [{ src: item.image, caption: item.title }] : []);
-  const pages = Math.max(1, Math.ceil(gallery.length / 3));
-  page = Math.max(0, Math.min(pages - 1, Math.floor(page)));
+  const pages = guidePages(step);
+  page = guidePage(step, page);
+  const current = pages[page];
   const canSendImages =
-    gallery.length > 0 &&
-    (/^https:\/\//.test(baseUrl) ||
-      (allowLocalImages &&
-        /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(baseUrl)));
+    /^https:\/\//.test(baseUrl) ||
+    (allowLocalImages &&
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(baseUrl));
+  const progressive = pages.length > 1;
   const actions = [
-    ...(canSendImages && page + 1 < pages
-      ? [command("看下一組圖", `圖片教學 ${step} ${page + 1}`)]
-      : []),
-    ...item.related.map((topic) => command(STEPS[topic].title)),
+    ...(progressive && page + 1 < pages.length
+      ? [command("下一張", `圖片教學 ${step} ${page + 1}`)]
+      : progressive
+        ? [command("提交 UID")]
+        : []),
+    ...(page > 0 ? [command("上一張", `圖片教學 ${step} ${page - 1}`)] : []),
+    ...(progressive
+      ? [command("選擇入金方式", "入金教學")]
+      : item.related.map((topic) => command(STEPS[topic].title))),
     command("人工協助"),
     command("選單"),
   ];
-  const pageCaption =
-    canSendImages && gallery.length > 1
-      ? `\n\n圖片 ${page + 1}/${pages} 組：\n${gallery
-          .slice(page * 3, page * 3 + 3)
-          .map((p, i) => `${page * 3 + i + 1}. ${p.caption}`)
-          .join("\n")}`
-      : "";
-  const messages = [
-    reply(`【${item.title}】\n\n${item.text}${pageCaption}`, actions),
-  ];
-  if (canSendImages)
-    return [
-      ...messages,
-      ...gallery.slice(page * 3, page * 3 + 3).map((picture): LineMessage => ({
-        type: "image",
-        originalContentUrl: `${baseUrl}${picture.src}`,
-        previewImageUrl: `${baseUrl}${picture.src}`,
-      })),
+  const card = navigation(actions);
+  if (progressive) {
+    const heading = `${item.title} · ${page + 1}/${pages.length}`;
+    card.altText = `${heading}｜${current.title}`;
+    card.contents.body.contents = [
+      { type: "text", text: heading, wrap: true, size: "sm", color: "#666666" },
+      {
+        type: "text",
+        text: current.title,
+        wrap: true,
+        size: "lg",
+        weight: "bold",
+        margin: "md",
+      },
+      ...(current.src && canSendImages
+        ? [
+            {
+              type: "image" as const,
+              url: baseUrl + current.src,
+              size: "full" as const,
+              aspectMode: "fit" as const,
+              aspectRatio: "3:4",
+              action: link("放大圖片", baseUrl + current.src),
+              margin: "md" as const,
+            },
+          ]
+        : []),
+      {
+        type: "text",
+        text: current.text,
+        wrap: true,
+        size: "md",
+        margin: "md",
+      },
     ];
-  return messages;
+    return [card];
+  }
+  // Keep the navigation on the final message and inside the card, so later
+  // messages cannot remove the only available controls.
+  return [
+    reply(`【${item.title}】\n\n${item.text}`, actions),
+    ...(current.src && canSendImages
+      ? [
+          {
+            type: "image" as const,
+            originalContentUrl: baseUrl + current.src,
+            previewImageUrl: baseUrl + current.src,
+          },
+        ]
+      : []),
+    card,
+  ];
 }

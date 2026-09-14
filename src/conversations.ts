@@ -93,9 +93,26 @@ export async function recordOutgoing(
         userId,
         eventId,
         m.type,
-        m.type === "text" ? redactConversation(m.text) : "[教學圖片]",
+        m.type === "text"
+          ? redactConversation(m.text)
+          : m.type === "flex"
+            ? redactConversation(
+                m.contents.body.contents
+                  .filter((c) => c.type === "text")
+                  .map((c) => c.text)
+                  .join("\n\n"),
+              )
+            : "[教學圖片]",
         JSON.stringify(
-          m.type === "image" ? { imageUrl: m.originalContentUrl } : {},
+          m.type === "image"
+            ? { imageUrl: m.originalContentUrl }
+            : m.type === "flex"
+              ? {
+                  imageUrl: m.contents.body.contents.find(
+                    (c) => c.type === "image",
+                  )?.url,
+                }
+              : {},
         ),
         status,
         Date.now(),
@@ -122,7 +139,7 @@ export async function recentConversation(
 ): Promise<{ role: string; text: string }[]> {
   const rows = await db
     .prepare(
-      `SELECT direction,content FROM conversation_messages WHERE line_user_id=? AND event_id<>? AND message_type='text' AND occurred_at>? AND delivery_status IN ('received','accepted') ORDER BY id DESC LIMIT 6`,
+      `SELECT direction,content FROM conversation_messages WHERE line_user_id=? AND event_id<>? AND message_type IN ('text','flex') AND occurred_at>? AND delivery_status IN ('received','accepted') ORDER BY id DESC LIMIT 6`,
     )
     .bind(userId, excludeEvent, Date.now() - 86400000)
     .all<{ direction: string; content: string }>();

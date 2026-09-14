@@ -572,6 +572,17 @@ async function simulate(text, displayText = text) {
       img.alt = "教學圖片";
       bubble.append(img);
     }
+    if (m.type === "flex") {
+      for (const component of m.contents.body.contents) {
+        if (component.type === "text") bubble.append(el("p", component.text));
+        if (component.type === "image") {
+          const img = el("img");
+          img.src = component.url;
+          img.alt = m.altText;
+          bubble.append(img);
+        }
+      }
+    }
     chat.append(bubble);
     if (m.quickReply) {
       const quick = el("div", undefined, "quick-replies");

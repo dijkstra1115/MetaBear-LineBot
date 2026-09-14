@@ -118,7 +118,10 @@
           };
           row.append(draft);
         }
-        if (m.message_type === "image" && m.direction === "bot") {
+        if (
+          ["image", "flex"].includes(m.message_type) &&
+          m.direction === "bot"
+        ) {
           try {
             const url = new URL(JSON.parse(m.metadata_json).imageUrl);
             if (url.origin === location.origin) {

@@ -9,6 +9,8 @@ export type KnowledgeArticle = {
   source_note: string;
   revision: number;
   updated_at: string;
+  // Request-local aliases participate in both retrieval and final matching.
+  matching_phrases?: string[];
 };
 export const normalizeKnowledge = (value: string) =>
   value
@@ -68,7 +70,7 @@ export async function knowledgeCandidates(
     ]);
   return articleRows.results
     .map((article) => ({
-      article,
+      article: { ...article, matching_phrases: aliases.get(article.id) ?? [] },
       score: lexicalScore(
         text,
         article,
@@ -90,7 +92,7 @@ export function matchKnowledge(
   articles: KnowledgeArticle[],
   contextTopic?: string,
 ): KnowledgeArticle | undefined {
-  const normalized = text.replace(/\s/g, "").toLowerCase();
+  const normalized = normalizeKnowledge(text);
   if (/^(那|所以)?(該|要)?怎麼辦[?？!！。]*$/.test(normalized))
     return articles.find((a) => "kb:" + a.id === contextTopic);
   if (
@@ -104,12 +106,17 @@ export function matchKnowledge(
     .map((a) => ({
       a,
       score: Math.max(
-        a.title === text ? 1000 : 0,
-        ...a.keywords
-          .split(/\n|\\n/)
+        normalizeKnowledge(a.title) === normalized ? 1000 : 0,
+        ...phrases(a, a.matching_phrases)
+          .filter(
+            (k) =>
+              !/^(可以改嗎|能改嗎)$/.test(k) ||
+              contextTopic?.startsWith("kb:referral-"),
+          )
           .map((k) =>
-            normalized.includes(k.trim().toLowerCase()) && k.trim().length >= 2
-              ? k.trim().length
+            normalized.includes(normalizeKnowledge(k)) &&
+            normalizeKnowledge(k).length >= 2
+              ? normalizeKnowledge(k).length
               : 0,
           ),
       ),

@@ -1,5 +1,5 @@
 // Exercises the deployed queue using a temporary synthetic customer and no replyToken.
-// No LINE chat is sent. Removes its own test records only after both events finish.
+// No LINE chat is sent. Removes only its own records after all events finish.
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
@@ -51,12 +51,15 @@ assert.equal(
 for (const [question, format, topic, page] of [
   [
     "我想透過 BitoPro 轉 USDT 到 BingX，該怎麼做？",
-    "text",
+    "image",
     "deposit_bitopro",
     0,
   ],
   ["看圖", "image", "deposit_bitopro", 0],
-  ["下一組圖", "image", "deposit_bitopro", 1],
+  ["下一張", "image", "deposit_bitopro", 1],
+  ["哈嘍", "image", "deposit_bitopro", 1],
+  ["上一張", "image", "deposit_bitopro", 0],
+  ["我的 Email 驗證碼沒有來", "text", "kb:bingx-email-code", 0],
 ]) {
   const id = "queue-smoke-" + randomUUID();
   eventIds.push(id);
@@ -113,7 +116,7 @@ for (const [question, format, topic, page] of [
   );
 }
 await sql(
-  `DELETE FROM teaching_context WHERE line_user_id='${userId}'; DELETE FROM audit_log WHERE line_user_id='${userId}'; DELETE FROM customer_leases WHERE line_user_id='${userId}'; DELETE FROM customers WHERE line_user_id='${userId}'; DELETE FROM webhook_events WHERE event_id IN (${eventIds.map((id) => `'${id}'`).join(",")})`,
+  `DELETE FROM conversation_messages WHERE line_user_id='${userId}'; DELETE FROM route_events WHERE event_id IN (${eventIds.map((id) => `'${id}'`).join(",")}); DELETE FROM teaching_context WHERE line_user_id='${userId}'; DELETE FROM audit_log WHERE line_user_id='${userId}'; DELETE FROM customer_leases WHERE line_user_id='${userId}'; DELETE FROM customers WHERE line_user_id='${userId}'; DELETE FROM webhook_events WHERE event_id IN (${eventIds.map((id) => `'${id}'`).join(",")})`,
 );
 assert.equal(
   (

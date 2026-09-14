@@ -2,7 +2,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createHmac } from "node:crypto";
-import { guide, menu, STEPS } from "../src/content";
+import { guide, guidePages, menu, navigation, STEPS } from "../src/content";
+
+import { knowledgeActions } from "../src/faq";
+import faqSeed from "../data/bingx-faq.json";
 
 const base = "https://metabear-line-crm-staging.style78432.workers.dev";
 const secrets = Object.fromEntries(
@@ -37,18 +40,19 @@ for (const path of [
 }
 for (const path of ["/", "/learn", "/content.json", "/site.js"])
   assert.equal((await request(base + path)).status, 200, path);
-for (const path of [
-  "/admin",
-  "/admin/",
-  "/admin.html",
-  "/api/customers",
-  "/api/config",
-]) {
+for (const path of ["/admin", "/admin/", "/admin.html"]) {
   const r = await request(base + path, { redirect: "manual", headers: auth });
   assert.equal(r.status, 302, path);
-  assert.match(
-    r.headers.get("location") ?? "",
-    /^https:\/\/id3a\.cloudflareaccess\.com\//,
+  assert.equal(
+    new URL(r.headers.get("location") ?? "", base).pathname,
+    "/login",
+  );
+}
+for (const path of ["/api/customers", "/api/config"]) {
+  assert.equal(
+    (await request(base + path, { redirect: "manual", headers: auth })).status,
+    401,
+    path,
   );
 }
 const body = JSON.stringify({ events: [] });
@@ -68,7 +72,8 @@ const signed = await request(base + "/webhook/line", {
 assert.equal(signed.status, 200, "Configured signature");
 console.log(
   JSON.stringify({
-    check: "Worker public assets, Access redirects and webhook signatures",
+    check:
+      "Worker public assets, native login protection and webhook signatures",
     passed: true,
     deliveryMode: "live",
   }),
@@ -106,10 +111,31 @@ for (const [name, messages] of [
   ["registration image", guide("register", base, true)],
   ["KYC image", guide("kyc", base, true)],
   ...(["deposit_bitopro", "deposit_card"] as const).flatMap((step) =>
-    [0, 1, 2].map(
-      (page) =>
-        [step + " page " + page, guide(step, base, true, false, page)] as const,
-    ),
+    guidePages(step)
+      .map((_, page) => page)
+      .map(
+        (page) =>
+          [step + " page " + page, guide(step, base, false, page)] as const,
+      ),
+  ),
+  ...faqSeed.map(
+    (a) =>
+      [
+        a.id,
+        [
+          navigation(
+            knowledgeActions({
+              ...a,
+              keywords: a.keywords.join("\n"),
+              requires_support: Number(a.requires_support),
+              status: "published",
+              source_note: a.source_url,
+              revision: 1,
+              updated_at: a.checked_at,
+            }),
+          ),
+        ],
+      ] as const,
   ),
 ] as const) {
   const validation = await request(

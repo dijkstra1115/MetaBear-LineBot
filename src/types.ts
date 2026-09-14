@@ -33,11 +33,41 @@ export type Action =
   | { type: "postback"; label: string; data: string; displayText: string };
 export type LineMessage =
   | {
+      type: "flex";
+      altText: string;
+      contents: {
+        type: "bubble";
+        body: { type: "box"; layout: "vertical"; contents: FlexComponent[] };
+        footer: { type: "box"; layout: "vertical"; contents: FlexComponent[] };
+      };
+      quickReply?: { items: { type: "action"; action: Action }[] };
+    }
+  | {
       type: "text";
       text: string;
       quickReply?: { items: { type: "action"; action: Action }[] };
     }
   | { type: "image"; originalContentUrl: string; previewImageUrl: string };
+export type FlexComponent =
+  | {
+      type: "text";
+      text: string;
+      wrap: true;
+      size?: string;
+      weight?: "bold";
+      color?: string;
+      margin?: string;
+    }
+  | {
+      type: "image";
+      url: string;
+      size: "full";
+      aspectMode: "fit";
+      aspectRatio: string;
+      action: Action;
+      margin: "md";
+    }
+  | { type: "button"; action: Action; style: "primary" | "link"; height: "sm" };
 export type LineEvent = {
   webhookEventId: string;
   type: string;
