@@ -80,7 +80,11 @@ export default {
       }
     }
   },
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     const url = new URL(request.url);
     try {
       if (url.pathname.startsWith("/auth/"))
@@ -93,7 +97,7 @@ export default {
             status: 405,
             headers: { Allow: "POST" },
           });
-        return await webhook(request, env);
+        return await webhook(request, env, ctx);
       }
       if (url.pathname === "/content.json" && request.method === "GET")
         return json(

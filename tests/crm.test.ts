@@ -382,6 +382,15 @@ test("registration and original image reply use fixed invitation code and public
     "https://crm.test/guides/register.jpg",
   );
 });
+test("admin command returns the protected dashboard link without using AI", async () => {
+  const before = aiCalls;
+  assert.equal((await webhook([event("後台")])).status, 200);
+  assert.match(
+    String(calls.at(-1)?.messages[0]?.text),
+    /https:\/\/crm\.test\/admin/,
+  );
+  assert.equal(aiCalls, before);
+});
 test("related question buttons open the named answer directly", async () => {
   await webhook([event("選單")]);
   await webhook([event("開始註冊")]);

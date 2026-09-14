@@ -1,9 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import { richMenuDefinition } from "../src/line-rich-menu";
 import { startLoading } from "../src/line-loading";
+import { webhook } from "../src/webhook";
 
 test("BingX signed fetch runs inside workerd and never follows a credential redirect", async () => {
   const result = await build({
@@ -81,6 +83,69 @@ test("loading indicator is optional, lasts 60 seconds, and respects disabled del
       "U" + "a".repeat(32),
     );
     assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+test("verified webhook starts loading before the queued reply is processed", async () => {
+  const previous = globalThis.fetch;
+  const secret = "test-line-secret";
+  const userId = "U" + "a".repeat(32);
+  const body = JSON.stringify({
+    events: [
+      {
+        webhookEventId: "event-1",
+        type: "message",
+        timestamp: Date.now(),
+        source: { type: "user", userId },
+        replyToken: "reply-1",
+        message: { type: "text", text: "後台" },
+      },
+    ],
+  });
+  let loadingStarted = false;
+  let enqueued = false;
+  const background: Promise<unknown>[] = [];
+  globalThis.fetch = async (input) => {
+    assert.equal(
+      String(input),
+      "https://api.line.me/v2/bot/chat/loading/start",
+    );
+    loadingStarted = true;
+    return new Response("{}", { status: 202 });
+  };
+  try {
+    const response = await webhook(
+      new Request("https://crm.test/webhook/line", {
+        method: "POST",
+        headers: {
+          "X-Line-Signature": createHmac("sha256", secret)
+            .update(body)
+            .digest("base64"),
+        },
+        body,
+      }),
+      {
+        LINE_CHANNEL_SECRET: secret,
+        LINE_CHANNEL_ACCESS_TOKEN: "test",
+        LINE_DELIVERY_MODE: "live",
+        LINE_EVENTS: {
+          async sendBatch() {
+            assert.equal(loadingStarted, true);
+            enqueued = true;
+          },
+        },
+      } as Env,
+      {
+        waitUntil(promise) {
+          background.push(promise);
+        },
+        passThroughOnException() {},
+      } as ExecutionContext,
+    );
+    assert.equal(response.status, 200);
+    assert.equal(enqueued, true);
+    await Promise.all(background);
   } finally {
     globalThis.fetch = previous;
   }

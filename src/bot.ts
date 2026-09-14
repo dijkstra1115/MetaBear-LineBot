@@ -68,6 +68,8 @@ async function respondBase(
     return [menu()];
   }
   if (text === "更多教學") return [moreMenu()];
+  if (text === "後台")
+    return [reply(`管理員後台（需登入）：\n${base}/admin`, [command("選單")])];
   if (text === "繼續使用小幫手") {
     await resumeBot(db, userId);
     return [

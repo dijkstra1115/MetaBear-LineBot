@@ -13,7 +13,11 @@ import {
 } from "./conversations";
 import { requestSupport } from "./support";
 
-export async function webhook(request: Request, env: Env) {
+export async function webhook(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const raw = await readBody(request, 262144);
   if (
     !(await signatureValid(
@@ -55,6 +59,15 @@ export async function webhook(request: Request, env: Env) {
     )
       throw new HttpError(400, "Missing event identity");
     accepted.push(event);
+  }
+  // Start LINE's optional loading indicator as soon as the verified webhook is
+  // accepted. The durable queue still owns reply generation and delivery.
+  for (const event of accepted) {
+    if (
+      ["message", "postback"].includes(event.type) &&
+      Date.now() - event.timestamp < 60000
+    )
+      ctx.waitUntil(startLoading(env, event.source!.userId!));
   }
   // Acknowledge only after durable enqueue, without waiting for AI or LINE replies.
   // LINE may close its webhook connection before those network calls complete.
@@ -99,12 +112,6 @@ export async function processLineEvent(event: LineEvent, env: Env) {
     if (!customerClaim)
       throw new HttpError(503, "Customer is processing; retry later");
     await recordIncoming(env, event);
-    if (
-      !claim.messages_json &&
-      ["message", "postback"].includes(event.type) &&
-      Date.now() - event.timestamp < 60000
-    )
-      await startLoading(env, userId);
     let messages: LineMessage[] = [];
     if (claim.messages_json)
       messages = JSON.parse(claim.messages_json) as LineMessage[];
