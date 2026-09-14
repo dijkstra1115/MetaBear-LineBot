@@ -5,6 +5,7 @@ import {
   command,
   guide,
   menu,
+  moreMenu,
   reply,
 } from "./content";
 import { ensureCustomer, now } from "./db";
@@ -12,21 +13,24 @@ import { isStep, routeQuestion, type TeachingContext } from "./assistant";
 import type { Account, LineMessage } from "./types";
 import { enqueueSync, customerAutomation } from "./automation";
 import { getTeam, personalize } from "./team";
-import { publishedKnowledge } from "./knowledge";
+import { knowledgeCandidates } from "./knowledge";
 import { recentConversation } from "./conversations";
+import { activeSupportCase, requestSupport, resumeBot } from "./support";
 
-async function handoff(db: D1Database, userId: string): Promise<LineMessage[]> {
-  const marked = await db
-    .prepare(
-      "UPDATE customers SET support_requested=1, updated_at=? WHERE line_user_id=? AND support_requested=0",
-    )
-    .bind(now(), userId)
-    .run();
+async function handoff(
+  env: Env,
+  userId: string,
+  eventId: string,
+): Promise<LineMessage[]> {
+  const { support, created } = await requestSupport(env, userId, eventId);
+  const claimed = support.status === "claimed";
   return [
     reply(
-      marked.meta.changes
-        ? "已在後台標記需要人工協助。請直接在這裡描述遇到的問題，客服可到 LINE 官方帳號對話查看；這不代表已有人接手。\n\n你也可以繼續詢問，我會先提供已有的解法。請勿提供密碼或登入驗證碼。"
-        : "你的人工協助需求仍保留在後台，不必重複申請。請繼續描述卡住的地方；已有解法的問題，我會先回答。",
+      created
+        ? "已通知客服有新的協助需求。請直接在這裡描述卡住的畫面或步驟；客服認領後，Bot 會暫停自動回答。請勿提供密碼或登入驗證碼。"
+        : claimed
+          ? `客服${support.owner_name ? `「${support.owner_name}」` : ""}已接手。你可以繼續留言；若想先使用自動教學，請點「繼續使用小幫手」。`
+          : "你的人工協助需求仍在等待認領，不必重複申請。可以繼續描述卡住的地方。",
       [command("選單")],
     ),
   ];
@@ -38,9 +42,10 @@ export async function respond(
   input: string,
   env: Env,
   eventId: string,
+  eventTimestamp = Date.now(),
 ): Promise<LineMessage[]> {
   return personalize(
-    await respondBase(db, userId, input, env, eventId),
+    await respondBase(db, userId, input, env, eventId, eventTimestamp),
     await getTeam(db),
   );
 }
@@ -50,6 +55,7 @@ async function respondBase(
   input: string,
   env: Env,
   eventId: string,
+  eventTimestamp: number,
 ): Promise<LineMessage[]> {
   const customer = await ensureCustomer(db, userId);
   const text = input.trim();
@@ -60,6 +66,16 @@ async function respondBase(
       .bind(userId)
       .run();
     return [menu()];
+  }
+  if (text === "更多教學") return [moreMenu()];
+  if (text === "繼續使用小幫手") {
+    await resumeBot(db, userId);
+    return [
+      reply("已恢復自動教學；人工協助案件仍會保留。", [
+        command("更多教學"),
+        command("選單"),
+      ]),
+    ];
   }
   if (/^(停止通知|退訂|取消訂閱|訂閱通知)$/.test(text)) {
     const consent = text === "訂閱通知" ? 1 : 0;
@@ -100,7 +116,7 @@ async function respondBase(
       text,
     )
   ) {
-    return handoff(db, userId);
+    return handoff(env, userId, eventId);
   }
   if (text === "交易偏好")
     return [
@@ -265,6 +281,14 @@ async function respondBase(
       ),
     ];
   }
+  const claimedSupport = await activeSupportCase(db, userId);
+  if (claimedSupport?.status === "claimed" && claimedSupport.bot_paused)
+    return [
+      reply(
+        `客服${claimedSupport.owner_name ? `「${claimedSupport.owner_name}」` : ""}已接手，目前已暫停 Bot 自動回答。你可以繼續留言給客服，或選擇恢復自動教學。`,
+        [command("繼續使用小幫手"), command("選單")],
+      ),
+    ];
   const context = await db
     .prepare(
       "SELECT topic, format, image_page FROM teaching_context WHERE line_user_id=?",
@@ -275,25 +299,40 @@ async function respondBase(
     /^(?:看?(?:下一張|下張|下一組|下一組圖)|繼續看圖)[！!。?？]*$/.test(text) &&
     context &&
     isStep(context.topic);
+  const routedAt = Date.now();
   const [articles, history] = await Promise.all([
-    publishedKnowledge(db),
+    knowledgeCandidates(db, text, context?.topic, 5),
     recentConversation(db, userId, eventId),
   ]);
   const route = nextImage
-    ? { topic: context.topic, format: "image" as const }
+    ? {
+        topic: context.topic,
+        format: "image" as const,
+        method: "direct" as const,
+        candidateCount: articles.length,
+      }
     : await routeQuestion(text, context, env, articles, history);
+  await db
+    .prepare(
+      "INSERT OR IGNORE INTO route_events(event_id,method,topic,candidate_count,latency_ms,queue_delay_ms,created_at) VALUES (?,?,?,?,?,?,?)",
+    )
+    .bind(
+      eventId,
+      route.method,
+      route.topic,
+      route.candidateCount,
+      Date.now() - routedAt,
+      Math.max(0, routedAt - eventTimestamp),
+      Date.now(),
+    )
+    .run();
   if (route.topic.startsWith("kb:")) {
     const article = articles.find((a) => "kb:" + a.id === route.topic);
     if (article) {
       let marked = false;
       if (article.requires_support) {
-        const result = await db
-          .prepare(
-            "UPDATE customers SET support_requested=1,updated_at=? WHERE line_user_id=? AND support_requested=0",
-          )
-          .bind(now(), userId)
-          .run();
-        marked = result.meta.changes === 1;
+        const support = await requestSupport(env, userId, eventId);
+        marked = support.created;
       }
       await db
         .prepare(
@@ -318,7 +357,7 @@ async function respondBase(
         reply(
           article.answer +
             (marked
-              ? "\n\n這項問題需要人工核實，已加入後台的需協助名單。"
+              ? "\n\n這項問題需要人工核實，已通知客服並加入需協助名單。"
               : ""),
           [command("我的進度"), command("人工協助"), command("選單")],
         ),
@@ -331,7 +370,7 @@ async function respondBase(
     : explicitPage
       ? Number(explicitPage[1])
       : 0;
-  if (route.topic === "support") return handoff(db, userId);
+  if (route.topic === "support") return handoff(env, userId, eventId);
   if (route.topic === "clarify") {
     return [
       reply(

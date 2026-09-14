@@ -123,7 +123,15 @@ async function loadCustomers() {
       ),
     );
     if (c.support_requested)
-      stage.append(el("span", "需協助", "cell-secondary"));
+      stage.append(
+        el(
+          "span",
+          c.support_status === "claimed"
+            ? `客服已接手${c.support_owner ? ` · ${c.support_owner}` : ""}`
+            : "等待客服認領",
+          "cell-secondary",
+        ),
+      );
     else
       stage.append(
         el(
@@ -206,6 +214,14 @@ async function loadStats() {
     );
     $("#stage-strip").append(b);
   }
+  const routing = data.routing || {};
+  const totalRoutes = Number(routing.total || 0);
+  const clarificationRate = totalRoutes
+    ? Math.round((Number(routing.clarifications || 0) / totalRoutes) * 100)
+    : 0;
+  $("#routing-summary").textContent = totalRoutes
+    ? `近 ${routing.days} 天路由 ${totalRoutes} 次 · 需澄清 ${clarificationRate}% · 路由平均 ${Number(routing.average_latency_ms || 0).toLocaleString("zh-TW")} ms · Queue 平均 ${Number(routing.average_queue_delay_ms || 0).toLocaleString("zh-TW")} ms／最慢 ${Number(routing.maximum_queue_delay_ms || 0).toLocaleString("zh-TW")} ms`
+    : "近 7 天尚無自然提問路由資料。";
 }
 async function refresh() {
   await Promise.all([loadCustomers(), loadStats()]);
@@ -347,7 +363,7 @@ async function openCustomer(id) {
     "tags",
   ])
     field(f, key).value = data.customer[key];
-  field(f, "support_requested").checked = !!data.customer.support_requested;
+  field(f, "support_status").value = data.support?.status || "resolved";
   for (const key of [
     "uid",
     "referral_status",
@@ -406,7 +422,7 @@ $("#customer-form").addEventListener("submit", async (e) => {
     "tags",
   ])
     data[key] = field(f, key).value;
-  data.support_requested = field(f, "support_requested").checked;
+  data.support_status = field(f, "support_status").value;
   if (field(f, "uid").value.trim()) {
     data.account = {};
     for (const key of [

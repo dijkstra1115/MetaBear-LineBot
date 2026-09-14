@@ -83,7 +83,8 @@ export const STEPS: Record<
       { src: "/guides/credit-02.jpg", caption: "選擇快捷買幣" },
       {
         src: "/guides/credit-03.jpg",
-        caption: "輸入法幣或 USDT 金額；100 USDT 為舊示例，社群不設最低入金金額",
+        caption:
+          "輸入法幣或 USDT 金額；100 USDT 為舊示例，社群不設最低入金金額",
       },
       {
         src: "/guides/credit-04.jpg",
@@ -158,16 +159,29 @@ export const reply = (text: string, actions: Action[] = []): LineMessage => ({
 });
 export const menu = () =>
   reply(
-    "我是 MetaBear 小幫手。\n直接點選你想問的問題，或告訴我卡在哪個畫面。每個問題都能獨立查看，有教學圖片會一起附上。也能問合約與開倉的基本概念。",
+    "我是 MetaBear 小幫手。你可以直接說卡在哪裡，或先選一個最接近的需求。",
     [
-      ...Object.values(STEPS).map((item) => item.title),
-      "我的進度",
-      "合約基礎",
-      "交易偏好",
-      "通知設定",
-      "人工協助",
-    ].map((x) => command(x)),
+      command("開始註冊"),
+      command("入金教學"),
+      command("查詢進度", "我的進度"),
+      command("遇到問題", "人工協助"),
+      command("更多教學"),
+    ],
   );
+
+export const moreMenu = () =>
+  reply("你想看哪一項？每個問題都能獨立查看。", [
+    command(STEPS.code.title),
+    command(STEPS.kyc.title),
+    command(STEPS.deposit_bitopro.title),
+    command(STEPS.deposit_card.title),
+    command(STEPS.uid.title),
+    command("合約基礎"),
+    command("交易偏好"),
+    command("通知設定"),
+    command("人工協助"),
+    command("選單"),
+  ]);
 export function guide(
   step: Step,
   baseUrl: string,
@@ -205,12 +219,12 @@ export function guide(
   ];
   if (canSendImages)
     return [
+      ...messages,
       ...gallery.slice(page * 3, page * 3 + 3).map((picture): LineMessage => ({
         type: "image",
         originalContentUrl: `${baseUrl}${picture.src}`,
         previewImageUrl: `${baseUrl}${picture.src}`,
       })),
-      ...messages,
     ];
   return messages;
 }

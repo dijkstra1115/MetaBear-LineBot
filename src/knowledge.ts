@@ -10,16 +10,80 @@ export type KnowledgeArticle = {
   revision: number;
   updated_at: string;
 };
-export async function publishedKnowledge(
+export const normalizeKnowledge = (value: string) =>
+  value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+
+function phrases(article: KnowledgeArticle, aliases: string[] = []) {
+  return [article.title, ...article.keywords.split(/\n|\\n/), ...aliases]
+    .map((value) => value.trim())
+    .filter((value) => value.length >= 2);
+}
+
+function lexicalScore(
+  text: string,
+  article: KnowledgeArticle,
+  aliases: string[],
+  contextTopic?: string,
+) {
+  const normalized = normalizeKnowledge(text);
+  if (!normalized) return 0;
+  let score = normalizeKnowledge(article.title) === normalized ? 1000 : 0;
+  for (const phrase of phrases(article, aliases)) {
+    const key = normalizeKnowledge(phrase);
+    if (!key) continue;
+    if (normalized.includes(key)) score = Math.max(score, 100 + key.length * 4);
+    else if (key.includes(normalized) && normalized.length >= 4)
+      score = Math.max(score, 60 + normalized.length * 2);
+  }
+  if (contextTopic === "kb:" + article.id) score += 25;
+  return score;
+}
+
+export async function knowledgeCandidates(
   db: D1Database,
+  text: string,
+  contextTopic?: string,
+  limit = 5,
 ): Promise<KnowledgeArticle[]> {
-  return (
-    await db
+  const [articleRows, aliasRows] = await Promise.all([
+    db
       .prepare(
-        "SELECT * FROM knowledge_articles WHERE status='published' ORDER BY id LIMIT 100",
+        "SELECT * FROM knowledge_articles WHERE status='published' ORDER BY updated_at DESC,id LIMIT 500",
       )
-      .all<KnowledgeArticle>()
-  ).results;
+      .all<KnowledgeArticle>(),
+    db
+      .prepare(
+        "SELECT article_id,phrase FROM knowledge_aliases ORDER BY weight DESC,phrase",
+      )
+      .all<{ article_id: string; phrase: string }>(),
+  ]);
+  const aliases = new Map<string, string[]>();
+  for (const row of aliasRows.results)
+    aliases.set(row.article_id, [
+      ...(aliases.get(row.article_id) ?? []),
+      row.phrase,
+    ]);
+  return articleRows.results
+    .map((article) => ({
+      article,
+      score: lexicalScore(
+        text,
+        article,
+        aliases.get(article.id) ?? [],
+        contextTopic,
+      ),
+    }))
+    .filter(({ score }) => score > 0)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.article.updated_at.localeCompare(a.article.updated_at),
+    )
+    .slice(0, Math.max(1, Math.min(10, limit)))
+    .map(({ article }) => article);
 }
 export function matchKnowledge(
   text: string,
@@ -52,6 +116,36 @@ export function matchKnowledge(
     }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)[0]?.a;
+}
+
+function aliasStatements(
+  db: D1Database,
+  articleId: string,
+  title: string,
+  keywords: string,
+) {
+  const values = [
+    ...new Set([title, ...keywords.split(/\n|\\n/)].map((x) => x.trim())),
+  ]
+    .filter((x) => x.length >= 2)
+    .slice(0, 31);
+  return [
+    db
+      .prepare("DELETE FROM knowledge_aliases WHERE article_id=? AND managed=1")
+      .bind(articleId),
+    ...values.map((phrase, index) =>
+      db
+        .prepare(
+          "INSERT INTO knowledge_aliases(article_id,phrase,normalized,weight,managed) VALUES (?,?,?,?,1) ON CONFLICT(article_id,normalized) DO UPDATE SET phrase=excluded.phrase,weight=excluded.weight",
+        )
+        .bind(
+          articleId,
+          phrase,
+          normalizeKnowledge(phrase),
+          index === 0 ? 20 : 10,
+        ),
+    ),
+  ];
 }
 export async function knowledgeApi(
   request: Request,
@@ -89,8 +183,8 @@ export async function knowledgeApi(
     const count = await env.DB.prepare(
       "SELECT count(*) AS n FROM knowledge_articles",
     ).first<{ n: number }>();
-    if ((count?.n || 0) >= 100)
-      throw new HttpError(400, "目前最多 100 則知識，請整理既有項目");
+    if ((count?.n || 0) >= 500)
+      throw new HttpError(400, "目前最多 500 則知識，請整理或封存既有項目");
     await env.DB.prepare(
       "INSERT INTO knowledge_articles(id,title,keywords,answer,requires_support,status,source_note) VALUES (?,?,?,?,?,?,?)",
     )
@@ -104,6 +198,21 @@ export async function knowledgeApi(
         source,
       )
       .run();
+    await env.DB.batch([
+      ...aliasStatements(env.DB, id, title, keywords),
+      env.DB.prepare(
+        "INSERT INTO knowledge_versions(article_id,revision,title,keywords,answer,requires_support,status,source_note,actor) VALUES (?,1,?,?,?,?,?,?,?)",
+      ).bind(
+        id,
+        title,
+        keywords,
+        answer,
+        body.requires_support ? 1 : 0,
+        status,
+        source,
+        email,
+      ),
+    ]);
   } else {
     if (!Number.isSafeInteger(body.revision) || Number(body.revision) < 1)
       throw new HttpError(400, "版本不正確");
@@ -123,6 +232,22 @@ export async function knowledgeApi(
       .run();
     if (result.meta.changes !== 1)
       throw new HttpError(409, "此項已更新，請重新載入後再儲存");
+    await env.DB.batch([
+      ...aliasStatements(env.DB, id, title, keywords),
+      env.DB.prepare(
+        "INSERT INTO knowledge_versions(article_id,revision,title,keywords,answer,requires_support,status,source_note,actor) VALUES (?,?,?,?,?,?,?,?,?)",
+      ).bind(
+        id,
+        Number(body.revision) + 1,
+        title,
+        keywords,
+        answer,
+        body.requires_support ? 1 : 0,
+        status,
+        source,
+        email,
+      ),
+    ]);
   }
   await env.DB.prepare(
     "INSERT INTO audit_log(action,detail) VALUES ('knowledge.update',?)",

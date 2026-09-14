@@ -11,6 +11,7 @@ import { getTeam, personalize } from "./team";
 import { enrollmentApi } from "./auth-enrollment";
 import { knowledgeApi } from "./knowledge";
 import { conversationApi } from "./conversations";
+import { activeSupportCase, updateSupportCase } from "./support";
 
 const stages = [
   "new",
@@ -22,6 +23,7 @@ const stages = [
 ] as const;
 const preferences = ["unknown", "spot", "futures", "both", "learning"] as const;
 const statuses = ["pending", "verified", "rejected"] as const;
+const supportStatuses = ["pending", "claimed", "resolved"] as const;
 const validId = (id: string) => {
   if (!/^U[a-f0-9]{32}$/i.test(id))
     throw new HttpError(
@@ -66,16 +68,40 @@ export async function admin(request: Request, env: Env): Promise<Response> {
       },
     });
   if (request.method === "GET" && path === "/api/stats") {
-    const counts = await env.DB.prepare(
-      "SELECT stage, count(*) AS count FROM customers GROUP BY stage",
-    ).all();
-    const review = await env.DB.prepare(
-      "SELECT count(*) AS count FROM exchange_accounts WHERE referral_status='pending' OR deposit_status='pending'",
-    ).first();
-    const support = await env.DB.prepare(
-      "SELECT count(*) AS count FROM customers WHERE support_requested=1",
-    ).first();
-    return json({ stages: counts.results, review, support });
+    const since = Date.now() - 7 * 86400000;
+    const [counts, review, support, routing, methods] = await Promise.all([
+      env.DB.prepare(
+        "SELECT stage, count(*) AS count FROM customers GROUP BY stage",
+      ).all(),
+      env.DB.prepare(
+        "SELECT count(*) AS count FROM exchange_accounts WHERE referral_status='pending' OR deposit_status='pending'",
+      ).first(),
+      env.DB.prepare(
+        "SELECT count(*) AS count FROM customers WHERE support_requested=1",
+      ).first(),
+      env.DB.prepare(
+        `SELECT count(*) AS total,
+          sum(CASE WHEN topic='clarify' THEN 1 ELSE 0 END) AS clarifications,
+          round(avg(latency_ms)) AS average_latency_ms,
+          max(latency_ms) AS maximum_latency_ms,
+          round(avg(queue_delay_ms)) AS average_queue_delay_ms,
+          max(queue_delay_ms) AS maximum_queue_delay_ms
+         FROM route_events WHERE created_at>=?`,
+      )
+        .bind(since)
+        .first(),
+      env.DB.prepare(
+        "SELECT method,count(*) AS count FROM route_events WHERE created_at>=? GROUP BY method ORDER BY count DESC",
+      )
+        .bind(since)
+        .all(),
+    ]);
+    return json({
+      stages: counts.results,
+      review,
+      support,
+      routing: { ...(routing ?? {}), methods: methods.results, days: 7 },
+    });
   }
   if (
     request.method === "GET" &&
@@ -114,7 +140,7 @@ export async function admin(request: Request, env: Env): Promise<Response> {
       .first<Customer>();
     if (!customer) throw new HttpError(404, "找不到這位用戶");
     if (request.method === "GET" && !match[2]) {
-      const [account, volumes, audit] = await Promise.all([
+      const [account, volumes, audit, support] = await Promise.all([
         env.DB.prepare("SELECT * FROM exchange_accounts WHERE line_user_id=?")
           .bind(id)
           .first(),
@@ -128,10 +154,12 @@ export async function admin(request: Request, env: Env): Promise<Response> {
         )
           .bind(id)
           .all(),
+        activeSupportCase(env.DB, id),
       ]);
       return json({
         customer,
         account,
+        support,
         volumes: volumes.results,
         audit: audit.results,
       });
@@ -177,7 +205,7 @@ export async function admin(request: Request, env: Env): Promise<Response> {
         data.preference === undefined
           ? customer.preference
           : choice(data.preference, preferences);
-      const support =
+      const requestedSupport =
         data.support_requested === undefined
           ? customer.support_requested
           : data.support_requested === true
@@ -185,7 +213,19 @@ export async function admin(request: Request, env: Env): Promise<Response> {
             : data.support_requested === false
               ? 0
               : -1;
-      if (support === -1) throw new HttpError(400, "人工協助欄位不正確");
+      if (requestedSupport === -1)
+        throw new HttpError(400, "人工協助欄位不正確");
+      const supportStatus =
+        data.support_status === undefined
+          ? undefined
+          : choice(data.support_status, supportStatuses);
+      if (supportStatus === "claimed" && !ownerName)
+        throw new HttpError(400, "認領人工協助前請填寫負責客服");
+      const support = supportStatus
+        ? supportStatus === "resolved"
+          ? 0
+          : 1
+        : requestedSupport;
       const account = await env.DB.prepare(
         "SELECT * FROM exchange_accounts WHERE line_user_id=?",
       )
@@ -293,6 +333,7 @@ export async function admin(request: Request, env: Env): Promise<Response> {
               stage,
               preference,
               support,
+              supportStatus,
               referral,
               deposit,
             },
@@ -301,6 +342,8 @@ export async function admin(request: Request, env: Env): Promise<Response> {
       );
       try {
         await env.DB.batch(statements);
+        if (supportStatus)
+          await updateSupportCase(env.DB, id, supportStatus, ownerName);
         if (data.account && (await getTeam(env.DB)).automation_enabled)
           await enqueueSync(env, id);
       } catch (error) {

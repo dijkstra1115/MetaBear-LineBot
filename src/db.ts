@@ -35,6 +35,8 @@ export const customerSelect = `SELECT c.*, a.uid, a.referral_status, a.deposit_s
   COALESCE(am.volume,v.volume_usdt) AS volume_usdt, COALESCE(am.month,v.month) AS volume_month,
   CASE WHEN am.volume IS NOT NULL THEN 'bingx_api' ELSE v.source END AS volume_source,
   s.qualification, s.checked_at AS synced_at,
+  (SELECT status FROM support_cases sc WHERE sc.line_user_id=c.line_user_id AND sc.status IN ('pending','claimed') ORDER BY requested_at DESC LIMIT 1) AS support_status,
+  (SELECT owner_name FROM support_cases sc WHERE sc.line_user_id=c.line_user_id AND sc.status IN ('pending','claimed') ORDER BY requested_at DESC LIMIT 1) AS support_owner,
   (SELECT status FROM vip_deliveries vd WHERE vd.line_user_id=c.line_user_id AND vd.uid=a.uid LIMIT 1) AS vip_status
   FROM customers c LEFT JOIN exchange_accounts a ON a.line_user_id=c.line_user_id AND a.exchange='bingx'
   LEFT JOIN volume_records v ON v.line_user_id=c.line_user_id AND v.exchange='bingx' AND v.month=?

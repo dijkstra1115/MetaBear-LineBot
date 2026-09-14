@@ -9,7 +9,8 @@ import {
   recentConversation,
   cleanupConversations,
 } from "../src/conversations";
-import { guide, menu, STEPS } from "../src/content";
+import { guide, menu, moreMenu, STEPS } from "../src/content";
+import { activeSupportCase } from "../src/support";
 import { createHmac } from "node:crypto";
 import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
@@ -41,6 +42,7 @@ let clock = Date.now(),
   failOnce = false;
 let aiMode: "normal" | "invalid" | "unavailable" = "normal";
 let aiGate: Promise<void> | undefined;
+let aiCalls = 0;
 const event = (text: string, userId = alice, id = crypto.randomUUID()) => ({
   webhookEventId: id,
   type: "message",
@@ -155,7 +157,7 @@ before(async () => {
         LINE_CHANNEL_ACCESS_TOKEN: "test",
         LINE_DELIVERY_MODE: "live",
         PUBLIC_BASE_URL: "https://crm.test",
-        OPENAI_MODEL: "gpt-4.1-mini",
+        OPENAI_MODEL: "gpt-5.6-luna",
         OPENAI_API_KEY: "test-only-openai-key",
         ENVIRONMENT: "production",
       },
@@ -186,12 +188,14 @@ before(async () => {
           return Response.json({});
         }
         if (request.url === "https://api.openai.com/v1/responses") {
+          aiCalls++;
           if (aiGate) await aiGate;
           if (aiMode === "unavailable")
             return new Response("{}", { status: 503 });
           const payload = (await request.json()) as any;
           const input = JSON.parse(payload.input[1].content);
           assert.equal(payload.store, false);
+          assert.equal(payload.reasoning.effort, "none");
           assert.equal(payload.text.format.type, "json_schema");
           assert.equal(JSON.stringify(input).includes(alice), false);
           const route =
@@ -202,7 +206,7 @@ before(async () => {
                   input.currentTopic
                     ? {
                         topic: input.currentTopic,
-                        format: input.preferredFormat,
+                        format: "image",
                       }
                     : null,
                 );
@@ -254,6 +258,12 @@ before(async () => {
       .filter(Boolean)
       .map((s) => db.prepare(s)),
   );
+  await db
+    .prepare(
+      "INSERT INTO auth_admin_channels(email,line_user_id,enrolled_at,enrolled_event_id) VALUES (?,?,?,?)",
+    )
+    .bind(owner, alice, Date.now(), "test-admin-enrollment")
+    .run();
 });
 after(async () => {
   await mf?.dispose();
@@ -362,25 +372,27 @@ test("webhook verifies original body before processing; LINE verification accept
 });
 test("registration and original image reply use fixed invitation code and public HTTPS", async () => {
   assert.equal((await webhook([event("我要註冊")])).status, 200);
-  assert.match(String(calls.at(-1)?.messages.at(-1)?.text), /ZD0CQ0/);
+  assert.match(String(calls.at(-1)?.messages[0]?.text), /ZD0CQ0/);
   assert.equal((await getCustomer()).customer.stage, "registering");
   assert.equal((await webhook([event("圖片教學 code")])).status, 200);
-  assert.equal(calls.at(-1)?.messages[0].type, "image");
+  assert.equal(calls.at(-1)?.messages[0].type, "text");
+  assert.equal(calls.at(-1)?.messages[1].type, "image");
   assert.equal(
-    calls.at(-1)?.messages[0].originalContentUrl,
+    calls.at(-1)?.messages[1].originalContentUrl,
     "https://crm.test/guides/register.jpg",
   );
 });
 test("related question buttons open the named answer directly", async () => {
   await webhook([event("選單")]);
   await webhook([event("開始註冊")]);
-  const message = calls.at(-1)?.messages.at(-1) as any;
+  const message = calls.at(-1)?.messages[0] as any;
   const action = message.quickReply.items[0].action;
   assert.equal(action.type, "message");
   assert.equal(action.label, "邀請碼填在哪裡？");
   assert.equal(action.text, action.label);
   await webhook([event(action.text)]);
-  assert.equal(calls.at(-1)?.messages[0].type, "image");
+  assert.equal(calls.at(-1)?.messages[0].type, "text");
+  assert.equal(calls.at(-1)?.messages[1].type, "image");
   assert.equal((await getCustomer()).customer.guide_step, "code");
 });
 test("same webhook is processed only once and group UID messages are ignored", async () => {
@@ -599,13 +611,14 @@ test("webhook acknowledges while AI is still pending; queue completes after HTTP
 test("AI selects approved native images for semantic questions", async () => {
   await webhook([event("這個地方要寫誰介紹的？")]);
   const messages = calls.at(-1)!.messages;
-  assert.equal(messages[0].type, "image");
+  assert.equal(messages[0].type, "text");
+  assert.match(String(messages[0].text), /Referral Code/);
+  assert.match(String(messages[0].text), /ZD0CQ0/);
+  assert.equal(messages[1].type, "image");
   assert.equal(
-    messages[0].originalContentUrl,
+    messages[1].originalContentUrl,
     "https://crm.test/guides/register.jpg",
   );
-  assert.match(String(messages[1].text), /Referral Code/);
-  assert.match(String(messages[1].text), /ZD0CQ0/);
   assert.equal((await getCustomer()).customer.guide_step, "code");
 });
 
@@ -613,20 +626,16 @@ test("natural follow-ups attach available images and keep each user's context se
   const learner = "Ucccccccccccccccccccccccccccccccc";
   const other = "Udddddddddddddddddddddddddddddddd";
   await webhook([event("我該如何註冊？", learner)]);
-  assert.equal(calls.at(-1)!.messages[0].type, "image");
+  assert.equal(calls.at(-1)!.messages[0].type, "text");
+  assert.equal(calls.at(-1)!.messages[1].type, "image");
   await webhook([event("給我看圖", learner)]);
-  assert.equal(calls.at(-1)!.messages[0].type, "image");
+  assert.equal(calls.at(-1)!.messages[1].type, "image");
   await webhook([event("看圖", other)]);
   assert.equal(
     calls.at(-1)!.messages.some((m) => m.type === "image"),
     false,
   );
   assert.match(String(calls.at(-1)!.messages[0].text), /你想了解/);
-  await webhook([event("文字就好", learner)]);
-  assert.equal(
-    calls.at(-1)!.messages.some((m) => m.type === "image"),
-    true,
-  );
   await webhook([event("我已經註冊好了，接下來呢？", learner)]);
   const c = await getCustomer(learner);
   assert.equal(c.customer.guide_step, "kyc");
@@ -634,7 +643,7 @@ test("natural follow-ups attach available images and keep each user's context se
   assert.equal(c.account, null);
   await webhook([event("看圖", learner)]);
   assert.equal(
-    calls.at(-1)!.messages[0].originalContentUrl,
+    calls.at(-1)!.messages[1].originalContentUrl,
     "https://crm.test/guides/kyc.jpg",
   );
   await webhook([event("UID 要在哪裡找？", learner)]);
@@ -648,6 +657,26 @@ test("natural follow-ups attach available images and keep each user's context se
   );
   assert.match(String(calls.at(-1)!.messages[0].text), /名義倉位/);
   assert.doesNotMatch(String(calls.at(-1)!.messages[0].text), /還沒有對應/);
+});
+
+test("high-confidence rules skip AI and route metrics expose latency without message text", async () => {
+  const user = "U" + crypto.randomUUID().replaceAll("-", "");
+  const before = aiCalls;
+  const e = event("KYC 怎麼做", user);
+  await webhook([e]);
+  assert.equal(aiCalls, before);
+  const route = await db
+    .prepare("SELECT * FROM route_events WHERE event_id=?")
+    .bind(e.webhookEventId)
+    .first<any>();
+  assert.equal(route.method, "rule");
+  assert.equal(route.topic, "kyc");
+  assert.ok(route.latency_ms >= 0);
+  assert.ok(route.queue_delay_ms >= 0);
+  assert.equal(JSON.stringify(route).includes("KYC 怎麼做"), false);
+  const stats = (await (await call("/api/stats")).json()) as any;
+  assert.ok(Number(stats.routing.total) >= 1);
+  assert.ok(Array.isArray(stats.routing.methods));
 });
 
 test("unavailable or invalid AI output falls back to approved content without changing consent", async () => {
@@ -673,11 +702,29 @@ test("every menu question works independently without AI or prior registration",
   assert.equal(entry.type, "text");
   if (entry.type !== "text") return;
   const labels = entry.quickReply!.items.map(({ action }) => action.label);
-  assert.ok(labels.length <= 13);
+  assert.deepEqual(labels, [
+    "開始註冊",
+    "入金教學",
+    "查詢進度",
+    "遇到問題",
+    "更多教學",
+  ]);
+  const more = moreMenu();
+  assert.equal(more.type, "text");
+  const allLabels = [
+    ...labels,
+    ...(more.type === "text"
+      ? more.quickReply!.items.map(({ action }) => action.label)
+      : []),
+  ];
   try {
     aiMode = "unavailable";
     for (const [topic, item] of Object.entries(STEPS)) {
-      assert.ok(labels.includes(item.title));
+      assert.ok(
+        allLabels.includes(item.title) ||
+          (topic === "register" && labels.includes("開始註冊")) ||
+          (topic === "deposit" && labels.includes("入金教學")),
+      );
       assert.ok(item.title.length <= 20);
       const user = "U" + crypto.randomUUID().replaceAll("-", "");
       await webhook([event(item.title, user)]);
@@ -693,7 +740,7 @@ test("every menu question works independently without AI or prior registration",
         expectedImages,
       );
       assert.ok(messages.length <= 5);
-      const answer = messages.at(-1) as any;
+      const answer = messages[0] as any;
       assert.match(answer.text, new RegExp(item.title.replace(/[？?]/g, "")));
       const actions = answer.quickReply.items.map((i: any) => i.action);
       assert.ok(
@@ -716,7 +763,7 @@ test("LINE images require HTTPS; missing images stay in the conversation with te
   );
   assert.equal(
     guide("register", "http://localhost:8787", true)[0].type,
-    "image",
+    "text",
   );
   const messages = guide("deposit", "https://crm.test");
   assert.equal(messages.length, 1);
@@ -741,8 +788,8 @@ test("deposit teaching selects each method and paginates approved images in LINE
     assert.equal(images().length, 3);
     assert.match(String(images()[0].originalContentUrl), new RegExp(prefix));
     const first = images()[0].originalContentUrl;
-    const lastText = calls.at(-1)!.messages.at(-1) as any;
-    const action = lastText.quickReply.items.find(
+    const firstText = calls.at(-1)!.messages[0] as any;
+    const action = firstText.quickReply.items.find(
       (a: any) => a.action.label === "看下一組圖",
     ).action;
     const click = {
@@ -759,8 +806,6 @@ test("deposit teaching selects each method and paginates approved images in LINE
     assert.equal(images().length, last - 6);
     assert.ok(calls.at(-1)!.messages.length <= 5);
     assert.match(JSON.stringify(calls.at(-1)!.messages), /已入金即可/);
-    await webhook([event("看文字", id)]);
-    assert.equal(images().length, 3);
   }
 });
 async function newPreview(id = alice) {
@@ -911,17 +956,17 @@ test("durable outbox recovers interrupted queue submission and expired processin
 });
 
 test("knowledge answers referral questions first, keeps context and marks only once", async () => {
-  const user = 'U'+crypto.randomUUID().replaceAll('-','');
+  const user = "U" + crypto.randomUUID().replaceAll("-", "");
   const first = event("我已經有綁定其他人的邀請碼該怎麼辦", user);
   await webhook([first]);
   assert.match(String(calls.at(-1)!.messages[0].text), /推薦歸屬問題/);
-  assert.match(String(calls.at(-1)!.messages[0].text), /已加入後台/);
+  assert.match(String(calls.at(-1)!.messages[0].text), /已通知客服/);
   assert.equal((await getCustomer(user)).customer.support_requested, 1);
   await webhook([event("可以改嗎", user)]);
   assert.match(String(calls.at(-1)!.messages[0].text), /不能直接承諾/);
   assert.doesNotMatch(
     String(calls.at(-1)!.messages[0].text),
-    /已加入後台|已標記/,
+    /已通知客服|已標記/,
   );
   await webhook([event("槓桿", user)]);
   assert.match(String(calls.at(-1)!.messages[0].text), /槓桿/);
@@ -943,6 +988,65 @@ test("knowledge answers referral questions first, keeps context and marks only o
       .status,
     401,
   );
+});
+
+test("support notification, claim, bot pause, resume and resolution form one workflow", async () => {
+  const user = "U" + crypto.randomUUID().replaceAll("-", "");
+  const beforePush = pushes.length;
+  await webhook([event("人工協助", user)]);
+  const pending = await db
+    .prepare("SELECT * FROM support_cases WHERE line_user_id=?")
+    .bind(user)
+    .first<any>();
+  assert.equal(pending.status, "pending");
+  assert.equal(pending.notification_status, "sent");
+  assert.equal(pushes.length, beforePush + 1);
+  assert.doesNotMatch(JSON.stringify(pushes.at(-1)), new RegExp(user));
+
+  assert.equal(
+    (
+      await call(`/api/customers/${user}`, "PATCH", {
+        owner_name: "小熊客服",
+        support_status: "claimed",
+      })
+    ).status,
+    200,
+  );
+  await webhook([event("槓桿是什麼", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /已接手|暫停/);
+  await webhook([event("繼續使用小幫手", user)]);
+  await webhook([event("槓桿是什麼", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /名義倉位/);
+  assert.equal(
+    (
+      await call(`/api/customers/${user}`, "PATCH", {
+        owner_name: "小熊客服",
+        support_status: "resolved",
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await getCustomer(user)).customer.support_requested, 0);
+  assert.equal(
+    await db
+      .prepare(
+        "SELECT 1 FROM support_cases WHERE line_user_id=? AND status IN ('pending','claimed')",
+      )
+      .bind(user)
+      .first(),
+    null,
+  );
+  assert.equal(
+    (
+      await call(`/api/customers/${user}`, "PATCH", {
+        owner_name: "小熊客服",
+        support_status: "pending",
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await getCustomer(user)).customer.support_requested, 1);
+  assert.equal((await activeSupportCase(db, user))?.status, "pending");
 });
 
 test("knowledge drafts, publish, revision conflicts and withdrawn context", async () => {
@@ -971,6 +1075,17 @@ test("knowledge drafts, publish, revision conflicts and withdrawn context", asyn
   const created = (await (
     await call("/api/knowledge", "POST", body)
   ).json()) as any;
+  assert.equal(
+    (
+      await db
+        .prepare(
+          "SELECT count(*) AS n FROM knowledge_versions WHERE article_id=?",
+        )
+        .bind(created.id)
+        .first<{ n: number }>()
+    )?.n,
+    1,
+  );
   const user = "Udddddddddddddddddddddddddddddddd";
   await webhook([event("特殊測試詞", user)]);
   assert.doesNotMatch(
@@ -986,6 +1101,17 @@ test("knowledge drafts, publish, revision conflicts and withdrawn context", asyn
       })
     ).status,
     200,
+  );
+  assert.equal(
+    (
+      await db
+        .prepare(
+          "SELECT count(*) AS n FROM knowledge_versions WHERE article_id=?",
+        )
+        .bind(created.id)
+        .first<{ n: number }>()
+    )?.n,
+    2,
   );
   assert.equal(
     (
@@ -1020,7 +1146,7 @@ test("knowledge drafts, publish, revision conflicts and withdrawn context", asyn
 });
 
 test("transcripts redact credentials, scope context, paginate and expire", async () => {
-  const user = 'U'+crypto.randomUUID().replaceAll('-','');
+  const user = "U" + crypto.randomUUID().replaceAll("-", "");
   assert.doesNotMatch(
     redactConversation("Secret: test-sensitive-value\n驗證碼 123456"),
     /test-sensitive-value|123456/,

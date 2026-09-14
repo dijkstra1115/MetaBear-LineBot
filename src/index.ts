@@ -20,17 +20,27 @@ import {
   dispatchCampaigns,
   type CampaignMessage,
 } from "./campaigns";
+import {
+  dispatchSupportNotifications,
+  processSupportNotification,
+  type SupportNotificationMessage,
+} from "./support";
 
 export default {
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
     await dispatchCampaigns(env);
     await dispatchCrm(env);
+    await dispatchSupportNotifications(env);
     await cleanupAuth(env);
     await cleanupConversations(env);
   },
   async queue(
     batch: MessageBatch<
-      LineEvent | CampaignMessage | CrmMessage | MenuInstallMessage
+      | LineEvent
+      | CampaignMessage
+      | CrmMessage
+      | MenuInstallMessage
+      | SupportNotificationMessage
     >,
     env: Env,
   ): Promise<void> {
@@ -47,6 +57,11 @@ export default {
           message.body.kind === "campaign-delivery"
         )
           await processCampaign(message.body, env);
+        else if (
+          "kind" in message.body &&
+          message.body.kind === "support-notification"
+        )
+          await processSupportNotification(message.body, env);
         else await processLineEvent(message.body as LineEvent, env);
         message.ack();
       } catch (error) {

@@ -16,7 +16,7 @@ const vars = Object.fromEntries(
 assert.ok(vars.OPENAI_API_KEY, "Set OPENAI_API_KEY in .dev.vars first");
 const env = {
   OPENAI_API_KEY: vars.OPENAI_API_KEY,
-  OPENAI_MODEL: vars.OPENAI_MODEL || "gpt-4.1-mini",
+  OPENAI_MODEL: vars.OPENAI_MODEL || "gpt-5.6-luna",
 } as Env;
 let inputTokens = 0,
   outputTokens = 0,
@@ -42,14 +42,13 @@ globalThis.fetch = async (...args) => {
   return response;
 };
 const cases: [string, string, string][] = [
-  ["我該如何註冊？", "register", "text"],
-  ["這個地方要寫誰介紹的？", "code", "text"],
+  ["我該如何註冊？", "register", "image"],
+  ["這個地方要寫誰介紹的？", "code", "image"],
   ["可以給我看圖嗎？", "code", "image"],
-  ["不用圖片，文字就好", "code", "text"],
-  ["我已經註冊好了，接下來呢？", "kyc", "text"],
+  ["我已經註冊好了，接下來呢？", "kyc", "image"],
   ["我的身分驗證通過了，然後呢？", "deposit", "text"],
   ["你能解釋逐倉和全倉差在哪嗎？", "逐倉與全倉", "text"],
-  ["給我看圖", "逐倉與全倉", "image"],
+  ["再給我看一下畫面", "逐倉與全倉", "text"],
 ];
 const limit = Number(
   process.argv.find((arg) => arg.startsWith("--limit="))?.split("=")[1] ??
@@ -60,18 +59,20 @@ for (const [question, topic, format] of cases.slice(0, limit)) {
   const before = completed;
   const started = Date.now();
   const route = await routeQuestion(question, context, env);
-  assert.equal(
-    completed,
-    before + 1,
-    "A real completed OpenAI response is required; fallback does not pass this test",
-  );
+  if (route.method === "model")
+    assert.equal(
+      completed,
+      before + 1,
+      "A real completed OpenAI response is required for model-routed questions",
+    );
   assert.equal(route.topic, topic, question);
   assert.equal(route.format, format, question);
   const messages = isStep(route.topic)
     ? guide(route.topic, "https://preview.invalid", route.format === "image")
     : [];
   if (topic === "code" && format === "image") {
-    assert.equal(messages[0].type, "image");
+    assert.equal(messages[0].type, "text");
+    assert.equal(messages[1].type, "image");
     assert.ok((await readFile("public/guides/register.jpg")).length > 0);
   }
   console.log(

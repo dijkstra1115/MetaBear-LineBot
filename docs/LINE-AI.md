@@ -1,6 +1,6 @@
 # LINE AI 對話接線與驗收
 
-用戶的操作都在 LINE：自然提問 → 判斷問題主題 → 回覆已確認教材，有圖片自動附上，無圖片則提供文字。後台網站供管理員管理客戶與測試對話。
+用戶的操作都在 LINE：自然提問 → 判斷問題主題 → 先回覆已確認的文字脈絡，再附上圖片；無圖片則只提供文字。已移除「文字就好」模式。後台網站供管理員管理客戶、知識庫、人工協助案件與測試對話。
 
 ## 對話範例
 
@@ -15,11 +15,11 @@
 | UID 要在哪裡找？             | 說明 UID 位置，不當成 UID 登記命令                            |
 | 逐倉和全倉差在哪？           | 回覆對應的合約入門教材                                        |
 
-目前有註冊／邀請碼、KYC、BitoPro 入金（7 張）及 BingX 信用卡（8 張）原始圖片。直接點選入金問題即附圖片，每組最多 3 張；按「看下一組圖」或說「下一組圖」繼續。UID 和合約概念提供文字。用戶主動上傳的截圖仍交由人工查看，尚未接入視覺辨識。
+目前有註冊／邀請碼、KYC、BitoPro 入金（7 張）及 BingX 信用卡（8 張）原始圖片。直接點選入金問題會先說明步驟，再附圖片，每組最多 3 張；按「看下一組圖」或說「下一組圖」繼續。UID 和合約概念提供文字。用戶主動上傳的截圖仍交由人工查看，尚未接入視覺辨識。
 
 ## 本機測試
 
-`.dev.vars` 保存本機測試金鑰，已被 Git 忽略。`OPENAI_API_KEY` 是新版本的 OpenAI 金鑰欄位；`OPENAI_MODEL` 在 `wrangler.jsonc`，目前為 `gpt-4.1-mini`。
+`.dev.vars` 保存本機測試金鑰，已被 Git 忽略。`OPENAI_API_KEY` 是新版本的 OpenAI 金鑰欄位；`OPENAI_MODEL` 在 `wrangler.jsonc`，目前為 `gpt-5.6-luna`。
 
 1. `npm run db:migrate` 套用所有遷移，包括 `0002_teaching_context.sql`。
 2. `npm run dev` 啟動本機服務。
@@ -32,7 +32,7 @@
 npx tsx scripts/test-openai.ts
 ```
 
-腳本使用 `.dev.vars` 的金鑰，以連續 8 則測試問題驗證真實模型輸出。API 失敗後的備援結果不能通過此測試；只輸出測試問題、教材 ID、格式、延遲與 token 用量，不輸出金鑰、不發 LINE 訊息。
+腳本使用 `.dev.vars` 的金鑰，以連續 7 則測試問題驗證混合路由及真實模型輸出。需要模型的問題若 API 失敗，備援結果不能通過；只輸出測試問題、教材 ID、格式、延遲與 token 用量，不輸出金鑰、不發 LINE 訊息。
 
 ## 接上 LINE
 
@@ -53,8 +53,8 @@ https://metabear-line-crm-staging.style78432.workers.dev/webhook/line
 
 ## 實測紀錄
 
-2026-09-14：OpenAI `gpt-4.1-mini` 連續 8 則對話全部通過，包含圖片與文字切換、註冊完成後續流程、合約概念。該次共 18,723 input tokens、93 output tokens，每則約 0.9–2.7 秒。另有一則初始連線測試通過。此為初期本機 API 驗證紀錄；目前雲端部署、LINE 收訊與後台 OTP 已驗證，詳見 STAGING.md。
+2026-09-14：OpenAI 當時以 `gpt-4.1` 進行 8 則對話驗證，全部通過，包含圖片與文字切換、註冊完成後續流程、合約概念。該次共 18,723 input tokens、93 output tokens，每則約 0.9–2.7 秒。另有一則初始連線測試通過。此為初期本機 API 驗證紀錄；目前雲端部署、LINE 收訊與後台 OTP 已驗證，詳見 STAGING.md。若後續以 `gpt-5.6-luna` 驗證，建議補充新紀錄以更新基準。
 
-本機 Worker 對話模擬器另走過註冊 → 追問推薦碼欄位並看圖 → 完成註冊改回文字的流程，確認原圖可載入、KYC 教學接續正確。15 項整合測試、TypeScript 檢查與 Cloudflare 部署 dry run 通過。
+本機 Worker 對話模擬器另走過註冊 → 追問推薦碼欄位並看圖 → 完成註冊接續 KYC 的流程，確認文字先於原圖、KYC 教學接續正確。56 項整合測試、TypeScript 檢查與 Cloudflare 部署 dry run 通過。
 
-參考：[OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)、[GPT-4.1 mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini)、[LINE Messaging API](https://developers.line.biz/en/reference/messaging-api/)。
+參考：[OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)、[OpenAI Responses API](https://platform.openai.com/docs/guides/responses)、[LINE Messaging API](https://developers.line.biz/en/reference/messaging-api/)。

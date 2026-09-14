@@ -11,6 +11,7 @@ import {
   recordOutgoing,
   setOutgoingStatus,
 } from "./conversations";
+import { requestSupport } from "./support";
 
 export async function webhook(request: Request, env: Env) {
   const raw = await readBody(request, 262144);
@@ -138,16 +139,21 @@ export async function processLineEvent(event: LineEvent, env: Env) {
           )
             messages =
               (await enrollFromLine(env, userId, event.message.text, id)) ??
-              (await respond(env.DB, userId, event.message.text, env, id));
+              (await respond(
+                env.DB,
+                userId,
+                event.message.text,
+                env,
+                id,
+                event.timestamp,
+              ));
           else if (["image", "video"].includes(event.message?.type ?? "")) {
-            await env.DB.prepare(
-              "UPDATE customers SET support_requested=1 WHERE line_user_id=?",
-            )
-              .bind(userId)
-              .run();
+            const support = await requestSupport(env, userId, id);
             messages = [
               reply(
-                "已標記你提供了圖片／影片，請小幫手到 LINE 官方帳號對話查看。圖片尚未自動核實，也不會自動通過入群。",
+                support.created
+                  ? "已收到圖片／影片並通知客服查看。附件不會由 Bot 自動核實，也不會因此自動通過入群。"
+                  : "已收到圖片／影片，現有人工協助案件仍保留。附件不會由 Bot 自動核實，也不會因此自動通過入群。",
               ),
             ];
           }
@@ -158,7 +164,14 @@ export async function processLineEvent(event: LineEvent, env: Env) {
             params.get("question_text") ??
             params.get("topic") ??
             "選單";
-          messages = await respond(env.DB, userId, input, env, id);
+          messages = await respond(
+            env.DB,
+            userId,
+            input,
+            env,
+            id,
+            event.timestamp,
+          );
         }
       }
       await env.DB.prepare(

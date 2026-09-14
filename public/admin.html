@@ -98,6 +98,7 @@
             class="stage-strip"
             aria-label="用戶流程分布"
           ></div>
+          <p id="routing-summary" class="muted"></p>
           <div class="section-heading">
             <div>
               <h2>客戶名單 <span id="customer-count" class="count">0</span></h2>
@@ -490,8 +491,12 @@
             </select></label
           >
         </div>
-        <label class="checkbox"
-          ><input type="checkbox" name="support_requested" />需要人工協助</label
+        <label
+          >人工協助狀態<select name="support_status">
+            <option value="resolved">無待處理案件</option>
+            <option value="pending">等待認領</option>
+            <option value="claimed">已由客服接手</option>
+          </select></label
         >
         <p id="detail-consent" class="callout"></p>
         <h3>推薦與入群核實</h3>
