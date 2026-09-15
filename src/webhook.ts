@@ -1,5 +1,6 @@
 import { command, menu, reply } from "./content";
-import { respond } from "./bot";
+import { respond, respondToInboundMedia } from "./bot";
+import { isImmediateCommand } from "./assistant";
 import { ensureCustomer, now } from "./db";
 import { HttpError, json, readBody, signatureValid } from "./http";
 import type { LineEvent, LineMessage } from "./types";
@@ -11,7 +12,39 @@ import {
   recordOutgoing,
   setOutgoingStatus,
 } from "./conversations";
-import { requestSupport } from "./support";
+
+export function eventCommandText(event: LineEvent): string | undefined {
+  if (
+    event.type === "message" &&
+    event.message?.type === "text" &&
+    typeof event.message.text === "string"
+  )
+    return event.message.text.trim();
+  if (event.type === "postback" && typeof event.postback?.data === "string") {
+    const params = new URLSearchParams(event.postback.data);
+    return (
+      params.get("text") ??
+      params.get("question_text") ??
+      params.get("topic") ??
+      "選單"
+    ).trim();
+  }
+}
+
+async function deliverImmediately(event: LineEvent, env: Env) {
+  try {
+    await processLineEvent(event, env);
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "webhook.immediate.failed",
+        eventId: event.webhookEventId,
+        errorType: error instanceof Error ? error.name : "Unknown",
+      }),
+    );
+    await env.LINE_EVENTS.send(event);
+  }
+}
 
 export async function webhook(
   request: Request,
@@ -60,23 +93,38 @@ export async function webhook(
       throw new HttpError(400, "Missing event identity");
     accepted.push(event);
   }
-  // Start LINE's optional loading indicator as soon as the verified webhook is
-  // accepted. The durable queue still owns reply generation and delivery.
+  const immediate: LineEvent[] = [];
+  const queued: LineEvent[] = [];
+  for (const event of accepted) {
+    const text = eventCommandText(event);
+    if (text && isImmediateCommand(text)) immediate.push(event);
+    else queued.push(event);
+  }
   for (const event of accepted) {
     if (
       ["message", "postback"].includes(event.type) &&
       Date.now() - event.timestamp < 60000
     )
-      ctx.waitUntil(startLoading(env, event.source!.userId!));
+      ctx.waitUntil(
+        startLoading(
+          env,
+          event.source!.userId!,
+          immediate.includes(event) ? 5 : 60,
+        ),
+      );
   }
-  // Acknowledge only after durable enqueue, without waiting for AI or LINE replies.
-  // LINE may close its webhook connection before those network calls complete.
-  if (accepted.length) {
-    await env.LINE_EVENTS.sendBatch(accepted.map((body) => ({ body })));
+  for (const event of immediate)
+    ctx.waitUntil(deliverImmediately(event, env));
+  if (queued.length) {
+    await env.LINE_EVENTS.sendBatch(queued.map((body) => ({ body })));
     console.log(
-      JSON.stringify({ event: "webhook.queued", count: accepted.length }),
+      JSON.stringify({ event: "webhook.queued", count: queued.length }),
     );
   }
+  if (immediate.length)
+    console.log(
+      JSON.stringify({ event: "webhook.immediate", count: immediate.length }),
+    );
   return json({ ok: true });
 }
 
@@ -154,28 +202,19 @@ export async function processLineEvent(event: LineEvent, env: Env) {
                 id,
                 event.timestamp,
               ));
-          else if (["image", "video"].includes(event.message?.type ?? "")) {
-            const support = await requestSupport(env, userId, id);
-            messages = [
-              reply(
-                support.created
-                  ? "已收到圖片／影片並通知客服查看。附件不會由 Bot 自動核實，也不會因此自動通過入群。"
-                  : "已收到圖片／影片，現有人工協助案件仍保留。附件不會由 Bot 自動核實，也不會因此自動通過入群。",
-                [command("人工協助"), command("選單")],
-              ),
-            ];
-          }
+          else
+            messages = await respondToInboundMedia(
+              env.DB,
+              userId,
+              env,
+              id,
+              event.message?.type ?? "",
+            );
         } else if (typeof event.postback?.data === "string") {
-          const params = new URLSearchParams(event.postback.data);
-          const input =
-            params.get("text") ??
-            params.get("question_text") ??
-            params.get("topic") ??
-            "選單";
           messages = await respond(
             env.DB,
             userId,
-            input,
+            eventCommandText(event) ?? "選單",
             env,
             id,
             event.timestamp,

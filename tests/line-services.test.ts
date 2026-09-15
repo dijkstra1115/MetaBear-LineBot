@@ -6,6 +6,7 @@ import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import { richMenuDefinition } from "../src/line-rich-menu";
 import { startLoading } from "../src/line-loading";
 import { webhook } from "../src/webhook";
+import { isImmediateCommand } from "../src/assistant";
 
 test("BingX signed fetch runs inside workerd and never follows a credential redirect", async () => {
   const result = await build({
@@ -130,6 +131,9 @@ test("verified webhook starts loading before the queued reply is processed", asy
         LINE_CHANNEL_ACCESS_TOKEN: "test",
         LINE_DELIVERY_MODE: "live",
         LINE_EVENTS: {
+          async send() {
+            enqueued = true;
+          },
           async sendBatch() {
             assert.equal(loadingStarted, true);
             enqueued = true;
@@ -150,6 +154,70 @@ test("verified webhook starts loading before the queued reply is processed", asy
     globalThis.fetch = previous;
   }
 });
+test("short commands skip the queue and run through waitUntil", async () => {
+  const previous = globalThis.fetch;
+  const secret = "test-line-secret";
+  const userId = "U" + "a".repeat(32);
+  const body = JSON.stringify({
+    events: [
+      {
+        webhookEventId: "event-menu",
+        type: "message",
+        timestamp: Date.now(),
+        source: { type: "user", userId },
+        replyToken: "reply-menu",
+        message: { type: "text", text: "選單" },
+      },
+    ],
+  });
+  let batched = false;
+  const background: Promise<unknown>[] = [];
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === "https://api.line.me/v2/bot/chat/loading/start") {
+      assert.equal(JSON.parse(String(init?.body)).loadingSeconds, 5);
+      return new Response("{}", { status: 202 });
+    }
+    return new Response("{}", { status: 200 });
+  };
+  try {
+    const response = await webhook(
+      new Request("https://crm.test/webhook/line", {
+        method: "POST",
+        headers: {
+          "X-Line-Signature": createHmac("sha256", secret)
+            .update(body)
+            .digest("base64"),
+        },
+        body,
+      }),
+      {
+        LINE_CHANNEL_SECRET: secret,
+        LINE_CHANNEL_ACCESS_TOKEN: "test",
+        LINE_DELIVERY_MODE: "live",
+        LINE_EVENTS: {
+          async send() {},
+          async sendBatch() {
+            batched = true;
+          },
+        },
+      } as Env,
+      {
+        waitUntil(promise) {
+          background.push(promise);
+        },
+        passThroughOnException() {},
+      } as ExecutionContext,
+    );
+    assert.equal(response.status, 200);
+    assert.equal(batched, false);
+    assert.ok(background.length >= 1);
+    assert.equal(isImmediateCommand("選單"), true);
+    assert.equal(isImmediateCommand("開始註冊"), true);
+    assert.equal(isImmediateCommand("我該如何註冊？"), false);
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
 test("rich menu covers exactly six tiles and has no AI toggles or public VIP link", () => {
   const menu = richMenuDefinition("https://crm.test");
   assert.equal(menu.areas.length, 6);
@@ -160,8 +228,27 @@ test("rich menu covers exactly six tiles and has no AI toggles or public VIP lin
   assert.ok(
     !JSON.stringify(menu).match(/TOGGLE_LLM|reurl|免費加入|開啟 AI|關閉 AI/),
   );
+  assert.ok(menu.areas.every((area) => area.action.type === "postback"));
+  assert.equal(
+    new URLSearchParams(menu.areas[0].action.data).get("text"),
+    "提交 UID",
+  );
   assert.equal(
     new URLSearchParams(menu.areas[1].action.data).get("text"),
     "我的進度",
   );
+  assert.equal(
+    new URLSearchParams(menu.areas[2].action.data).get("text"),
+    "開始註冊",
+  );
+  assert.equal(
+    new URLSearchParams(menu.areas[3].action.data).get("text"),
+    "入金教學",
+  );
+  assert.equal(
+    new URLSearchParams(menu.areas[4].action.data).get("text"),
+    "合約基礎",
+  );
+  for (const text of ["提交 UID", "開始註冊", "入金教學", "合約基礎"])
+    assert.equal(isImmediateCommand(text), true);
 });

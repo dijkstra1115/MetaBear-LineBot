@@ -1,12 +1,12 @@
 import { audit } from "./db";
 
 export type MenuInstallMessage = { kind: "line-menu-install"; id: string };
-const menuName = "MetaBear service menu 2026-09-14-v1";
-export function richMenuDefinition(base: string) {
+const menuName = "MetaBear service menu 2026-09-15-v2";
+export function richMenuDefinition(_base: string) {
   const actions = [
     {
       type: "postback",
-      data: "text=" + encodeURIComponent("如何查找及提交 UID？"),
+      data: "text=" + encodeURIComponent("提交 UID"),
       displayText: "我要登記 UID",
     },
     {
@@ -14,11 +14,20 @@ export function richMenuDefinition(base: string) {
       data: "text=" + encodeURIComponent("我的進度"),
       displayText: "查詢我的審核進度",
     },
-    { type: "uri", uri: base + "/learn?step=register" },
-    { type: "uri", uri: base + "/learn?step=deposit" },
     {
-      type: "uri",
-      uri: base + "/learn?lesson=" + encodeURIComponent("合約基礎"),
+      type: "postback",
+      data: "text=" + encodeURIComponent("開始註冊"),
+      displayText: "新手教學",
+    },
+    {
+      type: "postback",
+      data: "text=" + encodeURIComponent("入金教學"),
+      displayText: "入金教學",
+    },
+    {
+      type: "postback",
+      data: "text=" + encodeURIComponent("合約基礎"),
+      displayText: "合約學習",
     },
     {
       type: "postback",

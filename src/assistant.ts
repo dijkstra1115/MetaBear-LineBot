@@ -3,10 +3,14 @@ import type { Step } from "./types";
 import { matchKnowledge, type KnowledgeArticle } from "./knowledge";
 import { redactConversation } from "./conversations";
 
+export const CONTEXT_TTL_MS = 8 * 60 * 60 * 1000;
+
 export type TeachingContext = {
   topic: string;
   format: "text" | "image";
   image_page?: number;
+  updated_at?: string;
+  clarify_streak?: number;
 };
 type Route = { topic: string; format: "text" | "image" | "auto" };
 export type RouteMethod =
@@ -23,6 +27,58 @@ const topics = [
 ];
 export const isStep = (topic: string): topic is Step =>
   Object.hasOwn(STEPS, topic);
+
+export function isProgressiveStep(topic: string | undefined): boolean {
+  return topic === "deposit_bitopro" || topic === "deposit_card";
+}
+
+export function teachingContextIsCurrent(
+  context: TeachingContext | null | undefined,
+): context is TeachingContext {
+  if (!context) return false;
+  if (!context.updated_at) return true;
+  const at = Date.parse(context.updated_at);
+  return Number.isFinite(at) && Date.now() - at <= CONTEXT_TTL_MS;
+}
+
+export function isMenuCommand(text: string): boolean {
+  return /^(選單|menu|開始)$/i.test(text);
+}
+
+export function isSupportCommand(text: string): boolean {
+  return /^(?:我要|我想|請|幫我)?(?:找|轉|聯絡)?(?:人工協助|人工客服|真人客服|真人|人工|客服|轉人工)[！!。?？\s]*$/.test(
+    text,
+  );
+}
+
+export function isProgressCommand(text: string): boolean {
+  return (
+    text === "我的進度" ||
+    /^(重新審核|我已入金|入金完成|KYC完成|我已完成KYC|我已完成入金|重新查詢)$/i.test(
+      text.replace(/\s/g, ""),
+    )
+  );
+}
+
+export function isPreviousPageCommand(text: string): boolean {
+  return /^(?:上一張|上一步|上一組圖)[！!。?？]*$/.test(text);
+}
+
+export function isNextPageCommand(text: string): boolean {
+  return /^(?:看?(?:下一張|下張|下一組|下一組圖)|繼續看圖)[！!。?？]*$/.test(
+    text,
+  );
+}
+
+export function isAdvanceCommand(text: string): boolean {
+  return /^(?:我)?(?:已經)?(?:好了|完成了|弄好了|下一步|然後呢|接下來呢)[？?！!。\s]*$/.test(
+    text,
+  );
+}
+
+export function isReplayCommand(text: string): boolean {
+  return text === "再看一次" || text === "再看此步";
+}
 
 function requestedFormat(text: string): TeachingContext["format"] | undefined {
   if (/看圖|圖片|截圖|圖解|照片|給.*圖|用圖|附圖/.test(text)) return "image";
@@ -56,47 +112,128 @@ export function directRoute(text: string): Route | undefined {
   if (Object.hasOwn(LESSONS, text)) return { topic: text, format: "auto" };
 }
 
+export function isImmediateCommand(text: string): boolean {
+  const value = text.trim();
+  if (!value) return false;
+  if (isMenuCommand(value) || value === "更多教學") return true;
+  if (isProgressCommand(value) || isSupportCommand(value)) return true;
+  if (
+    isPreviousPageCommand(value) ||
+    isNextPageCommand(value) ||
+    isAdvanceCommand(value)
+  )
+    return true;
+  if (isReplayCommand(value) || value === "不是這題") return true;
+  return !!directRoute(value);
+}
+
+function compactQuestion(text: string): string {
+  return text
+    .normalize("NFKC")
+    .replace(
+      /我要|我想|幫我|請|如何|怎麼做|怎樣|怎麼|教學|嗎|呢|[^\p{L}\p{N}]+/gu,
+      "",
+    )
+    .toLowerCase();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function remainderAfterPhrase(
+  text: string,
+  phrase: string,
+): string | undefined {
+  const normalized = text.normalize("NFKC");
+  const pattern = /^[a-z0-9]+(?: [a-z0-9]+)*$/i.test(phrase)
+    ? new RegExp(`(?<![a-z0-9])${escapeRegExp(phrase)}(?![a-z0-9])`, "i")
+    : new RegExp(escapeRegExp(phrase), "i");
+  const match = pattern.exec(normalized);
+  if (!match) return;
+  return (
+    normalized.slice(0, match.index) +
+    normalized.slice(match.index + match[0].length)
+  );
+}
+
+const KEYWORD_PHRASES: [string, string][] = [
+  ["order book depth", "Order Book Depth"],
+  ["停損與強平", "停損與強平"],
+  ["市價與限價", "市價與限價"],
+  ["逐倉與全倉", "逐倉與全倉"],
+  ["開倉流程", "開倉流程"],
+  ["合約基礎", "合約基礎"],
+  ["簽帳金融卡", "deposit_card"],
+  ["推薦代碼", "code"],
+  ["身分驗證", "kyc"],
+  ["身份驗證", "kyc"],
+  ["身分認證", "kyc"],
+  ["身份認證", "kyc"],
+  ["建立帳號", "register"],
+  ["建立帳戶", "register"],
+  ["用戶編號", "uid"],
+  ["用户编号", "uid"],
+  ["快捷買幣", "deposit_card"],
+  ["台幣入金", "deposit_bitopro"],
+  ["臺幣入金", "deposit_bitopro"],
+  ["銀行轉帳", "deposit_bitopro"],
+  ["如何加入", "deposit"],
+  ["相對強弱", "RSI"],
+  ["資金費率", "資金費率"],
+  ["order book", "Order Book Depth"],
+  ["bitopro", "deposit_bitopro"],
+  ["referral", "code"],
+  ["volume", "Volume"],
+  ["信用卡", "deposit_card"],
+  ["邀請碼", "code"],
+  ["推薦碼", "code"],
+  ["未平倉", "OI"],
+  ["成交量", "Volume"],
+  ["委託簿", "Order Book Depth"],
+  ["訂單簿", "Order Book Depth"],
+  ["開倉", "開倉流程"],
+  ["開單", "開倉流程"],
+  ["槓桿", "槓桿"],
+  ["杠杆", "槓桿"],
+  ["強平", "停損與強平"],
+  ["停損", "停損與強平"],
+  ["止損", "停損與強平"],
+  ["爆倉", "停損與強平"],
+  ["市價", "市價與限價"],
+  ["限價", "市價與限價"],
+  ["逐倉", "逐倉與全倉"],
+  ["全倉", "逐倉與全倉"],
+  ["合約", "合約基礎"],
+  ["做多", "合約基礎"],
+  ["做空", "合約基礎"],
+  ["幣託", "deposit_bitopro"],
+  ["簽帳", "deposit_card"],
+  ["刷卡", "deposit_card"],
+  ["註冊", "register"],
+  ["注册", "register"],
+  ["開戶", "register"],
+  ["實名", "kyc"],
+  ["入金", "deposit"],
+  ["充值", "deposit"],
+  ["入群", "deposit"],
+  ["儲值", "deposit"],
+  ["存入", "deposit"],
+  ["kyc", "kyc"],
+  ["uid", "uid"],
+  ["cvd", "CVD"],
+  ["rsi", "RSI"],
+  ["oi", "OI"],
+];
+
 export function keywordRoute(text: string): Route | undefined {
   const format = requestedFormat(text) ?? "auto";
-  const route = (topic: string): Route => ({ topic, format });
-  const completed = !/還沒|尚未|沒有|未完成|不成功|失敗/.test(text);
-  if (completed && /(?:註冊|注册|開戶).*(?:好了|完成|成功)/.test(text))
-    return route("kyc");
-  if (
-    completed &&
-    /(?:KYC|身分驗證|身份驗證|認證).*(?:好了|完成|通過)/i.test(text)
-  )
-    return route("deposit");
-  if (completed && /(?:入金|充值).*(?:好了|完成|成功|到帳)/.test(text))
-    return route("uid");
-  if (completed && /(?:邀請碼|推薦碼).*(?:填好了|填完了)/.test(text))
-    return route("kyc");
-  if (/bitopro|幣託|台幣入金|臺幣入金|銀行轉帳/i.test(text))
-    return route("deposit_bitopro");
-  if (/信用卡|簽帳|刷卡|快捷買幣/.test(text)) return route("deposit_card");
-  if (/邀請碼|推薦碼|推薦代碼|referral/i.test(text)) return route("code");
-  if (/KYC|身分驗證|身份驗證|身分認證|身份認證|實名/i.test(text))
-    return route("kyc");
-  if (/入金|充值|入群|如何加入|儲值|存入/.test(text)) return route("deposit");
-  if (/\buid\b|用戶編號|用户编号/i.test(text)) return route("uid");
-  if (/註冊|注册|開戶|建立帳[號戶]|辦.*帳[號戶]/.test(text))
-    return route("register");
-  const lessons: [RegExp, string][] = [
-    [/\boi\b|未平倉/i, "OI"],
-    [/\bvolume\b|成交量/i, "Volume"],
-    [/\bcvd\b/i, "CVD"],
-    [/委託簿|訂單簿|order book/i, "Order Book Depth"],
-    [/\brsi\b|相對強弱/i, "RSI"],
-    [/逐倉|全倉/, "逐倉與全倉"],
-    [/槓桿|杠杆/, "槓桿"],
-    [/強平|停損|止損|爆倉/, "停損與強平"],
-    [/市價|限價/, "市價與限價"],
-    [/資金費率/, "資金費率"],
-    [/開倉|開單/, "開倉流程"],
-    [/合約|做多|做空/, "合約基礎"],
-  ];
-  for (const [pattern, topic] of lessons)
-    if (pattern.test(text)) return route(topic);
+  const phrases = [...KEYWORD_PHRASES].sort((a, b) => b[0].length - a[0].length);
+  for (const [phrase, topic] of phrases) {
+    const remainder = remainderAfterPhrase(text, phrase);
+    if (remainder === undefined) continue;
+    if (!compactQuestion(remainder)) return { topic, format };
+  }
 }
 
 export function fallbackRoute(
@@ -105,21 +242,14 @@ export function fallbackRoute(
 ): Route {
   const format = requestedFormat(text) ?? "auto";
   const route = (topic: string): Route => ({ topic, format });
-  const keyword = keywordRoute(text);
-  if (keyword) return keyword;
   if (context) {
-    if (
-      /^(?:我)?(?:已經)?(?:好了|完成了|弄好了|下一步|然後呢|接下來呢)[？?！!。\s]*$/.test(
-        text,
-      )
-    ) {
+    if (isAdvanceCommand(text)) {
+      if (isProgressiveStep(context.topic)) return route(context.topic);
       const next: Record<string, string> = {
         register: "code",
         code: "kyc",
         kyc: "deposit",
         deposit: "uid",
-        deposit_bitopro: "uid",
-        deposit_card: "uid",
         uid: "uid",
       };
       return route(next[context.topic] ?? context.topic);
@@ -139,6 +269,23 @@ export function fallbackRoute(
     }
   }
   return route("clarify");
+}
+
+export function finalizeRoute(
+  topic: string,
+  method: RouteMethod,
+  candidateCount = 0,
+): RoutedTeachingContext {
+  return {
+    topic,
+    format:
+      isStep(topic) &&
+      (STEPS[topic].image || STEPS[topic].images?.length)
+        ? "image"
+        : "text",
+    method,
+    candidateCount,
+  };
 }
 
 async function modelRoute(
@@ -281,15 +428,5 @@ export async function routeQuestion(
       }
     }
   }
-  return {
-    topic: route.topic,
-    // Format follows the available material, including for legacy commands/context.
-    format:
-      isStep(route.topic) &&
-      (STEPS[route.topic].image || STEPS[route.topic].images?.length)
-        ? "image"
-        : "text",
-    method,
-    candidateCount: articles.length,
-  };
+  return finalizeRoute(route.topic, method, articles.length);
 }

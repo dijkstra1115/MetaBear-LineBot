@@ -234,16 +234,16 @@ export function guide(
   const progressive = pages.length > 1;
   const actions = [
     ...(progressive && page + 1 < pages.length
-      ? [command("下一張", `圖片教學 ${step} ${page + 1}`)]
-      : progressive
-        ? [command("提交 UID")]
-        : []),
+      ? [command("下一步", `圖片教學 ${step} ${page + 1}`)]
+      : []),
+    ...(progressive ? [command("已入金，提交 UID", "提交 UID")] : []),
     ...(page > 0 ? [command("上一張", `圖片教學 ${step} ${page - 1}`)] : []),
     ...(progressive
       ? [command("選擇入金方式", "入金教學")]
       : item.related.map((topic) => command(STEPS[topic].title))),
     command("人工協助"),
     command("選單"),
+    link("網站版教學", `${baseUrl.replace(/\/$/, "")}/learn?step=${step}`),
   ];
   const card = navigation(actions);
   if (progressive) {

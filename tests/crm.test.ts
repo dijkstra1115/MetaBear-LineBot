@@ -3,7 +3,7 @@ import { dispatchCampaigns } from "../src/campaigns";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
-import { fallbackRoute } from "../src/assistant";
+import { fallbackRoute, keywordRoute } from "../src/assistant";
 import { isGreeting } from "../src/greetings";
 import {
   knowledgeCandidates,
@@ -205,9 +205,21 @@ before(async () => {
           assert.equal(payload.reasoning.effort, "none");
           assert.equal(payload.text.format.type, "json_schema");
           assert.equal(JSON.stringify(input).includes(alice), false);
+          const mapped: Record<string, { topic: string; format: string }> = {
+            "這個地方要寫誰介紹的？": { topic: "code", format: "image" },
+            "我該如何註冊？": { topic: "register", format: "image" },
+            "我已經註冊好了，接下來呢？": { topic: "kyc", format: "image" },
+            "UID 要在哪裡找？": { topic: "uid", format: "auto" },
+            槓桿是什麼: { topic: "槓桿", format: "auto" },
+            "哈嘍，我想問入金": { topic: "deposit", format: "auto" },
+            "你好，我要註冊": { topic: "register", format: "auto" },
+            "Hi，KYC 怎麼做？": { topic: "kyc", format: "auto" },
+          };
           const route =
-            input.question === "這個地方要寫誰介紹的？"
-              ? { topic: "code", format: "image" }
+            mapped[input.question] ??
+            (["給我看圖", "看圖"].includes(input.question) &&
+            input.currentTopic
+              ? { topic: input.currentTopic, format: "image" }
               : fallbackRoute(
                   input.question,
                   input.currentTopic
@@ -216,7 +228,7 @@ before(async () => {
                         format: "image",
                       }
                     : null,
-                );
+                ));
           return Response.json({
             status: "completed",
             output: [
@@ -255,7 +267,11 @@ before(async () => {
       (await readdir("migrations"))
         .filter((f) => f.endsWith(".sql"))
         .sort()
-        .map((f) => readFile("migrations/" + f, "utf8")),
+        .map((f) =>
+          readFile("migrations/" + f, "utf8").then((s) =>
+            s.replaceAll("\r\n", "\n"),
+          ),
+        ),
     )
   ).join("\n");
   await db.batch(
@@ -455,14 +471,23 @@ test("greetings with an actual question still open the requested topic", async (
     ["哈嘍，我想問入金", "deposit"],
     ["你好，我要註冊", "register"],
     ["Hi，KYC 怎麼做？", "kyc"],
-  ]) {
+  ] as const) {
     assert.equal(isGreeting(text), false);
-    await webhook([event(text, user)]);
+    const e = event(text, user);
+    await webhook([e]);
     assert.equal((await getCustomer(user)).customer.guide_step, topic);
     assert.doesNotMatch(
       String(calls.at(-1)!.messages[0].text),
       /今天有什麼想了解/,
     );
+    if (text === "Hi，KYC 怎麼做？") {
+      const route = await db
+        .prepare("SELECT method, topic FROM route_events WHERE event_id=?")
+        .bind(e.webhookEventId)
+        .first<any>();
+      assert.notEqual(route.method, "rule");
+      assert.equal(route.topic, "kyc");
+    }
   }
 });
 test("related question buttons open the named answer directly", async () => {
@@ -762,12 +787,100 @@ test("high-confidence rules skip AI and route metrics expose latency without mes
   assert.ok(Array.isArray(stats.routing.methods));
 });
 
+test("keywordRoute only matches whole-sentence short commands", () => {
+  assert.equal(keywordRoute("KYC 怎麼做")?.topic, "kyc");
+  assert.equal(keywordRoute("Hi，KYC 怎麼做？"), undefined);
+  assert.equal(
+    keywordRoute("信用卡入金一直沒到帳，要找客服嗎"),
+    undefined,
+  );
+  assert.equal(keywordRoute("入金教學")?.topic, "deposit");
+});
+
+test("compound deposit questions are not routed to deposit teaching", async () => {
+  const user = "U" + crypto.randomUUID().replaceAll("-", "");
+  const e = event("信用卡入金一直沒到帳，要找客服嗎", user);
+  await webhook([e]);
+  const step = (await getCustomer(user)).customer.guide_step;
+  assert.ok(!["deposit", "deposit_card", "deposit_bitopro"].includes(step));
+  const route = await db
+    .prepare("SELECT method, topic FROM route_events WHERE event_id=?")
+    .bind(e.webhookEventId)
+    .first<any>();
+  assert.notEqual(route?.method, "rule");
+  assert.ok(!String(route?.topic ?? "").startsWith("deposit"));
+});
+
+test("bare digits ask before registering a BingX UID", async () => {
+  const user = "U" + crypto.randomUUID().replaceAll("-", "");
+  await webhook([event("12345678", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /要將 BingX UID/);
+  assert.equal((await getCustomer(user)).account, null);
+  await webhook([event("UID 12345678", user)]);
+  assert.equal((await getCustomer(user)).account.uid, "12345678");
+});
+
+test("stickers get a short menu reply and teaching images do not auto-create support", async () => {
+  const user = "U" + crypto.randomUUID().replaceAll("-", "");
+  const media = (type: string) => ({
+    webhookEventId: crypto.randomUUID(),
+    type: "message",
+    timestamp: ++clock,
+    source: { type: "user", userId: user },
+    replyToken: crypto.randomUUID(),
+    message: { type },
+  });
+  await webhook([media("sticker")]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /文字或下方按鈕/);
+  await webhook([event("KYC 教學", user)]);
+  await webhook([media("image")]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /再看此步/);
+  assert.equal((await getCustomer(user)).customer.support_requested, 0);
+});
+
+test("expired teaching context is ignored and 不是這題 clears it", async () => {
+  const user = "U" + crypto.randomUUID().replaceAll("-", "");
+  await webhook([event("開始註冊", user)]);
+  await db
+    .prepare(
+      "UPDATE teaching_context SET updated_at=? WHERE line_user_id=?",
+    )
+    .bind(new Date(Date.now() - 9 * 60 * 60 * 1000).toISOString(), user)
+    .run();
+  await webhook([event("下一張", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /你想了解哪個問題/);
+  await webhook([event("開始註冊", user)]);
+  await webhook([event("不是這題", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /你想了解哪個問題/);
+  assert.equal(
+    await db
+      .prepare("SELECT topic FROM teaching_context WHERE line_user_id=?")
+      .bind(user)
+      .first(),
+    null,
+  );
+});
+
+test("a second clarify asks whether to hand off to a person", async () => {
+  const user = "U" + crypto.randomUUID().replaceAll("-", "");
+  aiMode = "unavailable";
+  try {
+    await webhook([event("現在幾點適合買進以太", user)]);
+    assert.match(String(calls.at(-1)!.messages[0].text), /你想了解哪個問題/);
+    await webhook([event("今天天氣如何", user)]);
+    assert.match(String(calls.at(-1)!.messages[0].text), /人工協助/);
+  } finally {
+    aiMode = "normal";
+  }
+});
+
 test("unavailable or invalid AI output falls back to approved content without changing consent", async () => {
   const user = "Ueeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
   try {
     for (const mode of ["invalid", "unavailable"] as const) {
       aiMode = mode;
-      await webhook([event("註冊時邀請碼填在哪裡？", user)]);
+      await webhook([event("開始註冊", user)]);
+      await webhook([event("那個欄位在哪", user)]);
       assert.match(JSON.stringify(calls.at(-1)!.messages), /ZD0CQ0/);
       assert.equal(
         JSON.stringify(calls.at(-1)!.messages).includes("untrusted.test"),
@@ -826,14 +939,22 @@ test("every menu question works independently without AI or prior registration",
         new RegExp(item.title.replace(/[？?]/g, "")),
       );
       const actions = answer.quickReply.items.map((i: any) => i.action);
-      assert.ok(
-        actions.every(
-          (a: any) => !["下一步", "看文字", "看圖片"].includes(a.label),
-        ),
-      );
-      if (!item.images)
+      if (item.images) {
+        assert.ok(actions.some((a: any) => a.label === "已入金，提交 UID"));
+        assert.ok(
+          actions.some(
+            (a: any) => a.label === "下一步" || a.label === "已入金，提交 UID",
+          ),
+        );
+      } else {
+        assert.ok(
+          actions.every(
+            (a: any) => !["下一步", "看文字", "看圖片"].includes(a.label),
+          ),
+        );
         for (const related of item.related)
           assert.ok(actions.some((a: any) => a.text === STEPS[related].title));
+      }
       assert.ok((messages.at(-1) as any).quickReply);
     }
   } finally {
@@ -857,6 +978,19 @@ test("LINE images require HTTPS; missing images stay in the conversation with te
     false,
   );
   assert.equal(JSON.stringify(messages).includes("guide.html"), false);
+});
+
+test("deposit cards always offer next page and skip to UID", () => {
+  const labels = (page: number) =>
+    (
+      guide("deposit_bitopro", "https://crm.test", false, page)[0] as any
+    ).contents.footer.contents.map((c: any) => c.action.label);
+  const first = labels(0);
+  assert.ok(first.includes("下一步"));
+  assert.ok(first.includes("已入金，提交 UID"));
+  const last = labels(999);
+  assert.equal(last.includes("下一步"), false);
+  assert.ok(last.includes("已入金，提交 UID"));
 });
 
 test("deposit teaching pairs each website row and preserves navigation through LINE postbacks", async () => {
@@ -886,13 +1020,19 @@ test("deposit teaching pairs each website row and preserves navigation through L
         buttons.some((a: any) => a.label === "上一張"),
         page > 0,
       );
-      const next = buttons.find((a: any) => a.label === "下一張");
+      const next = buttons.find((a: any) => a.label === "下一步");
       assert.equal(Boolean(next), page + 1 < rows.length);
+      assert.ok(
+        buttons.some(
+          (a: any) =>
+            a.label === "已入金，提交 UID" &&
+            new URLSearchParams(a.data).get("text") === "提交 UID",
+        ),
+      );
       if (next)
         await webhook([
           { ...event("", id), type: "postback", postback: { data: next.data } },
         ]);
-      else assert.ok(buttons.some((a: any) => a.label === "提交 UID"));
     }
     await webhook([event("下一張", id)]);
     assert.match(
@@ -935,6 +1075,12 @@ test("next step advances deposit cards but preserves registration topic progress
     await webhook([event("BitoPro 入金", user)]);
     await webhook([event("下一步", user)]);
     assert.match((calls.at(-1)!.messages[0] as any).altText, /2\/14/);
+    await webhook([event("然後呢", user)]);
+    assert.match((calls.at(-1)!.messages[0] as any).altText, /3\/14/);
+    assert.equal(
+      (await getCustomer(user)).customer.guide_step,
+      "deposit_bitopro",
+    );
   } finally {
     aiMode = "normal";
   }

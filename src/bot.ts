@@ -1,5 +1,4 @@
 import {
-  BUSINESS,
   LESSONS,
   STEPS,
   command,
@@ -9,9 +8,27 @@ import {
   menu,
   moreMenu,
   reply,
+  link,
 } from "./content";
 import { ensureCustomer, now } from "./db";
-import { isStep, routeQuestion, type TeachingContext } from "./assistant";
+import {
+  directRoute,
+  fallbackRoute,
+  finalizeRoute,
+  isAdvanceCommand,
+  isMenuCommand,
+  isNextPageCommand,
+  isPreviousPageCommand,
+  isProgressCommand,
+  isProgressiveStep,
+  isReplayCommand,
+  isStep,
+  isSupportCommand,
+  routeQuestion,
+  teachingContextIsCurrent,
+  type RoutedTeachingContext,
+  type TeachingContext,
+} from "./assistant";
 import type { Account, LineMessage } from "./types";
 import { enqueueSync, customerAutomation } from "./automation";
 import { getTeam, personalize } from "./team";
@@ -40,6 +57,113 @@ async function handoff(
   ];
 }
 
+function contextTitle(context: TeachingContext): string {
+  if (isStep(context.topic)) return STEPS[context.topic].title;
+  if (Object.hasOwn(LESSONS, context.topic)) return context.topic;
+  if (context.topic.startsWith("kb:")) return "剛才的常見問題";
+  return context.topic;
+}
+
+function noContextClarify(): LineMessage[] {
+  return [
+    reply("你想了解哪個問題？可以直接點選。", [
+      command("開始註冊"),
+      command("入金教學"),
+      command("我的進度"),
+      command("常見問題"),
+      command("人工協助"),
+    ]),
+  ];
+}
+
+function teachingClarify(context: TeachingContext): LineMessage[] {
+  const title = contextTitle(context);
+  const page = isStep(context.topic)
+    ? `第 ${(context.image_page ?? 0) + 1} 步`
+    : "";
+  return [
+    reply(
+      page
+        ? `目前是「${title}」${page}。要再看一次、看下一張，或找人工協助嗎？`
+        : `目前是「${title}」。要再看一次，或找人工協助嗎？`,
+      [
+        command("再看一次"),
+        command("下一張"),
+        command("人工協助"),
+        command("選單"),
+      ],
+    ),
+  ];
+}
+
+async function saveContext(
+  db: D1Database,
+  userId: string,
+  topic: string,
+  format: "text" | "image",
+  imagePage: number,
+  clarifyStreak: number,
+) {
+  await db
+    .prepare(
+      "INSERT INTO teaching_context(line_user_id,topic,format,image_page,clarify_streak,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(line_user_id) DO UPDATE SET topic=excluded.topic,format=excluded.format,image_page=excluded.image_page,clarify_streak=excluded.clarify_streak,updated_at=excluded.updated_at",
+    )
+    .bind(
+      userId,
+      topic,
+      format,
+      Math.min(imagePage, 100),
+      clarifyStreak,
+      now(),
+    )
+    .run();
+}
+
+export async function respondToInboundMedia(
+  db: D1Database,
+  userId: string,
+  env: Env,
+  eventId: string,
+  messageType: string,
+): Promise<LineMessage[]> {
+  if (["image", "video"].includes(messageType)) {
+    const stored = await db
+      .prepare(
+        "SELECT topic, format, image_page, updated_at, clarify_streak FROM teaching_context WHERE line_user_id=?",
+      )
+      .bind(userId)
+      .first<TeachingContext>();
+    const context = teachingContextIsCurrent(stored) ? stored : null;
+    if (
+      context &&
+      (context.topic === "kyc" || context.topic.startsWith("deposit"))
+    ) {
+      const title = contextTitle(context);
+      return [
+        reply(
+          `已收到圖片／影片。我不會辨識截圖內容。若你卡在「${title}」，可以再看此步，或改找人工協助。`,
+          [command("再看此步"), command("轉人工"), command("選單")],
+        ),
+      ];
+    }
+    const support = await requestSupport(env, userId, eventId);
+    return [
+      reply(
+        support.created
+          ? "已收到圖片／影片並通知客服查看。附件不會由 Bot 自動核實，也不會因此自動通過入群。"
+          : "已收到圖片／影片，現有人工協助案件仍保留。附件不會由 Bot 自動核實，也不會因此自動通過入群。",
+        [command("人工協助"), command("選單")],
+      ),
+    ];
+  }
+  return [
+    reply(
+      "目前請用文字或下方按鈕描述你卡住的步驟。貼圖、語音、位置或檔案不會用來判斷教學進度。",
+      [command("選單"), command("人工協助")],
+    ),
+  ];
+}
+
 export async function respond(
   db: D1Database,
   userId: string,
@@ -64,7 +188,7 @@ async function respondBase(
   const customer = await ensureCustomer(db, userId);
   const text = input.trim();
   const base = env.PUBLIC_BASE_URL.replace(/\/$/, "");
-  if (/^(選單|menu|開始)$/i.test(text)) {
+  if (isMenuCommand(text)) {
     await db
       .prepare("DELETE FROM teaching_context WHERE line_user_id=?")
       .bind(userId)
@@ -117,11 +241,7 @@ async function respondBase(
         [command("訂閱通知"), command("停止通知"), command("選單")],
       ),
     ];
-  if (
-    /^(?:我要|我想|請|幫我)?(?:找|轉|聯絡)?(?:人工協助|人工客服|真人客服|真人|人工|客服)[！!。?？\s]*$/.test(
-      text,
-    )
-  ) {
+  if (isSupportCommand(text)) {
     return handoff(env, userId, eventId);
   }
   if (text === "交易偏好")
@@ -150,9 +270,17 @@ async function respondBase(
       reply("已更新你的交易偏好。", [command("通知設定"), command("選單")]),
     ];
   }
+  if (/^\d{4,30}$/.test(text)) {
+    return [
+      reply(`要將 BingX UID ${text} 登記到這個 LINE 帳號嗎？確認後才會寫入。`, [
+        command("是，登記此 UID", `UID ${text}`),
+        command("不是這題"),
+        command("選單"),
+      ]),
+    ];
+  }
   if (
     /^UID(?:\s*[:：]|\s+\d|\s*$)/i.test(text) ||
-    /^\d{4,30}$/.test(text) ||
     /(?:我的|BingX).*UID\s*[:：]?\s*\d{4,30}\s*$/i.test(text)
   ) {
     const uid = text.replace(
@@ -201,7 +329,7 @@ async function respondBase(
       await db.batch([
         db
           .prepare(
-            "INSERT INTO teaching_context(line_user_id,topic,format,updated_at) VALUES (?,'uid','text',?) ON CONFLICT(line_user_id) DO UPDATE SET topic='uid', updated_at=excluded.updated_at",
+            "INSERT INTO teaching_context(line_user_id,topic,format,updated_at) VALUES (?,'uid','text',?) ON CONFLICT(line_user_id) DO UPDATE SET topic='uid', updated_at=excluded.updated_at, clarify_streak=0",
           )
           .bind(userId, now()),
         db
@@ -214,7 +342,7 @@ async function respondBase(
             "UPDATE customers SET stage=CASE WHEN stage='joined' THEN stage ELSE 'review' END, guide_step='uid', updated_at=? WHERE line_user_id=?",
           )
           .bind(now(), userId),
-      ]);
+        ]);
     } catch (error) {
       if (String(error).includes("UNIQUE constraint"))
         return [
@@ -233,12 +361,7 @@ async function respondBase(
       ),
     ];
   }
-  if (
-    text === "我的進度" ||
-    /^(重新審核|我已入金|入金完成|KYC完成|我已完成KYC|我已完成入金|重新查詢)$/i.test(
-      text.replace(/\s/g, ""),
-    )
-  ) {
+  if (isProgressCommand(text)) {
     const account = await db
       .prepare(
         "SELECT uid FROM exchange_accounts WHERE line_user_id=? AND exchange='bingx'",
@@ -314,6 +437,13 @@ async function respondBase(
         [command("繼續使用小幫手"), command("選單")],
       ),
     ];
+  if (text === "不是這題") {
+    await db
+      .prepare("DELETE FROM teaching_context WHERE line_user_id=?")
+      .bind(userId)
+      .run();
+    return noContextClarify();
+  }
   if (isGreeting(text))
     return [
       menu(
@@ -322,39 +452,56 @@ async function respondBase(
     ];
   const faq = await faqMenu(db, text);
   if (faq) return faq;
-  const context = await db
+  const stored = await db
     .prepare(
-      "SELECT topic, format, image_page FROM teaching_context WHERE line_user_id=?",
+      "SELECT topic, format, image_page, updated_at, clarify_streak FROM teaching_context WHERE line_user_id=?",
     )
     .bind(userId)
     .first<TeachingContext>();
+  const context = teachingContextIsCurrent(stored) ? stored : null;
   const previousImage =
-    /^(?:上一張|上一步|上一組圖)[！!。?？]*$/.test(text) &&
-    context &&
-    isStep(context.topic);
-  const progressive =
-    context?.topic === "deposit_bitopro" || context?.topic === "deposit_card";
+    isPreviousPageCommand(text) && context && isStep(context.topic);
+  const progressive = isProgressiveStep(context?.topic);
   const nextImage =
-    (/^(?:看?(?:下一張|下張|下一組|下一組圖)|繼續看圖)[！!。?？]*$/.test(
-      text,
-    ) ||
-      (progressive && /^下一步[！!。?？]*$/.test(text))) &&
+    (isNextPageCommand(text) || (progressive && isAdvanceCommand(text))) &&
     context &&
     isStep(context.topic);
+  const replay =
+    isReplayCommand(text) &&
+    context &&
+    context.topic !== "clarify" &&
+    (isStep(context.topic) ||
+      Object.hasOwn(LESSONS, context.topic) ||
+      context.topic.startsWith("kb:"));
   const routedAt = Date.now();
-  const [articles, history] = await Promise.all([
-    knowledgeCandidates(db, text, context?.topic, 5),
-    recentConversation(db, userId, eventId),
-  ]);
-  const route =
-    nextImage || previousImage
-      ? {
-          topic: context.topic,
-          format: "image" as const,
-          method: "direct" as const,
-          candidateCount: articles.length,
-        }
-      : await routeQuestion(text, context, env, articles, history);
+  let articles: Awaited<ReturnType<typeof knowledgeCandidates>> = [];
+  let route: RoutedTeachingContext;
+  if ((previousImage || nextImage) && context) {
+    route = finalizeRoute(context.topic, "direct", 0);
+  } else if (replay && context) {
+    route = finalizeRoute(context.topic, "direct", 0);
+  } else if (
+    isAdvanceCommand(text) ||
+    isPreviousPageCommand(text) ||
+    isNextPageCommand(text) ||
+    isReplayCommand(text)
+  ) {
+    const fallback = fallbackRoute(text, context);
+    route = finalizeRoute(
+      fallback.topic,
+      fallback.topic === "clarify" ? "clarify" : "context",
+      0,
+    );
+  } else if (directRoute(text)) {
+    route = await routeQuestion(text, context, env, [], []);
+  } else {
+    let history: { role: string; text: string }[] = [];
+    [articles, history] = await Promise.all([
+      knowledgeCandidates(db, text, context?.topic, 5),
+      recentConversation(db, userId, eventId),
+    ]);
+    route = await routeQuestion(text, context, env, articles, history);
+  }
   await db
     .prepare(
       "INSERT OR IGNORE INTO route_events(event_id,method,topic,candidate_count,latency_ms,queue_delay_ms,created_at) VALUES (?,?,?,?,?,?,?)",
@@ -370,19 +517,24 @@ async function respondBase(
     )
     .run();
   if (route.topic.startsWith("kb:")) {
-    const article = articles.find((a) => "kb:" + a.id === route.topic);
+    let article = articles.find((a) => "kb:" + a.id === route.topic);
+    if (!article) {
+      const id = route.topic.slice(3);
+      article =
+        (await db
+          .prepare(
+            "SELECT * FROM knowledge_articles WHERE id=? AND status='published'",
+          )
+          .bind(id)
+          .first<(typeof articles)[number]>()) ?? undefined;
+    }
     if (article) {
       let marked = false;
       if (article.requires_support) {
         const support = await requestSupport(env, userId, eventId);
         marked = support.created;
       }
-      await db
-        .prepare(
-          "INSERT INTO teaching_context(line_user_id,topic,format,updated_at) VALUES (?,?,'text',?) ON CONFLICT(line_user_id) DO UPDATE SET topic=excluded.topic,format='text',image_page=0,updated_at=excluded.updated_at",
-        )
-        .bind(userId, route.topic, now())
-        .run();
+      await saveContext(db, userId, route.topic, "text", 0, 0);
       await db
         .prepare(
           "INSERT INTO audit_log(line_user_id,action,detail) VALUES (?,'knowledge.answer',?)",
@@ -407,39 +559,45 @@ async function respondBase(
         navigation(knowledgeActions(article)),
       ];
     }
+    return noContextClarify();
   }
   const explicitPage = text.match(/^圖片教學 \w+ (\d+)$/);
   const requestedPage = previousImage
-    ? (context.image_page ?? 0) - 1
+    ? (context?.image_page ?? 0) - 1
     : nextImage
-      ? (context.image_page ?? 0) + 1
-      : explicitPage
-        ? Number(explicitPage[1])
-        : 0;
+      ? (context?.image_page ?? 0) + 1
+      : replay
+        ? (context?.image_page ?? 0)
+        : explicitPage
+          ? Number(explicitPage[1])
+          : 0;
   const imagePage = isStep(route.topic)
     ? guidePage(route.topic, requestedPage)
     : 0;
   if (route.topic === "support") return handoff(env, userId, eventId);
   if (route.topic === "clarify") {
-    return [
-      reply(
-        context
-          ? "你想了解剛才哪個部分？可以直接點選問題，或告訴我你目前卡住的畫面。"
-          : "你想了解哪個問題？可以直接點選，不需要從註冊開始。也能直接問我合約基礎。",
-        [
-          ...Object.values(STEPS).map((item) => command(item.title)),
-          command("合約基礎"),
+    const teaching =
+      context && context.topic !== "clarify" ? context : undefined;
+    const streak = (stored?.clarify_streak ?? 0) + 1;
+    await saveContext(
+      db,
+      userId,
+      teaching?.topic ?? "clarify",
+      teaching?.format ?? "text",
+      teaching?.image_page ?? 0,
+      streak,
+    );
+    if (streak >= 2) {
+      return [
+        reply("還是沒對到你的問題。要改找人工協助，或從選單再選一次嗎？", [
           command("人工協助"),
-        ],
-      ),
-    ];
+          command("選單"),
+        ]),
+      ];
+    }
+    return teaching ? teachingClarify(teaching) : noContextClarify();
   }
-  await db
-    .prepare(
-      "INSERT INTO teaching_context(line_user_id,topic,format,image_page,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(line_user_id) DO UPDATE SET topic=excluded.topic,format=excluded.format,image_page=excluded.image_page,updated_at=excluded.updated_at",
-    )
-    .bind(userId, route.topic, route.format, Math.min(imagePage, 100), now())
-    .run();
+  await saveContext(db, userId, route.topic, route.format, imagePage, 0);
   if (isStep(route.topic)) {
     const stageMap = {
       register: "registering",
@@ -465,9 +623,8 @@ async function respondBase(
     );
   }
   return [
-    reply(
-      "【" + route.topic + "】\n\n" + LESSONS[route.topic],
-      [
+    reply("【" + route.topic + "】\n\n" + LESSONS[route.topic], [
+      ...[
         "開倉流程",
         "槓桿",
         "逐倉與全倉",
@@ -476,6 +633,10 @@ async function respondBase(
         "資金費率",
         "選單",
       ].map((x) => command(x)),
-    ),
+      link(
+        "網站版教學",
+        `${base}/learn?lesson=${encodeURIComponent(route.topic)}`,
+      ),
+    ]),
   ];
 }
