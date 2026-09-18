@@ -12,6 +12,7 @@ export type Preference = "unknown" | "spot" | "futures" | "both" | "learning";
 export type Customer = {
   line_user_id: string;
   display_name: string;
+  display_name_manual?: number;
   line_handle: string;
   stage: Stage;
   guide_step: Step;
@@ -54,7 +55,7 @@ export type FlexComponent =
       text: string;
       wrap: true;
       size?: string;
-      weight?: "bold";
+      weight?: "bold" | "regular";
       color?: string;
       margin?: string;
     }

@@ -25,7 +25,7 @@ type Delivery = {
 };
 const MAX_AUDIENCE = 500;
 const apiBase = "https://api.line.me/v2/bot/message";
-async function lineQuota(env: Env) {
+export async function lineQuota(env: Env) {
   if (env.LINE_DELIVERY_MODE !== "live")
     return { remaining: 0, used: 0, limit: 0, disabled: true };
   const headers = { Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}` };

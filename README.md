@@ -11,11 +11,11 @@
 - 明確指令、知識庫詞彙與高信心規則先處理，必要時才由 OpenAI Responses API 從前五個候選主題判斷自然提問與上下文。
 - 3D K 線首頁、合約損益互動、完整教學中心與 LINE 導流。
 - 使用 Notion 原始註冊、KYC、BitoPro 與 BingX 信用卡圖片；LINE 與網站共用入金逐張教材；LINE 可逐步點選，網站可放大翻頁。
-- 後台使用 MetaBear 獨立 LINE OTP 登入，僅允許已綁定的指定管理員，不再跳轉 ID3A；設定與復原方式見 [獨立登入](docs/LOGIN.md)。
+- 後台使用 MetaBear 獨立 LINE OTP 登入；管理員進入 `/admin`，也可進 `/desk` 發送報單。其他分析師進入 `/desk` 且看不到客戶名單。設定見 [獨立登入](docs/LOGIN.md)。
 - UID 登記、推薦關係與入金分別核實；防止同一 UID 重複綁定。
 - CRM 客戶名單、可通知／認領／暫停 Bot 的人工協助案件、客服備註、交易偏好、月交易量、路由品質指標及操作紀錄。
 - 客戶對話紀錄（90 天）、可編輯發布的常見問題知識庫，以及追問上下文；範圍與維護方式見 [對話與知識庫](docs/CONVERSATIONS-KNOWLEDGE.md)。
-- 用戶自願訂閱／退訂；依偏好與月交易量分群，草稿 → 預覽 → 確認推播 → 逐人背景送出與狀態紀錄。
+- 用戶自願訂閱／退訂行銷通知；分析師報單另由用戶在 LINE 自選品項，送出後立刻一對一推播，管理員可急停。
 - 開倉欄位、槓桿、逐倉／全倉、市價／限價、停損／強平、資金費率與既有五種指標說明。
 - 開發環境提供對話模擬器與示範資料，方便走完整流程。
 
@@ -81,7 +81,7 @@ npm run build
 
 ### 盤面教學圖文
 
-網站側欄將支撐與壓力、OI、Volume、CVD、Order Book Depth、RSI 分到「盤面教學」，與合約操作分開。`public/lesson-market.js` 維護五個指標主題的問題、短說明與來源；支撐壓力沿用互動圖例。官方圖片來源見 `public/guides/market/SOURCES.md`，中文概念圖可用 `node scripts/create-market-diagrams.mjs` 重建。所有示例均非即時行情；圖片視窗支援細節放大與捲動。這些分類及圖文僅用於網站，不更改 LINE 的課程回覆。
+網站側欄將支撐與壓力、OI、Volume、CVD、Order Book Depth、RSI 分到「盤面教學」，與合約操作分開。LINE 同樣提供這些主題的圖文翻頁，並標示示意／歷史截圖、非即時行情。互動 K 線仍在網站。
 
 OI、CVD、Volume 現改用 Velo BTC futures 頁面的真實圖表快照，另有同期間價格圖供對照；來源與擷取日期見 `public/guides/velo/SOURCES.md`。原中文 OI/CVD 示意圖與 TradingView 圖保留於素材目錄，但目前不在這三個主題使用。更新圖片時也須檢查對應文字中的日期、交易所、單位與走勢描述。
 

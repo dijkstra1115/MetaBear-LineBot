@@ -34,9 +34,10 @@ export async function readBody(
 }
 export async function readJson(
   request: Request,
+  limit?: number,
 ): Promise<Record<string, unknown>> {
   try {
-    const result: unknown = JSON.parse(await readBody(request));
+    const result: unknown = JSON.parse(await readBody(request, limit));
     if (!result || typeof result !== "object" || Array.isArray(result))
       throw new Error();
     return result as Record<string, unknown>;

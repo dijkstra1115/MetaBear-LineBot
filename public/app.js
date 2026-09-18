@@ -170,8 +170,8 @@ async function loadCustomers() {
           "cell-secondary",
         ),
       );
+    tr.append(v, el("td", c.last_trade_day || "尚無紀錄", "mono"));
     tr.append(
-      v,
       el(
         "td",
         c.blocked ? "已封鎖" : c.marketing_consent ? "已訂閱" : "未訂閱",
@@ -222,6 +222,23 @@ async function loadStats() {
   $("#routing-summary").textContent = totalRoutes
     ? `近 ${routing.days} 天路由 ${totalRoutes} 次 · 需澄清 ${clarificationRate}% · 路由平均 ${Number(routing.average_latency_ms || 0).toLocaleString("zh-TW")} ms · Queue 平均 ${Number(routing.average_queue_delay_ms || 0).toLocaleString("zh-TW")} ms／最慢 ${Number(routing.maximum_queue_delay_ms || 0).toLocaleString("zh-TW")} ms`
     : "近 7 天尚無自然提問路由資料。";
+  const reportMonth = field($("#filters"), "month").value || month();
+  const report = await api("/api/analytics/volume?month=" + reportMonth);
+  const box = $("#volume-report");
+  box.hidden = false;
+  box.replaceChildren();
+  for (const [label, value] of [
+    ["本月成交量 USDT", amount(report.volume)],
+    ["本月有成交", report.traders],
+    ["涵蓋但無成交", report.silent],
+    ["同步超過 2 天", report.stale],
+    ["近 30 天有開單", report.tradedLast30Days],
+    ["本月新用戶", report.newcomers],
+  ]) {
+    const d = el("div");
+    d.append(el("small", label), el("strong", String(value)));
+    box.append(d);
+  }
 }
 async function refresh() {
   await Promise.all([loadCustomers(), loadStats()]);
@@ -238,9 +255,11 @@ async function showView(view) {
     simulator: "對話測試",
     automation: "自動審核與同步",
     knowledge: "常見問題知識庫",
+    signals: "報單與分析師",
   }[view];
   if (view === "campaigns")
     await Promise.all([loadAudience(), loadDrafts(), loadRuns()]);
+  if (view === "signals") await loadSignalsAdmin();
   if (view === "automation") await window.CrmAutomation.load();
   if (view === "knowledge") await window.CrmKnowledge.load();
 }
@@ -269,6 +288,18 @@ async function enterWorkspace() {
     : "尚未設定 OpenAI · 使用常見問題備援規則";
   field($("#filters"), "month").value = month();
   filters = serializeFilters();
+  const tagSelect = field($("#filters"), "tag");
+  tagSelect.replaceChildren(new Option("全部標籤", ""));
+  $("#tag-options").replaceChildren();
+  for (const tag of config.tags || []) {
+    tagSelect.append(new Option(tag, tag));
+    const label = el("label");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = tag;
+    label.append(input, document.createTextNode(tag));
+    $("#tag-options").append(label);
+  }
   renderContent();
   $(".referral-card strong").textContent = config.business.code;
   await window.CrmAutomation?.ready();
@@ -360,9 +391,15 @@ async function openCustomer(id) {
     "preference",
     "notes",
     "owner_name",
-    "tags",
   ])
     field(f, key).value = data.customer[key];
+  const selectedTags = new Set(
+    String(data.customer.tags || "")
+      .split(/[,，、\s]+/)
+      .filter(Boolean),
+  );
+  for (const input of $("#tag-options").querySelectorAll("input"))
+    input.checked = selectedTags.has(input.value);
   field(f, "support_status").value = data.support?.status || "resolved";
   for (const key of [
     "uid",
@@ -379,6 +416,9 @@ async function openCustomer(id) {
       : data.customer.marketing_consent
         ? "已訂閱行銷通知"
         : "未訂閱行銷通知") + "。訂閱意願由用戶在 LINE 設定，後台不代為開啟。";
+  $("#detail-trade").textContent = data.customer.last_trade_day
+    ? "上次開單（BingX 有量日）：" + data.customer.last_trade_day
+    : "尚無 BingX 成交紀錄。";
   $("#detail-error").textContent = "";
   $("#volume-error").textContent = "";
   const vf = $("#volume-form");
@@ -419,9 +459,11 @@ $("#customer-form").addEventListener("submit", async (e) => {
     "preference",
     "notes",
     "owner_name",
-    "tags",
   ])
     data[key] = field(f, key).value;
+  data.tags = [...$("#tag-options").querySelectorAll("input:checked")]
+    .map((input) => input.value)
+    .join(",");
   data.support_status = field(f, "support_status").value;
   if (field(f, "uid").value.trim()) {
     data.account = {};
@@ -726,3 +768,108 @@ async function loadRuns() {
   }
 }
 $("#runs-refresh").onclick = run(loadRuns);
+function dirLabel(direction) {
+  return direction === "short" ? "做空" : "做多";
+}
+async function loadSignalsAdmin() {
+  const [staff, signals] = await Promise.all([
+    api("/api/staff"),
+    api("/api/signals"),
+  ]);
+  $("#signal-kill").textContent = signals.enabled
+    ? "暫停全部報單"
+    : "恢復報單發送";
+  $("#signal-kill-status").textContent = signals.enabled
+    ? "報單發送中。急停後，佇列裡尚未送出的訊息會略過。"
+    : "報單已急停。分析師暫時無法發送。";
+  const list = $("#staff-list");
+  list.replaceChildren();
+  if (!staff.staff.length) list.append(el("p", "尚未新增分析師。", "muted"));
+  for (const s of staff.staff) {
+    const item = el("article", undefined, "draft-item");
+    item.append(
+      el("h3", s.name),
+      el(
+        "small",
+        s.email +
+          " · " +
+          (s.owner
+            ? "管理員兼分析師"
+            : s.enabled
+              ? "啟用中"
+              : "已停用") +
+          " · " +
+          (s.bound ? "已綁 LINE" : "尚未綁定") +
+          " · 報單 " +
+          s.signals,
+      ),
+    );
+    const actions = el("div", undefined, "crm-actions");
+    const bind = el("button", "取得綁定指令", "quiet");
+    bind.type = "button";
+    bind.onclick = run(async () => {
+      const data = await api(
+        `/api/staff/${encodeURIComponent(s.email)}/line-enrollment`,
+        { method: "POST", body: "{}" },
+      );
+      await navigator.clipboard.writeText(data.command).catch(() => {});
+      toast("已產生綁定指令，請交給分析師傳到 MetaBear LINE：" + data.command);
+    });
+    actions.append(bind);
+    if (!s.owner) {
+      const toggle = el("button", s.enabled ? "停用" : "啟用", "quiet");
+      toggle.type = "button";
+      toggle.onclick = run(async () => {
+        await api(`/api/staff/${encodeURIComponent(s.email)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ enabled: !s.enabled }),
+        });
+        await loadSignalsAdmin();
+      });
+      actions.append(toggle);
+    }
+    item.append(actions);
+    list.append(item);
+  }
+  const signalList = $("#admin-signal-list");
+  signalList.replaceChildren();
+  if (!signals.signals.length)
+    signalList.append(el("p", "尚無報單紀錄。", "muted"));
+  for (const s of signals.signals) {
+    const item = el("article", undefined, "draft-item");
+    item.append(
+      el(
+        "h3",
+        `${s.analystName} · ${s.categoryId} ${dirLabel(s.direction)} ${s.leverage}`,
+      ),
+      el(
+        "small",
+        `${s.createdAt} · ${s.status} · 發送 ${s.audienceCount} · 接受 ${s.counts.accepted || 0} · 略過 ${s.counts.skipped || 0} · 失敗 ${s.counts.failed || 0}`,
+      ),
+      el("p", `進場 ${s.entry} · 止盈 ${s.takeProfit} · 止損 ${s.stopLoss}`),
+    );
+    signalList.append(item);
+  }
+}
+$("#staff-form").addEventListener(
+  "submit",
+  run(async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    await api("/api/staff", { method: "POST", body: JSON.stringify(data) });
+    form.reset();
+    toast("已加入分析師");
+    await loadSignalsAdmin();
+  }),
+);
+$("#staff-refresh").onclick = run(loadSignalsAdmin);
+$("#signals-refresh").onclick = run(loadSignalsAdmin);
+$("#signal-kill").onclick = run(async () => {
+  const current = await api("/api/signals");
+  await api("/api/signals/settings", {
+    method: "POST",
+    body: JSON.stringify({ enabled: !current.enabled }),
+  });
+  await loadSignalsAdmin();
+});

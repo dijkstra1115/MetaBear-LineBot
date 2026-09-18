@@ -64,6 +64,7 @@ async function limit(
   bucket: string,
   max: number,
   seconds: number,
+  message = "請求次數較多，請稍後再試",
 ): Promise<void> {
   const time = now();
   const row = await db
@@ -75,13 +76,23 @@ async function limit(
     )
     .bind(bucket, time + seconds, time, time, time, max)
     .first();
-  if (!row) throw new HttpError(429, "請求次數較多，請稍後再試");
+  if (!row) throw new HttpError(429, message);
+}
+
+export async function rateLimit(
+  db: D1Database,
+  bucket: string,
+  max: number,
+  seconds: number,
+  message?: string,
+): Promise<void> {
+  return limit(db, bucket, max, seconds, message);
 }
 
 export async function nativeIdentity(
   request: Request,
   env: Env,
-): Promise<{ email: string; mode: "native" }> {
+): Promise<{ email: string; mode: "native"; role: "admin" | "analyst" }> {
   if (!env.ADMIN_EMAIL) throw new HttpError(503, "管理員登入尚未完成設定");
   const token = readCookie(request, SESSION);
   if (!token) throw new HttpError(401, "請先登入 MetaBear");
@@ -90,10 +101,24 @@ export async function nativeIdentity(
   )
     .bind(await hash(token), now())
     .first<{ email: string }>();
-  if (!row || row.email !== env.ADMIN_EMAIL.trim().toLowerCase())
-    throw new HttpError(401, "登入已失效，請重新登入");
+  if (!row) throw new HttpError(401, "登入已失效，請重新登入");
+  const role = await resolveStaffRole(env, row.email);
+  if (!role) throw new HttpError(401, "登入已失效，請重新登入");
   checkMutation(request);
-  return { email: row.email, mode: "native" };
+  return { email: row.email, mode: "native", role };
+}
+
+async function resolveStaffRole(
+  env: Env,
+  email: string,
+): Promise<"admin" | "analyst" | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!env.ADMIN_EMAIL) throw new HttpError(503, "管理員登入尚未完成設定");
+  if (normalized === env.ADMIN_EMAIL.trim().toLowerCase()) return "admin";
+  const row = await env.DB.prepare("SELECT enabled FROM staff WHERE email=?")
+    .bind(normalized)
+    .first<{ enabled: number }>();
+  return row?.enabled === 1 ? "analyst" : null;
 }
 
 export async function cleanupAuth(env: Env): Promise<void> {
@@ -163,10 +188,11 @@ export async function authRoute(request: Request, env: Env): Promise<Response> {
     const response = json({
       ok: true,
       message: viaLine
-        ? "若此 Email 有管理權限，驗證碼將傳到已綁定的 LINE，有效 10 分鐘。請在這個瀏覽器輸入。"
-        : "若此 Email 有管理權限，你將收到一封驗證信。驗證碼有效 10 分鐘。",
+        ? "若此 Email 有工作台權限，驗證碼將傳到已綁定的 LINE，有效 10 分鐘。請在這個瀏覽器輸入。"
+        : "若此 Email 有工作台權限，你將收到一封驗證信。驗證碼有效 10 分鐘。",
     });
-    if (email !== env.ADMIN_EMAIL.trim().toLowerCase()) return response;
+    const role = await resolveStaffRole(env, email);
+    if (!role) return response;
     const channel = viaLine
       ? await env.DB.prepare(
           "SELECT line_user_id,enrolled_event_id FROM auth_admin_channels WHERE email=?",
@@ -174,8 +200,11 @@ export async function authRoute(request: Request, env: Env): Promise<Response> {
           .bind(email)
           .first<{ line_user_id: string; enrolled_event_id: string }>()
       : null;
-    if (viaLine && !channel)
-      throw new HttpError(503, "請先從現有管理員後台完成 LINE 登入綁定");
+    if (viaLine && !channel) {
+      if (role === "admin")
+        throw new HttpError(503, "請先從現有管理員後台完成 LINE 登入綁定");
+      return response;
+    }
     await limit(env.DB, "cooldown:" + (await hash(email)), 1, 60);
     await limit(env.DB, "email:" + (await hash(email)), 5, 3600);
     const challenge = randomToken();
@@ -220,7 +249,7 @@ export async function authRoute(request: Request, env: Env): Promise<Response> {
             messages: [
               {
                 type: "text",
-                text: `MetaBear 後台登入驗證碼：${code}\n\n請回到發起登入的瀏覽器輸入，10 分鐘內有效。請勿轉傳此驗證碼。\n若不是你本人操作，請忽略這則訊息。`,
+                text: `MetaBear 工作台登入驗證碼：${code}\n\n請回到發起登入的瀏覽器輸入，10 分鐘內有效。請勿轉傳此驗證碼。\n若不是你本人操作，請忽略這則訊息。`,
               },
             ],
           }),
@@ -270,7 +299,7 @@ export async function authRoute(request: Request, env: Env): Promise<Response> {
     !attempt ||
     typeof body.code !== "string" ||
     !/^\d{6}$/.test(body.code) ||
-    attempt.email !== env.ADMIN_EMAIL?.trim().toLowerCase()
+    !(await resolveStaffRole(env, attempt.email))
   )
     throw new HttpError(401, "驗證碼錯誤、已過期或嘗試過多，請重新索取");
   const token = randomToken();
@@ -295,7 +324,8 @@ export async function authRoute(request: Request, env: Env): Promise<Response> {
     await env.DB.prepare("DELETE FROM auth_sessions WHERE token_hash=?")
       .bind(await hash(previous))
       .run();
-  const response = json({ ok: true });
+  const role = (await resolveStaffRole(env, attempt.email)) || "admin";
+  const response = json({ ok: true, role });
   response.headers.append("Set-Cookie", cookie(SESSION, token, SESSION_TTL));
   response.headers.append("Set-Cookie", cookie(CHALLENGE, "", 0));
   return response;

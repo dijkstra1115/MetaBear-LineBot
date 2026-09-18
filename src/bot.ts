@@ -4,11 +4,15 @@ import {
   command,
   guide,
   guidePage,
+  isLesson,
+  lessonGuide,
+  lessonPage,
   navigation,
   menu,
   moreMenu,
+  futuresMenu,
+  marketMenu,
   reply,
-  link,
 } from "./content";
 import { ensureCustomer, now } from "./db";
 import {
@@ -18,9 +22,9 @@ import {
   isAdvanceCommand,
   isMenuCommand,
   isNextPageCommand,
+  isPagedTopic,
   isPreviousPageCommand,
   isProgressCommand,
-  isProgressiveStep,
   isReplayCommand,
   isStep,
   isSupportCommand,
@@ -37,6 +41,7 @@ import { recentConversation } from "./conversations";
 import { activeSupportCase, requestSupport, resumeBot } from "./support";
 import { isGreeting } from "./greetings";
 import { faqMenu, knowledgeActions } from "./faq";
+import { setSignalSubscription, userSignalSubs } from "./signals";
 
 async function handoff(
   env: Env,
@@ -80,7 +85,9 @@ function teachingClarify(context: TeachingContext): LineMessage[] {
   const title = contextTitle(context);
   const page = isStep(context.topic)
     ? `第 ${(context.image_page ?? 0) + 1} 步`
-    : "";
+    : isLesson(context.topic)
+      ? `第 ${(context.image_page ?? 0) + 1} 頁`
+      : "";
   return [
     reply(
       page
@@ -108,14 +115,7 @@ async function saveContext(
     .prepare(
       "INSERT INTO teaching_context(line_user_id,topic,format,image_page,clarify_streak,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(line_user_id) DO UPDATE SET topic=excluded.topic,format=excluded.format,image_page=excluded.image_page,clarify_streak=excluded.clarify_streak,updated_at=excluded.updated_at",
     )
-    .bind(
-      userId,
-      topic,
-      format,
-      Math.min(imagePage, 100),
-      clarifyStreak,
-      now(),
-    )
+    .bind(userId, topic, format, Math.min(imagePage, 100), clarifyStreak, now())
     .run();
 }
 
@@ -196,6 +196,8 @@ async function respondBase(
     return [menu()];
   }
   if (text === "更多教學") return [moreMenu()];
+  if (text === "合約教學") return [futuresMenu()];
+  if (text === "看盤教學") return [marketMenu()];
   if (text === "後台")
     return [reply(`管理員後台（需登入）：\n${base}/admin`, [command("選單")])];
   if (text === "繼續使用小幫手") {
@@ -237,10 +239,59 @@ async function respondBase(
   if (text === "通知設定")
     return [
       reply(
-        "你可以選擇接收 MetaBear 教學、社群與交易所活動通知。我們會依你提供的偏好與交易量篩選通知。\n\n訂閱是自願的，不影響客服；隨時回覆「退訂」停止。",
-        [command("訂閱通知"), command("停止通知"), command("選單")],
+        "教學與活動通知、分析師報單是兩套設定，可分開選擇。\n\n行銷通知：回覆「訂閱通知」或「退訂」。\n報單：回覆「報單通知」，自選 BTC、ETH 等品項。已入群且未封鎖才會收到報單。退訂行銷不會取消報單。",
+        [
+          command("訂閱通知"),
+          command("停止通知"),
+          command("報單通知"),
+          command("選單"),
+        ],
       ),
     ];
+  if (text === "報單通知" || text === "報單訂閱") {
+    const categories = await userSignalSubs(db, userId);
+    const lines = categories.map(
+      (c) => `${c.label}：${c.subscribed ? "已訂閱" : "未訂閱"}`,
+    );
+    return [
+      reply(
+        `選擇要接收的分析師報單品項。預設全關，與行銷通知分開。只有已入群且未封鎖才會收到。\n\n${lines.join("\n")}\n\n內容為分析師觀點，非投資建議。`,
+        [
+          ...categories.map((c) =>
+            command(
+              c.subscribed ? `退訂 ${c.label}` : `訂閱 ${c.label}`,
+              `${c.subscribed ? "退訂報單" : "訂閱報單"} ${c.id}`,
+            ),
+          ),
+          command("選單"),
+        ],
+      ),
+    ];
+  }
+  const signalSub = /^(訂閱|退訂)報單\s+([A-Z0-9]+)$/.exec(text);
+  if (signalSub) {
+    const label = await setSignalSubscription(
+      db,
+      userId,
+      signalSub[2],
+      signalSub[1] === "訂閱",
+    );
+    if (!label)
+      return [
+        reply("找不到這個報單品項。請回覆「報單通知」查看可選項目。", [
+          command("報單通知"),
+          command("選單"),
+        ]),
+      ];
+    return [
+      reply(
+        signalSub[1] === "訂閱"
+          ? `已訂閱 ${label} 報單。已入群後就會收到這個品項的通知；隨時可再退訂。`
+          : `已退訂 ${label} 報單。其他品項與教學通知不受影響。`,
+        [command("報單通知"), command("選單")],
+      ),
+    ];
+  }
   if (isSupportCommand(text)) {
     return handoff(env, userId, eventId);
   }
@@ -342,7 +393,7 @@ async function respondBase(
             "UPDATE customers SET stage=CASE WHEN stage='joined' THEN stage ELSE 'review' END, guide_step='uid', updated_at=? WHERE line_user_id=?",
           )
           .bind(now(), userId),
-        ]);
+      ]);
     } catch (error) {
       if (String(error).includes("UNIQUE constraint"))
         return [
@@ -460,12 +511,14 @@ async function respondBase(
     .first<TeachingContext>();
   const context = teachingContextIsCurrent(stored) ? stored : null;
   const previousImage =
-    isPreviousPageCommand(text) && context && isStep(context.topic);
-  const progressive = isProgressiveStep(context?.topic);
+    isPreviousPageCommand(text) &&
+    context &&
+    (isStep(context.topic) || isLesson(context.topic));
+  const progressive = isPagedTopic(context?.topic);
   const nextImage =
     (isNextPageCommand(text) || (progressive && isAdvanceCommand(text))) &&
     context &&
-    isStep(context.topic);
+    (isStep(context.topic) || isLesson(context.topic));
   const replay =
     isReplayCommand(text) &&
     context &&
@@ -561,7 +614,7 @@ async function respondBase(
     }
     return noContextClarify();
   }
-  const explicitPage = text.match(/^圖片教學 \w+ (\d+)$/);
+  const explicitPage = text.match(/^圖片教學 (.+) (\d+)$/);
   const requestedPage = previousImage
     ? (context?.image_page ?? 0) - 1
     : nextImage
@@ -569,11 +622,13 @@ async function respondBase(
       : replay
         ? (context?.image_page ?? 0)
         : explicitPage
-          ? Number(explicitPage[1])
+          ? Number(explicitPage[2])
           : 0;
   const imagePage = isStep(route.topic)
     ? guidePage(route.topic, requestedPage)
-    : 0;
+    : isLesson(route.topic)
+      ? lessonPage(route.topic, requestedPage)
+      : 0;
   if (route.topic === "support") return handoff(env, userId, eventId);
   if (route.topic === "clarify") {
     const teaching =
@@ -622,21 +677,13 @@ async function respondBase(
       imagePage,
     );
   }
-  return [
-    reply("【" + route.topic + "】\n\n" + LESSONS[route.topic], [
-      ...[
-        "開倉流程",
-        "槓桿",
-        "逐倉與全倉",
-        "市價與限價",
-        "停損與強平",
-        "資金費率",
-        "選單",
-      ].map((x) => command(x)),
-      link(
-        "網站版教學",
-        `${base}/learn?lesson=${encodeURIComponent(route.topic)}`,
-      ),
-    ]),
-  ];
+  if (isLesson(route.topic))
+    return lessonGuide(
+      route.topic,
+      base,
+      env.ENVIRONMENT === "development" &&
+        env.LINE_DELIVERY_MODE === "disabled",
+      imagePage,
+    );
+  return [menu()];
 }

@@ -566,6 +566,49 @@ tr:hover td {
   font-size: 26px;
   color: #889cc6;
 }
+.volume-report {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.volume-report div {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.volume-report small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+.volume-report strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px;
+}
+.tag-options {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.tag-options legend {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.tag-options div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.tag-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
 .panel {
   background: #fff;
   border: 1px solid var(--line);

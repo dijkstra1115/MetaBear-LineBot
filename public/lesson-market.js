@@ -242,7 +242,7 @@ export const marketQuestions = {
   ],
 };
 
-// Additional Velo lessons are website-only; registration and LINE content stay separate.
+// Velo chart lessons are shared with LINE as static captioned images.
 marketQuestions["資金費率判讀"] = [
   vq(
     "sign",

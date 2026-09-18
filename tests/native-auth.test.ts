@@ -100,10 +100,13 @@ before(async () => {
       " ",
     ),
   );
+  await db.exec(
+    "CREATE TABLE IF NOT EXISTS staff (email TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'analyst', enabled INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL);",
+  );
 });
 beforeEach(async () => {
   await db.exec(
-    "DELETE FROM auth_rate_limits; DELETE FROM auth_challenges; DELETE FROM auth_sessions; DELETE FROM auth_line_enrollments; DELETE FROM auth_admin_channels;",
+    "DELETE FROM auth_rate_limits; DELETE FROM auth_challenges; DELETE FROM auth_sessions; DELETE FROM auth_line_enrollments; DELETE FROM auth_admin_channels; DELETE FROM staff;",
   );
   await db
     .prepare("INSERT INTO auth_admin_channels VALUES (?,?,?,?)")
@@ -155,7 +158,7 @@ test("LINE OTP uses server-bound recipient, hashed storage and independent revoc
   const session = challengeCookie(verified);
   assert.deepEqual(
     await (await call("/auth/session", undefined, session)).json(),
-    { email, mode: "native" },
+    { email, mode: "native", role: "admin" },
   );
   assert.equal((await call("/admin", undefined, session)).status, 200);
   assert.equal(
@@ -336,4 +339,55 @@ test("enrollment requires existing admin auth; signed-in-issued code binds once 
     ).line_user_id,
     newUser,
   );
+});
+test("enabled analyst uses LINE OTP but cannot open the CRM", async () => {
+  const analystEmail = "analyst@example.test";
+  const analystUser = "U" + "c".repeat(32);
+  await db
+    .prepare("INSERT INTO staff(email,name,created_by) VALUES (?,?,?)")
+    .bind(analystEmail, "阿熊", email)
+    .run();
+  await db
+    .prepare("INSERT INTO auth_admin_channels VALUES (?,?,?,?)")
+    .bind(analystEmail, analystUser, 1, "analyst-enroll")
+    .run();
+  const requested = await call("/auth/request", { email: analystEmail });
+  assert.equal(requested.status, 200, await requested.clone().text());
+  assert.equal(pushes.at(-1).to, analystUser);
+  const verified = await call(
+    "/auth/verify",
+    { code: code() },
+    challengeCookie(requested),
+  );
+  assert.equal(verified.status, 200, await verified.clone().text());
+  const session = challengeCookie(verified);
+  assert.deepEqual(
+    await (await call("/auth/session", undefined, session)).json(),
+    { email: analystEmail, mode: "native", role: "analyst" },
+  );
+  assert.equal((await call("/api/config", undefined, session)).status, 403);
+  assert.equal((await call("/api/customers", undefined, session)).status, 403);
+  const adminPage = await mf.dispatchFetch("https://crm.test/admin", {
+    headers: { Cookie: session },
+    redirect: "manual",
+  });
+  assert.equal(adminPage.status, 302);
+  assert.equal(adminPage.headers.get("location"), "/desk");
+  assert.equal((await call("/desk", undefined, session)).status, 200);
+});
+test("owner stays admin after being listed as analyst", async () => {
+  await db
+    .prepare("INSERT INTO staff(email,name,created_by) VALUES (?,?,?)")
+    .bind(email, "管理員", email)
+    .run();
+  const c = await requestCode();
+  const verified = await call("/auth/verify", { code: c.code }, c.cookie);
+  assert.equal(verified.status, 200, await verified.clone().text());
+  const session = challengeCookie(verified);
+  assert.deepEqual(
+    await (await call("/auth/session", undefined, session)).json(),
+    { email, mode: "native", role: "admin" },
+  );
+  assert.equal((await call("/admin", undefined, session)).status, 200);
+  assert.equal((await call("/desk", undefined, session)).status, 200);
 });

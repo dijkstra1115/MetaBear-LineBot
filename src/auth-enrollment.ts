@@ -65,21 +65,40 @@ export async function enrollFromLine(
   if (env.AUTH_CHANNEL !== "line") return invalid;
   const match = /^綁定後台\s+([a-f0-9]{48})$/.exec(text.trim());
   if (!match) return invalid;
-  const email = env.ADMIN_EMAIL.trim().toLowerCase();
-  const done = await env.DB.prepare(
-    "SELECT email FROM auth_admin_channels WHERE email=? AND line_user_id=? AND enrolled_event_id=?",
-  )
-    .bind(email, userId, eventId)
-    .first();
+  const tokenHash = await digest(match[1]);
+  const now = time();
   const success: LineMessage[] = [
     {
       type: "text",
-      text: "已完成 MetaBear 管理員登入綁定。之後後台登入驗證碼會傳到這個 LINE。請回到瀏覽器測試登入。",
+      text: "已完成 MetaBear 工作台登入綁定。之後登入驗證碼會傳到這個 LINE。請回到瀏覽器測試登入。",
     },
   ];
-  if (done) return success;
-  const tokenHash = await digest(match[1]);
-  const now = time();
+  const already = await env.DB.prepare(
+    "SELECT email FROM auth_admin_channels WHERE line_user_id=? AND enrolled_event_id=?",
+  )
+    .bind(userId, eventId)
+    .first();
+  if (already) return success;
+  const enrollment = await env.DB.prepare(
+    "SELECT email FROM auth_line_enrollments WHERE token_hash=? AND expires_at>?",
+  )
+    .bind(tokenHash, now)
+    .first<{ email: string }>();
+  if (!enrollment) return invalid;
+  const email = enrollment.email.trim().toLowerCase();
+  const admin = email === env.ADMIN_EMAIL.trim().toLowerCase();
+  if (!admin) {
+    const staff = await env.DB.prepare("SELECT email FROM staff WHERE email=?")
+      .bind(email)
+      .first();
+    if (!staff) return invalid;
+  }
+  const taken = await env.DB.prepare(
+    "SELECT email FROM auth_admin_channels WHERE line_user_id=?",
+  )
+    .bind(userId)
+    .first<{ email: string }>();
+  if (taken && taken.email !== email) return invalid;
   const result = await env.DB.batch([
     env.DB.prepare(
       `DELETE FROM auth_sessions WHERE email=? AND EXISTS (SELECT 1 FROM auth_line_enrollments WHERE email=? AND token_hash=? AND expires_at>?)`,
@@ -87,7 +106,7 @@ export async function enrollFromLine(
     env.DB.prepare(
       `INSERT INTO auth_admin_channels(email,line_user_id,enrolled_at,enrolled_event_id)
       SELECT email,?,?,? FROM auth_line_enrollments WHERE email=? AND token_hash=? AND expires_at>?
-      ON CONFLICT(email) DO UPDATE SET line_user_id=excluded.line_user_id,enrolled_at=excluded.enrolled_at,enrolled_event_id=excluded.enrolled_event_id`,
+    ON CONFLICT(email) DO UPDATE SET line_user_id=excluded.line_user_id,enrolled_at=excluded.enrolled_at,enrolled_event_id=excluded.enrolled_event_id`,
     ).bind(userId, now, eventId, email, tokenHash, now),
     env.DB.prepare(
       "DELETE FROM auth_line_enrollments WHERE email=? AND token_hash=? AND expires_at>?",

@@ -4,7 +4,7 @@ import { webhook, processLineEvent } from "./webhook";
 import { BUSINESS, STEPS, LESSONS } from "./content";
 import { HttpError, json } from "./http";
 import type { LineEvent } from "./types";
-import { adminIdentity } from "./auth";
+import { adminIdentity, staffIdentity } from "./auth";
 import { authRoute, cleanupAuth } from "./native-auth";
 import { cleanupConversations } from "./conversations";
 import {
@@ -25,10 +25,18 @@ import {
   processSupportNotification,
   type SupportNotificationMessage,
 } from "./support";
+import {
+  deskApi,
+  dispatchSignals,
+  processSignal,
+  signalMedia,
+  type SignalMessage,
+} from "./signals";
 
 export default {
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
     await dispatchCampaigns(env);
+    await dispatchSignals(env);
     await dispatchCrm(env);
     await dispatchSupportNotifications(env);
     await cleanupAuth(env);
@@ -38,6 +46,7 @@ export default {
     batch: MessageBatch<
       | LineEvent
       | CampaignMessage
+      | SignalMessage
       | CrmMessage
       | MenuInstallMessage
       | SupportNotificationMessage
@@ -57,6 +66,11 @@ export default {
           message.body.kind === "campaign-delivery"
         )
           await processCampaign(message.body, env);
+        else if (
+          "kind" in message.body &&
+          message.body.kind === "signal-delivery"
+        )
+          await processSignal(message.body, env);
         else if (
           "kind" in message.body &&
           message.body.kind === "support-notification"
@@ -111,20 +125,28 @@ export default {
           return new Response(null, { status: 405, headers: { Allow: "GET" } });
         return await getRate();
       }
+      if (url.pathname.startsWith("/media/signals/"))
+        return await signalMedia(request, env);
+      if (url.pathname.startsWith("/api/desk"))
+        return await deskApi(request, env);
       if (url.pathname.startsWith("/api/")) return await admin(request, env);
       if (!["GET", "HEAD"].includes(request.method))
         throw new HttpError(405, "Method not allowed");
       const target = new URL(request.url);
-      const privatePage = [
+      const path = decodeURIComponent(target.pathname);
+      const adminPage = [
         "/admin",
         "/admin/",
         "/admin.html",
         "/admin/login-setup",
-      ].includes(decodeURIComponent(target.pathname));
+      ].includes(path);
+      const deskPage = ["/desk", "/desk/", "/desk.html"].includes(path);
+      const privatePage = adminPage || deskPage;
       if (privatePage) {
         if (env.ENVIRONMENT !== "development" || env.AUTH_MODE === "native") {
           try {
-            await adminIdentity(request, env);
+            if (deskPage) await staffIdentity(request, env);
+            else await adminIdentity(request, env);
           } catch (error) {
             if (
               env.AUTH_MODE === "native" &&
@@ -133,15 +155,30 @@ export default {
             )
               return new Response(null, {
                 status: 302,
-                headers: { Location: "/login", "Cache-Control": "no-store" },
+                headers: {
+                  Location: deskPage ? "/login?next=desk" : "/login",
+                  "Cache-Control": "no-store",
+                },
+              });
+            if (
+              env.AUTH_MODE === "native" &&
+              adminPage &&
+              error instanceof HttpError &&
+              error.status === 403
+            )
+              return new Response(null, {
+                status: 302,
+                headers: { Location: "/desk", "Cache-Control": "no-store" },
               });
             throw error;
           }
         }
         target.pathname =
-          target.pathname === "/admin/login-setup"
+          path === "/admin/login-setup"
             ? "/login-setup.html"
-            : "/admin.html";
+            : deskPage
+              ? "/desk.html"
+              : "/admin.html";
       }
       if (["/login", "/login/"].includes(target.pathname))
         target.pathname = "/login.html";
@@ -174,5 +211,10 @@ export default {
   },
 } satisfies ExportedHandler<
   Env,
-  LineEvent | CampaignMessage | CrmMessage | MenuInstallMessage
+  | LineEvent
+  | CampaignMessage
+  | SignalMessage
+  | CrmMessage
+  | MenuInstallMessage
+  | SupportNotificationMessage
 >;

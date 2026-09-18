@@ -59,6 +59,8 @@
             ◫ <span>客戶名單</span></button
           ><button class="nav-item" data-view="campaigns">
             ↗ <span>受眾與推播</span></button
+          ><button class="nav-item" data-view="signals">
+            ✶ <span>報單與分析師</span></button
           ><button class="nav-item" data-view="content">
             ▤ <span>教學內容</span></button
           ><button class="nav-item" data-view="knowledge">
@@ -99,6 +101,7 @@
             aria-label="用戶流程分布"
           ></div>
           <p id="routing-summary" class="muted"></p>
+          <div id="volume-report" class="volume-report" hidden></div>
           <div class="section-heading">
             <div>
               <h2>客戶名單 <span id="customer-count" class="count">0</span></h2>
@@ -126,7 +129,11 @@
               </select></label
             >
             <label>客服<input name="owner" placeholder="負責客服" /></label>
-            <label>標籤<input name="tag" placeholder="例如：新手" /></label>
+            <label
+              >標籤<select name="tag">
+                <option value="">全部標籤</option>
+              </select></label
+            >
             <label class="search-label"
               >搜尋<input name="q" placeholder="姓名、LINE ID 或 UID" /></label
             ><label
@@ -176,6 +183,7 @@
                   <th>進度／核實</th>
                   <th>交易偏好</th>
                   <th>當月交易量</th>
+                  <th>上次開單</th>
                   <th>通知</th>
                   <th></th>
                 </tr>
@@ -261,6 +269,56 @@
             已接受」不代表個別用戶已收到或已讀。退訂、封鎖或條件變更的用戶會略過。
           </p>
           <div id="campaign-runs" class="draft-list"></div>
+        </section>
+        <section id="signals-view" class="view" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">ANALYST DESK</p>
+              <h1>分析師直送，管理員督看。</h1>
+              <p class="muted">
+                管理員帳號同時是分析師。登入 /desk
+                後即可發送。這裡只管理帳號、急停與發送結果，不會顯示收件人是誰。
+              </p>
+            </div>
+            <div class="crm-actions">
+              <a class="quiet" href="/desk">開啟報單台 ↗</a>
+              <button id="signal-kill" class="secondary">暫停全部報單</button>
+            </div>
+          </div>
+          <p id="signal-kill-status" class="callout"></p>
+          <div class="campaign-grid">
+            <form id="staff-form" class="panel">
+              <h2>新增分析師</h2>
+              <label
+                >Email<input
+                  name="email"
+                  type="email"
+                  required
+                  maxlength="254"
+                  autocomplete="off"
+              /></label>
+              <label
+                >顯示名稱<input name="name" required maxlength="40"
+              /></label>
+              <p class="muted">
+                新增後請產生 LINE
+                綁定指令，請分析師傳給官方帳號。他們看不到客戶名單。
+              </p>
+              <button class="primary" type="submit">加入名單</button>
+            </form>
+            <div class="panel">
+              <div class="section-heading">
+                <h2>分析師名單</h2>
+                <button id="staff-refresh" class="quiet">更新 ↻</button>
+              </div>
+              <div id="staff-list" class="draft-list"></div>
+            </div>
+          </div>
+          <div class="section-heading">
+            <h2>全部報單</h2>
+            <button id="signals-refresh" class="quiet">更新 ↻</button>
+          </div>
+          <div id="admin-signal-list" class="draft-list"></div>
         </section>
         <section id="automation-view" class="view" hidden>
           <div class="page-heading">
@@ -463,11 +521,12 @@
         </div>
         <p id="detail-id" class="mono muted"></p>
         <div class="form-grid">
-          <label>負責客服<input name="owner_name" maxlength="80" /></label
-          ><label
-            >標籤（以逗號分隔）<input name="tags" maxlength="500"
-          /></label>
-          <label>客服稱呼<input name="display_name" maxlength="80" /></label
+          <label>負責客服<input name="owner_name" maxlength="80" /></label>
+          <fieldset class="tag-options">
+            <legend>標籤</legend>
+            <div id="tag-options"></div>
+          </fieldset>
+          <label>客服稱呼<input name="display_name" maxlength="80" /></label>
           ><label
             >個人 LINE ID（選填）<input
               name="line_handle"
@@ -499,6 +558,7 @@
           </select></label
         >
         <p id="detail-consent" class="callout"></p>
+        <p id="detail-trade" class="muted"></p>
         <h3>推薦與入群核實</h3>
         <label
           >BingX UID<input

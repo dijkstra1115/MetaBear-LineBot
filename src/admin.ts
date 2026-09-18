@@ -12,6 +12,10 @@ import { enrollmentApi } from "./auth-enrollment";
 import { knowledgeApi } from "./knowledge";
 import { conversationApi } from "./conversations";
 import { activeSupportCase, updateSupportCase } from "./support";
+import { CUSTOMER_TAGS, parseTags } from "./tags";
+import { volumeMonthReport } from "./analytics";
+import { staffApi } from "./staff";
+import { adminSignalsApi } from "./signals";
 
 const stages = [
   "new",
@@ -53,12 +57,17 @@ export async function admin(request: Request, env: Env): Promise<Response> {
   if (automationResponse) return automationResponse;
   const campaignResponse = await campaignApi(request, env, identity.email);
   if (campaignResponse) return campaignResponse;
+  const staffResponse = await staffApi(request, env, identity.email);
+  if (staffResponse) return staffResponse;
+  const signalsResponse = await adminSignalsApi(request, env);
+  if (signalsResponse) return signalsResponse;
   if (request.method === "GET" && path === "/api/config")
     return json({
       business: personalize(BUSINESS, await getTeam(env.DB)),
       identity,
       steps: personalize(STEPS, await getTeam(env.DB)),
       lessons: LESSONS,
+      tags: CUSTOMER_TAGS,
       development: env.ENVIRONMENT === "development",
       deliveryMode: env.LINE_DELIVERY_MODE,
       assistant: {
@@ -103,6 +112,14 @@ export async function admin(request: Request, env: Env): Promise<Response> {
       routing: { ...(routing ?? {}), methods: methods.results, days: 7 },
     });
   }
+  if (request.method === "GET" && path === "/api/analytics/volume") {
+    return json(
+      await volumeMonthReport(
+        env.DB,
+        url.searchParams.get("month") || currentMonth(),
+      ),
+    );
+  }
   if (
     request.method === "GET" &&
     ["/api/customers", "/api/audience"].includes(path)
@@ -140,7 +157,7 @@ export async function admin(request: Request, env: Env): Promise<Response> {
       .first<Customer>();
     if (!customer) throw new HttpError(404, "找不到這位用戶");
     if (request.method === "GET" && !match[2]) {
-      const [account, volumes, audit, support] = await Promise.all([
+      const [account, volumes, audit, support, lastTrade] = await Promise.all([
         env.DB.prepare("SELECT * FROM exchange_accounts WHERE line_user_id=?")
           .bind(id)
           .first(),
@@ -155,9 +172,19 @@ export async function admin(request: Request, env: Env): Promise<Response> {
           .bind(id)
           .all(),
         activeSupportCase(env.DB, id),
+        env.DB.prepare(
+          `SELECT max(dm.day) AS last_trade_day FROM daily_metrics dm
+           JOIN exchange_accounts a ON a.uid=dm.uid
+           WHERE a.line_user_id=? AND dm.business_type='all' AND CAST(dm.volume AS REAL)>0`,
+        )
+          .bind(id)
+          .first<{ last_trade_day: string | null }>(),
       ]);
       return json({
-        customer,
+        customer: {
+          ...customer,
+          last_trade_day: lastTrade?.last_trade_day ?? null,
+        },
         account,
         support,
         volumes: volumes.results,
@@ -198,7 +225,18 @@ export async function admin(request: Request, env: Env): Promise<Response> {
       const handle = textField(data.line_handle, 100, customer.line_handle);
       const notes = textField(data.notes, 3000, customer.notes);
       const ownerName = textField(data.owner_name, 80, customer.owner_name);
-      const tags = textField(data.tags, 500, customer.tags);
+      const parsedTags = parseTags(
+        data.tags === undefined ? customer.tags || "" : String(data.tags),
+      );
+      if ("error" in parsedTags)
+        throw new HttpError(400, parsedTags.error ?? "標籤不正確");
+      const tags = parsedTags.value;
+      const nameLocked =
+        name !== customer.display_name
+          ? name
+            ? 1
+            : 0
+          : (customer.display_name_manual ?? 0);
       const stage =
         data.stage === undefined ? customer.stage : choice(data.stage, stages);
       const preference =
@@ -309,8 +347,8 @@ export async function admin(request: Request, env: Env): Promise<Response> {
       }
       statements.push(
         env.DB.prepare(
-          "UPDATE customers SET owner_name=?,tags=? WHERE line_user_id=?",
-        ).bind(ownerName, tags, id),
+          "UPDATE customers SET owner_name=?,tags=?,display_name_manual=? WHERE line_user_id=?",
+        ).bind(ownerName, tags, nameLocked, id),
       );
       statements.push(
         env.DB.prepare(

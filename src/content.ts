@@ -1,6 +1,20 @@
 import { bitoproQuestions } from "../public/guide-bitopro.js";
 import { cardQuestions } from "../public/guide-card.js";
+import { futuresQuestions } from "../public/lesson-futures.js";
+import { marketQuestions, marketLessonKeys } from "../public/lesson-market.js";
 import type { Step, LineMessage, Action } from "./types";
+type LessonRow = {
+  title: string;
+  src?: string;
+  action: string;
+  reason: string;
+};
+type LessonQuestion = {
+  intro: string;
+  rows: LessonRow[];
+  check: string;
+  note?: string;
+};
 
 export const BUSINESS = {
   exchange: "BingX",
@@ -94,7 +108,26 @@ export const LESSONS: Record<string, string> = {
   "Order Book Depth":
     "委託簿深度描述各價格層級等待成交的掛單量。掛單可被撤回，畫面上的深度不保證未來成交時仍存在。",
   RSI: "RSI 是根據一段期間價格漲跌計算的動能指標。高低讀值不等於價格一定反轉，趨勢中可能維持極端值一段時間。",
+  支撐與壓力:
+    "支撐是價格曾止跌的區域；壓力是價格曾遇到賣壓的區域。畫一個範圍通常比畫一條線更容易理解。互動圖在網站，這裡先看文字說明。",
+  資金費率判讀:
+    "資金費率是永續合約多空雙方定期交換的費用。正負代表誰付錢，圖上的年化讀值不是每次結算都收那麼多。",
+  清算量:
+    "清算量顯示已發生的強制平倉，不是未來爆倉價位預測。單一時段的高峰，不能當成已經跌完或漲完。",
+  期貨基差:
+    "基差用來觀察有到期日的期貨與現貨的價差，和永續合約的資金費率不同。年化基差不是可直接領取的利息。",
 };
+export const FUTURES_LESSON_KEYS = [
+  "合約基礎",
+  "開倉流程",
+  "槓桿",
+  "逐倉與全倉",
+  "市價與限價",
+  "停損與強平",
+  "資金費率",
+] as const;
+export const MARKET_LESSON_KEYS = marketLessonKeys as string[];
+export const isLesson = (topic: string) => Object.hasOwn(LESSONS, topic);
 export const command = (label: string, text = label): Action =>
   label === text
     ? { type: "message", label, text }
@@ -141,12 +174,163 @@ export const moreMenu = () =>
     command(STEPS.deposit_bitopro.title),
     command(STEPS.deposit_card.title),
     command(STEPS.uid.title),
-    command("合約基礎"),
+    command("合約教學"),
+    command("看盤教學"),
     command("交易偏好"),
     command("通知設定"),
+    command("報單通知"),
     command("人工協助"),
     command("選單"),
   ]);
+export const futuresMenu = () =>
+  reply("合約操作可以逐項查看，每次一張圖配一段說明。", [
+    ...FUTURES_LESSON_KEYS.map((key) => command(key)),
+    command("看盤教學"),
+    command("選單"),
+  ]);
+export const marketMenu = () =>
+  reply(
+    "看盤教學使用示意或歷史截圖，不是即時行情，也不是進場點。互動圖請開網站版。",
+    [
+      ...MARKET_LESSON_KEYS.map((key) => command(key)),
+      command("合約教學"),
+      command("選單"),
+    ],
+  );
+const SUPPORT_PAGES = [
+  {
+    title: "支撐在哪裡？",
+    text: "價格幾次跌到 98～102 附近後回升，這一帶可視為支撐區。畫一個範圍，比畫一條精準的線更容易理解。",
+  },
+  {
+    title: "壓力在哪裡？",
+    text: "價格幾次漲到 118～122 附近後回落，這一帶可視為壓力區。支撐看低點附近，壓力看高點附近。",
+  },
+  {
+    title: "碰到支撐就會漲嗎？",
+    text: "這個例子中，價格碰到支撐後反彈。但支撐不是保證，換一種走勢也可能直接跌破。",
+  },
+  {
+    title: "如果支撐跌破了呢？",
+    text: "同樣的前半段，後面也可能收在支撐區下方。原本的支撐已失守，不能只因「跌到支撐」就認定會反彈。",
+  },
+  {
+    title: "跌破後，支撐會變壓力嗎？",
+    text: "價格回升到原支撐區後又下跌，這是支撐轉為壓力的一種情況。角色可能轉換，但每次回測的結果不一定相同。\n\n互動 K 線在網站版，可對照同一張圖的不同走勢。",
+  },
+];
+export type LessonPage = { title: string; src?: string; text: string };
+function lineImageSrc(src: string | undefined) {
+  if (!src || src.endsWith(".svg")) return;
+  return src;
+}
+export function lessonPages(topic: string): LessonPage[] {
+  if (topic === "支撐與壓力")
+    return SUPPORT_PAGES.map((page, index) => ({
+      title: page.title,
+      text: [index === 0 ? LESSONS[topic] : "", page.text]
+        .filter(Boolean)
+        .join("\n\n"),
+    }));
+  const bank = (
+    Object.hasOwn(futuresQuestions, topic) ? futuresQuestions : marketQuestions
+  ) as Record<string, LessonQuestion[]>;
+  const questions = bank[topic];
+  if (!questions?.length)
+    return [{ title: topic, text: LESSONS[topic] ?? topic }];
+  return questions.flatMap((question, questionIndex) =>
+    question.rows.map((row, index) => ({
+      title: row.title,
+      src: lineImageSrc(row.src),
+      text: [
+        questionIndex === 0 && index === 0 ? LESSONS[topic] : "",
+        index === 0 ? question.intro : "",
+        row.action,
+        row.reason,
+        index === question.rows.length - 1 ? question.check : "",
+        question.note,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    })),
+  );
+}
+export function lessonPage(topic: string, page: number) {
+  const pages = lessonPages(topic);
+  return Math.max(
+    0,
+    Math.min(pages.length - 1, Number.isFinite(page) ? Math.floor(page) : 0),
+  );
+}
+export function lessonHasImages(topic: string) {
+  return lessonPages(topic).some((page) => page.src);
+}
+function lessonAspect(src: string) {
+  return src.includes("/guides/futures/")
+    ? ("3:4" as const)
+    : ("16:9" as const);
+}
+export function lessonGuide(
+  topic: string,
+  baseUrl: string,
+  allowLocalImages = false,
+  page = 0,
+): LineMessage[] {
+  const pages = lessonPages(topic);
+  page = lessonPage(topic, page);
+  const current = pages[page];
+  const canSendImages =
+    /^https:\/\//.test(baseUrl) ||
+    (allowLocalImages &&
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(baseUrl));
+  const group = MARKET_LESSON_KEYS.includes(topic) ? "看盤教學" : "合約教學";
+  const actions = [
+    ...(page + 1 < pages.length
+      ? [command("下一步", `圖片教學 ${topic} ${page + 1}`)]
+      : []),
+    ...(page > 0 ? [command("上一張", `圖片教學 ${topic} ${page - 1}`)] : []),
+    command(group),
+    command("選單"),
+    link(
+      "網站版教學",
+      `${baseUrl.replace(/\/$/, "")}/learn?lesson=${encodeURIComponent(topic)}`,
+    ),
+  ];
+  const heading = `${topic} · ${page + 1}/${pages.length}`;
+  const card = navigation(actions, `${heading}｜${current.title}`);
+  card.contents.body.contents = [
+    { type: "text", text: heading, wrap: true, size: "sm", color: "#666666" },
+    {
+      type: "text",
+      text: current.title,
+      wrap: true,
+      size: "lg",
+      weight: "bold",
+      margin: "md",
+    },
+    ...(current.src && canSendImages
+      ? [
+          {
+            type: "image" as const,
+            url: baseUrl + current.src,
+            size: "full" as const,
+            aspectMode: "fit" as const,
+            aspectRatio: lessonAspect(current.src),
+            action: link("放大圖片", baseUrl + current.src),
+            margin: "md" as const,
+          },
+        ]
+      : []),
+    {
+      type: "text",
+      text: current.text.slice(0, 2000),
+      wrap: true,
+      size: "md",
+      margin: "md",
+    },
+  ];
+  return [card];
+}
 // The website and LINE deliberately share the same ordered image/explanation rows.
 export function guidePages(step: Step) {
   const questions =

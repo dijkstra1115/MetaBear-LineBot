@@ -48,7 +48,9 @@ find("#verify-code").onsubmit = async (event) => {
   button.disabled = true;
   button.textContent = "正在驗證…";
   try {
-    await auth("/auth/verify", { code: find("#code").value.trim() });
+    const data = await auth("/auth/verify", {
+      code: find("#code").value.trim(),
+    });
     if (preview) {
       await auth("/auth/session");
       find("#verify-code").hidden = true;
@@ -58,7 +60,10 @@ find("#verify-code").onsubmit = async (event) => {
       );
       return;
     }
-    location.replace("/admin");
+    const next = new URLSearchParams(location.search).get("next");
+    location.replace(
+      data.role === "analyst" || next === "desk" ? "/desk" : "/admin",
+    );
   } catch (error) {
     message(error.message, true);
   } finally {
@@ -79,8 +84,8 @@ auth("/auth/config")
     if (config.mode === "native") {
       find("#login-description").textContent =
         config.channel === "line"
-          ? "輸入管理員 Email，驗證碼會傳到已綁定的 LINE。"
-          : "輸入管理員 Email，我們會寄送一次性登入驗證碼。";
+          ? "輸入工作台 Email，驗證碼會傳到已綁定的 LINE。"
+          : "輸入工作台 Email，我們會寄送一次性登入驗證碼。";
       find("#request-code").hidden = false;
     } else {
       find("#login-description").textContent =

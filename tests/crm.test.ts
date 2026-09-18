@@ -16,7 +16,15 @@ import {
   recentConversation,
   cleanupConversations,
 } from "../src/conversations";
-import { guide, guidePages, menu, moreMenu, STEPS } from "../src/content";
+import {
+  guide,
+  guidePages,
+  lessonGuide,
+  lessonPages,
+  menu,
+  moreMenu,
+  STEPS,
+} from "../src/content";
 import { activeSupportCase } from "../src/support";
 import { createHmac } from "node:crypto";
 import { build } from "esbuild";
@@ -169,6 +177,13 @@ before(async () => {
         ENVIRONMENT: "production",
       },
       outboundService: async (request) => {
+        if (request.url.startsWith("https://api.line.me/v2/bot/profile/"))
+          return Response.json({
+            displayName: "LINE暱稱",
+            userId: request.url.split("/").at(-1),
+          });
+        if (request.url.endsWith("/chat/loading/start"))
+          return new Response("{}", { status: 200 });
         if (request.url === issuer + "/cdn-cgi/access/certs")
           return Response.json({ keys: [publicJwk] });
         if (request.url.endsWith("/message/quota"))
@@ -644,9 +659,11 @@ test("only explicit subscriptions enter campaign audience; unsubscribe and unfol
 });
 test("concept teaching allows leverage/stop loss and draft saving never sends messages", async () => {
   await webhook([event("槓桿是什麼")]);
-  assert.match(String(calls.at(-1)?.messages[0].text), /名義/);
+  const leverage = calls.at(-1)?.messages[0] as any;
+  assert.equal(leverage.type, "flex");
+  assert.match(JSON.stringify(leverage), /名義/);
   await webhook([event("停損與強平")]);
-  assert.match(String(calls.at(-1)?.messages[0].text), /強制平倉/);
+  assert.match(JSON.stringify(calls.at(-1)?.messages[0]), /強制平倉/);
   const n = calls.length;
   assert.equal(
     (
@@ -759,12 +776,9 @@ test("natural follow-ups attach available images and keep each user's context se
   assert.equal((await getCustomer(learner)).account, null);
   await webhook([event("槓桿是什麼", learner)]);
   await webhook([event("給我看圖", learner)]);
-  assert.equal(
-    calls.at(-1)!.messages.some((m) => m.type === "image"),
-    false,
-  );
-  assert.match(String(calls.at(-1)!.messages[0].text), /名義倉位/);
-  assert.doesNotMatch(String(calls.at(-1)!.messages[0].text), /還沒有對應/);
+  assert.equal(calls.at(-1)!.messages[0].type, "flex");
+  assert.match(JSON.stringify(calls.at(-1)!.messages), /名義倉位/);
+  assert.doesNotMatch(JSON.stringify(calls.at(-1)!.messages), /還沒有對應/);
 });
 
 test("high-confidence rules skip AI and route metrics expose latency without message text", async () => {
@@ -1246,7 +1260,7 @@ test("knowledge answers referral questions first, keeps context and marks only o
     /已通知客服|已標記/,
   );
   await webhook([event("槓桿", user)]);
-  assert.match(String(calls.at(-1)!.messages[0].text), /槓桿/);
+  assert.match(JSON.stringify(calls.at(-1)!.messages[0]), /槓桿/);
   const count = calls.length;
   await webhook([first]);
   assert.equal(calls.length, count);
@@ -1439,7 +1453,7 @@ test("support notification, claim, bot pause, resume and resolution form one wor
   assert.match(String(calls.at(-1)!.messages[0].text), /已接手|暫停/);
   await webhook([event("繼續使用小幫手", user)]);
   await webhook([event("槓桿是什麼", user)]);
-  assert.match(String(calls.at(-1)!.messages[0].text), /名義倉位/);
+  assert.match(JSON.stringify(calls.at(-1)!.messages[0]), /名義倉位/);
   assert.equal(
     (
       await call(`/api/customers/${user}`, "PATCH", {
@@ -1617,6 +1631,82 @@ test("transcripts redact credentials, scope context, paginate and expire", async
       .messages.length,
     0,
   );
+});
+
+test("LINE display name is prefilled until manually edited", async () => {
+  const user = "U11111111111111111111111111111111";
+  await webhook([
+    {
+      ...event("", user),
+      type: "follow",
+      message: undefined,
+    },
+  ]);
+  assert.equal((await getCustomer(user)).customer.display_name, "LINE暱稱");
+  assert.equal(
+    (
+      await call("/api/customers/" + user, "PATCH", {
+        display_name: "手動名稱",
+        tags: "大戶",
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await getCustomer(user)).customer.display_name, "手動名稱");
+  assert.equal((await getCustomer(user)).customer.tags, "大戶");
+  await webhook([event("選單", user)]);
+  assert.equal((await getCustomer(user)).customer.display_name, "手動名稱");
+  assert.equal(
+    (await call("/api/customers/" + user, "PATCH", { tags: "VIP專屬" })).status,
+    400,
+  );
+});
+
+test("market and futures lessons use paged flex cards with public images", async () => {
+  const user = "U22222222222222222222222222222222";
+  await webhook([event("看盤教學", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /不是即時行情/);
+  const pages = lessonPages("OI");
+  assert.ok(pages.length >= 1);
+  await webhook([event("OI", user)]);
+  for (let page = 0; page < pages.length; page++) {
+    const card = calls.at(-1)!.messages[0] as any;
+    assert.equal(card.type, "flex");
+    assert.match(card.altText, new RegExp(page + 1 + "/" + pages.length));
+    const images = card.contents.body.contents.filter(
+      (c: any) => c.type === "image",
+    );
+    assert.equal(images.length, pages[page].src ? 1 : 0);
+    if (pages[page].src) {
+      assert.equal(images[0].url, "https://crm.test" + pages[page].src);
+      await readFile("public" + pages[page].src);
+    }
+    const next = card.contents.footer.contents.find(
+      (c: any) => c.action?.label === "下一步",
+    );
+    if (next)
+      await webhook([
+        {
+          ...event("", user),
+          type: "postback",
+          postback: { data: next.action.data },
+        },
+      ]);
+  }
+  const leverage = lessonGuide("槓桿", "https://crm.test")[0] as any;
+  assert.equal(leverage.type, "flex");
+  assert.match(JSON.stringify(leverage), /名義/);
+});
+
+test("monthly volume report returns coverage totals", async () => {
+  const report = (await (
+    await call("/api/analytics/volume?month=2026-09")
+  ).json()) as any;
+  assert.equal(report.month, "2026-09");
+  assert.equal(typeof report.volume, "number");
+  assert.equal(typeof report.traders, "number");
+  assert.equal(typeof report.silent, "number");
+  assert.equal(typeof report.stale, "number");
 });
 
 test("unsends remove received text and suppress late-arriving original content", async () => {

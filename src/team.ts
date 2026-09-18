@@ -7,6 +7,7 @@ export type Team = {
   allow_indirect: number;
   allow_internal_transfer: number;
   automation_enabled: number;
+  signals_enabled: number;
   vip_url: string;
   support_url: string;
   revision: number;

@@ -34,6 +34,7 @@ export async function audit(
 export const customerSelect = `SELECT c.*, a.uid, a.referral_status, a.deposit_status,
   COALESCE(am.volume,v.volume_usdt) AS volume_usdt, COALESCE(am.month,v.month) AS volume_month,
   CASE WHEN am.volume IS NOT NULL THEN 'bingx_api' ELSE v.source END AS volume_source,
+  (SELECT max(day) FROM daily_metrics dm WHERE dm.uid=a.uid AND dm.business_type='all' AND CAST(dm.volume AS REAL)>0) AS last_trade_day,
   s.qualification, s.checked_at AS synced_at,
   (SELECT status FROM support_cases sc WHERE sc.line_user_id=c.line_user_id AND sc.status IN ('pending','claimed') ORDER BY requested_at DESC LIMIT 1) AS support_status,
   (SELECT owner_name FROM support_cases sc WHERE sc.line_user_id=c.line_user_id AND sc.status IN ('pending','claimed') ORDER BY requested_at DESC LIMIT 1) AS support_owner,

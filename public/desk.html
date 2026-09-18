@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MetaBear · 報單工作台</title>
+    <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="64x64" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/desk.js" defer></script>
+  </head>
+  <body>
+    <div id="login" class="login-shell" hidden>
+      <div class="login-brand">
+        <div class="brand-mark">mb.</div>
+        <p class="eyebrow">METABEAR / SIGNAL DESK</p>
+        <h1>送出報單，<br />立刻通知訂閱者。</h1>
+        <p>分析師工作台只處理報單，不會看到客戶名單。</p>
+      </div>
+      <form id="login-form" class="login-card">
+        <span class="eyebrow">本機登入</span>
+        <h2>進入報單工作台</h2>
+        <p class="muted">此金鑰僅用於本機開發。</p>
+        <label
+          >管理金鑰<input
+            id="token"
+            type="password"
+            required
+            autocomplete="off"
+            placeholder="輸入管理金鑰"
+        /></label>
+        <button class="primary" type="submit">進入工作台</button>
+        <p id="login-error" role="alert"></p>
+      </form>
+    </div>
+    <div id="auth-state" hidden>
+      <main class="login-shell">
+        <section class="login-card">
+          <h1>請重新登入</h1>
+          <p>登入工作階段已結束，請重新驗證後繼續操作。</p>
+          <a href="/login?next=desk">前往登入頁</a>
+        </section>
+      </main>
+    </div>
+    <div id="workspace" class="workspace" hidden>
+      <aside class="sidebar">
+        <a href="/" class="brand"
+          ><span class="brand-mark">mb.</span
+          ><span>MetaBear<small>報單工作台</small></span></a
+        >
+        <div class="workspace-name">
+          <span class="status-dot"></span>
+          <span id="analyst-name">分析師</span>
+        </div>
+        <nav aria-label="主導覽">
+          <button class="nav-item active">◎ <span>發送報單</span></button>
+        </nav>
+        <div class="sidebar-bottom">
+          <p id="desk-limits" class="muted">頻率上限載入中…</p>
+          <a id="admin-link" class="quiet" href="/admin" hidden>客戶工作台 ↗</a>
+          <button class="quiet" id="logout">登出工作台 ↗</button>
+        </div>
+      </aside>
+      <main>
+        <header class="topbar">
+          <span
+            >SIGNAL DESK <span class="slash">/</span>
+            <span>發送報單</span></span
+          ><span id="environment" class="pill">工作台</span>
+        </header>
+        <p id="kill-banner" class="callout" hidden>
+          報單發送目前已暫停，請聯絡管理員。
+        </p>
+        <section class="view">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">LIVE SIGNAL</p>
+              <h1>填好欄位就送出。</h1>
+              <p class="muted">
+                只會發給已入群、未封鎖、且訂閱該品項的用戶。看不到是誰。送出後無法收回。
+              </p>
+            </div>
+          </div>
+          <div class="campaign-grid">
+            <form id="signal-form" class="panel">
+              <h2>新報單</h2>
+              <label>品項<select name="categoryId" required></select></label>
+              <label
+                >方向<select name="direction" required>
+                  <option value="long">做多</option>
+                  <option value="short">做空</option>
+                </select></label
+              >
+              <label
+                >槓桿<input
+                  name="leverage"
+                  required
+                  maxlength="8"
+                  placeholder="例如 10x"
+              /></label>
+              <label>進場<input name="entry" required maxlength="40" /></label>
+              <label
+                >止盈<input name="takeProfit" required maxlength="40"
+              /></label>
+              <label
+                >止損<input name="stopLoss" required maxlength="40"
+              /></label>
+              <label>短註（選填）<input name="note" maxlength="80" /></label>
+              <label
+                >盤面圖（選填，JPEG/PNG，800KB 內）<input
+                  id="signal-image"
+                  type="file"
+                  accept="image/jpeg,image/png"
+              /></label>
+              <p id="preview-count" class="callout">
+                先選擇品項，查看約略人數。
+              </p>
+              <button class="primary" type="submit">立刻發送</button>
+            </form>
+            <div class="panel">
+              <div class="section-heading">
+                <h2>績效標記</h2>
+              </div>
+              <div id="desk-stats" class="crm-metrics"></div>
+              <p class="muted">
+                績效由你事後標記止盈／止損／過期，不是跟單用戶的實際損益。
+              </p>
+            </div>
+          </div>
+          <div class="section-heading">
+            <h2>最近報單</h2>
+            <button id="refresh-signals" class="quiet">更新 ↻</button>
+          </div>
+          <div id="signal-list" class="draft-list"></div>
+        </section>
+      </main>
+    </div>
+    <p id="toast" hidden></p>
+  </body>
+</html>

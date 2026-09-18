@@ -7,6 +7,7 @@ import type { LineEvent, LineMessage } from "./types";
 import { getTeam, personalize } from "./team";
 import { startLoading } from "./line-loading";
 import { enrollFromLine } from "./auth-enrollment";
+import { prefetchDisplayName } from "./line-profile";
 import {
   recordIncoming,
   recordOutgoing,
@@ -165,6 +166,8 @@ export async function processLineEvent(event: LineEvent, env: Env) {
       messages = JSON.parse(claim.messages_json) as LineMessage[];
     else {
       const c = await ensureCustomer(env.DB, userId);
+      if (event.type !== "unfollow")
+        await prefetchDisplayName(env, userId);
       if (event.timestamp >= c.last_event_at) {
         await env.DB.prepare(
           "UPDATE customers SET blocked=?, last_event_at=?, updated_at=? WHERE line_user_id=? AND last_event_at <= ?",
