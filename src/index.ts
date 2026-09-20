@@ -185,13 +185,22 @@ export default {
       if (target.pathname === "/") target.pathname = "/index.html";
       if (target.pathname === "/learn" || target.pathname === "/learn/")
         target.pathname = "/guide.html";
+      if (target.pathname === "/orderflow") {
+        const canonical = new URL(request.url);
+        canonical.pathname = "/orderflow/";
+        return Response.redirect(canonical.toString(), 308);
+      }
+      if (target.pathname === "/orderflow/")
+        target.pathname = "/orderflow/index.html";
       const response = await env.ASSETS.fetch(new Request(target, request));
       const headers = new Headers(response.headers);
       if (privatePage || target.pathname === "/login.html")
         headers.set("Cache-Control", "no-store");
       headers.set(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        target.pathname === "/orderflow/index.html"
+          ? "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' wss://stream.bybit.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+          : "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
       );
       headers.set("X-Content-Type-Options", "nosniff");
       headers.set("Referrer-Policy", "no-referrer");
