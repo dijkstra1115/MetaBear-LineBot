@@ -23,6 +23,12 @@
 
 ## 開始使用
 
+### 訂單流量化研究室（獨立服務）
+
+執行 `npm run quant`，開啟 <http://127.0.0.1:8788/lab/jev>。使用 Bybit 公開 BTC／ETH 行情、自建模擬帳本、訂單流規則策略與可視化；不需交易所 key，不連接真實下單。Jev 尚未接入。此服務需要 Node 22.13+，不隨 CRM Worker 部署；啟動、算法、回放與限制見 [量化研究室](docs/QUANT-LAB.md)。
+
+### LINE CRM
+
 需要 Node.js 22+。首次設定：
 
 ```powershell

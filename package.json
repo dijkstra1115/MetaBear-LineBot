@@ -7,6 +7,10 @@
     "node": ">=22"
   },
   "scripts": {
+    "quant": "tsx quant/server.ts",
+    "quant:check": "tsc -p quant/tsconfig.json",
+    "quant:test": "tsx --test quant/*.test.ts",
+    "quant:replay": "tsx quant/replay.ts",
     "dev": "wrangler dev --local --port 8787",
     "db:migrate": "wrangler d1 migrations apply metabear-crm --local",
     "types": "wrangler types --strict-vars false",

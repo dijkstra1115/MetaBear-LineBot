@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#080e18" />
+    <title>MetaBear · Order Flow Lab</title>
+    <meta
+      name="description"
+      content="公開行情、可追溯的訂單流決策，以及獨立模擬帳本。MetaBear 量化研究室。"
+    />
+    <link rel="icon" href="/logo.webp" />
+    <link rel="stylesheet" href="/quant.css" />
+    <script src="/quant-heatmap.js" defer></script>
+    <script src="/quant.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">跳至研究面板</a>
+    <header class="site-header">
+      <a class="brand" href="/lab/jev" aria-label="MetaBear 研究室首頁"
+        ><img src="/logo.webp" alt="" width="34" height="34" /><span
+          >MetaBear<span class="brand-sub">RESEARCH LAB</span></span
+        ></a
+      >
+      <nav aria-label="研究室導覽">
+        <a href="#liquidity">流動性熱圖</a>
+        <a href="#market" class="current">市場觀測</a
+        ><a href="#decisions-section">決策紀錄</a><a href="#method">研究方法</a>
+      </nav>
+      <span class="paper-tag"><span class="dot"></span> PAPER TRADING</span>
+    </header>
+    <main id="main">
+      <section class="intro">
+        <div>
+          <p class="eyebrow">EXPERIMENT 001 <span>／</span> ORDER FLOW</p>
+          <h1>讓每一次判斷，<br class="mobile-break" />都有跡可循。</h1>
+          <p class="intro-copy">
+            從買賣盤到交易決策，觀察訂單流如何形成一筆交易。
+          </p>
+        </div>
+        <div class="experiment-note">
+          <span class="note-index">01</span>
+          <div>
+            <span class="tiny-label">目前執行引擎</span
+            ><strong>訂單流規則策略 <span class="version">v1</span></strong
+            ><span class="model-note">Jev 尚未接入 · 保留模型輸入介面</span>
+          </div>
+        </div>
+      </section>
+      <section class="control-bar" aria-label="資料與市場選擇">
+        <div class="segmented" aria-label="資料來源">
+          <button id="live-mode" class="selected" aria-pressed="true">
+            即時觀測</button
+          ><button id="demo-mode" aria-pressed="false">示例回放</button>
+        </div>
+        <div class="market-select">
+          <label for="symbol">交易對</label
+          ><select id="symbol">
+            <option value="BTCUSDT">BTC / USDT</option>
+            <option value="ETHUSDT">ETH / USDT</option></select
+          ><span class="instrument">永續合約</span>
+        </div>
+        <div class="connection">
+          <span id="connection-dot" class="dot amber"></span
+          ><span id="connection-text">正在連接研究服務</span
+          ><button
+            id="refresh"
+            class="icon-button"
+            aria-label="重新整理行情"
+            title="重新整理行情"
+          >
+            ↻
+          </button>
+        </div>
+      </section>
+      <div id="notice" class="notice" role="status">
+        正在讀取資料；實際成交與所有績效均為本站模擬。
+      </div>
+      <section class="stats" aria-label="模擬帳戶概況">
+        <article class="stat principal">
+          <div class="stat-label">模擬帳戶權益 <span>USDT</span></div>
+          <div id="equity" class="stat-value">—</div>
+          <div class="stat-foot">
+            <span id="return">—</span><span>初始資金 10,000</span>
+          </div>
+        </article>
+        <article class="stat">
+          <div class="stat-label">已平倉淨損益 <span>USDT</span></div>
+          <div id="net-profit" class="stat-value">—</div>
+          <div class="stat-foot"><span>含雙邊手續費與估算資金費</span></div>
+        </article>
+        <article class="stat">
+          <div class="stat-label">最大回撤 <span>帳戶權益</span></div>
+          <div id="drawdown" class="stat-value">—</div>
+          <div class="stat-foot"><span id="exposure">—</span></div>
+        </article>
+        <article class="stat">
+          <div class="stat-label">完成交易 <span>勝率</span></div>
+          <div class="stat-value">
+            <span id="completed">—</span
+            ><span id="win-rate" class="secondary-value">—</span>
+          </div>
+          <div class="stat-foot"><span id="fees">—</span></div>
+        </article>
+      </section>
+      <section
+        class="panel heatmap-panel"
+        id="liquidity"
+        aria-label="訂單簿流動性熱力圖"
+      >
+        <div class="panel-head heatmap-head">
+          <div>
+            <div class="eyebrow subdued">RESTING LIQUIDITY · OVER TIME</div>
+            <h2>
+              訂單簿流動性熱力圖
+              <span class="chip" id="heatmap-source">BYBIT</span>
+            </h2>
+            <p class="heatmap-subtitle">
+              看見大額掛單在什麼價位出現、停留與消退。
+            </p>
+          </div>
+          <div class="heatmap-key">
+            <span><i class="key price-key"></i>中間價</span
+            ><span class="unknown-key"></span><span>未觀測</span>
+          </div>
+        </div>
+        <div class="heatmap-controls">
+          <div class="small-segmented" aria-label="熱力圖時間範圍">
+            <button data-heat-minutes="15" aria-pressed="false">15m</button
+            ><button
+              data-heat-minutes="60"
+              class="selected"
+              aria-pressed="true"
+            >
+              1H</button
+            ><button data-heat-minutes="240" aria-pressed="false">4H</button>
+          </div>
+          <label
+            >價格範圍
+            <select id="heatmap-range">
+              <option value="0.5">±0.5%</option>
+              <option value="1" selected>±1%</option>
+              <option value="2">±2%</option>
+              <option value="5">±5%</option>
+            </select></label
+          >
+          <label
+            >掛單方向
+            <select id="heatmap-side">
+              <option value="both">買賣雙邊</option>
+              <option value="bid">買盤</option>
+              <option value="ask">賣盤</option>
+            </select></label
+          >
+          <label class="heatmap-filter"
+            >最低掛單
+            <input
+              id="heatmap-threshold"
+              type="range"
+              min="0"
+              max="90"
+              value="5"
+              step="1"
+              aria-label="最低掛單強度"
+            /><output id="heatmap-threshold-value">—</output></label
+          >
+        </div>
+        <div class="heatmap-readout" aria-live="polite">
+          <span id="heatmap-depth">正在讀取保存的深度…</span
+          ><span id="heatmap-coverage">—</span
+          ><span id="heatmap-density">—</span>
+        </div>
+        <div class="heatmap-chart-wrap">
+          <canvas
+            id="heatmap-chart"
+            tabindex="0"
+            role="img"
+            aria-label="時間與價格的可見掛單熱力圖，顏色越亮代表掛單金額越大；方向鍵移動查值，Enter 顯示最新掛單"
+          ></canvas>
+          <p id="heatmap-empty" class="chart-empty">正在讀取深度歷史</p>
+          <div id="heatmap-tooltip" class="chart-tooltip" hidden></div>
+        </div>
+        <div class="heatmap-footer">
+          <div class="heatmap-scale">
+            <span>掛單 USDT</span><span>0</span><i class="heatmap-gradient"></i
+            ><span id="heatmap-scale-max">—</span><span>以上</span>
+          </div>
+          <span id="heatmap-binning"
+            >依絕對價格分組 · 每欄保留最後一份快照</span
+          >
+        </div>
+        <p id="heatmap-status" class="heatmap-status">
+          這是可見限價掛單熱圖，非清算預測。掛單可能撤回；顏色不代表一定成交。
+        </p>
+      </section>
+      <div class="workspace" id="market">
+        <section class="panel price-panel">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow subdued">MARKET STRUCTURE</div>
+              <h2>
+                <span id="market-title">BTC / USDT</span
+                ><span class="chip">1m</span>
+              </h2>
+            </div>
+            <div class="price-quote">
+              <strong id="market-price">—</strong
+              ><span id="market-change">已收盤 K 線</span>
+            </div>
+          </div>
+          <div class="chart-toolbar">
+            <div class="legend">
+              <span><i class="key teal"></i> 上漲</span
+              ><span><i class="key red"></i> 下跌</span
+              ><span><i class="marker-key">△</i> 模擬進出場</span>
+            </div>
+            <div class="small-segmented" aria-label="K 線顯示範圍">
+              <button data-bars="60">1H</button
+              ><button data-bars="180" class="selected">3H</button>
+            </div>
+          </div>
+          <div class="chart-wrap price-chart">
+            <canvas
+              id="price-chart"
+              aria-label="一分鐘 K 線與模擬成交位置"
+              role="img"
+            ></canvas>
+            <div id="price-tooltip" class="chart-tooltip" hidden></div>
+            <p id="price-empty" class="chart-empty">等待第一份行情快照</p>
+          </div>
+          <div class="chart-caption">
+            <span id="candle-caption">價格：USDT · 圖表時間 UTC</span
+            ><span id="book-age">深度時間 —</span>
+          </div>
+          <div class="market-facts">
+            <div><span>未平倉量 OI</span><strong id="oi-value">—</strong></div>
+            <div>
+              <span>OI 五分鐘變化</span><strong id="oi-change">—</strong>
+            </div>
+            <div>
+              <span>公布資金費率</span><strong id="funding-rate">—</strong>
+            </div>
+            <div>
+              <span>下次結算 UTC</span><strong id="funding-next">—</strong>
+            </div>
+          </div>
+          <div class="flow-heading">
+            <h3>累積主動成交差 <span>CVD</span></h3>
+            <div class="legend">
+              <span><i class="key teal"></i> 永續</span
+              ><span><i class="key gold"></i> 現貨</span>
+            </div>
+          </div>
+          <div class="chart-wrap flow-chart">
+            <canvas
+              id="flow-chart"
+              aria-label="累積主動買入金額減去主動賣出金額，單位 USDT"
+              role="img"
+            ></canvas>
+            <p id="flow-empty" class="chart-empty">收集完整分鐘後開始繪製</p>
+          </div>
+          <div class="chart-caption">
+            <span id="flow-caption"
+              >僅計入本次連線完整收集的成交，從窗口起點歸零</span
+            >
+          </div>
+        </section>
+        <aside class="panel signal-panel">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow subdued">DECISION LENS</div>
+              <h2>現在，策略看見什麼？</h2>
+            </div>
+            <span id="signal-status" class="status-tag amber-text"
+              >等待資料</span
+            >
+          </div>
+          <div class="signal-summary">
+            <div id="signal-action" class="signal-action">觀望</div>
+            <p id="signal-reason">先收集完整訂單流，才開始判斷。</p>
+            <span id="decision-time" class="tiny-label"
+              >每 5 分鐘記錄一次決策</span
+            >
+          </div>
+          <div class="checks-label">
+            <span>最近決策的條件</span><span>做多 / 做空</span>
+          </div>
+          <div id="checks" class="checks">
+            <p class="empty-inline">等待第一筆決策</p>
+          </div>
+          <div class="signal-bottom">
+            <span class="dot gold"></span>
+            <p>只有所有條件同時符合，才送交固定風控；訊號不等於已成交。</p>
+          </div>
+        </aside>
+        <section class="panel depth-panel">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow subdued">LIQUIDITY</div>
+              <h2>訂單簿深度</h2>
+            </div>
+            <span id="spread" class="mono muted">— bps</span>
+          </div>
+          <div class="depth-stats">
+            <div>
+              <span>買盤 · 前 50 檔</span><strong id="bid-notional">—</strong>
+            </div>
+            <div>
+              <span>賣盤 · 前 50 檔</span><strong id="ask-notional">—</strong>
+            </div>
+            <div><span>深度失衡</span><strong id="imbalance">—</strong></div>
+          </div>
+          <div class="chart-wrap depth-chart">
+            <canvas
+              id="depth-chart"
+              aria-label="前一千檔累積買賣盤深度，縱軸為累積 USDT"
+              role="img"
+            ></canvas>
+            <p id="depth-empty" class="chart-empty">等待訂單簿快照</p>
+          </div>
+          <div class="depth-table">
+            <div class="depth-table-head">
+              <span>買量</span><span>買價</span><span>賣價</span
+              ><span>賣量</span>
+            </div>
+            <div id="depth-rows"></div>
+          </div>
+          <div class="chart-caption">
+            <span>曲線：前 1,000 檔累積 USDT · 列表：幣數量</span
+            ><span>不含 RPI 隱藏流動性</span>
+          </div>
+        </section>
+        <section class="panel equity-panel">
+          <div class="panel-head">
+            <div>
+              <div class="eyebrow subdued">PERFORMANCE</div>
+              <h2>模擬權益曲線</h2>
+            </div>
+            <span class="chip">BTC + ETH</span>
+          </div>
+          <div class="chart-wrap equity-chart">
+            <canvas
+              id="equity-chart"
+              aria-label="兩交易對共用模擬帳戶的 USDT 權益曲線"
+              role="img"
+            ></canvas>
+            <p id="equity-empty" class="chart-empty">累積兩個觀測點後顯示</p>
+          </div>
+          <div class="risk-grid">
+            <div><span>每筆目標風險</span><strong>0.25%</strong></div>
+            <div><span>總曝險上限</span><strong>1×</strong></div>
+            <div><span>單日虧損熔斷</span><strong>2%</strong></div>
+            <div><span>停利 / 停損距離</span><strong>2 : 1</strong></div>
+          </div>
+          <div class="chart-caption">
+            <span id="risk-status">等待帳戶狀態</span
+            ><span>每日風控以 UTC 換日</span>
+          </div>
+        </section>
+      </div>
+      <section class="panel positions-panel" aria-label="模擬持倉">
+        <div class="panel-head">
+          <div>
+            <div class="eyebrow subdued">PAPER PORTFOLIO</div>
+            <h2>持倉與執行</h2>
+          </div>
+          <span id="position-count" class="muted">—</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>交易對 / 方向</th>
+                <th>數量</th>
+                <th>平均成交</th>
+                <th>停損</th>
+                <th>停利</th>
+                <th>未實現損益</th>
+                <th>開倉時間 UTC</th>
+              </tr>
+            </thead>
+            <tbody id="positions">
+              <tr>
+                <td colspan="7" class="table-empty">目前沒有持倉</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="execution-note" class="chart-caption">
+          市價模擬逐檔消耗深度，另加 1 bps 不利滑價與單邊 5.5 bps 手續費。
+        </div>
+      </section>
+      <section class="panel ledger-panel" id="decisions-section">
+        <div class="panel-head">
+          <div>
+            <div class="eyebrow subdued">THE AUDIT TRAIL</div>
+            <h2>每一次決策，都留下記錄。</h2>
+          </div>
+          <div class="ledger-actions">
+            <div class="small-segmented" aria-label="紀錄類型">
+              <button id="decisions-tab" class="selected">決策</button
+              ><button id="fills-tab">成交</button
+              ><button id="events-tab">風控</button>
+            </div>
+            <a
+              id="export"
+              class="text-button"
+              href="/api/quant/export?kind=decisions"
+              >匯出 JSONL <span>↗</span></a
+            >
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead id="ledger-head"></thead>
+            <tbody id="ledger"></tbody>
+          </table>
+        </div>
+        <div class="chart-caption">
+          <span id="ledger-caption">顯示目前交易對的最近紀錄</span
+          ><span>點擊決策查看當時完整輸入</span>
+        </div>
+      </section>
+      <section class="method" id="method">
+        <div>
+          <p class="eyebrow">BUILT TO BE INSPECTED</p>
+          <h2>先驗證訊號，<br />再讓模型加入判斷。</h2>
+          <p>
+            行情是真的，資金是模擬的。所有示例、規則決策與未來模型輸出，都會明確標示來源。
+          </p>
+          <button id="jev-preview" class="text-button">
+            查看預留給 Jev 的輸入 <span>↗</span>
+          </button>
+        </div>
+        <div class="method-steps">
+          <article>
+            <span>01</span>
+            <div>
+              <h3>觀測市場</h3>
+              <p>
+                Bybit 公開 API 提供永續訂單簿、現貨與永續逐筆成交、K
+                線、未平倉量與資金費率。
+              </p>
+            </div>
+          </article>
+          <article>
+            <span>02</span>
+            <div>
+              <h3>把訊號變成可檢查的條件</h3>
+              <p>
+                以已收盤 K 線與完整成交窗口判斷突破、成交差、深度失衡及
+                OI；缺資料時等待。
+              </p>
+            </div>
+          </article>
+          <article>
+            <span>03</span>
+            <div>
+              <h3>用獨立帳本驗證</h3>
+              <p>
+                下一份深度才允許成交，扣除成本，保存決策輸入與執行結果。10
+                秒取樣不重建 tick 級觸價，亦不模擬撮合排隊。
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+      <footer>
+        <span>MetaBear <span class="muted">/</span> Order Flow Lab</span
+        ><span>研究用模擬 · 尚未證明策略有效 · 無交易所下單連線</span
+        ><span id="last-update">—</span>
+      </footer>
+    </main>
+    <dialog id="detail-dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">TRANSPARENT BY DESIGN</p>
+          <h2 id="dialog-title">決策原始紀錄</h2>
+        </div>
+        <button id="close-dialog" class="icon-button" aria-label="關閉">
+          ×
+        </button>
+      </div>
+      <p id="dialog-description" class="muted">
+        以下為該次決策保存的輸入與結果。
+      </p>
+      <pre id="detail-json" tabindex="0"></pre>
+      <div class="dialog-foot">
+        <button id="copy-json" class="text-button">複製 JSON</button
+        ><span class="muted">時間戳：Unix milliseconds · 金額：USDT</span>
+      </div>
+    </dialog>
+  </body>
+</html>

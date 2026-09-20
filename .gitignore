@@ -43,6 +43,7 @@ test-output/
 # Database
 *.db
 *.sqlite3
+quant/.data/
 
 # Logs
 *.log
