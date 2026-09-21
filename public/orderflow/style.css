@@ -1,16 +1,16 @@
 :root {
   color-scheme: dark;
-  --bg: #101311;
-  --surface: #171b18;
-  --surface2: #1d221e;
-  --line: #30372f;
-  --text: #eef2e9;
-  --muted: #a3afa3;
-  --dim: #7c8a7b;
-  --accent: #d7ef85;
-  --buy: #71d9b2;
-  --sell: #f59b9c;
-  --amber: #e8c58a;
+  --bg: #080e18;
+  --surface: #0c1623;
+  --surface2: #122232;
+  --line: #253747;
+  --text: #edf2f4;
+  --muted: #94a8b9;
+  --dim: #8495a5;
+  --accent: #78e1d5;
+  --buy: #78e1d5;
+  --sell: #f29a89;
+  --amber: #e8bd7d;
   --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --sans: Inter, "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
   font-family: var(--sans);
@@ -92,7 +92,7 @@ textarea {
   min-width: 0;
   max-width: 100%;
   border: 1px solid var(--line);
-  background: #111613;
+  background: #0b1420;
   border-radius: 6px;
   color: var(--text);
   padding: 11px 12px;
@@ -160,7 +160,7 @@ progress::-moz-progress-bar {
   align-items: center;
   padding: 0 30px;
   gap: 30px;
-  background: #121613;
+  background: #0b1420;
 }
 .brand {
   display: flex;
@@ -186,27 +186,24 @@ progress::-moz-progress-bar {
   font-weight: 400;
 }
 .brand-symbol {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transform: skewY(-15deg);
-  height: 38px;
-  width: 35px;
-}
-.brand-symbol i {
   display: block;
-  width: 5px;
-  background: var(--accent);
-  height: 24px;
+  position: relative;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 1px solid #bb944b;
+  background: #161616;
 }
-.brand-symbol i:nth-child(2) {
-  height: 36px;
-}
-.brand-symbol i:nth-child(3) {
-  height: 18px;
-}
-.brand-symbol i:nth-child(4) {
-  height: 28px;
+.brand-symbol > img {
+  position: absolute;
+  width: 202%;
+  height: 202%;
+  max-width: none;
+  left: -51%;
+  top: -33%;
+  mask: url('/brand-mask.svg') center / 100% 100% no-repeat;
 }
 .mode-nav {
   height: 100%;
@@ -239,7 +236,7 @@ progress::-moz-progress-bar {
 }
 .nav-tag {
   font: 10px var(--mono);
-  background: #2a3323;
+  background: #1b3536;
   color: var(--accent);
   padding: 3px 5px;
   margin-left: 8px;
@@ -1457,8 +1454,9 @@ dialog li {
     letter-spacing: 1.8px;
   }
   .brand-symbol {
-    transform: scale(0.85) skewY(-15deg);
-    width: 27px;
+    flex-basis: 34px;
+    width: 34px;
+    height: 34px;
   }
   .brand-sub {
     font-size: 8px;

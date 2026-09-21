@@ -1,4 +1,6 @@
-# Cloudflare 測試環境
+# Cloudflare 舊環境部署紀錄
+
+> 2026-09-21 更新：本文下方保留舊環境紀錄。正式服務現使用 `env.production` 與 `https://metabear.io`；`env.staging` 已改為 `https://preview.metabear.io` 的獨立網站／課程驗收站，不含 CRM／LINE 資源。請使用 [目前部署說明](DOMAIN-DEPLOYMENT.md) 的命令，勿把本文舊的 staging 資料庫命令用於新驗收站。
 
 2026-09-14 已部署 MetaBear 網站、LINE AI 圖文客服及 CRM。
 

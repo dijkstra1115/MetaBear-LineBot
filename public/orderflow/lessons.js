@@ -2,7 +2,7 @@ export const lessons = [
   {
     id: "matching",
     title: "價格是怎麼走出來的？",
-    short: "撮合與價差",
+    short: "Maker、Taker 與 K 線",
     en: "THE MATCHING ENGINE",
     group: "01 · 看見市場",
     focus: 2,

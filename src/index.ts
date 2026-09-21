@@ -1,4 +1,6 @@
 import { admin } from "./admin";
+import { siteRedirect } from "./site-routing";
+import { siteSecurityHeaders } from "./site-security";
 import { getRate } from "./rates";
 import { webhook, processLineEvent } from "./webhook";
 import { BUSINESS, STEPS, LESSONS } from "./content";
@@ -101,6 +103,8 @@ export default {
   ): Promise<Response> {
     const url = new URL(request.url);
     try {
+      const redirect = siteRedirect(request, env.PUBLIC_BASE_URL);
+      if (redirect) return redirect;
       if (url.pathname.startsWith("/auth/"))
         return await authRoute(request, env);
       if (url.pathname === "/health")
@@ -196,14 +200,9 @@ export default {
       const headers = new Headers(response.headers);
       if (privatePage || target.pathname === "/login.html")
         headers.set("Cache-Control", "no-store");
-      headers.set(
-        "Content-Security-Policy",
-        target.pathname === "/orderflow/index.html"
-          ? "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' wss://stream.bybit.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-          : "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+      siteSecurityHeaders(target.pathname, url.origin).forEach((value, key) =>
+        headers.set(key, value),
       );
-      headers.set("X-Content-Type-Options", "nosniff");
-      headers.set("Referrer-Policy", "no-referrer");
       return new Response(response.body, { status: response.status, headers });
     } catch (error) {
       if (error instanceof HttpError)

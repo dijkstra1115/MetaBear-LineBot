@@ -15,9 +15,13 @@
       content="美股 × 加密貨幣 × 交易學習。開戶、入金與合約基礎，一步步開始。"
     />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://metabear.io/" />
+    <meta property="og:image" content="https://metabear.io/logo.webp" />
+    <link rel="canonical" href="https://metabear.io/" />
     <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="64x64" />
     <link rel="stylesheet" href="/site.css" />
     <script src="/site.js" defer></script>
+    <script src="/analytics.js" defer></script>
   </head>
   <body class="market-page">
     <a class="skip" href="#main">跳至主要內容</a>
@@ -32,7 +36,7 @@
         ></a
       >
       <nav aria-label="主導覽">
-        <a href="/learn">新手教學</a><a href="#risk">合約知識</a
+        <a class="nav-academy" href="/orderflow/">互動學院</a><a href="/learn">新手教學</a><a class="nav-risk" href="#risk">合約知識</a
         ><a
           class="nav-line"
           href="https://lin.ee/cbyuRJv"
@@ -223,8 +227,8 @@
             <div class="actions">
               <a class="button primary" href="https://lin.ee/cbyuRJv" target="_blank" rel="noopener noreferrer"
                 >加入 LINE・開始審核 <span>↗</span></a
-              ><a class="text-link" href="/learn"
-                >先看新手教學 <span>↗</span></a
+              ><a class="text-link" href="/orderflow/"
+                >從 K 線開始學 <span>↗</span></a
               >
             </div>
             <p class="line-entry-note">已經註冊？加入 LINE 後傳送「UID＋你的帳號數字」，自動確認入群資格。</p>
@@ -402,6 +406,21 @@
           </div>
         </section>
       </div>
+      <section class="academy-entry" id="academy" aria-labelledby="academy-title">
+        <div class="academy-intro">
+          <p class="eyebrow">THE ORDERFLOW ACADEMY / 15 LESSONS</p>
+          <h2 id="academy-title">每一次成交，<br /><em>都在你眼前發生。</em></h2>
+          <p class="academy-deck">不用先懂 Maker、Taker。從一張等待成交的掛單開始，親手推動價格，看著第一根 K 線長出來。</p>
+          <a class="button primary" href="/orderflow/">從第一根 K 線開始 <span>↗</span></a>
+          <p class="academy-note">免費體驗 · 不需登入 · 一次理解一個觀念</p>
+        </div>
+        <div class="academy-path" aria-label="循序漸進的學習路徑">
+          <a href="/orderflow/?lesson=matching"><span class="academy-number">01</span><div><small>先看見成交</small><h3>價格，是怎麼走出來的？</h3><p>掛單、主動成交，到一根 K 線的形成。</p></div><span aria-hidden="true">↗</span></a>
+          <a href="/orderflow/?lesson=cvd"><span class="academy-number">02</span><div><small>再讀懂紀錄</small><h3>誰正在主動買賣？</h3><p>成交量、CVD 與逐價成交，逐步展開。</p></div><span aria-hidden="true">↗</span></a>
+          <a href="/orderflow/?lesson=absorption"><span class="academy-number">03</span><div><small>觀察價格的回應</small><h3>一直有人買，為什麼漲不動？</h3><p>看見掛單如何吸收主動成交。</p></div><span aria-hidden="true">↗</span></a>
+          <a href="/orderflow/?lesson=oi"><span class="academy-number">04</span><div><small>最後理解合約</small><h3>倉位，如何影響市場？</h3><p>未平倉量、資金費率與強制平倉。</p></div><span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
       <section class="lab-section" id="lab" aria-labelledby="lab-title">
         <div class="lab-heading">
           <div>
@@ -518,7 +537,7 @@
           />MetaBear<span>讀懂市場，再進場。</span></a
         >
         <nav aria-label="頁尾導覽">
-          <a href="/learn">教學中心</a
+          <a href="/orderflow/">互動學院</a><a href="/learn">教學中心</a
           ><a href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer"
             >LINE</a
           ><a href="/admin">管理員登入 ↗</a>

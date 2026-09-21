@@ -58,9 +58,13 @@
   "triggers": { "crons": ["*/5 * * * *"] },
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "env": {
-    "staging": {
+    "production": {
       "name": "metabear-line-crm-staging",
       "workers_dev": true,
+      "routes": [
+        { "pattern": "metabear.io", "custom_domain": true },
+        { "pattern": "www.metabear.io", "custom_domain": true },
+      ],
       "triggers": { "crons": ["*/5 * * * *"] },
       "preview_urls": false,
       "assets": {
@@ -79,9 +83,9 @@
       ],
       "vars": {
         "LINE_DELIVERY_MODE": "live",
-        "PUBLIC_BASE_URL": "https://metabear-line-crm-staging.style78432.workers.dev",
+        "PUBLIC_BASE_URL": "https://metabear.io",
         "OPENAI_MODEL": "gpt-5.6-luna",
-        "ENVIRONMENT": "staging",
+        "ENVIRONMENT": "production",
         "ACCESS_TEAM_DOMAIN": "id3a.cloudflareaccess.com",
         "ACCESS_AUD": "79523763b0ca921e1bdfee166bc4b14bdc9cc8cf6d31650ed388b957c25dc7f9",
         "ADMIN_EMAIL": "style78432@gmail.com",
@@ -117,6 +121,23 @@
           },
         ],
       },
+    },
+    "staging": {
+      "name": "metabear-site-preview",
+      "main": "src/preview.ts",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [{ "pattern": "preview.metabear.io", "custom_domain": true }],
+      "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
+        "run_worker_first": true,
+        "html_handling": "none",
+      },
+      "vars": { "ENVIRONMENT": "preview", "LINE_DELIVERY_MODE": "disabled" },
+      "d1_databases": [],
+      "queues": { "producers": [], "consumers": [] },
+      "triggers": { "crons": [] },
     },
   },
 }

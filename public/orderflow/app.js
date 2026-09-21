@@ -1,7 +1,15 @@
 import { lessonMarket, PaperAccount, scenarioFrames } from "./engine.js";
-import { lessons, scenarios } from "./lessons.js";
+import { lessons as originalLessons, scenarios } from "./lessons.js";
+import { curriculum } from "./curriculum.js";
 import { BybitSession, recordingFrame, parseRecording } from "./feed.js";
 import { drawMarket, miniChart, fmt } from "./charts.js";
+
+// Practice and live tools share the same course names and order as the lessons.
+const lessons = curriculum.map((course) => ({
+  ...originalLessons.find((lesson) => lesson.id === course.id),
+  short: course.short,
+  group: course.phase,
+}));
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) =>
@@ -21,7 +29,7 @@ try {
   /* storage is optional */
 }
 let completed = new Set(
-  Array.isArray(saved.completed)
+  Array.isArray(saved?.completed)
     ? saved.completed.filter((id) => lessons.some((l) => l.id === id))
     : [],
 );
@@ -163,32 +171,10 @@ function lessonContent() {
   $("reveal-hidden").checked = false;
   $("order-feedback").textContent = "成交價格取決於當時的對手掛單。";
 }
-function loadLesson(index, focus = false) {
-  lessonIndex = Math.max(0, Math.min(lessons.length - 1, index));
-  lesson = lessons[lessonIndex];
-  market = lessonMarket(lesson.id);
-  overviewLayer = lesson.id === "heatmap" ? "heatmap" : "price";
-  zoom = lesson.focus;
-  selected = null;
-  performed = false;
-  answered = false;
-  lastExecution = null;
-  if (mode !== "learn") changeMode("learn", false);
-  lessonContent();
-  navigation();
-  render();
-  const url = new URL(location.href);
-  url.searchParams.set("lesson", lesson.id);
-  history.replaceState({}, "", url);
-  if (focus) {
-    $("main").focus({ preventScroll: true });
-    window.scrollTo({
-      top: 0,
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant"
-        : "smooth",
-    });
-  }
+function loadLesson(index) {
+  const selectedLesson =
+    lessons[Math.max(0, Math.min(lessons.length - 1, index))];
+  location.assign("./?lesson=" + selectedLesson.id);
 }
 function stopPlayback() {
   clearInterval(playTimer);
@@ -196,6 +182,10 @@ function stopPlayback() {
   $("replay-play").textContent = "自動播放";
 }
 function changeMode(next, refresh = true) {
+  if (next === "learn") {
+    loadLesson(lessonIndex);
+    return;
+  }
   if (mode === "live" && next !== "live") {
     feed.stop();
     recordingActive = false;
@@ -1003,3 +993,9 @@ lessonContent();
 navigation();
 updateType();
 render();
+
+const requestedWorkspace = new URLSearchParams(location.search).get(
+  "workspace",
+);
+if (["practice", "live"].includes(requestedWorkspace))
+  changeMode(requestedWorkspace);

@@ -59,13 +59,23 @@ npm run dev
 curl -X POST http://localhost:8787/api/simulate -H "Content-Type: application/json" -d '{"userId":"U000000000000000000000000000000001","text":"我該如何註冊？"}'
 ```
 
-## 6) 一鍵部署（staging）
+## 6) 驗收與正式部署
+
+網站與課程先發布到獨立驗收站 `https://preview.metabear.io`：
 
 ```powershell
 npm run build:staging
-npm run db:migrate:staging
+npm run deploy:staging
+```
+
+驗收後發布正式站 `https://metabear.io`：
+
+```powershell
+npm run build:production
 npm run deploy
 ```
+
+只有新增資料庫遷移時才執行 `npm run db:migrate:production`。驗收站沒有正式資料庫、LINE 憑證或訊息佇列；目前 LINE webhook 為 `https://metabear.io/webhook/line`。完整設定見 `docs/DOMAIN-DEPLOYMENT.md`。
 
 ## 環境建議
 
