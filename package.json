@@ -11,6 +11,8 @@
     "quant:check": "tsc -p quant/tsconfig.json",
     "quant:test": "tsx --test quant/*.test.ts",
     "quant:replay": "tsx quant/replay.ts",
+    "quant:collect": "tsx quant/collector.ts",
+    "quant:raw:replay": "tsx quant/recording-replay.ts",
     "dev": "wrangler dev --local --port 8787",
     "db:migrate": "wrangler d1 migrations apply metabear-crm --local",
     "types": "wrangler types --env production --strict-vars false",
