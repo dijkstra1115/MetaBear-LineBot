@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#080e18" />
+    <meta name="robots" content="noindex, follow" />
+    <meta
+      name="description"
+      content="從一根 K 線走進市場。六段連續故事，沿著成交理解流動性、訂單流與永續合約。"
+    />
+    <title>Orderflow Academy — MetaBear 訂單流學院</title>
+    <link rel="canonical" href="https://metabear.io/orderflow/" />
+    <meta
+      property="og:title"
+      content="MetaBear 訂單流學院｜從第一根 K 線開始"
+    />
+    <meta
+      property="og:description"
+      content="價格形成、買入被吸收、流動性變薄、成交足跡、合約成本與急跌承接。一路跟著故事看下去。"
+    />
+    <meta property="og:url" content="https://metabear.io/orderflow/" />
+    <meta property="og:image" content="https://metabear.io/logo.webp" />
+    <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="64x64" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./foundation.css" />
+    <script type="module" src="./entry.js"></script>
+  </head>
+  <body>
+    <div id="foundation" hidden></div>
+    <div id="academy" hidden>
+      <a class="skip" href="#main">跳到教學工作台</a>
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="MetaBear 首頁"
+          ><span class="brand-symbol" aria-hidden="true"
+            ><img src="/logo.webp" alt="" width="96" height="96" /></span
+          ><span
+            >ORDERFLOW<span class="brand-sub"
+              >ACADEMY <b>by MetaBear</b></span
+            ></span
+          ></a
+        >
+        <nav class="mode-nav" aria-label="學習模式">
+          <button data-mode="learn" class="active">互動教學</button
+          ><button data-mode="practice">
+            情境實戰<span class="nav-tag">LAB</span></button
+          ><button data-mode="live">
+            真實市場<span class="live-dot"></span>
+          </button>
+        </nav>
+        <button
+          class="quiet help-button"
+          id="help-button"
+          aria-label="開啟操作說明"
+        >
+          操作指南 <span>?</span>
+        </button>
+      </header>
+      <div class="app-layout">
+        <aside class="sidebar" aria-label="課程地圖">
+          <div class="sidebar-heading">
+            <span>你的學習路徑</span><span id="completion">00 / 15</span>
+          </div>
+          <progress
+            id="progress"
+            value="0"
+            max="15"
+            aria-label="課程完成進度"
+          ></progress>
+          <nav id="lesson-list" aria-label="課程單元"></nav>
+          <div class="sidebar-bottom">
+            <span class="outline-icon">↗</span>
+            <div>從看見，到看懂。<small>用每一筆操作建立直覺。</small></div>
+          </div>
+        </aside>
+        <main id="main" tabindex="-1">
+          <div class="mobile-course">
+            <label for="course-select">課程</label
+            ><select id="course-select"></select>
+          </div>
+          <section class="page-intro">
+            <div>
+              <p class="eyebrow" id="eyebrow">01 / THE MATCHING ENGINE</p>
+              <h1 id="lesson-title">價格是怎麼走出來的？</h1>
+              <p class="intro-text" id="lesson-summary"></p>
+            </div>
+            <div class="chapter-mark" id="chapter-mark" aria-hidden="true">
+              01<span>/ 15</span>
+            </div>
+          </section>
+          <div class="workspace">
+            <section class="market-column" aria-label="市場工作台">
+              <div class="market-panel">
+                <div class="market-toolbar">
+                  <div class="instrument">
+                    <span class="coin-symbol">₿</span>
+                    <div>
+                      <strong id="instrument-name">BTC / USDT</strong
+                      ><small>PERPETUAL · 永續合約</small>
+                    </div>
+                  </div>
+                  <div class="source-badge" id="source-badge">合成教學數據</div>
+                  <button
+                    class="icon-button"
+                    id="immersive-toggle"
+                    title="切換沉浸模式"
+                    aria-label="切換沉浸模式"
+                    aria-pressed="false"
+                  >
+                    ⤢
+                  </button>
+                  <button
+                    class="icon-button"
+                    id="reset"
+                    title="重新開始目前情境"
+                    aria-label="重新開始目前情境"
+                  >
+                    ↺
+                  </button>
+                </div>
+                <div class="price-strip">
+                  <strong id="market-price">—</strong
+                  ><span id="price-change">等待成交</span
+                  ><span class="spread-label"
+                    >Spread <b id="spread">—</b> USDT</span
+                  >
+                </div>
+                <div class="zoom-bar">
+                  <span class="zoom-label">觀察尺度</span>
+                  <div
+                    class="zoom-options"
+                    role="group"
+                    aria-label="市場縮放層級"
+                  >
+                    <button data-zoom="0"><span>01</span> 市場全貌</button
+                    ><span class="zoom-arrow">›</span
+                    ><button data-zoom="1"><span>02</span> 成交足跡</button
+                    ><span class="zoom-arrow">›</span
+                    ><button data-zoom="2"><span>03</span> 訂單簿內部</button>
+                  </div>
+                </div>
+                <div class="visual-stage" id="visual-stage">
+                  <div class="stage-caption">
+                    <span id="view-name">ORDER BOOK</span
+                    ><span id="view-hint">價格相同，依序等待成交。</span>
+                  </div>
+                  <svg
+                    id="market-viz"
+                    viewBox="0 0 900 430"
+                    role="group"
+                    aria-label="可互動的市場圖表"
+                  ></svg>
+                  <div
+                    id="overview-layer"
+                    class="layer-controls"
+                    role="group"
+                    aria-label="全貌圖層"
+                    hidden
+                  >
+                    <button data-layer="price" class="active">
+                      價格與成交量
+                    </button>
+                    <button data-layer="heatmap">流動性熱圖</button>
+                  </div>
+                  <div class="stage-bottom">
+                    <span id="chart-legend"
+                      ><i class="buy-key"></i> 買方 Bid
+                      <i class="sell-key"></i> 賣方 Ask</span
+                    >
+                    <div class="zoom-controls">
+                      <button id="zoom-out" aria-label="縮遠一層">−</button
+                      ><span id="zoom-level">3×</span
+                      ><button id="zoom-in" aria-label="放大一層">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mobile-lab-controls" id="mobile-lab-controls">
+                  <button id="mobile-action" class="primary">
+                    執行本課實驗 <span>↗</span>
+                  </button>
+                  <p
+                    id="mobile-action-result"
+                    class="small-copy"
+                    role="status"
+                  ></p>
+                </div>
+                <div class="market-metrics">
+                  <div>
+                    <span
+                      >累計 Delta
+                      <abbr title="主動買量減主動賣量，從本情境開始累計"
+                        >CVD</abbr
+                      ></span
+                    ><strong id="metric-cvd">—</strong
+                    ><small id="cvd-note">自本情境起算 · BTC</small>
+                  </div>
+                  <div>
+                    <span
+                      >未平倉量 <abbr title="單邊未平倉合約量">OI</abbr></span
+                    ><strong id="metric-oi">—</strong
+                    ><small id="oi-note">單邊口徑 · BTC</small>
+                  </div>
+                  <div>
+                    <span>成交均價 VWAP</span><strong id="metric-vwap">—</strong
+                    ><small>本段成交 · USDT</small>
+                  </div>
+                  <div>
+                    <span>前十檔深度失衡</span
+                    ><strong id="metric-imbalance">—</strong
+                    ><small>買量 − 賣量 / 總量</small>
+                  </div>
+                </div>
+                <div class="flow-charts">
+                  <div>
+                    <div class="mini-heading">
+                      <span>CVD <b>主動方的足跡</b></span
+                      ><span id="delta-label">BTC</span>
+                    </div>
+                    <svg
+                      id="cvd-chart"
+                      viewBox="0 0 420 96"
+                      role="img"
+                      aria-label="CVD 走勢"
+                    ></svg>
+                  </div>
+                  <div>
+                    <div class="mini-heading">
+                      <span>OI <b>留下的合約</b></span
+                      ><span id="oi-unit">BTC</span>
+                    </div>
+                    <svg
+                      id="oi-chart"
+                      viewBox="0 0 420 96"
+                      role="img"
+                      aria-label="未平倉量走勢"
+                    ></svg>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-panel">
+                <div class="section-label">
+                  <span>EVENT TAPE <b id="event-title">剛剛發生了什麼</b></span
+                  ><span id="event-count">0 筆操作</span>
+                </div>
+                <div
+                  id="event-tape"
+                  aria-live="polite"
+                  aria-atomic="true"
+                ></div>
+              </div>
+              <section class="knowledge-panel" id="knowledge-panel">
+                <div class="section-label">THE IDEA <b>把觀念看完整</b></div>
+                <p id="explanation"></p>
+                <div class="pitfall">
+                  <span>辨識盲點</span>
+                  <p id="pitfall"></p>
+                </div>
+              </section>
+              <section class="data-panel">
+                <details>
+                  <summary>查看數據與計算範圍 <span>＋</span></summary>
+                  <p id="data-scope"></p>
+                  <div class="table-scroll">
+                    <table>
+                      <caption>
+                        最近成交（買／賣指主動方）
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th>方向</th>
+                          <th>價格 USDT</th>
+                          <th>數量</th>
+                        </tr>
+                      </thead>
+                      <tbody id="trade-table"></tbody>
+                    </table>
+                  </div>
+                  <p class="source-links">
+                    官方資料定義：<a
+                      href="https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook"
+                      target="_blank"
+                      rel="noreferrer"
+                      >Orderbook ↗</a
+                    >
+                    ·
+                    <a
+                      href="https://bybit-exchange.github.io/docs/v5/websocket/public/trade"
+                      target="_blank"
+                      rel="noreferrer"
+                      >Trade ↗</a
+                    >
+                    ·
+                    <a
+                      href="https://bybit-exchange.github.io/docs/v5/websocket/public/ticker"
+                      target="_blank"
+                      rel="noreferrer"
+                      >OI / Funding ↗</a
+                    >
+                    ·
+                    <a
+                      href="https://bybit-exchange.github.io/docs/v5/websocket/public/all-liquidation"
+                      target="_blank"
+                      rel="noreferrer"
+                      >Liquidation ↗</a
+                    >
+                  </p>
+                </details>
+              </section>
+            </section>
+            <aside class="coach-column" aria-label="學習與操作">
+              <section id="lesson-coach" class="coach-card">
+                <div class="section-label">
+                  <span class="spark">✳</span> GUIDED EXPERIMENT
+                </div>
+                <h2>讓市場，回應你的操作。</h2>
+                <p id="task-copy"></p>
+                <div class="task-action">
+                  <span class="step-circle">1</span>
+                  <p id="action-hint">親手送出第一筆訂單</p>
+                </div>
+                <button class="primary" id="lesson-action">
+                  市價買入 6 BTC <span>↗</span>
+                </button>
+                <div class="result-message" id="action-result" role="status">
+                  每次操作都會同步更新所有視圖。
+                </div>
+                <label class="switch-row"
+                  ><input type="checkbox" id="reveal-hidden" /><span
+                    >揭露隱藏量</span
+                  ><small>僅教學模型</small></label
+                >
+              </section>
+              <section id="practice-coach" class="coach-card" hidden>
+                <div class="section-label">DECISION LAB</div>
+                <h2>先判斷，再揭曉。</h2>
+                <label for="scenario-select">實戰情境</label
+                ><select id="scenario-select"></select>
+                <p id="scenario-prompt"></p>
+                <label for="thesis">你的假設</label
+                ><select id="thesis">
+                  <option value="wait">等待確認</option>
+                  <option value="long">偏多</option>
+                  <option value="short">偏空</option></select
+                ><label for="evidence">你看見的證據</label
+                ><textarea
+                  id="evidence"
+                  rows="2"
+                  placeholder="例如：CVD 上升，但價格沒有突破…"
+                  maxlength="600"
+                ></textarea
+                ><label for="invalidation">什麼會讓你改變看法？</label
+                ><input
+                  id="invalidation"
+                  placeholder="具體的價格或盤面條件"
+                  maxlength="200"
+                /><button id="lock-thesis" class="primary">
+                  記錄判斷，開始演練 <span>→</span>
+                </button>
+                <div class="replay-controls">
+                  <button id="replay-next" class="secondary" disabled>
+                    下一個事件 →</button
+                  ><button id="replay-play" class="quiet" disabled>
+                    自動播放
+                  </button>
+                </div>
+                <progress
+                  id="replay-progress"
+                  value="0"
+                  max="16"
+                  aria-label="回放進度"
+                ></progress>
+                <p id="replay-status" class="small-copy">後續行情尚未揭露。</p>
+                <div id="review" class="review" hidden></div>
+                <button class="quiet full" id="import-button">
+                  匯入真實行情錄製檔 ↗</button
+                ><input
+                  id="recording-file"
+                  type="file"
+                  accept=".json,application/json"
+                  hidden
+                />
+              </section>
+              <section id="live-coach" class="coach-card" hidden>
+                <div class="section-label">LIVE OBSERVATORY</div>
+                <h2>走進正在發生的市場。</h2>
+                <p>觀察 Bybit 公開永續合約。紙上操作留在自己的練習帳本。</p>
+                <label for="live-symbol">觀察商品</label
+                ><select id="live-symbol">
+                  <option value="BTCUSDT">BTC / USDT 永續</option>
+                  <option value="ETHUSDT">ETH / USDT 永續</option></select
+                ><button class="primary" id="connect-live">
+                  連接公開行情 <span>↗</span>
+                </button>
+                <p id="live-status" class="result-message" role="status">
+                  尚未連線 · 不需要 API Key
+                </p>
+                <button class="secondary full" id="record-live" disabled>
+                  開始錄製這段市場
+                </button>
+                <div class="replay-controls">
+                  <button class="quiet" id="replay-recording" disabled>
+                    用錄製資料演練</button
+                  ><button class="quiet" id="export-recording" disabled>
+                    匯出 JSON
+                  </button>
+                </div>
+                <p id="record-status" class="small-copy">
+                  每秒取樣一次，最多 300 個快照。
+                </p>
+                <div id="liquidation-feed" class="small-copy">
+                  等待清算事件；不把清算價格當作成交價。
+                </div>
+              </section>
+              <section class="order-card">
+                <div class="section-label">
+                  <span>ORDER TICKET <b id="ticket-title">自由實驗</b></span
+                  ><span class="paper-label" id="ticket-badge">SIM</span>
+                </div>
+                <form id="order-form">
+                  <div class="side-toggle" role="group" aria-label="下單方向">
+                    <button type="button" data-side="buy" class="selected">
+                      買入 Buy</button
+                    ><button type="button" data-side="sell">賣出 Sell</button>
+                  </div>
+                  <div id="sim-fields">
+                    <label for="order-type">委託類型</label
+                    ><select id="order-type">
+                      <option value="market">市價 · 立即成交</option>
+                      <option value="limit">限價 · 指定價格</option>
+                      <option value="iceberg">冰山 · 分批顯示</option>
+                    </select>
+                  </div>
+                  <div class="input-row">
+                    <div>
+                      <label for="order-size" id="size-label">數量 BTC</label
+                      ><input
+                        id="order-size"
+                        type="number"
+                        value="3"
+                        min="0.001"
+                        max="100"
+                        step="0.001"
+                        required
+                      />
+                    </div>
+                    <div id="price-field" hidden>
+                      <label for="order-price">價格 USDT</label
+                      ><input
+                        id="order-price"
+                        type="number"
+                        value="68410"
+                        min="0.1"
+                        step="0.1"
+                      />
+                    </div>
+                  </div>
+                  <div id="peak-field" hidden>
+                    <label for="order-peak">每批顯示量</label
+                    ><input
+                      id="order-peak"
+                      type="number"
+                      value="1"
+                      min="0.001"
+                      step="0.001"
+                    />
+                  </div>
+                  <div id="disposition-field">
+                    <label for="disposition"
+                      >雙方開平倉假設
+                      <span class="muted">用於 OI 教學</span></label
+                    ><select id="disposition">
+                      <option value="transfer">一開一平 · OI 不變</option>
+                      <option value="open">雙方開倉 · OI 增加</option>
+                      <option value="close">雙方平倉 · OI 減少</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="buy-submit" id="submit-order">
+                    送出模擬買單 <span>→</span>
+                  </button>
+                  <p id="order-feedback" class="small-copy" role="status">
+                    成交價格取決於當時的對手掛單。
+                  </p>
+                </form>
+                <div id="own-orders"></div>
+                <div id="paper-account" hidden></div>
+              </section>
+              <section id="quiz-card" class="quiz-card">
+                <div class="section-label">CHECK YOUR INTUITION</div>
+                <h2 id="quiz-question"></h2>
+                <div id="quiz-options"></div>
+                <p id="quiz-feedback" role="status"></p>
+                <button id="next-lesson" class="quiet full">
+                  下一個單元 <span>→</span>
+                </button>
+              </section>
+            </aside>
+          </div>
+          <footer>
+            <span>METABEAR / ORDERFLOW ACADEMY</span
+            ><span>理解市場的機制，建立自己的判斷。<b>教學與紙上練習</b></span>
+          </footer>
+        </main>
+      </div>
+      <dialog id="help-dialog">
+        <form method="dialog">
+          <button class="dialog-close" aria-label="關閉操作說明">×</button>
+        </form>
+        <p class="eyebrow">YOUR FIELD GUIDE</p>
+        <h2>同一個市場，三種距離。</h2>
+        <p>
+          從市場全貌看價格與指標，放大到成交足跡，再走入訂單簿。切換尺度不會重設市場。
+        </p>
+        <ol>
+          <li>在右側執行每課的引導操作，或用下單台自由實驗。</li>
+          <li>
+            用尺度按鈕、＋／−，或點擊圖表深入。鍵盤也可使用 1、2、3 切換尺度。
+          </li>
+          <li>完成操作與理解題，即可記錄本課進度。進度保存在此瀏覽器。</li>
+          <li>
+            情境實戰先寫下判斷，再逐步看後續。真實市場可錄製，再匯入回放。
+          </li>
+        </ol>
+        <p class="small-copy">
+          合成教學、Bybit
+          即時資料與取樣回放都有獨立標示。紙上成交採當時可見深度，未模擬延遲與真實排隊順位。Esc
+          關閉此視窗。
+        </p>
+      </dialog>
+      <div id="toast" role="status" class="toast" hidden></div>
+    </div>
+    <noscript>請啟用 JavaScript，開始 Maker 與 Taker 互動教學。</noscript>
+  </body>
+</html>

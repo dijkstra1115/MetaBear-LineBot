@@ -1,4 +1,4 @@
-import { aggregate, metrics } from "./engine.js";
+import { aggregate, metrics } from "../engine.js";
 
 export class BybitSession {
   constructor(onFrame, onStatus) {

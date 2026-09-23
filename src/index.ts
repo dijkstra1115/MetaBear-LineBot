@@ -189,13 +189,15 @@ export default {
       if (target.pathname === "/") target.pathname = "/index.html";
       if (target.pathname === "/learn" || target.pathname === "/learn/")
         target.pathname = "/guide.html";
-      if (target.pathname === "/orderflow") {
+      if (["/orderflow", "/orderflow/legacy"].includes(target.pathname)) {
         const canonical = new URL(request.url);
-        canonical.pathname = "/orderflow/";
+        canonical.pathname = target.pathname + "/";
         return Response.redirect(canonical.toString(), 308);
       }
       if (target.pathname === "/orderflow/")
         target.pathname = "/orderflow/index.html";
+      if (target.pathname === "/orderflow/legacy/")
+        target.pathname = "/orderflow/legacy/index.html";
       const response = await env.ASSETS.fetch(new Request(target, request));
       const headers = new Headers(response.headers);
       if (privatePage || target.pathname === "/login.html")

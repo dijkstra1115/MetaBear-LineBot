@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   FoundationLesson,
   candleFromTrades,
-} from "../public/orderflow/foundation-model.js";
+} from "../public/orderflow/legacy/foundation-model.js";
 
 test("resting Maker order changes depth without changing the candle or last trade", () => {
   const lesson = new FoundationLesson();

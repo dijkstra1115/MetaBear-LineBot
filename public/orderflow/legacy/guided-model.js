@@ -1,4 +1,4 @@
-import { Market, metrics, aggregate, round } from "./engine.js";
+import { Market, metrics, aggregate, round } from "../engine.js";
 import { candleFromTrades } from "./foundation-model.js";
 
 export class GuidedLesson {

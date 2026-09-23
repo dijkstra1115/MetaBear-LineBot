@@ -3,127 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#080e18" />
     <meta name="robots" content="noindex, nofollow" />
-    <meta
-      name="description"
-      content="跟著同一段行情，看買單、掛單與價格如何一起變化。"
-    />
-    <title>買了很多，價格為什麼不動？ · MetaBear</title>
-    <link rel="icon" href="/favicon-v2.png" />
-    <link rel="stylesheet" href="./absorption.css" />
-    <script type="module" src="./absorption-story.js"></script>
+    <title>舊版教學已搬移 · MetaBear</title>
+    <script type="module" src="./legacy-redirect.js"></script>
   </head>
   <body>
-    <a class="skip" href="#story">跳到市場故事</a>
-    <header class="header">
-      <a class="brand" href="/orderflow/"
-        ><img src="/logo.webp" alt="" width="32" height="32" /><b>MetaBear</b
-        ><span>交易學院</span></a
+    <p>
+      舊版教學已集中保存。<a id="legacy-target" href="./legacy/absorption.html"
+        >繼續前往教學</a
       >
-      <span class="edition">市場故事 02</span>
-    </header>
-    <main id="story">
-      <div class="introduction">
-        <p class="eyebrow">跟著成交，靠近市場</p>
-        <h1>買了很多，價格為什麼不動？</h1>
-        <p>同一段行情，一路看下去。</p>
-      </div>
-      <section class="theater" aria-label="補量與成交的連續市場故事">
-        <div class="stage-toolbar">
-          <div class="instrument">
-            <strong>BTC <span>/ USDT</span></strong
-            ><span class="source">合成行情・非即時</span>
-          </div>
-          <div class="playback">
-            <span id="clock">00:00.00</span
-            ><button id="pause" type="button" disabled>暫停</button>
-          </div>
-        </div>
-        <div class="market-heading">
-          <div>
-            <span class="metric-label">最新成交</span
-            ><strong id="last-price">68,420.0</strong>
-          </div>
-          <p id="camera-label">掛單與成交，都在這個盤面裡。</p>
-          <div class="delta-metric">
-            <span class="metric-label"
-              >累計主動買賣差 <span class="unit">BTC</span></span
-            ><strong id="delta">+0.00</strong>
-          </div>
-        </div>
-        <div class="canvas-wrap">
-          <svg
-            id="market"
-            viewBox="0 0 900 380"
-            role="img"
-            aria-labelledby="market-title market-description"
-          >
-            <title id="market-title">
-              即時 K 線、成交量、公開掛單與累計主動買賣差
-            </title>
-            <desc id="market-description"></desc>
-            <g id="world"></g>
-          </svg>
-        </div>
-        <div class="market-caption">
-          <span id="caption">市場暫停在第一筆成交之前。</span
-          ><span id="recent-fill">數量單位 BTC</span>
-        </div>
-        <div class="timeline" aria-label="行情播放進度">
-          <progress
-            id="progress"
-            max="18000"
-            value="0"
-            aria-label="行情播放進度"
-          ></progress>
-        </div>
-        <div class="story-bottom">
-          <div class="narrative" aria-live="polite" aria-atomic="true">
-            <p class="scene-index" id="chapter">序幕 / 04</p>
-            <h2 id="scene-title">買單正要進來。</h2>
-            <p id="scene-copy">
-              68,420.5
-              的賣單前，有一批買單準備成交。鏡頭靠近一點，看看接下來留下什麼。
-            </p>
-          </div>
-          <div class="controls">
-            <button id="back" type="button" class="quiet" disabled>
-              ← 上一幕</button
-            ><button id="action" type="button" class="primary">
-              開始觀看 <span aria-hidden="true">→</span>
-            </button>
-          </div>
-        </div>
-      </section>
-      <section class="closing" id="closing" hidden>
-        <div class="takeaway">
-          <p class="eyebrow">剛才看見的，叫作吸收。</p>
-          <h2>成交一直發生，<br />價格卻沒有走遠。</h2>
-          <p>
-            前半段，持續補上的賣單接住了主動買入；後半段，補量不再出現，新的買單逐步吃完眼前的深度，成交價才往上移。
-          </p>
-          <p class="footnote">
-            公開盤面能看見數量變化，無法因此確認是誰補單，也無法知道還有多少隱藏委託。主動買賣差（CVD）是主動買量減去主動賣量的累計，並不保證後續方向。
-          </p>
-          <p>
-            <a href="./journey.html?chapter=liquidity"
-              >繼續旅程：那面牆，怎麼突然不見了？ →</a
-            >
-          </p>
-        </div>
-      </section>
-      <footer>
-        <a href="/orderflow/">返回完整學院</a
-        ><span>依撮合規則編排的合成行情，非歷史紀錄。</span>
-      </footer>
-    </main>
-    <noscript
-      ><p>
-        這段市場故事需要啟用 JavaScript。<a href="/learn"
-          >也可以閱讀圖文教學。</a
-        >
-      </p></noscript
-    >
+    </p>
   </body>
 </html>

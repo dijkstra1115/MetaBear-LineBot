@@ -23,6 +23,8 @@
 
 ## 開始使用
 
+舊版交易學院集中保存在 `public/orderflow/legacy/`，總覽入口 `/orderflow/legacy/`；版本與相容連結見 [舊版教學整理](docs/ACADEMY-LEGACY.md)。
+
 ### 訂單流量化研究室（獨立服務）
 
 原始行情收集：`npm run quant:collect`，獨立保存 BTC／ETH 永續 50／1000 檔訂單簿更新與現貨／永續逐筆成交，含斷線紀錄及回放驗證。詳見 [原始訂單流收集器](docs/QUANT-RECORDER.md)。

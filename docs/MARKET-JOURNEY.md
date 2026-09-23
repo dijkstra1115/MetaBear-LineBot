@@ -1,6 +1,6 @@
 # 一筆成交之後：六段市場旅程
 
-入口：`/orderflow/`，獨立入口：`/orderflow/journey.html`。
+舊版入口：`/orderflow/legacy/journey.html`。舊版總覽：`/orderflow/legacy/`。原 `/orderflow/journey.html` 保留轉址。
 
 學員只需要下一幕、上一幕與暫停。沒有選擇題、分支、留言、完成打卡或另一組情境模擬。頁面不保存個人資料。故事由事件帶出問題，概念在觀察之後才命名。
 
@@ -41,7 +41,7 @@
 - 暫停使所有行情、圖表轉場與計時停止；隱藏分頁自動暫停。離頁清除動畫，瀏覽器返回可恢復操作。
 - `?chapter=traces&scene=2` 等連結可恢復已完成的幕。原有 `?lesson=...` 對應至包含該概念的旅程段落。
 - `?classic=1&lesson=...` 保留舊版檢視；`?workspace=practice` 與 `?workspace=live` 繼續使用原有工具。
-- `/orderflow/absorption.html` 保留原獨立補量故事，收尾可接到第三段。
+- `/orderflow/legacy/absorption.html` 保留原獨立補量故事，收尾可接到第三段。
 
 ## 驗證
 

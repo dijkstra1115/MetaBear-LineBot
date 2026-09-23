@@ -46,13 +46,14 @@ export default {
         json({ business: BUSINESS, steps: STEPS, lessons: LESSONS }),
       );
     if (path === "/rates/usdt-twd") return finish(await getRate());
-    if (path === "/orderflow") {
-      url.pathname = "/orderflow/";
+    if (["/orderflow", "/orderflow/legacy"].includes(path)) {
+      url.pathname = path + "/";
       return finish(Response.redirect(url.href, 308));
     }
     if (path === "/") path = "/index.html";
     if (["/learn", "/learn/"].includes(path)) path = "/guide.html";
     if (path === "/orderflow/") path = "/orderflow/index.html";
+    if (path === "/orderflow/legacy/") path = "/orderflow/legacy/index.html";
     url.pathname = path;
     return finish(
       await env.ASSETS.fetch(new Request(url, request)),

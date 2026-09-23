@@ -91,11 +91,11 @@ export function lessonShell(course, matching) {
         <div class="f-controls"><button type="button" class="f-back" id="f-back" aria-label="回到上一步">← <span>上一步</span></button><div class="f-action-hint"><strong id="f-role"></strong><span id="f-hint"></span></div><button type="button" class="f-action" id="f-action"></button></div>
       </section>
       <section class="f-recap" id="f-recap" hidden aria-labelledby="f-recap-title">
-        <div class="f-recap-main"><h2 id="f-recap-title" tabindex="-1">演示完成，換你判讀。</h2><p>${quiz.question}</p><div class="f-answers">${quiz.options.map((option, i) => `<button type="button" data-answer="${i}">${option}</button>`).join("")}</div><p class="f-feedback" id="f-feedback" role="status"></p><a class="f-next" id="f-next" href="${next ? `./?lesson=${next.id}` : "./?workspace=practice"}" hidden>${next ? `下一課・${next.short}` : "完成這段旅程，進入情境實戰"}<span aria-hidden="true">→</span></a></div>
+        <div class="f-recap-main"><h2 id="f-recap-title" tabindex="-1">演示完成，換你判讀。</h2><p>${quiz.question}</p><div class="f-answers">${quiz.options.map((option, i) => `<button type="button" data-answer="${i}">${option}</button>`).join("")}</div><p class="f-feedback" id="f-feedback" role="status"></p><a class="f-next" id="f-next" href="${next ? `./classic.html?classic=1&lesson=${next.id}` : "./classic.html?workspace=practice"}" hidden>${next ? `下一課・${next.short}` : "完成這段旅程，進入情境實戰"}<span aria-hidden="true">→</span></a></div>
         <div class="f-trade-path"><p>${matching ? "剛才真正發生的成交" : "把這件事帶走"}</p><ol id="f-trade-list"></ol><p id="f-takeaway">${course.takeaway}</p><small>${matching ? "整段視為同一根 K 線；100 是起始成交。" : "數值只描述本課已揭露的情境。"}</small><div id="f-reflection-review" hidden></div></div>
       </section>
       <div class="f-footnotes"><details><summary>${matching ? "這裡的「價格」指什麼？" : "想多理解一點：本課的設定與範圍"}</summary><p>${course.notes || matchingNotes}</p>${matching ? "<p>本課用市價單示範 Taker；能立即成交的限價單也可能是 Taker。每筆成交都需要買方與賣方，不能從 K 線形狀推算買方人數。本例是簡化的連續撮合市場。</p>" : ""}${sources[course.id] || matching || course.phase === "訂單如何成交" ? `<a href="${source[1]}" target="_blank" rel="noopener noreferrer">${source[0]}</a>` : ""}</details><span>由你決定每一步</span></div>
-      <footer class="f-footer"><a href="${previous ? `./?lesson=${previous.id}` : "/"}">${previous ? `← 上一課・${previous.short}` : "MetaBear 首頁"}</a><button type="button" class="f-text-button" id="f-footer-map">查看完整學習路徑</button></footer>
+      <footer class="f-footer"><a href="${previous ? `./classic.html?classic=1&lesson=${previous.id}` : "/"}">${previous ? `← 上一課・${previous.short}` : "MetaBear 首頁"}</a><button type="button" class="f-text-button" id="f-footer-map">查看完整學習路徑</button></footer>
     </main>
     <dialog class="f-map" id="f-map" aria-labelledby="f-map-title"><div class="f-map-head"><div><p class="f-kicker">一步一步，把市場看清楚</p><h2 id="f-map-title">你的學習路徑</h2></div><button type="button" id="f-close-map" aria-label="關閉課程路徑">✕</button></div><p class="f-map-copy">從一筆訂單，到有根據的判讀。每一課只多理解一件事，也可以自由回看。</p>
       <div class="f-map-grid">${[...new Set(curriculum.map((c) => c.phase))]
@@ -105,11 +105,11 @@ export function lessonShell(course, matching) {
               .filter((c) => c.phase === phase)
               .map(
                 (c) =>
-                  `<li><a href="./?lesson=${c.id}" data-course="${c.id}" ${c.id === course.id ? 'aria-current="page"' : ""}><span class="f-course-num">${String(c.number).padStart(2, "0")}</span><span>${c.short}</span><span class="f-course-status" aria-label="尚未完成"></span></a><button type="button" class="f-uncomplete" data-uncomplete="${c.id}" aria-label="移除${c.short}的完成標記" title="移除完成標記，留待複習" hidden>✓</button></li>`,
+                  `<li><a href="./classic.html?classic=1&lesson=${c.id}" data-course="${c.id}" ${c.id === course.id ? 'aria-current="page"' : ""}><span class="f-course-num">${String(c.number).padStart(2, "0")}</span><span>${c.short}</span><span class="f-course-status" aria-label="尚未完成"></span></a><button type="button" class="f-uncomplete" data-uncomplete="${c.id}" aria-label="移除${c.short}的完成標記" title="移除完成標記，留待複習" hidden>✓</button></li>`,
               )
               .join("")}</ol></section>`,
         )
         .join("")}</div>
-      <div class="f-map-lab"><div><strong>學完之後，再放進完整市場</strong><p>情境實戰與即時行情保留完整工具，供你自由練習。</p></div><a href="./?workspace=practice">情境實戰 →</a><a href="./?workspace=live">即時市場 →</a></div>
+      <div class="f-map-lab"><div><strong>學完之後，再放進完整市場</strong><p>情境實戰與即時行情保留完整工具，供你自由練習。</p></div><a href="./classic.html?workspace=practice">情境實戰 →</a><a href="./classic.html?workspace=live">即時市場 →</a></div>
     </dialog>`;
 }

@@ -1,4 +1,4 @@
-import { Market, metrics, round } from "./engine.js";
+import { Market, metrics, round } from "../engine.js";
 import { candleFromTrades } from "./foundation-model.js";
 
 export const BASE_PRICE = 68420;

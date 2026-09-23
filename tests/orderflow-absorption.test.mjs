@@ -6,7 +6,7 @@ import {
   CHAPTER_ENDS,
   createAbsorptionStory,
   snapshotAt,
-} from "../public/orderflow/absorption-model.js";
+} from "../public/orderflow/legacy/absorption-model.js";
 import { round } from "../public/orderflow/engine.js";
 
 const sum = (items) =>

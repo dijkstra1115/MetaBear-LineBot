@@ -4,19 +4,19 @@ import {
   createJourneyStory,
   snapshotAt,
   JOURNEY_DURATION,
-} from "../public/orderflow/journey-model.js";
+} from "../public/orderflow/legacy/journey-model.js";
 import {
   createAbsorptionStory,
   BASE_PRICE,
   CANDLE_INTERVAL,
-} from "../public/orderflow/absorption-model.js";
+} from "../public/orderflow/legacy/absorption-model.js";
 import {
   journey,
   journeyIndex,
-} from "../public/orderflow/journey-curriculum.js";
-import { curriculum } from "../public/orderflow/curriculum.js";
+} from "../public/orderflow/legacy/journey-curriculum.js";
+import { curriculum } from "../public/orderflow/legacy/curriculum.js";
 import { round, metrics } from "../public/orderflow/engine.js";
-import { drawJourneyChart } from "../public/orderflow/journey-charts.js";
+import { drawJourneyChart } from "../public/orderflow/legacy/journey-charts.js";
 const sum = (rows) => round(rows.reduce((total, row) => total + row.size, 0));
 
 test("six journeys cover all legacy courses and every market scene advances the same timeline", () => {

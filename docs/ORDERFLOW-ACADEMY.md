@@ -1,8 +1,10 @@
 # Orderflow Academy · 訂單流沉浸式教學
 
+> 舊版已集中到 `public/orderflow/legacy/`。總覽：`/orderflow/legacy/`；15 課入口：`/orderflow/legacy/classic.html?classic=1`。以下為此版功能說明，正式入口目前使用四段故事版。
+
 ## 教學入口
 
-`/orderflow/` 從 Maker、Taker 與第一根 K 線開始。全部 15 課共用深色介面、單一操作主線、共享 SVG 場景、課程路徑、理解題及完成紀錄。`?lesson=<id>` 可直接進入指定課程；無效課程回到第一課。
+`/orderflow/legacy/classic.html?classic=1` 從 Maker、Taker 與第一根 K 線開始。全部 15 課共用深色介面、單一操作主線、共享 SVG 場景、課程路徑、理解題及完成紀錄。`?classic=1&lesson=<id>` 可直接進入指定課程；無效課程回到第一課。
 
 課程設計遵循「先看見現象 → 親手操作 → 觀察結果 → 替概念命名」。完整逐課規劃見 [ORDERFLOW-IMMERSIVE-PLAN.md](ORDERFLOW-IMMERSIVE-PLAN.md)。
 

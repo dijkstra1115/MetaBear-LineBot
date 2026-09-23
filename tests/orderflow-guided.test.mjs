@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { curriculum, courseById } from "../public/orderflow/curriculum.js";
-import { GuidedLesson } from "../public/orderflow/guided-model.js";
+import { curriculum, courseById } from "../public/orderflow/legacy/curriculum.js";
+import { GuidedLesson } from "../public/orderflow/legacy/guided-model.js";
 
 function at(id, step = Infinity) {
   const lesson = new GuidedLesson(courseById(id));

@@ -16,8 +16,11 @@ if (
   params.get("classic") === "1" ||
   (lesson && !stories[lesson])
 ) {
-  const { mountLegacy } = await import("./legacy-entry.js");
-  await mountLegacy(params);
+  const target = new URL("./legacy/classic.html", location.href);
+  target.search = params.toString();
+  if (!params.has("workspace")) target.searchParams.set("classic", "1");
+  target.hash = location.hash;
+  location.replace(target.href);
 } else if (lesson && stories[lesson] !== "matching.html") {
   location.replace(`./${stories[lesson]}`);
 } else {

@@ -11,7 +11,10 @@ export function siteSecurityHeaders(path: string, origin: string): Headers {
     ? "'self' https://static.cloudflareinsights.com/beacon.min.js"
     : "'self'";
   const connections = ["'self'"];
-  if (path === "/orderflow/index.html")
+  if (
+    path === "/orderflow/index.html" ||
+    path === "/orderflow/legacy/classic.html"
+  )
     connections.push("wss://stream.bybit.com");
   if (productionAnalytics) connections.push("https://cloudflareinsights.com");
   return new Headers({

@@ -1,10 +1,10 @@
 # 補量市場故事：線性體驗版
 
-入口：`/orderflow/absorption.html`。獨立於原有課程與完成紀錄。
+入口：`/orderflow/legacy/absorption.html`。獨立於原有課程與完成紀錄。
 
 完整六段旅程現由 `/orderflow/` 進入，編排見 [MARKET-JOURNEY.md](./MARKET-JOURNEY.md)。本頁保留獨立觀看，收尾連結可接續第三段「那面牆，怎麼突然不見了？」。
 
-學員預覽：[買了很多，價格為什麼不動？](https://preview.metabear.io/orderflow/absorption.html)
+學員預覽：[買了很多，價格為什麼不動？](https://preview.metabear.io/orderflow/legacy/absorption.html)
 
 ## 體驗編排
 
@@ -50,7 +50,7 @@ npm run check
 npx wrangler deploy --env staging --dry-run --outdir .wrangler/story-preview
 ```
 
-本機預覽：`http://127.0.0.1:8790/orderflow/absorption.html`。
+本機預覽：`http://127.0.0.1:8790/orderflow/legacy/absorption.html`。
 
 K 線修訂通過 40 個市場／模型測試及 TypeScript 檢查。新增驗證涵蓋逐根 OHLCV、盤中回落及高點保留、回看還原，以及每幕必須推進成交。既有模型驗證包含每一事件的數量守恆、無未來成交、買賣盤不交叉、掛單更新不偽造成交與補量停止後逐檔撮合。
 

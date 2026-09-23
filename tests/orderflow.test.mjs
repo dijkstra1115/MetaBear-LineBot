@@ -11,7 +11,7 @@ import {
   BybitSession,
   parseRecording,
   recordingFrame,
-} from "../public/orderflow/feed.js";
+} from "../public/orderflow/legacy/feed.js";
 const approx = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} ≠ ${b}`);
 const emptyMarket = () => {
   const m = new Market();

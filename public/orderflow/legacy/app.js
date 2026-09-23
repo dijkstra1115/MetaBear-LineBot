@@ -1,4 +1,4 @@
-import { lessonMarket, PaperAccount, scenarioFrames } from "./engine.js";
+import { lessonMarket, PaperAccount, scenarioFrames } from "../engine.js";
 import { lessons as originalLessons, scenarios } from "./lessons.js";
 import { curriculum } from "./curriculum.js";
 import { BybitSession, recordingFrame, parseRecording } from "./feed.js";
@@ -174,7 +174,7 @@ function lessonContent() {
 function loadLesson(index) {
   const selectedLesson =
     lessons[Math.max(0, Math.min(lessons.length - 1, index))];
-  location.assign("./?lesson=" + selectedLesson.id);
+  location.assign("./classic.html?classic=1&lesson=" + selectedLesson.id);
 }
 function stopPlayback() {
   clearInterval(playTimer);
