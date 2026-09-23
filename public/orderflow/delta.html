@@ -4,17 +4,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0b1218" />
-    <link rel="canonical" href="https://metabear.io/orderflow/" />
+    <link rel="canonical" href="https://metabear.io/orderflow/delta.html" />
     <meta
       name="description"
-      content="從買賣撮合到 K 線同步形成，用 MetaBear 熊看懂成交、跳價與影線。"
+      content="反彈中的主動買入增加，價格卻卡住。從逐筆成交理解 CVD。"
     />
-    <title>一筆成交，怎麼變成 K 線？ · MetaBear</title>
+    <title>買入又多了，價格怎麼還回不去？ · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
     <link rel="stylesheet" href="./wick.css" />
-    <script type="module" src="./academy-entry.js"></script>
+    <script type="module" src="./delta.js"></script>
   </head>
-  <body data-chapter="primer">
+  <body>
     <a class="skip" href="#story">跳到市場故事</a>
     <header class="site-header">
       <a href="/" class="brand"
@@ -23,12 +23,12 @@
         ></a
       >
       <span class="series"
-        >市場故事 <span aria-hidden="true">/</span> 從撮合到 K 線</span
+        >市場故事 <span aria-hidden="true">/</span> 反彈卡住了</span
       >
     </header>
     <main id="story">
       <div class="scene-meta">
-        <span id="scene-label">01 — 買方、賣方、交易所</span>
+        <span id="scene-label">01 — 反彈卡住了</span>
         <ol class="scene-route" aria-label="故事進度">
           <li aria-current="step"><span class="sr-only">第一幕</span></li>
           <li><span class="sr-only">第二幕</span></li>
@@ -40,15 +40,15 @@
           <li><span class="sr-only">第八幕</span></li>
         </ol>
       </div>
-      <section class="stage" aria-label="一筆成交，怎麼變成 K 線？">
+      <section class="stage" aria-label="價格與累計主動成交差額">
         <div class="stage-top">
           <div class="instrument">
             <strong>MetaBear 熊 <span>/ 元</span></strong
             ><small>模擬商品 · 情境回放</small>
           </div>
           <div class="clock">
-            <span id="playback-label">合成行情 · 逐步回看</span
-            ><b id="market-clock">14:30:00.00</b>
+            <span id="playback-label">後續行情 · 快轉</span
+            ><b id="market-clock">14:33:30.00</b>
           </div>
         </div>
         <div class="canvas">
@@ -58,7 +58,7 @@
             role="img"
             aria-labelledby="chart-title chart-description"
           >
-            <title id="chart-title">一筆成交，怎麼變成 K 線？</title>
+            <title id="chart-title">反彈中的成交價與 CVD</title>
             <desc id="chart-description"></desc>
             <defs>
               <clipPath id="stage-clip">
@@ -69,7 +69,7 @@
           </svg>
         </div>
         <div class="stage-bottom">
-          <span id="lens-label">委託 = 買或賣 ＋ 價位 ＋ 數量</span
+          <span id="lens-label">左：完整 1 分 K　右：成交價放大</span
           ><span class="last-price"
             ><span>最新成交</span><b id="last-price">100</b></span
           >
@@ -93,9 +93,9 @@
         </div>
       </section>
       <div class="story-copy" aria-live="polite" aria-atomic="true">
-        <p id="eyebrow">MetaBear 熊 · 從委託到 K 線</p>
-        <h1 id="headline">一筆成交，怎麼變成 K 線？</h1>
-        <p id="question">買方想用 99 元買 5 隻。賣方想用 101 元賣 2 隻。</p>
+        <p id="eyebrow">故事三 · 主動買賣與 CVD</p>
+        <h1 id="headline">買入又多了，價格怎麼還回不去？</h1>
+        <p id="question">接著剛才的跌破。反彈來到 101，卻又回落。</p>
       </div>
       <nav class="story-controls" aria-label="故事操作">
         <button id="back" class="back" type="button" disabled>← 上一幕</button>
@@ -109,7 +109,7 @@
       </nav>
     </main>
     <footer>
-      <span>掛單是報價，成交才更新價格。</span><span>MetaBear 交易學院</span>
+      <span>主動成交差額，不等於價格方向。</span><span>MetaBear 交易學院</span>
     </footer>
     <noscript>請啟用 JavaScript 觀看市場故事。</noscript>
   </body>

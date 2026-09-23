@@ -4,17 +4,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0b1218" />
-    <link rel="canonical" href="https://metabear.io/orderflow/" />
+    <link rel="canonical" href="https://metabear.io/orderflow/wick.html" />
     <meta
       name="description"
-      content="從買賣撮合到 K 線同步形成，用 MetaBear 熊看懂成交、跳價與影線。"
+      content="從一根不尋常的上影線，走進成交發生的那一刻。"
     />
-    <title>一筆成交，怎麼變成 K 線？ · MetaBear</title>
+    <title>衝上去的價格，怎麼又回來了？ · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
     <link rel="stylesheet" href="./wick.css" />
-    <script type="module" src="./academy-entry.js"></script>
+    <script type="module" src="./wick.js"></script>
   </head>
-  <body data-chapter="primer">
+  <body>
     <a class="skip" href="#story">跳到市場故事</a>
     <header class="site-header">
       <a href="/" class="brand"
@@ -23,12 +23,12 @@
         ></a
       >
       <span class="series"
-        >市場故事 <span aria-hidden="true">/</span> 從撮合到 K 線</span
+        >市場故事 <span aria-hidden="true">/</span> 一根上影線</span
       >
     </header>
     <main id="story">
       <div class="scene-meta">
-        <span id="scene-label">01 — 買方、賣方、交易所</span>
+        <span id="scene-label">01 — 剛才，發生了什麼事？</span>
         <ol class="scene-route" aria-label="故事進度">
           <li aria-current="step"><span class="sr-only">第一幕</span></li>
           <li><span class="sr-only">第二幕</span></li>
@@ -38,17 +38,21 @@
           <li><span class="sr-only">第六幕</span></li>
           <li><span class="sr-only">第七幕</span></li>
           <li><span class="sr-only">第八幕</span></li>
+          <li><span class="sr-only">第九幕</span></li>
+          <li><span class="sr-only">第十幕</span></li>
+          <li><span class="sr-only">第十一幕</span></li>
+          <li><span class="sr-only">第十二幕</span></li>
         </ol>
       </div>
-      <section class="stage" aria-label="一筆成交，怎麼變成 K 線？">
+      <section class="stage" aria-label="K 線與成交的同一個現場">
         <div class="stage-top">
           <div class="instrument">
             <strong>MetaBear 熊 <span>/ 元</span></strong
             ><small>模擬商品 · 情境回放</small>
           </div>
           <div class="clock">
-            <span id="playback-label">合成行情 · 逐步回看</span
-            ><b id="market-clock">14:30:00.00</b>
+            <span id="playback-label">一分鐘快轉 · 6×</span
+            ><b id="market-clock">14:32:00.00</b>
           </div>
         </div>
         <div class="canvas">
@@ -58,7 +62,7 @@
             role="img"
             aria-labelledby="chart-title chart-description"
           >
-            <title id="chart-title">一筆成交，怎麼變成 K 線？</title>
+            <title id="chart-title">從一根 K 線走進成交</title>
             <desc id="chart-description"></desc>
             <defs>
               <clipPath id="stage-clip">
@@ -69,7 +73,7 @@
           </svg>
         </div>
         <div class="stage-bottom">
-          <span id="lens-label">委託 = 買或賣 ＋ 價位 ＋ 數量</span
+          <span id="lens-label">一根 K 線 · 一分鐘</span
           ><span class="last-price"
             ><span>最新成交</span><b id="last-price">100</b></span
           >
@@ -93,9 +97,9 @@
         </div>
       </section>
       <div class="story-copy" aria-live="polite" aria-atomic="true">
-        <p id="eyebrow">MetaBear 熊 · 從委託到 K 線</p>
-        <h1 id="headline">一筆成交，怎麼變成 K 線？</h1>
-        <p id="question">買方想用 99 元買 5 隻。賣方想用 101 元賣 2 隻。</p>
+        <p id="eyebrow">先看見發生了什麼</p>
+        <h1 id="headline">衝上去的價格，怎麼又回來了？</h1>
+        <p id="question">先看完這一分鐘，再走進它的成交現場。</p>
       </div>
       <nav class="story-controls" aria-label="故事操作">
         <button id="back" class="back" type="button" disabled>← 上一幕</button>
@@ -109,7 +113,7 @@
       </nav>
     </main>
     <footer>
-      <span>掛單是報價，成交才更新價格。</span><span>MetaBear 交易學院</span>
+      <span>價格留下形狀，成交留下經過。</span><span>MetaBear 交易學院</span>
     </footer>
     <noscript>請啟用 JavaScript 觀看市場故事。</noscript>
   </body>

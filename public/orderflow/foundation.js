@@ -96,7 +96,7 @@ const y = (price) => 53 + (110 - price) * 23;
 const mix = (a, b, t) => a + (b - a) * t;
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-export function mountFoundation(root, requestedId) {
+export function mountFoundation(root, requestedId, options = {}) {
   const course = courseById(requestedId);
   const matching = course.id === "matching";
   const steps = matching ? matchingSteps : course.steps;
@@ -106,6 +106,12 @@ export function mountFoundation(root, requestedId) {
   root.className = "foundation";
   root.dataset.course = course.id;
   root.innerHTML = lessonShell(course, matching);
+  if (options.journey) {
+    root.classList.add("journey-origin");
+    root
+      .querySelectorAll("[data-answer], [data-prediction]")
+      .forEach((button) => button.remove());
+  }
   document.title = course.short + " · MetaBear 訂單流學院";
   const $ = (id) => root.querySelector(`#${id}`);
   let lesson = createLesson();
@@ -197,6 +203,8 @@ export function mountFoundation(root, requestedId) {
         ? "重播本課"
         : "進入理解題 ↓"
       : content.action;
+    if (options.journey)
+      $("f-action").textContent = complete ? "繼續旅程 →" : "下一幕 →";
     $("f-action").classList.toggle(
       "f-sell-action",
       matching
@@ -221,6 +229,10 @@ export function mountFoundation(root, requestedId) {
         (content.prediction
           ? "先選擇暫時判讀，再用下一筆成交檢驗。"
           : "可以隨時回到上一步，重看發生了什麼。");
+    if (options.journey && complete) {
+      $("f-role").textContent = "跟著這根 K 線，走進下一段行情";
+      $("f-hint").textContent = "如果買單更多，價格就一定走得更遠嗎？";
+    }
     $("f-caption").textContent =
       content.caption || guidedCaption(snapshot, content);
     const relation = ["contracts", "funding", "basis"].includes(content.view);
@@ -482,6 +494,10 @@ export function mountFoundation(root, requestedId) {
   $("f-action").addEventListener("click", async () => {
     if (busy) return;
     if (lesson.step === steps.length - 1) {
+      if (options.journey) {
+        options.onComplete?.();
+        return;
+      }
       if (quizOpen) goTo(0);
       else {
         quizOpen = true;
@@ -508,7 +524,7 @@ export function mountFoundation(root, requestedId) {
     const targetCamera =
       cameras[step === 2 ? "high" : step === 4 ? "low" : "wide"];
     render();
-    if (matchMedia("(max-width: 700px)").matches)
+    if (!options.journey && matchMedia("(max-width: 700px)").matches)
       $("f-scene").scrollIntoView({
         block: "start",
         behavior: motion.matches ? "instant" : "smooth",
@@ -648,4 +664,5 @@ export function mountFoundation(root, requestedId) {
   setCamera([...cameras.wide]);
   updateProgress();
   render();
+  return { goTo, cancel };
 }
