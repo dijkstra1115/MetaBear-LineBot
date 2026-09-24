@@ -79,7 +79,7 @@ footer {
   letter-spacing: -0.5px;
 }
 .brand img {
-  border-radius: 50%;
+  border-radius: 0;
 }
 .series {
   color: var(--muted);

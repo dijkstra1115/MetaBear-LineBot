@@ -73,7 +73,7 @@ html {
   font-weight: 650;
 }
 .brand img {
-  border-radius: 50%;
+  border-radius: 0;
 }
 .brand > span {
   font-size: 12px;

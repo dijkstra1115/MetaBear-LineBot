@@ -29,6 +29,13 @@ function replaceElement(html, marker, replacement) {
   throw Error(`Unclosed academy element: ${marker}`);
 }
 
+function transparentAcademyBrand(html) {
+  return html.replace(
+    /(<header\b[\s\S]*?<img\b[^>]*\bsrc=")[^"]+"/,
+    '$1/favicon-v2.png"',
+  );
+}
+
 export async function buildAcademy() {
   const root = "public/orderflow/";
   for (const course of courses.filter(isAvailable)) {
@@ -104,9 +111,9 @@ export async function buildAcademy() {
         "</head>",
         '  <script type="module" src="./academy-mobile.js"></script>\n  </head>',
       );
-    await writeFile(path, html);
+    await writeFile(path, transparentAcademyBrand(html));
   }
-  let map = await readFile(root + "courses.html", "utf8");
+  let map = transparentAcademyBrand(await readFile(root + "courses.html", "utf8"));
   const counts = {
     "available-count": courses.filter(isAvailable).length,
     "new-count": courses.filter((course) => course.status === "new").length,
