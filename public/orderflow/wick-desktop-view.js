@@ -1,6 +1,7 @@
 import {
   OPEN,
   CONTEXT,
+  WICK_AFTER,
   SCENE_DURATIONS,
   scenePosition,
   continuationCamera,
@@ -294,6 +295,91 @@ function receipt(state, p) {
 
 function overview(state, p, camera) {
   const { y } = camera;
+  if (p.scene < 2 || p.mode === "closing" || p.scene === 11) {
+    let chart =
+      text(112, 35, "WICK / 一根上影線", C.muted, 10, 'letter-spacing="1.8"') +
+      text(
+        888,
+        35,
+        p.scene === 0 ? "9 根已完成一分 K · 合成行情" : "同一份歷史 · 選段回看",
+        C.muted,
+        10,
+        'text-anchor="end"',
+      );
+    for (let i = 0; i < 9; i++)
+      chart += text(
+        172 + i * 82,
+        333,
+        `14:${28 + i}`,
+        i === 4 ? C.ink : C.muted,
+        9,
+        middle,
+      );
+    chart += rect(
+      476,
+      65,
+      48,
+      241,
+      "none",
+      'rx="5" stroke="#8bd7c4" stroke-opacity=".4"',
+    );
+    chart += text(
+      500,
+      361,
+      p.scene >= 10
+        ? "同一份成交，留下這根上影線"
+        : "放大這一分鐘，看裡面的成交",
+      C.muted,
+      11,
+      middle,
+    );
+    if (state.candle.high > state.candle.close + 0.5)
+      chart +=
+        line(
+          514,
+          y(state.candle.high),
+          552,
+          y(state.candle.high),
+          C.sell,
+          'stroke-opacity=".5"',
+        ) +
+        text(562, y(state.candle.high) - 7, "最高成交", C.muted, 10) +
+        text(
+          562,
+          y(state.candle.high) + 16,
+          price(state.candle.high),
+          C.sell,
+          19,
+          number,
+        );
+    if (p.time >= 60000)
+      chart +=
+        line(
+          455,
+          y(state.candle.close),
+          485,
+          y(state.candle.close),
+          C.buy,
+          'stroke-opacity=".4"',
+        ) +
+        text(
+          450,
+          y(state.candle.close) + 7,
+          `收盤 ${price(state.candle.close)}`,
+          C.buy,
+          12,
+          'text-anchor="end"',
+        ) +
+        text(
+          460,
+          y(state.candle.high) + 37,
+          "上影線",
+          C.sell,
+          10,
+          'text-anchor="end"',
+        );
+    return chart;
+  }
   let svg =
     text(500, 37, "14:32 — 14:33", C.muted, 10, `${middle} ${number}`) +
     text(500, 329, "同一根 K 線 · 同一分鐘", C.muted, 10, middle);
@@ -429,15 +515,36 @@ export function drawWickDesktop({ story, state, ...p }) {
       line(115, cy, 888, cy, C.grid, 'stroke-dasharray="2 6" opacity=".3"') +
       text(905, cy + 3, price(value), C.muted, 9, number);
   }
-  // Context fades before the camera moves into the central candle.
+  // The same nine-candle panorama returns at the end of the original minute.
   let candles = "";
-  if (p.scene < 2)
+  if (p.scene < 2 || p.mode === "closing" || p.scene === 11) {
     CONTEXT.forEach((c, i) => {
       candles += group(
-        candle(c, 174 + i * 72, 18, y, "#526d75"),
-        (1 - p.zoom) * 0.18,
+        candle(
+          c,
+          172 + i * 82,
+          20,
+          y,
+          c.close >= c.open ? C.buy : C.sell,
+          `data-context-index="${i}"`,
+        ),
+        (1 - p.zoom) * 0.72,
       );
     });
+    WICK_AFTER.forEach((c, i) => {
+      candles += group(
+        candle(
+          c,
+          582 + i * 82,
+          20,
+          y,
+          c.close >= c.open ? C.buy : C.sell,
+          `data-context-index="${i + 5}"`,
+        ),
+        (1 - p.zoom) * 0.72,
+      );
+    });
+  }
   candles += candle(state.candle, 500, 28, y, color);
   if (pulse > 0 && alpha > 0)
     candles += group(
@@ -495,24 +602,26 @@ export function drawWickDesktop({ story, state, ...p }) {
     }
   }
   const cy = y(state.price);
-  svg +=
+  svg += group(
     line(516, cy, 545, cy, color, 'stroke-opacity=".65"') +
-    rect(
-      545,
-      cy - 11,
-      65,
-      22,
-      "#182d2c",
-      `rx="5" stroke="${color}" stroke-opacity="${0.45 + pulse * 0.5}"`,
-    ) +
-    text(
-      577.5,
-      cy + 4,
-      price(state.price),
-      C.ink,
-      14,
-      `${number} ${middle} data-latest-price="${state.price}"`,
-    );
+      rect(
+        545,
+        cy - 11,
+        65,
+        22,
+        "#182d2c",
+        `rx="5" stroke="${color}" stroke-opacity="${0.45 + pulse * 0.5}"`,
+      ) +
+      text(
+        577.5,
+        cy + 4,
+        price(state.price),
+        C.ink,
+        14,
+        `${number} ${middle} data-latest-price="${state.price}"`,
+      ),
+    p.scene < 2 || p.mode === "closing" || p.scene === 11 ? alpha : 1,
+  );
   if (p.mode.includes("rewind"))
     svg +=
       rect(380, 154, 240, 75, "#0c171bf5", 'rx="9" stroke="#38504e"') +

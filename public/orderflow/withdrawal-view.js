@@ -1,4 +1,10 @@
-import { PRICES, TIMING, ease } from "./withdrawal-model.js";
+import {
+  PRICES,
+  TIMING,
+  TARGET_INDEX,
+  clamp,
+  ease,
+} from "./withdrawal-model.js";
 const C = {
   ink: "#e1ebe7",
   muted: "#8ea8af",
@@ -13,221 +19,386 @@ const rect = (x, y, w, h, c, a = "") =>
   `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}" ${a}/>`;
 const line = (x1, y1, x2, y2, c, a = "") =>
   `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" ${a}/>`;
-const mid = 'text-anchor="middle"',
-  num = `${mid} class="number"`;
-export const priceY = (price) => 274 - (price - 101) * 42;
+const group = (svg, alpha = 1, attrs = "") =>
+  `<g opacity="${clamp(alpha)}" ${attrs}>${svg}</g>`;
+const mid = 'text-anchor="middle"';
+export const columnX = (index) => 500 + (index - TARGET_INDEX) * 270;
+export const priceY = (price) => 260 - (price - 101) * 44;
 export function cameraAt(t, reduced = false) {
-  const r = (at, d) => (reduced ? Number(t >= at + d) : ease((t - at) / d));
+  const ramp = (at, end) =>
+    reduced ? Number(t >= end) : ease((t - at) / (end - at));
   const focus =
-    r(TIMING.zoomIn, TIMING.focused - TIMING.zoomIn) *
-    (1 - r(TIMING.zoomOut, TIMING.panorama - TIMING.zoomOut));
-  return { focus, scale: 1 + 0.27 * focus, x: 700 - 100 * focus, y: 218 };
+    ramp(TIMING.zoomIn, TIMING.focused) *
+    (1 - ramp(TIMING.zoomOut, TIMING.panorama));
+  return {
+    focus,
+    scale: 0.29 + 0.71 * focus,
+    x: 500,
+    y: 245 - 15 * focus,
+    originX: 500,
+    originY: 214,
+  };
 }
-export function drawWithdrawal({ state, playhead: t, reduced }) {
+export function projectPoint(x, y, camera) {
+  return {
+    x: camera.x + (x - camera.originX) * camera.scale,
+    y: camera.y + (y - camera.originY) * camera.scale,
+  };
+}
+export function drawWithdrawal({ state, playhead: t, reduced = false }) {
   const camera = cameraAt(t, reduced),
-    show = (at, d = 500) => (reduced ? Number(t >= at) : ease((t - at) / d)),
-    historyAlpha = 1 - ease(camera.focus / 0.1);
-  let book = "",
-    history = "";
-  for (const price of PRICES) {
-    const y = priceY(price),
-      ask = state.asks.find((r) => r.price === price)?.size ?? 0,
-      bid = state.bids.find((r) => r.price === price)?.size ?? 0;
-    book += `<g opacity="${price === 99 ? historyAlpha : 1}">`;
-    book +=
+    { focus, scale, x, y, originX, originY } = camera;
+  const show = (at, duration = 500) =>
+    reduced ? Number(t >= at) : ease((t - at) / duration);
+  const detail = ease((focus - 0.65) / 0.35) * show(TIMING.reset, 450);
+  const macro = ease((0.42 - focus) / 0.42);
+  const bookAlpha = detail * (1 - show(28000, 600));
+  let svg = `<defs><clipPath id="withdraw-window"><rect x="56" y="80" width="888" height="278" rx="6"/></clipPath></defs>`;
+  svg += text(
+    64,
+    32,
+    "THE MISSING TRADES",
+    C.muted,
+    10,
+    'letter-spacing="2.2"',
+  );
+  svg += text(
+    936,
+    32,
+    state.replay
+      ? "14:30 選段回看 · 合成委託簿"
+      : "已完成的模擬行情 · 11 根一分 K",
+    C.muted,
+    11,
+    'text-anchor="end"',
+  );
+  for (let price = 97; price <= 107; price++) {
+    const py = projectPoint(0, priceY(price), camera).y;
+    if (py < 94 || py > 341) continue;
+    const alpha = price % 2 === 0 ? 0.6 : detail * 0.75;
+    svg += group(
       line(
-        455,
-        y,
-        903,
-        y,
+        76,
+        py,
+        920,
+        py,
         C.grid,
-        'stroke-dasharray="2 6" stroke-opacity=".7"',
-      ) + text(649, y + 5, price, C.muted, 12, num);
+        'stroke-opacity=".5" stroke-dasharray="2 7"',
+      ) + text(936, py + 4, price, C.faint, 10, 'data-price-tick="true"'),
+      alpha,
+    );
+  }
+  let world = "";
+  const locatorAlpha = (1 - focus) * show(600) * (1 - show(TIMING.zoomOut));
+  world += group(
+    rect(
+      439,
+      96,
+      122,
+      190,
+      C.buy,
+      'rx="14" fill-opacity=".035" stroke="#a0dfce" stroke-opacity=".5" stroke-width="2.5"',
+    ),
+    locatorAlpha,
+    'data-locator="true"',
+  );
+  for (const [index, bar] of state.bars.entries()) {
+    if (!bar) continue;
+    const cx = columnX(index),
+      selected = index === TARGET_INDEX;
+    const color = bar.close >= bar.open ? C.buy : C.sell;
+    const top = priceY(Math.max(bar.open, bar.close));
+    const height = Math.max(3, Math.abs(priceY(bar.open) - priceY(bar.close)));
+    let candle = line(
+      cx,
+      priceY(bar.high),
+      cx,
+      priceY(bar.low),
+      color,
+      'stroke-width="2.6"',
+    );
+    candle += rect(
+      cx - 19,
+      top - (bar.open === bar.close ? 1.5 : 0),
+      38,
+      height,
+      color,
+      'rx="2" fill-opacity=".8"',
+    );
+    if (selected && state.replay) {
+      const age = t - TIMING.buy;
+      const pulse = !reduced && age >= 0 ? 1 - ease(age / 850) : 0;
+      candle += group(
+        rect(
+          cx - 27,
+          top - 7,
+          54,
+          height + 14,
+          "none",
+          `rx="5" stroke="${C.buy}" stroke-width="1.5"`,
+        ),
+        pulse,
+      );
+    }
+    world += group(
+      candle,
+      selected ? 1 : 0.86 * (1 - focus),
+      `data-context-index="${index}" data-candle-open="${bar.open}" data-candle-high="${bar.high}" data-candle-low="${bar.low}" data-candle-close="${bar.close}" data-candle-volume="${bar.volume}"`,
+    );
+  }
+  let book = "";
+  for (const price of PRICES) {
+    if (price === 99) continue;
+    const py = priceY(price),
+      ask = state.asks.find((r) => r.price === price)?.size ?? 0;
+    const bid = state.bids.find((r) => r.price === price)?.size ?? 0;
     if (price >= 102) {
       book += rect(
-        667,
-        y - 14,
-        Math.max(ask * 5.25, 0),
-        28,
+        641,
+        py - 13,
+        174,
+        26,
+        "#203035",
+        'rx="4" fill-opacity=".45"',
+      );
+      book += rect(
+        641,
+        py - 13,
+        ask * 4.25,
+        26,
         C.sell,
-        `rx="4" fill-opacity=".45" data-ask-price="${price}" data-size="${ask}"`,
+        `rx="4" fill-opacity=".27" data-ask-price="${price}" data-size="${ask}"`,
       );
       book += text(
-        908,
-        y + 5,
+        838,
+        py + 5,
         ask,
         ask ? C.sell : C.faint,
         14,
         'text-anchor="end" class="number"',
       );
+      book += line(
+        533,
+        py,
+        625,
+        py,
+        C.grid,
+        'stroke-opacity=".7" stroke-dasharray="2 5"',
+      );
     }
     if (bid) {
-      book +=
-        rect(
-          583 - bid * 4.4,
-          y - 14,
-          bid * 4.4,
-          28,
-          C.buy,
-          'rx="4" fill-opacity=".32"',
-        ) +
-        text(467, y + 5, bid, C.buy, 12, 'text-anchor="end" class="number"');
+      book += rect(
+        194,
+        py - 13,
+        164,
+        26,
+        "#203035",
+        'rx="4" fill-opacity=".45"',
+      );
+      book += rect(
+        358 - bid * 5,
+        py - 13,
+        bid * 5,
+        26,
+        C.buy,
+        'rx="4" fill-opacity=".24"',
+      );
+      book += text(
+        172,
+        py + 5,
+        bid,
+        C.buy,
+        14,
+        'text-anchor="end" class="number"',
+      );
+      book += line(
+        373,
+        py,
+        467,
+        py,
+        C.grid,
+        'stroke-opacity=".6" stroke-dasharray="2 5"',
+      );
     }
-    book += "</g>";
-    history += line(
-      88,
-      y,
-      385,
-      y,
-      C.grid,
-      'stroke-dasharray="2 6" stroke-opacity=".5"',
-    );
   }
-  const lastY = priceY(state.price);
   book += line(
-    460,
-    lastY,
-    903,
-    lastY,
+    407,
+    priceY(state.targetPrice),
+    856,
+    priceY(state.targetPrice),
     C.ink,
-    'stroke-opacity=".55" stroke-dasharray="6 5"',
+    'stroke-opacity=".4" stroke-dasharray="6 6"',
   );
-  const candle = state.candle,
-    bodyTop = priceY(Math.max(candle.open, candle.close)),
-    bodyBottom = priceY(Math.min(candle.open, candle.close)),
-    fillAge = t - TIMING.buy,
-    candlePulse =
-      !reduced && fillAge >= 0 && fillAge < 1000 ? 1 - ease(fillAge / 1000) : 0;
-  book += `<g data-candle-open="${candle.open}" data-candle-high="${candle.high}" data-candle-low="${candle.low}" data-candle-close="${candle.close}" data-last-price="${state.price}">`;
-  book += line(
-    622,
-    priceY(candle.high),
-    622,
-    priceY(candle.low),
-    C.buy,
-    'stroke-width="2"',
-  );
-  book += rect(
-    613,
-    bodyTop - (bodyBottom === bodyTop ? 1 : 0),
-    18,
-    Math.max(2, bodyBottom - bodyTop),
-    C.buy,
-    'rx="2" fill-opacity=".85"',
-  );
-  if (candlePulse > 0) {
-    book += rect(
-      606,
-      bodyTop - 7,
-      32,
-      Math.max(2, bodyBottom - bodyTop) + 14,
-      "none",
-      `rx="5" stroke="${C.buy}" stroke-opacity="${candlePulse * 0.8}" stroke-width="1.5"`,
-    );
+  for (const cancellation of state.cancellations) {
+    const age = t - cancellation.at,
+      progress = ease(age / 1050);
+    if (state.replay && age >= 0 && age < 1050)
+      book += group(
+        rect(
+          641 + 35 * progress,
+          priceY(cancellation.price) - 13 - 10 * progress,
+          cancellation.size * 4.25,
+          26,
+          C.sell,
+          'rx="4" fill-opacity=".45"',
+        ) +
+          text(
+            706 + 35 * progress,
+            priceY(cancellation.price) + 5 - 10 * progress,
+            `撤回 ${cancellation.size}`,
+            C.sell,
+            11,
+            mid,
+          ),
+        reduced ? 0 : 1 - progress,
+      );
   }
-  book += "</g>";
-  for (const e of state.cancellations) {
-    const age = t - e.at,
-      progress = ease(age / 1300);
-    if (!reduced && age < 1300) {
-      book += `<g opacity="${1 - progress}" transform="translate(${progress * 54} ${-progress * 11})">${rect(667, priceY(e.price) - 14, e.size * 5.25, 28, C.sell, 'rx="4" fill-opacity=".38"')}${text(748, priceY(e.price) + 5, `撤回 ${e.size}`, C.sell, 11, mid)}</g>`;
-    }
-  }
-  if (state.cancellations.length && t < TIMING.buy) {
-    const top = priceY(103) - 21,
-      bottom = priceY(102) + 21;
-    book += rect(
-      654,
-      top,
-      239,
-      bottom - top,
-      "none",
-      'rx="6" stroke="#a98d68" stroke-dasharray="5 7" stroke-opacity=".65"',
-    );
-    book += text(
-      774,
-      (top + bottom) / 2 + 4,
-      state.cancellations.length === 2 ? "掛賣撤走了" : "102 元空了",
+  if (state.replay && state.cancellations.length && t < TIMING.buy) {
+    const both = state.cancellations.length === 2;
+    let gap = both
+      ? rect(
+          630,
+          priceY(103) - 19,
+          222,
+          priceY(102) - priceY(103) + 38,
+          "none",
+          'rx="7" stroke="#a98d68" stroke-opacity=".6" stroke-dasharray="4 6"',
+        )
+      : "";
+    gap += text(
+      743,
+      both ? (priceY(103) + priceY(102)) / 2 + 4 : priceY(102) + 5,
+      both ? "兩檔都撤走" : "102 元空了",
       C.sell,
-      12,
+      11,
       mid,
     );
+    book += group(
+      gap,
+      show((both ? TIMING.cancelSecond : TIMING.cancelFirst) + 1050, 400),
+    );
   }
-  const incoming = show(18500, 1000) * (1 - show(TIMING.buy, 300));
+  const incoming = show(18400, 550) * (1 - show(TIMING.buy, 200));
   if (incoming > 0) {
-    const p = reduced ? 0 : ease((t - 19900) / (TIMING.buy - 19900)),
-      x = 472 + (738 - 472) * p,
-      y = priceY(101) + (priceY(104) - priceY(101)) * p;
-    book += `<g opacity="${incoming}">${rect(x - 47, y - 15, 94, 30, "#213e34", 'rx="15" stroke="#82bca7"')}${text(x, y + 5, "買入 5", C.buy, 12, mid)}</g>`;
+    const progress = reduced ? 0 : ease((t - 19800) / (TIMING.buy - 19800));
+    const px = 341 + 354 * progress,
+      py = 86 + (priceY(104) - 86) * progress;
+    book += group(
+      rect(
+        px - 46,
+        py - 14,
+        92,
+        28,
+        "#213e34",
+        'rx="14" stroke="#82bca7" stroke-opacity=".7"',
+      ) + text(px, py + 4, "市價買 5", C.buy, 12, mid),
+      incoming,
+    );
   }
-  if (t >= TIMING.buy) {
-    if (!reduced && t - TIMING.buy < 1000)
-      book += `<circle cx="738" cy="${priceY(104)}" r="${8 + ease((t - TIMING.buy) / 1000) * 25}" fill="none" stroke="${C.buy}" opacity="${1 - ease((t - TIMING.buy) / 1000)}"/>`;
+  if (state.replay && t >= TIMING.buy) {
+    const age = t - TIMING.buy;
+    if (!reduced && age < 900)
+      book += `<circle cx="641" cy="${priceY(104)}" r="${9 + 24 * ease(age / 900)}" stroke="${C.buy}" fill="none" opacity="${1 - ease(age / 900)}"/>`;
+    book += text(729, priceY(104) - 23, "104 元 · 成交 5 隻", C.buy, 12, mid);
   }
-  const tx = (time) => 102 + (Math.min(time, 30000) / 30000) * 272;
-  let path = "";
-  for (const [i, f] of state.trades.entries())
-    path += i
-      ? ` H${tx(f.playedAt)} V${priceY(f.price)}`
-      : `M${tx(f.playedAt)} ${priceY(f.price)}`;
-  path += ` H${tx(t)}`;
-  history += `<path d="${path}" fill="none" stroke="${C.ink}" stroke-width="1.8"/>`;
-  for (const f of state.trades)
-    history += `<circle cx="${tx(f.playedAt)}" cy="${priceY(f.price)}" r="4.5" fill="${C.buy}" data-trade-at="${f.playedAt}" data-trade-size="${f.size}"/>`;
-  history +=
-    text(92, 371, "先前", C.faint, 9) +
-    text(385, 371, "現在", C.faint, 9, 'text-anchor="end"');
-  let world = `<g opacity="${historyAlpha}" data-history>${history}</g>${book}`;
-  let svg =
+  world += group(book, bookAlpha, 'data-book="true"');
+  const printAlpha =
+    detail * show(8600) * (1 - show(28000)) + macro * show(1000);
+  let prints = "";
+  for (const fill of state.trades) {
+    const py = priceY(fill.price);
+    prints += `<circle cx="500" cy="${py}" r="5.5" fill="#142a2b" stroke="${C.ink}" stroke-width="1.7" data-trade-at="${fill.playedAt}" data-trade-size="${fill.size}"/>`;
+    prints += group(
+      line(473, py, 437, py, C.ink, 'stroke-opacity=".45"') +
+        text(
+          426,
+          py + 4,
+          `${fill.price} × ${fill.size}`,
+          C.ink,
+          12,
+          'text-anchor="end"',
+        ),
+      detail,
+    );
+  }
+  world += group(prints, printAlpha, 'data-trade-prints="true"');
+  svg += `<g clip-path="url(#withdraw-window)"><g data-camera-scale="${scale}" transform="translate(${x} ${y}) scale(${scale}) translate(${-originX} ${-originY})">${world}</g></g>`;
+  svg += group(
+    text(276, 69, "掛買 / 隻", C.buy, 11, mid) +
+      text(500, 69, "14:30 · 同一根 K 線", C.muted, 12, mid) +
+      text(743, 69, "等待賣出 / 隻", C.sell, 11, mid),
+    bookAlpha,
+  );
+  svg += group(
     text(
-      64,
-      31,
-      "CANCELLED ORDERS · UNCHANGED LAST TRADE",
+      332,
+      383,
+      `最新成交 ${state.targetPrice} 元`,
+      C.ink,
+      16,
+      `${mid} data-price-value="${state.targetPrice}"`,
+    ) +
+      text(
+        668,
+        383,
+        `本根成交 ${state.volume} 隻`,
+        C.ink,
+        16,
+        `${mid} data-volume-value="${state.volume}"`,
+      ),
+    detail * (1 - show(28000)),
+  );
+  svg += group(
+    text(
+      500,
+      408,
+      t < TIMING.cancelFirst
+        ? "先前 101 元成交 5 隻"
+        : t < TIMING.buy
+          ? "只撤回掛賣 · 成交價與量都沒變"
+          : "中間 102、103 元沒有成交",
+      t < TIMING.buy ? C.muted : C.sell,
+      11,
+      mid,
+    ),
+    detail * (1 - show(28000)),
+  );
+  if (macro)
+    for (const [index, bar] of state.bars.entries()) {
+      if (!bar) continue;
+      const labelX = projectPoint(columnX(index), 0, camera).x;
+      if (labelX < 76 || labelX > 924) continue;
+      svg += group(
+        text(
+          labelX,
+          373,
+          bar.label,
+          index === TARGET_INDEX ? C.ink : C.muted,
+          10,
+          mid,
+        ),
+        macro,
+      );
+    }
+  const targetBottom = projectPoint(500, priceY(101), camera);
+  svg += group(
+    line(500, targetBottom.y + 7, 500, 301, C.muted, 'stroke-opacity=".45"') +
+      text(500, 320, "101 → 104", C.ink, 17, mid) +
+      text(500, 342, "這根 K，只有兩筆成交", C.muted, 11, mid),
+    macro * show(1000),
+  );
+  svg += group(
+    text(
+      500,
+      409,
+      t < TIMING.reset
+        ? "中間兩檔 · 接著回看委託簿"
+        : "102、103 撤單 55 隻 · 本根成交 10 隻",
       C.muted,
-      9,
-      'letter-spacing="1.5"',
-    ) + text(936, 31, "一段合成委託簿紀錄", C.muted, 11, 'text-anchor="end"');
-  svg += `<defs><clipPath id="withdraw-window"><rect x="52" y="94" width="896" height="280" rx="8"/></clipPath></defs><g clip-path="url(#withdraw-window)"><g data-camera-scale="${camera.scale}" transform="translate(${camera.x} ${camera.y}) scale(${camera.scale}) translate(-700 -218)">${world}</g></g>`;
-  const mapX = (x) => camera.x + (x - 700) * camera.scale;
-  if (t >= TIMING.buy) {
-    const fillLabelY = camera.y + (priceY(104) - 218) * camera.scale - 24;
-    svg += text(
-      mapX(767),
-      fillLabelY,
-      "成交 5",
-      C.buy,
-      12,
-      `${mid} data-fill-label`,
-    );
-  }
-  svg +=
-    text(mapX(520), 86, "掛買 / 隻", C.buy, 11, mid) +
-    text(mapX(635), 86, "K 線 / 元", C.muted, 10, mid) +
-    text(mapX(774), 86, "掛賣 / 隻", C.sell, 11, mid);
-  svg += `<g opacity="${historyAlpha}">${text(92, 86, "成交紀錄", C.ink, 13)}${text(385, 86, "只有成交才留下點", C.faint, 9, 'text-anchor="end"')}</g>`;
-  svg +=
-    rect(210, 382, 262, 28, "#172a30", 'rx="14"') +
-    text(229, 402, "最新成交", C.muted, 10) +
-    text(
-      449,
-      403,
-      `${state.price} 元`,
-      C.ink,
-      19,
-      'text-anchor="end" class="number" data-price-value',
-    );
-  svg +=
-    rect(496, 382, 262, 28, "#172a30", 'rx="14"') +
-    text(515, 402, "本段成交量", C.muted, 10) +
-    text(
-      735,
-      403,
-      `${state.volume} 隻`,
-      C.ink,
-      19,
-      'text-anchor="end" class="number" data-volume-value',
-    );
-  if (t >= TIMING.cancelFirst && t < TIMING.buy)
-    svg += text(922, 402, "都沒有變", C.sell, 11, 'text-anchor="end"');
+      11,
+      mid,
+    ),
+    macro,
+  );
   return { svg, viewBox: "0 0 1000 430", width: 1000, height: 430 };
 }

@@ -1,233 +1,392 @@
 import { TIMING, clamp, ease } from "./breakout-volume-model.js";
+
 const C = {
   ink: "#e1ebe7",
-  muted: "#8ea8af",
-  faint: "#5e7a83",
-  grid: "#30464c",
-  buy: "#a0dfce",
-  sell: "#e0be8d",
+  muted: "#829ca3",
+  faint: "#506970",
+  grid: "#2b4148",
+  buy: "#9edecb",
+  sell: "#dfbc88",
+  panel: "#101b20",
 };
-const text = (x, y, v, color = C.muted, size = 12, attrs = "") =>
-  `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" ${attrs}>${v}</text>`;
-const rect = (x, y, w, h, color, attrs = "") =>
-  `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" ${attrs}/>`;
-const line = (x1, y1, x2, y2, color, attrs = "") =>
-  `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" ${attrs}/>`;
-const group = (svg, alpha = 1) => `<g opacity="${clamp(alpha)}">${svg}</g>`;
 const mid = 'text-anchor="middle"',
-  num = `${mid} class="number"`;
-export const candleX = (index) => 128 + index * 86;
-export const priceY = (price) => 224 - (price - 98) * 13;
-export const volumeY = (volume) => 320 - volume * 1.1;
-export function cameraAt(playhead, reduced = false) {
-  const ramp = (a, b) =>
-    reduced ? Number(playhead >= b) : ease((playhead - a) / (b - a));
-  const focus =
-    ramp(TIMING.zoomIn, TIMING.focused) *
-    (1 - ramp(TIMING.zoomOut, TIMING.panorama));
-  const follow = ramp(14000, 28500);
+  end = 'text-anchor="end"',
+  num = 'class="number"';
+const text = (x, y, s, c = C.muted, z = 11, a = "") =>
+  `<text x="${x}" y="${y}" fill="${c}" font-size="${z}" ${a}>${s}</text>`;
+const rect = (x, y, w, h, c, a = "") =>
+  `<rect x="${x}" y="${y}" width="${Math.max(0, w)}" height="${Math.max(0, h)}" fill="${c}" ${a}/>`;
+const line = (x, y, x2, y2, c = C.grid, a = "") =>
+  `<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${c}" ${a}/>`;
+const group = (s, o = 1, a = "") => `<g opacity="${clamp(o)}" ${a}>${s}</g>`;
+const mix = (a, b, t) => a + (b - a) * t;
+export const worldX = (x) => 70 + x * 82;
+export const candleX = (index) => worldX(index + 0.5);
+export const priceY = (p) => 235 - (p - 98) * 13;
+export const volumeY = (v) => 323 - v * 0.13;
+
+export function cameraAt(t, reduced = false) {
+  const into = reduced
+    ? Number(t >= TIMING.focused)
+    : ease((t - TIMING.zoomIn) / (TIMING.focused - TIMING.zoomIn));
+  const out = reduced
+    ? Number(t >= TIMING.panorama)
+    : ease((t - TIMING.zoomOut) / (TIMING.panorama - TIMING.zoomOut));
+  const pan = reduced
+    ? t >= 30000
+      ? 1
+      : t >= 22000
+        ? 0.8
+        : t >= 19000
+          ? 0.6
+          : t >= 13000
+            ? 0.3
+            : 0
+    : ease((t - 12000) / 19000);
+  const focus = into * (1 - out),
+    scale = 1 + 0.85 * focus,
+    center = mix(500, 560 + 200 * pan, focus);
   return {
     focus,
-    scale: 1 + 0.25 * focus,
-    pivotX: 500 + (60 + 120 * follow) * focus,
-    pivotY: 210 + 5 * focus,
+    scale,
+    center,
+    out,
+    x: (v) => 500 + (worldX(v) - center) * scale,
+    y: (p) => mix(priceY(p), 235 - (p - 101) * 19.5, focus),
   };
 }
-export function drawBreakoutVolume({ story, state, playhead, reduced }) {
-  const camera = cameraAt(playhead, reduced),
-    { focus, scale, pivotX, pivotY } = camera;
-  const show = (at, d = 450) =>
-    reduced ? Number(playhead >= at) : ease((playhead - at) / d);
-  const screenX = (x) => 500 + (x - pivotX) * scale;
-  const screenY = (y) => 210 + (y - pivotY) * scale;
-  const safe = (x, y, width = 45, size = 12) =>
-    screenX(x) - (width * scale) / 2 >= 60 &&
-    screenX(x) + (width * scale) / 2 <= 940 &&
-    screenY(y - size) >= 56 &&
-    screenY(y + 4) <= 374;
-  const ending = show(TIMING.panorama, 650);
-  let world = group(
-    rect(
-      candleX(6) - 30,
-      priceY(107) - 9,
-      candleX(8) - candleX(6) + 60,
-      priceY(104) - priceY(107) + 18,
-      C.buy,
-      'rx="7" fill-opacity=".065"',
-    ) +
-      text(candleX(7), priceY(107) - 18, "突破區持續成交", C.buy, 11, mid) +
-      rect(
-        candleX(6) - 27,
-        volumeY(60) - 25,
-        candleX(8) - candleX(6) + 54,
-        96,
-        C.buy,
-        'rx="5" fill-opacity=".04"',
-      ),
-    ending,
+
+export function drawBreakoutVolume({
+  story,
+  state,
+  playhead,
+  reduced = false,
+}) {
+  const t = playhead,
+    cam = cameraAt(t, reduced),
+    show = (at, d = 600) => (reduced ? Number(t >= at) : ease((t - at) / d));
+  const detail = cam.focus,
+    history = show(TIMING.focused),
+    current = state.currentBar;
+  const heatAlpha = history * (0.86 * detail + 0.34 * cam.out),
+    cvdAlpha = history;
+  const phase =
+    t < 7000
+      ? "10 根已完成行情 · 選段回看"
+      : t < 13000
+        ? "主動買入 · 穿過 104"
+        : t < 19000
+          ? "突破上方 · 持續成交"
+          : t < 22000
+            ? "主動賣出 · 回到 104"
+            : t < 30000
+              ? "104 掛買 · 接住主動賣出"
+              : t < 36000
+                ? "後續買入 · 再往上成交"
+                : "原壓力 → 回踩承接 → 再上";
+  let svg =
+    '<defs><clipPath id="retest-price"><rect x="68" y="57" width="837" height="190"/></clipPath><clipPath id="retest-volume"><rect x="68" y="271" width="837" height="58"/></clipPath><clipPath id="retest-cvd"><rect x="68" y="338" width="837" height="63"/></clipPath></defs>';
+  svg +=
+    text(
+      62,
+      25,
+      "BREAKOUT / RETEST / ABSORPTION",
+      C.muted,
+      10,
+      'letter-spacing="1.7"',
+    ) + text(939, 25, phase, C.muted, 10, end);
+  svg += group(
+    text(62, 46, "足跡：左主動賣出｜右主動買入", C.muted, 9) +
+      text(939, 46, "掛買色帶：越亮，等待量越多", C.buy, 9, end),
+    history,
   );
-  for (const price of [98, 100, 102, 104, 106, 108]) {
-    world += line(
-      86,
-      priceY(price),
-      913,
-      priceY(price),
-      price === story.level ? C.sell : C.grid,
-      `stroke-opacity="${price === story.level ? ".75" : ".42"}" stroke-dasharray="${price === story.level ? "5 5" : "2 7"}"`,
-    );
-    if (safe(78, priceY(price) + 4, 25, 10))
-      world += text(
-        78,
-        priceY(price) + 4,
-        price,
-        price === 104 ? C.sell : C.faint,
-        10,
+  for (let p = 98; p <= 110; p++) {
+    const y = cam.y(p);
+    if (y < 60 || y > 240) continue;
+    svg +=
+      line(
+        68,
+        y,
+        905,
+        y,
+        C.grid,
+        'stroke-opacity=".35" stroke-dasharray="2 6"',
+      ) +
+      text(
+        925,
+        y + 3,
+        p,
+        p === 104 ? (t >= 22000 ? C.buy : C.sell) : C.faint,
+        9,
         num,
       );
   }
-  world +=
-    line(86, 246, 913, 246, C.grid, 'stroke-opacity=".65"') +
-    line(86, 320, 913, 320, C.grid);
-  world += line(
-    86,
-    volumeY(story.baseline),
-    913,
-    volumeY(story.baseline),
-    C.sell,
-    'stroke-opacity=".5" stroke-dasharray="4 5"',
+  let heat = "";
+  for (const s of state.heatSegments ?? []) {
+    // Background candles keep their trades, but only the replay's book is drawn.
+    if (s.startAt < TIMING.reset) continue;
+    const x0 = cam.x(s.x0),
+      x1 = cam.x(s.x1),
+      y = cam.y(s.price);
+    if (x1 < 68 || x0 > 905 || y < 54 || y > 250 || s.size <= 0) continue;
+    const isBid = s.side === "buy";
+    heat += rect(
+      x0,
+      y - 7 * (1 + 0.4 * detail),
+      x1 - x0,
+      14 * (1 + 0.4 * detail),
+      isBid ? C.buy : C.sell,
+      `opacity="${isBid ? 0.06 + 0.48 * clamp(s.size / 160) : 0.09}" data-heat-price="${s.price}" data-heat-size="${s.size}"`,
+    );
+  }
+  svg += group(heat, heatAlpha, 'clip-path="url(#retest-price)"');
+  svg += line(
+    68,
+    cam.y(104),
+    905,
+    cam.y(104),
+    t < 22000 ? C.sell : C.buy,
+    `stroke-opacity=".5" stroke-dasharray="4 5"`,
   );
-  for (const bar of state.bars) {
-    const x = candleX(bar.index),
-      candle = bar.candle;
-    if (!candle) continue;
-    const color = candle.close >= candle.open ? C.buy : C.sell;
-    const alpha = bar.index < 5 ? 1 - 0.68 * focus : 1;
-    const top = priceY(Math.max(candle.open, candle.close)),
-      bottom = priceY(Math.min(candle.open, candle.close));
-    let item =
-      line(
-        x,
-        priceY(candle.high),
-        x,
-        priceY(candle.low),
-        color,
-        'stroke-width="2"',
-      ) +
+  let candles = "",
+    volumes = "",
+    times = "";
+  for (const b of state.bars) {
+    if (!b) continue;
+    const x = cam.x(b.index + 0.5),
+      fp = b.index >= 5,
+      half = (fp ? mix(9, 29, detail) : 9) * cam.scale;
+    const edge = Math.min(
+      clamp((x - half - 68) / 15),
+      clamp((905 - x - half) / 15),
+    );
+    const alpha = edge * (b.index < 5 ? 1 - detail * 0.86 : 1);
+    if (x < 20 || x > 950) continue;
+    const color = b.close >= b.open ? C.buy : C.sell,
+      bodyY = Math.min(cam.y(b.open), cam.y(b.close));
+    const width = mix(13, 5, detail) * cam.scale;
+    let body =
+      line(x, cam.y(b.high), x, cam.y(b.low), color, 'stroke-width="1.3"') +
       rect(
-        x - 9,
-        top - (top === bottom ? 1 : 0),
-        18,
-        Math.max(2, bottom - top),
+        x - width / 2,
+        bodyY - 1,
+        width,
+        Math.max(2, Math.abs(cam.y(b.open) - cam.y(b.close))),
         color,
-        'rx="1.5" fill-opacity=".88"',
+        'rx="1" fill-opacity=".85"',
       );
-    item += rect(
-      x - 17,
-      volumeY(bar.volume),
-      34,
-      bar.volume * 1.1,
-      color,
-      `rx="2" fill-opacity=".68" data-volume-index="${bar.index}" data-volume="${bar.volume}"`,
-    );
-    if (safe(x, volumeY(bar.volume) - 8, 34, 12))
-      item += text(x, volumeY(bar.volume) - 8, bar.volume, C.ink, 12, num);
-    if (safe(x, 338, 40, 10)) item += text(x, 338, bar.label, C.muted, 10, num);
-    if (bar.index === 5 && safe(x, priceY(candle.high) - 15, 64, 11))
-      item += text(x, priceY(candle.high) - 15, "突破這根", C.buy, 11, mid);
-    if (bar.index >= 6) {
-      const close = bar.complete;
-      if (close)
-        item += `<circle cx="${x}" cy="${priceY(candle.close)}" r="4" fill="#0d181c" stroke="${C.buy}" stroke-width="1.5" data-completed-index="${bar.index}"/>`;
-      if (safe(x, 224, 68, 11))
-        item += text(
-          x,
-          224,
-          close ? `收 ${candle.close}` : "形成中",
-          close ? C.buy : C.muted,
-          11,
-          mid,
-        );
+    if (fp) {
+      let cells = "";
+      for (const row of b.footprint ?? []) {
+        const y = cam.y(row.price),
+          w = 23 * cam.scale,
+          h = 11 + 5 * detail;
+        for (const [side, qty, imb, offset] of [
+          ["sell", row.bid, row.sellImbalance, -29],
+          ["buy", row.ask, row.buyImbalance, 6],
+        ]) {
+          const cx = x + offset * cam.scale,
+            color = side === "buy" ? C.buy : C.sell;
+          const fresh =
+            state.replay &&
+            state.latestTrade?.barIndex === b.index &&
+            state.latestTrade.price === row.price &&
+            state.latestTrade.side === side &&
+            t - state.latestTrade.at < 650;
+          cells +=
+            rect(
+              cx,
+              y - h / 2,
+              w,
+              h,
+              imb ? color : C.panel,
+              `rx="2" fill-opacity="${imb ? 0.2 : 0.88}" stroke="${color}" stroke-opacity="${fresh ? 0.95 : imb ? 0.55 : 0.13}"`,
+            ) +
+            text(
+              cx + w / 2,
+              y + 3.2,
+              qty || "·",
+              imb ? color : qty ? C.ink : C.faint,
+              10 + detail * 2,
+              `${mid} ${num} data-footprint="${b.index}:${row.price}:${side}" data-volume="${qty}"`,
+            );
+        }
+      }
+      body += group(cells, detail);
     }
-    world += group(item, alpha);
+    candles += group(
+      body,
+      alpha,
+      `data-bar="${b.index}" data-open="${b.open}" data-high="${b.high}" data-low="${b.low}" data-close="${b.close}"`,
+    );
+    if (x > 85 && x < 895) {
+      times += group(
+        text(
+          x,
+          259,
+          b.label,
+          b.index === state.activeBarIndex ? C.ink : C.muted,
+          9,
+          `${mid} ${num}`,
+        ),
+        alpha,
+      );
+      const w = 26 * cam.scale;
+      volumes += group(
+        rect(
+          x - w / 2,
+          volumeY(b.volume),
+          w,
+          b.volume * 0.13,
+          color,
+          `rx="2" fill-opacity="${fp ? 0.68 : 0.3}" data-volume-index="${b.index}" data-volume="${b.volume}"`,
+        ) +
+          text(
+            x,
+            volumeY(b.volume) - 5,
+            b.volume,
+            fp ? C.ink : C.muted,
+            11,
+            `${mid} ${num}`,
+          ),
+        alpha,
+      );
+    }
   }
-  if (playhead >= TIMING.compare && playhead < 13000) {
-    const bx = candleX(5),
-      sy = volumeY(60);
-    world += group(
-      rect(
-        bx - 23,
-        sy - 5,
-        46,
-        76,
-        "none",
-        `rx="4" stroke="${C.buy}" stroke-opacity=".65"`,
+  svg += group(candles, 1, 'clip-path="url(#retest-price)"') + times;
+  if (t < 7000 || t >= 36000) {
+    const a = 1 - detail;
+    svg += group(
+      text(cam.x(5.5), 76, "放量突破", C.buy, 11, mid) +
+        text(cam.x(8.2), 212, "回踩被接住", C.buy, 11, mid) +
+        text(cam.x(9.5), 68, "再上", C.buy, 11, mid),
+      a,
+    );
+  }
+  if (state.replay && t < 36000) {
+    const atSupport = t >= 22000 && t < 30000;
+    const label = atSupport
+      ? "104 掛買"
+      : t >= 19000 && t < 22000
+        ? "最新成交"
+        : t >= 30000
+          ? "本根 Delta"
+          : "本根成交量";
+    const amount = atSupport
+      ? (state.bids?.find((r) => r.price === 104)?.size ?? 0)
+      : t >= 19000 && t < 22000
+        ? state.price
+        : t >= 30000
+          ? (current?.delta ?? 0)
+          : (current?.volume ?? 0);
+    svg +=
+      text(180, 73, label, C.muted, 9, end) +
+      text(
+        180,
+        95,
+        `${amount}${t >= 19000 && t < 22000 ? " 元" : " 隻"}`,
+        atSupport ? C.buy : C.ink,
+        17,
+        `${end} ${num}`,
+      );
+    if (atSupport)
+      svg += text(500, 61, "賣出增加，低點仍在 104", C.ink, 11, mid);
+  }
+  const event = state.latestEvent;
+  if (state.replay && event?.at >= 7000 && t - event.at < 1500) {
+    const action =
+      event.kind === "trade"
+        ? event.side === "buy"
+          ? "主動買入"
+          : "主動賣出"
+        : event.kind === "cancel"
+          ? event.side === "buy"
+            ? "撤回掛買"
+            : "撤回掛賣"
+          : event.side === "buy"
+            ? "補入掛買"
+            : "新增掛賣";
+    svg += text(
+      500,
+      238,
+      `${action} ${event.size} 隻 · ${event.price} 元`,
+      event.side === "buy" ? C.buy : C.sell,
+      10,
+      mid,
+    );
+  }
+  svg +=
+    line(68, 271, 905, 271, C.grid, 'stroke-opacity=".45"') +
+    text(62, 291, "量", C.muted, 10) +
+    text(939, 291, "隻", C.faint, 9, end) +
+    line(68, 324, 905, 324, C.grid, 'stroke-opacity=".45"') +
+    group(volumes, 1, 'clip-path="url(#retest-volume)"');
+  if (t < 13000)
+    svg += group(
+      line(
+        68,
+        volumeY(20),
+        905,
+        volumeY(20),
+        C.sell,
+        'stroke-opacity=".3" stroke-dasharray="2 5"',
       ),
-      show(TIMING.compare),
+      1 - show(11000, 2000),
+    );
+  const points = state.cvdPoints ?? [],
+    extent = Math.max(1, ...story.events.map((e) => Math.abs(e.cvd ?? 0))),
+    cy = (v) => 369 - (v / extent) * 26;
+  let cvd = "";
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1],
+      b = points[i];
+    cvd += line(
+      cam.x(a.x),
+      cy(a.cvd),
+      cam.x(b.x),
+      cy(b.cvd),
+      b.cvd >= a.cvd ? C.buy : C.sell,
+      'stroke-width="1.8" stroke-linecap="round"',
     );
   }
-  let svg =
-    '<defs><clipPath id="breakout-volume-window"><rect x="56" y="56" width="888" height="318" rx="8"/></clipPath></defs>';
-  svg += text(
-    64,
-    32,
-    "VOLUME / BREAKOUT / TIME",
-    C.muted,
-    10,
-    'letter-spacing="2.1"',
+  const last = points.at(-1);
+  if (last)
+    cvd += `<circle cx="${cam.x(last.x)}" cy="${cy(last.cvd)}" r="3" fill="${t >= 19000 && t < 30000 ? C.sell : C.buy}"/>`;
+  svg += group(
+    line(
+      68,
+      369,
+      905,
+      369,
+      C.grid,
+      'stroke-opacity=".3" stroke-dasharray="2 6"',
+    ) +
+      text(62, 345, "CVD", C.muted, 10) +
+      text(
+        939,
+        345,
+        `${state.cvd >= 0 ? "+" : ""}${state.cvd}`,
+        t >= 19000 && t < 30000 ? C.sell : C.buy,
+        13,
+        `${end} ${num} data-cvd-value="${state.cvd}"`,
+      ) +
+      group(cvd, 1, 'clip-path="url(#retest-cvd)"'),
+    cvdAlpha,
   );
-  svg += text(
-    936,
-    32,
-    playhead < 13000 ? "1 MIN · 14:30 已收盤" : "1 MIN · 觀察後續 3 根",
-    C.muted,
-    11,
-    'text-anchor="end"',
-  );
-  svg += `<g clip-path="url(#breakout-volume-window)"><g data-camera-scale="${scale}" transform="translate(500 210) scale(${scale}) translate(${-pivotX} ${-pivotY})">${world}</g></g>`;
-  svg += text(
-    926,
-    screenY(priceY(104)) - 7,
-    "門檻 104",
-    C.sell,
-    11,
-    'text-anchor="end"',
-  );
-  if (playhead >= 4000 && playhead < 13000) {
-    svg += group(
-      text(226, 208, "前五根均量", C.muted, 12, mid) +
-        text(226, 239, "20", C.ink, 29, num),
-      show(4000),
-    );
-    svg += group(
-      text(744, 250, "60 ÷ 20", C.muted, 13, num) +
-        text(744, 289, "3 倍", C.buy, 30, num),
-      show(TIMING.compare),
-    );
-  }
-  svg += text(64, 400, "基準：前五根均量 20", C.muted, 11);
-  svg += text(
-    500,
-    400,
-    playhead < 13000
-      ? "突破量 60 · 收盤 106"
-      : playhead >= TIMING.panorama && state.observed.length === 3
-        ? `後三根均量 ${state.followAverage}`
-        : `已收盤 ${state.observed.length} / 3`,
-    C.ink,
-    12,
-    mid,
-  );
-  svg += text(
-    936,
-    400,
-    playhead < 13000
-      ? "同一商品 · 相同週期"
-      : state.qualified
-        ? "後續收盤均 ≥ 104"
-        : "觀察成交量與收盤位置",
-    state.qualified ? C.buy : C.muted,
-    11,
-    'text-anchor="end"',
-  );
+  const footer =
+    t < 7000
+      ? "同一段完整行情：突破 → 回踩 → 再上"
+      : t < 13000
+        ? "前五根均量 20 · 突破時成交量逐筆累積"
+        : t < 19000
+          ? "量柱保留突破後的成交；上方仍有人買賣"
+          : t < 22000
+            ? "回到原壓力 104，接著看賣單去了哪裡"
+            : t < 30000
+              ? "左側賣出增加、CVD 下滑；104 掛買持續承接"
+              : t < 36000
+                ? "後續主動買入逐檔成交，價格才再次抬高"
+                : "這次被吸收的是賣單：回踩承接 → 買入再推高";
+  svg += text(500, 419, footer, t >= 36000 ? C.buy : C.muted, 10, mid);
   return { svg, viewBox: "0 0 1000 430", width: 1000, height: 430 };
 }

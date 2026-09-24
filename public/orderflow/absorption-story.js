@@ -16,13 +16,19 @@ mountStory({
   continuousDesktop: true,
   completionLabel: "本課完成",
   render(p) {
-    const state = absorptionSnapshot(story, p.time);
+    const state = absorptionSnapshot(story, p.time),
+      bar = state.currentBar;
     return {
       ...drawAbsorption({ story, state, ...p }),
-      clock: `第 ${state.trades.length} 筆成交`,
-      price: state.price === null ? "—" : String(state.price),
-      playback: "已知掛單 · 逐筆消耗",
-      description: `${scenes[p.scene].label}。101 元掛賣剩 ${state.remaining101} 隻，102 元掛賣剩 ${state.remaining102} 隻。累積成交 ${state.volume} 隻；最新成交價 ${state.price ?? "尚無"}。全段只有主動買入，沒有補單或隱藏單。101 元成交 80 隻後，下一筆 8 隻才在 102 元成交。`,
+      clock: story.barRanges[state.activeBarIndex].label,
+      price: String(state.price ?? "—"),
+      playback:
+        p.time < 7000
+          ? "已完成測壓 · 準備回看"
+          : p.time < 14000
+            ? "第三次測壓 · 選段回看"
+            : "同一段行情 · 逐筆成交",
+      description: `${scenes[p.scene].label}。最新成交 ${state.price} 元，CVD ${state.cvd} 隻。本根成交 ${bar?.volume ?? 0} 隻，Delta ${bar?.delta ?? 0} 隻。足跡左側為主動賣出、右側為主動買入；量柱、K線與CVD皆來自同一份成交。熱力色帶記錄未成交掛單。`,
     };
   },
 });

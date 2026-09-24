@@ -1,36 +1,40 @@
 import { scenePosition, TIMING } from "./breakout-model.js";
 export const scenes = [
   {
-    label: "同樣越過 102",
+    label: "先看這根突破 K",
     eyebrow: "市場故事 · BREAKOUT",
-    lens: "兩個合成市場，同樣從101越過102，到103成交",
+    lens: "已完成的模擬行情 · 選中 14:30，回看突破內部",
   },
   {
-    label: "靠近門檻，看見厚薄",
-    eyebrow: "重看突破之前",
-    lens: "只改102的掛賣深度：A有60隻，B有10隻；上方103都掛20隻",
+    label: "A：先穿過厚掛賣",
+    eyebrow: "第一種情境 · 102 掛賣 60",
+    lens: "A 先完整演完 · 同一根 K 與等待中的掛賣",
   },
   {
-    label: "少量買入，也能越過",
-    eyebrow: "兩種深度 · 分別成交",
-    lens: "本例沒有補單或撤單，掛賣只被實際成交消耗",
+    label: "B：同一起點，換薄掛賣",
+    eyebrow: "回到 101 · 只換 102 深度",
+    lens: "另一種情境 B · 102 掛賣 10，103 仍掛賣 20",
   },
   {
-    label: "相同突破，不同成交量",
-    eyebrow: "拉回同一個結果",
-    lens: "比較本段主動買量，不含共同起始101元那筆成交",
+    label: "回到同一個宏觀結果",
+    eyebrow: "回到全景 · 再看兩種過程",
+    lens: "同樣 101 → 103 · 本段主動買入 A 65、B 15",
   },
 ];
 const cues = [
-  [0, "同樣突破 102，買盤一樣強嗎？"],
-  [TIMING.zoomIn, "退回成交前，看看掛賣有多厚。"],
-  [TIMING.reset, "A 掛賣 60，B 只有 10。"],
-  [8500, "兩邊的買入，都在消耗掛賣。"],
-  [TIMING.thinBreak, "B 只買 15，就已在 103 成交。"],
-  [17000, "A 買了 60，才剛用完 102。"],
-  [TIMING.deepBreak, "A 再買 5，才到同樣的 103。"],
-  [TIMING.compare, "同樣越過門檻，卻是 65 對 15。"],
-  [30000, "同樣到103，厚掛單需要更多買入量。"],
+  [0, "同樣突破，真的都買很多？"],
+  [TIMING.zoomIn, "靠近這根 K，看看成交走過什麼。"],
+  [TIMING.reset, "先看 A：102 等著賣出 60 隻。"],
+  [8000, "買入先成交在 102，掛賣逐筆變少。"],
+  [13000, "買到 60，剛好用完這一檔。"],
+  [TIMING.deepBreak, "再買 5 隻，才到 103 成交。"],
+  [TIMING.resetB, "回到同一起點，只換 102 的深度。"],
+  [20500, "換成 B，這裡只等著賣出 10 隻。"],
+  [24000, "只買 10，就用完相同的價位。"],
+  [TIMING.thinBreak, "再買 5，同樣到達 103。"],
+  [TIMING.zoomOut, "回到原圖，突破的形狀一樣。"],
+  [TIMING.compare, "同樣 101 到 103，買量卻是 65 對 15。"],
+  [38000, "走過較厚的掛賣，需要更多買入量。"],
 ];
 export function narrativeAt(scene, elapsed) {
   const { playhead } = scenePosition(scene, elapsed);

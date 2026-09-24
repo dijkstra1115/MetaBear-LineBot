@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-Hant" class="wick-page">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1218" />
+    <meta
+      name="description"
+      content="訂單塊到底長怎樣？40 秒走進大買家的執行情境，看分批承接、主動買入與起漲區如何連起來。"
+    />
+    <title>訂單塊到底長怎樣？ · MetaBear</title>
+    <link rel="icon" href="/favicon-v2.png" />
+    <link rel="stylesheet" href="./wick.css" />
+    <link rel="stylesheet" href="./primer-desktop.css" />
+    <script type="module" src="./academy-navigation.js"></script>
+    <script type="module" src="./order-block.js"></script>
+    <link rel="stylesheet" href="./academy-mobile.css" />
+    <link rel="stylesheet" href="./academy-navigation.css" />
+    <script type="module" src="./academy-mobile.js"></script>
+  </head>
+  <body data-chapter="order-block" data-lesson-style="compact">
+    <a class="skip" href="#story">跳到課程</a>
+    <header class="site-header">
+      <a href="/" class="brand"
+        ><img src="/logo.webp" width="28" height="28" alt="" /><span
+          >MetaBear</span
+        ></a
+      >
+      <span class="series"
+        >市場故事 <span aria-hidden="true">/</span> 大買家如何留下起漲區</span
+      >
+    </header>
+    <aside class="lesson-sidebar" aria-label="課程導覽">
+      <a class="academy-home" href="./courses.html"
+        >互動學院 <span>ACADEMY</span></a
+      >
+      <p class="sidebar-label">從一筆成交，讀懂市場</p>
+      <nav class="course-menu" aria-label="學院課程"><h2 class="course-group">名詞圖解</h2><a href="./matching.html"><span class="course-number">01</span><span><small>K 線如何形成</small><strong>K 線</strong></span></a><a href="./footprint.html"><span class="course-number">02</span><span><small>成交的足跡</small><strong>足跡圖</strong></span></a><a href="./heatmap.html"><span class="course-number">03</span><span><small>掛單的時間軌跡</small><strong>熱力圖</strong></span></a><a href="./order-types.html"><span class="course-number">04</span><span><small>立即成交與指定價格</small><strong>市價單與限價單</strong></span></a><a href="./slippage.html"><span class="course-number">05</span><span><small>一筆單，走過幾個價位</small><strong>滑價</strong></span></a><a href="./leverage.html"><span class="course-number">06</span><span><small>保證金與部位</small><strong>合約槓桿</strong></span></a><a href="./liquidation.html"><span class="course-number">07</span><span><small>虧損如何吃掉保證金</small><strong>合約強平</strong></span></a><a href="./volume.html"><span class="course-number">08</span><span><small>成交量與比較基準</small><strong>成交量</strong></span></a><a href="./delta-concept.html"><span class="course-number">09</span><span><small>當段差額與累計差額</small><strong>Delta 與 CVD</strong></span></a><a href="./stop-orders.html"><span class="course-number">10</span><span><small>市價止損與限價止損</small><strong>停損單</strong></span></a><a href="./open-interest.html"><span class="course-number">11</span><span><small>開倉、平倉與成交量</small><strong>未平倉量（OI）</strong></span></a><a href="./funding.html"><span class="course-number">12</span><span><small>永續合約的定期交換</small><strong>資金費率</strong></span></a><a href="./volume-profile.html"><span class="course-number">13</span><span><small>把量放回價格</small><strong>成交量分布圖</strong></span></a><a href="./imbalance.html"><span class="course-number">14</span><span><small>相鄰價位的主動成交</small><strong>足跡不平衡</strong></span></a><h2 class="course-group">市場故事</h2><a href="./wick.html"><span class="course-number">01</span><span><small>走進一根上影線</small><strong>衝上去，怎麼又回來？</strong></span></a><a href="./absorption-story.html"><span class="course-number">02</span><span><small>測壓、吸收與賣出接手</small><strong>突破誘多，高位吸收，反轉出貨</strong></span></a><a href="./breakout-volume.html"><span class="course-number">03</span><span><small>回踩承接，買盤再推高</small><strong>放量突破，怎樣才算站穩？</strong></span></a><a href="./order-block.html" class="course-current" aria-current="page"><span class="course-number">04</span><span><small>大買家如何留下起漲區</small><strong>訂單塊到底長怎樣？</strong></span></a><nav class="chapter-menu" aria-label="本課章節">
+          <button type="button" data-story-scene="0" aria-current="step">
+            <i></i>走進起漲前
+          </button>
+          <button type="button" data-story-scene="1">
+            <i></i>掛買承接，控制成本
+          </button>
+          <button type="button" data-story-scene="2">
+            <i></i>加快買入，價格位移
+          </button>
+          <button type="button" data-story-scene="3">
+            <i></i>回看承接區
+          </button>
+        </nav></nav>
+      <div class="lesson-prerequisite"><span>先懂這些，會更好看</span><a href="./order-types.html"><strong>市價單與限價單 ↗</strong></a><a href="./slippage.html"><strong>滑價 ↗</strong></a><a href="./absorption-story.html"><strong>突破誘多，高位吸收，反轉出貨 ↗</strong></a></div>
+      <div class="sidebar-note">
+        <span class="note-orbit">↗</span>
+        <p>買得到多少，<br />要付出多少成本？</p>
+      </div>
+    </aside>
+    <main id="story">
+      <div class="lesson-heading">
+        <div>
+          <p>STORY 04 <span>／</span> 大買家如何留下起漲區</p>
+          <h2>訂單塊到底長怎樣？</h2>
+        </div>
+        <span class="lesson-format"><i></i> 動態故事 <span>40 秒</span></span>
+      </div>
+      <div class="scene-meta">
+        <span id="scene-label">01 — 走進起漲前</span>
+        <ol class="scene-route" aria-label="課程進度">
+          <li aria-current="step"><span class="sr-only">第一幕</span></li>
+          <li><span class="sr-only">第二幕</span></li>
+          <li><span class="sr-only">第三幕</span></li>
+          <li><span class="sr-only">第四幕</span></li>
+        </ol>
+      </div>
+      <div class="lesson-player">
+        <section class="stage" aria-label="訂單塊的一種形成過程">
+          <div class="stage-top">
+            <div class="instrument">
+              <strong>MetaBear <span>/ 元</span></strong
+              ><small>已完成行情 · 具名買家模擬</small>
+            </div>
+            <div class="clock">
+              <span id="playback-label">已完成的模擬行情</span
+              ><b id="market-clock">00:00</b>
+            </div>
+          </div>
+          <div class="canvas">
+            <svg
+              id="market"
+              viewBox="0 0 1000 430"
+              role="img"
+              aria-labelledby="chart-title chart-description"
+            >
+              <title id="chart-title">從分批承接到價格位移</title>
+              <desc id="chart-description"></desc>
+              <defs>
+                <clipPath id="stage-clip">
+                  <rect id="clip-rect" width="1000" height="430" />
+                </clipPath>
+              </defs>
+              <g id="world" clip-path="url(#stage-clip)"></g>
+            </svg>
+          </div>
+          <div class="stage-bottom">
+            <span id="lens-label">已完成的模擬行情 · 沿同一場景回看兩根 K</span
+            ><span class="last-price"
+              ><span>最新成交</span><b id="last-price">—</b></span
+            >
+          </div>
+          <div class="timeline">
+            <label for="scene-progress">拖曳回看</label
+            ><input
+              type="range"
+              id="scene-progress"
+              min="0"
+              max="40000"
+              step="10"
+              value="0"
+              aria-label="整課播放進度"
+              aria-describedby="seek-hint"
+            />
+            <span id="elapsed-label" class="elapsed">00:00.0 / 00:40.0</span
+            ><span id="seek-hint" class="sr-only"
+              >拖曳或用方向鍵調整整課進度。調整後暫停，按繼續播放。</span
+            >
+          </div>
+        </section>
+        <div class="story-copy" aria-live="polite" aria-atomic="true">
+          <p id="eyebrow">市場故事 · ORDER BLOCK</p>
+          <h1 id="headline">大買家在買，為什麼先留下一根收跌 K？</h1>
+          <p id="question"></p>
+        </div>
+        <nav class="story-controls" aria-label="課程操作">
+          <button id="back" class="back" type="button" disabled>
+            ← 上一幕
+          </button>
+          <div class="advance">
+            <button id="pause" class="pause" type="button" aria-pressed="false">
+              暫停</button
+            ><button id="next" class="next" type="button" disabled>
+              播放中<span aria-hidden="true">↗</span>
+            </button>
+          </div>
+          <button
+            id="replay"
+            class="replay"
+            type="button"
+            aria-label="從頭重播訂單塊課程"
+          >
+            ↺ 從頭重播
+          </button>
+        </nav>
+      </div>
+    </main>
+    <footer>
+      <span>一種形成情境 · 本例取整根高低</span><span>MetaBear 互動學院</span>
+    </footer>
+    <noscript>請啟用 JavaScript 觀看動態教材。</noscript>
+  </body>
+</html>

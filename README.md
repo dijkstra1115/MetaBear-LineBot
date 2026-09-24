@@ -25,9 +25,13 @@
 
 舊版交易學院集中保存在 `public/orderflow/legacy/`，總覽入口 `/orderflow/legacy/`；版本與相容連結見 [舊版教學整理](docs/ACADEMY-LEGACY.md)。
 
-互動學院本地預覽：執行 `npm run build:site`，再執行 `npm run preview:academy`，開啟 <http://127.0.0.1:8790/orderflow/>。入口是課程地圖，可搜尋並篩選「可觀看／本次更新／完整規劃」，三條建議路線不限制自由選看。課程地圖統一顯示各課的完成狀態；名詞圖解使用簡短名稱，市場故事保留疑問句，沿用統一側欄、前置概念連結、連續播放、固定短字幕與整課回拖。本輪將未平倉量（OI）改為 K 線與 OI 全景進入四種開平倉組合，停損單加入限價先成交一半、餘量等待，並新增「放量突破，怎樣才算站穩？」的後續收盤觀察故事。「重返同一價位」、舊 CVD 故事及「標記價格」已移除，舊網址回到課程地圖。課程方向詳見 [課程架構](docs/ACADEMY-CURRICULUM.md) 與 [設計語言](docs/ACADEMY-DESIGN-LANGUAGE.md)。預覽只監聽本機，不會啟動後端或部署；本輪不調整手機專版。
+互動學院本地預覽：執行 `npm run build:site`；確認 8790 尚未運作時才執行 `npm run preview:academy`，開啟 [課程地圖](http://127.0.0.1:8790/orderflow/courses.html)。18 堂課皆可觀看，可搜尋並篩選「可觀看／本次更新／完整規劃」，三條建議路線不限制自由選看。沿用統一側欄、前置概念連結、連續播放、固定短字幕與整課正反回拖。
 
-新 session 接續課程製作，請先閱讀 [互動學院交接指南](docs/ACADEMY-HANDOFF.md)，內含尚待製作題目、已確認的美感與鏡頭標準、最新修正及驗收流程。
+市場故事以多根K線開場，再放大同場回看。吸收、突破、撤單已合併為48秒的「突破誘多，高位吸收，反轉出貨」；足跡、熱圖、量柱、CVD沿同一份帳本演出。另保留上影線約144秒、回踩吸收版放量突破40秒、訂單塊40秒。兩個合併前網址會自動進入新課。詳見 [學院交接](docs/ACADEMY-HANDOFF.md)。正式入口為 [互動學院](https://metabear.io/orderflow/)，手機支援直式閱讀、課程抽屜、橫向劇院與細節放大。
+
+依本地審核移除「橫盤換手，籌碼到了誰手上？」；[訂單塊到底長怎樣？](http://127.0.0.1:8790/orderflow/order-block.html) 重製為 40 秒，從宏觀 K 線走進大買家分批承接與主動完成剩餘買量的過程，再回到同一全景。定義、BIS／CME 機制來源、原始 ICT 定義差異與分鏡見 [訂單塊課程文件](docs/ORDER-BLOCK-LESSON-PLAN.md)。既有課程保留；本輪依使用者授權補齊手機版並部署，詳見 [手機與發佈](docs/ACADEMY-MOBILE-RELEASE.md)。詳見 [課程架構](docs/ACADEMY-CURRICULUM.md) 與 [設計語言](docs/ACADEMY-DESIGN-LANGUAGE.md)。
+
+新 session 接續審核或修改，請先閱讀 [互動學院交接指南](docs/ACADEMY-HANDOFF.md)，內含最新完成度、已確認的美感與鏡頭標準、數字設定及驗收流程。
 
 ### 訂單流量化研究室（獨立服務）
 

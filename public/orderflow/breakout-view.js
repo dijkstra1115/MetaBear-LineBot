@@ -1,4 +1,4 @@
-import { TIMING, clamp, ease, marketSnapshot } from "./breakout-model.js";
+import { TIMING, clamp, ease } from "./breakout-model.js";
 const C = {
   ink: "#e1ebe7",
   muted: "#8ea8af",
@@ -13,11 +13,12 @@ const rect = (x, y, w, h, color, attrs = "") =>
   `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" ${attrs}/>`;
 const line = (x1, y1, x2, y2, color, attrs = "") =>
   `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" ${attrs}/>`;
-const group = (svg, alpha = 1, attrs = "") =>
-  `<g opacity="${clamp(alpha)}" ${attrs}>${svg}</g>`;
-const mid = 'text-anchor="middle"',
-  num = `${mid} class="number"`;
-export const priceY = (price, index) => 150 + index * 150 - (price - 102) * 32;
+const group = (svg, opacity = 1, attrs = "") =>
+  `<g opacity="${clamp(opacity)}" ${attrs}>${svg}</g>`;
+const mid = 'text-anchor="middle"';
+export const columnX = (index) => 500 + (index - 4) * 300;
+export const priceY = (price) => 222 - (price - 102) * 72;
+export const fillX = (index) => 230 + index * 58;
 export function cameraAt(playhead, reduced = false) {
   const into = reduced
     ? Number(playhead >= TIMING.focused)
@@ -26,170 +27,393 @@ export function cameraAt(playhead, reduced = false) {
     ? Number(playhead >= TIMING.panorama)
     : ease((playhead - TIMING.zoomOut) / (TIMING.panorama - TIMING.zoomOut));
   const focus = into * (1 - out);
-  return { focus, scale: 1 + 0.14 * focus, x: 620 - 70 * focus, y: 207 };
+  return {
+    focus,
+    scale: 0.3 + 0.7 * focus,
+    x: 500,
+    y: 222,
+    originX: 500,
+    originY: 222,
+  };
 }
-export function drawBreakout({ story, state, playhead, reduced }) {
-  const { focus, scale, x, y } = cameraAt(playhead, reduced);
+export function comparisonAt(playhead, reduced = false) {
+  return reduced
+    ? Number(playhead >= TIMING.compared)
+    : ease((playhead - TIMING.compare) / (TIMING.compared - TIMING.compare));
+}
+export function panelCamera(camera, comparison, right = false) {
+  return {
+    ...camera,
+    x: right ? 732 : camera.x - 232 * comparison,
+    scale: right ? 0.138 : camera.scale * (1 - 0.54 * comparison),
+  };
+}
+export function projectPoint(x, y, camera) {
+  return {
+    x: camera.x + (x - camera.originX) * camera.scale,
+    y: camera.y + (y - camera.originY) * camera.scale,
+  };
+}
+function candle(bar, target, detail, opacity = 1) {
+  const x = columnX(bar.index),
+    color = bar.close >= bar.open ? C.buy : C.sell;
+  const top = Math.min(priceY(bar.open), priceY(bar.close));
+  const height = Math.max(3, Math.abs(priceY(bar.close) - priceY(bar.open)));
+  return group(
+    line(x, priceY(bar.high), x, priceY(bar.low), color, 'stroke-width="2.8"') +
+      rect(
+        x - 21,
+        top - (height === 3 ? 1.5 : 0),
+        42,
+        height,
+        color,
+        'rx="2" fill-opacity=".8"',
+      ) +
+      (target
+        ? group(
+            line(
+              x - 28,
+              priceY(bar.close),
+              x + 28,
+              priceY(bar.close),
+              C.ink,
+              'stroke-opacity=".65"',
+            ),
+            detail,
+          )
+        : ""),
+    opacity,
+    `data-candle="${bar.index}" data-open="${bar.open}" data-high="${bar.high}" data-low="${bar.low}" data-close="${bar.close}"`,
+  );
+}
+function historyWorld(bars, targetIndex, focus, detail, selectedAlpha = 1) {
+  let world = line(
+    columnX(2),
+    priceY(102),
+    columnX(8) + 90,
+    priceY(102),
+    C.sell,
+    'stroke-opacity=".5" stroke-width="1.4" stroke-dasharray="7 7"',
+  );
+  for (const bar of bars.filter(Boolean))
+    world += candle(
+      bar,
+      bar.index === targetIndex,
+      detail,
+      bar.index === targetIndex ? selectedAlpha : 0.85 * (1 - focus),
+    );
+  return world;
+}
+export function drawBreakout({ story, state, playhead, reduced = false }) {
+  const camera = cameraAt(playhead, reduced),
+    { focus } = camera;
+  const comparison = comparisonAt(playhead, reduced);
+  const comparisonReveal = ease((comparison - 0.88) / 0.12);
+  const mainCamera = panelCamera(camera, comparison);
+  const secondCamera = panelCamera(camera, comparison, true);
   const show = (at, duration = 450) =>
     reduced ? Number(playhead >= at) : ease((playhead - at) / duration);
-  const details = show(TIMING.reset),
-    compare = show(TIMING.compare);
-  const resetFade = state.preview
+  const detail = ease((focus - 0.65) / 0.35),
+    macro = ease((0.4 - focus) / 0.4);
+  const source = story.markets[state.activeIndex],
+    current = state.active;
+  const latest = current.latest,
+    age = latest ? playhead - latest.at : Infinity;
+  const flash = reduced ? 0 : 1 - ease(age / 850);
+  const resetAlpha = state.preview
     ? reduced
       ? 1
-      : 1 - ease((playhead - TIMING.reset + 250) / 250)
-    : show(TIMING.reset, 250);
-  let world = "";
-  for (const [index, source] of story.markets.entries()) {
-    const current = state.preview
-      ? marketSnapshot(source, Infinity)
-      : state.markets[index];
-    const base = index * 150;
-    let panel = "";
-    for (const price of [101, 102, 103]) {
-      const py = priceY(price, index),
-        threshold = price === 102;
-      panel += line(
-        96,
-        py,
-        925,
-        py,
-        threshold ? C.sell : C.grid,
-        `stroke-opacity="${threshold ? 0.55 : 0.35}" stroke-dasharray="${threshold ? "5 5" : "2 7"}"`,
-      );
-      panel += text(555, py + 4, price, threshold ? C.sell : C.muted, 11, num);
-      if (price >= 102) {
-        const qty = price === 102 ? current.remaining102 : current.remaining103;
-        const initial = price === 102 ? source.depth : 20;
-        panel += group(
-          rect(606, py - 11, initial * 3.2, 22, "#19282c", 'rx="3"') +
-            rect(
-              606,
-              py - 11,
-              qty * 3.2,
-              22,
-              C.sell,
-              `rx="3" fill-opacity=".6" data-case="${source.id}" data-ask-price="${price}" data-ask-size="${qty}"`,
-            ) +
-            text(876, py + 5, qty, qty ? C.ink : C.faint, 16, num),
-          details,
-        );
-      }
-    }
-    let path = `M150 ${priceY(101, index)}`;
-    const lastAt = source.fills.at(-1).at;
-    for (const fill of current.trades) {
-      const px = 150 + (fill.at / lastAt) * 240,
-        py = priceY(fill.price, index);
-      path += ` H${px} V${py}`;
-      panel += `<circle cx="${px}" cy="${py}" r="3.5" fill="${C.buy}" data-case="${source.id}" data-fill-at="${fill.at}" data-fill-size="${fill.size}"/>`;
-    }
-    path += " H478";
-    panel += `<path d="${path}" fill="none" stroke="${C.buy}" stroke-opacity=".75" stroke-width="1.7"/>`;
-    const top = priceY(current.candle.high, index),
-      bottom = priceY(current.candle.low, index);
-    panel +=
-      line(490, top, 490, bottom, C.buy, 'stroke-width="2"') +
-      rect(
-        482,
-        top - (top === bottom ? 1 : 0),
-        16,
-        Math.max(2, bottom - top),
-        C.buy,
-        'rx="2" fill-opacity=".85"',
-      );
-    panel += text(
-      423,
-      priceY(current.price, index) - 13,
-      current.price,
-      C.ink,
-      16,
-      num,
-    );
-    if (!state.preview) {
-      const latest = current.latest,
-        age = latest ? playhead - latest.at : Infinity;
-      if (latest && age < 2200)
-        panel += group(
-          text(
-            738,
-            priceY(latest.price, index) - 18,
-            `成交 ${latest.size}`,
-            C.buy,
-            12,
-            mid,
-          ),
-          reduced ? 1 : 1 - ease((age - 1600) / 600),
-        );
-      panel += group(
-        text(192, base + 196, "本段主動買入", C.muted, 10) +
-          rect(
-            258,
-            base + 185,
-            current.volume * 2.8,
-            8,
-            C.buy,
-            'rx="4" fill-opacity=".55"',
-          ) +
-          text(467, base + 196, `${current.volume} 隻`, C.ink, 16, num),
-        details,
-      );
-      if (playhead >= TIMING.compare)
-        panel += group(
-          text(
-            737,
-            base + 196,
-            `起初掛賣 ${source.depth} → 已用完`,
-            C.muted,
-            11,
-            mid,
-          ),
-          compare,
-        );
-    }
-    world += group(panel, resetFade);
-  }
+      : 1 - ease((playhead - TIMING.reset + 220) / 220)
+    : show(TIMING.reset, 300) *
+      (playhead < TIMING.resetB
+        ? reduced
+          ? 1
+          : 1 - ease((playhead - TIMING.resetB + 220) / 220)
+        : show(TIMING.resetB, 350));
   let svg =
-    '<defs><clipPath id="breakout-window"><rect x="56" y="65" width="888" height="310" rx="8"/></clipPath></defs>';
-  svg += text(
-    64,
-    32,
-    "BREAKOUT / TWO DEPTHS",
-    C.muted,
-    10,
-    'letter-spacing="2.5"',
-  );
+    '<defs><clipPath id="breakout-window"><rect x="56" y="85" width="888" height="274" rx="6"/></clipPath></defs>';
+  svg += text(64, 32, "BREAKOUT", C.muted, 10, 'letter-spacing="2.7"');
   svg += text(
     936,
     32,
-    state.preview
-      ? "兩段已完成行情 · 同樣越過 102"
-      : "只改掛賣深度 · 沒有新增或撤單",
+    state.comparing
+      ? "同一段歷史 · 兩種深度重演"
+      : state.replay
+        ? `情境 ${source.id} · 14:30 成交回看`
+        : "已完成的模擬行情 · 9 根一分 K",
     C.muted,
     11,
     'text-anchor="end"',
   );
-  svg += group(text(810, 57, "等待成交的掛賣 / 隻", C.muted, 11, mid), details);
-  svg += `<g clip-path="url(#breakout-window)"><g data-camera-scale="${scale}" transform="translate(${x} ${y}) scale(${scale}) translate(-620 -207)">${world}</g></g>`;
-  svg += text(64, 82, "A", C.ink, 18, num) + text(64, 232, "B", C.ink, 18, num);
-  svg += line(64, 225, 936, 225, C.grid, 'stroke-opacity=".6"');
-  svg += text(
-    64,
-    404,
-    "共同起點 101 · 越過門檻 102 · 同樣成交至 103",
-    C.muted,
-    10,
+
+  for (let price = 96; price <= 107; price++) {
+    const py = projectPoint(0, priceY(price), mainCamera).y;
+    if (py < 102 || py > 345) continue;
+    const broad = price === 98 || price === 102 || price === 106;
+    const alpha = (broad ? 0.55 : 0.6 * detail) * (1 - comparison);
+    svg += group(
+      line(
+        75,
+        py,
+        925,
+        py,
+        C.grid,
+        'stroke-opacity=".42" stroke-dasharray="2 7"',
+      ) +
+        text(
+          938,
+          py + 4,
+          price,
+          price === 102 ? C.sell : C.faint,
+          10,
+          'class="number" data-price-tick="true"',
+        ),
+      alpha,
+    );
+  }
+
+  const mainBars = state.comparing
+    ? story.markets[0].completedBars
+    : state.bars;
+  let world = historyWorld(
+    mainBars,
+    story.targetIndex,
+    focus,
+    detail,
+    resetAlpha,
+  );
+  const locator = (1 - focus) * (1 - comparison) * show(850);
+  world += group(
+    rect(
+      423,
+      130,
+      154,
+      185,
+      C.buy,
+      'rx="14" fill-opacity=".025" stroke="#a0dfce" stroke-opacity=".5" stroke-width="3"',
+    ),
+    locator,
+  );
+
+  let execution =
+    text(318, 105, "逐筆主動買入", C.buy, 12, mid) +
+    text(755, 105, "等待中的掛賣", C.sell, 12, mid);
+  let path = `M180 ${priceY(101)}`;
+  for (const [index, fill] of current.trades.entries()) {
+    const x = fillX(index),
+      py = priceY(fill.price);
+    path += ` H${x} V${py}`;
+    execution += `<circle cx="${x}" cy="${py}" r="${4.2 + Math.sqrt(fill.size) * 0.45}" fill="${C.buy}" data-fill-at="${fill.at}" data-fill-size="${fill.size}"/>`;
+    execution += text(
+      x,
+      py + 25,
+      `+${fill.size}`,
+      C.buy,
+      12,
+      `${mid} class="number"`,
+    );
+  }
+  const pathEnd = current.trades.length
+    ? fillX(current.trades.length - 1) + 22
+    : 197;
+  path += ` H${pathEnd}`;
+  execution += `<path d="${path}" fill="none" stroke="${C.buy}" stroke-opacity=".35" stroke-width="1.4" data-tick-path="true"/>`;
+  for (const price of [102, 103]) {
+    const py = priceY(price),
+      amount = price === 102 ? current.remaining102 : current.remaining103;
+    const initial = price === 102 ? source.depth : 20;
+    execution += line(
+      530,
+      py,
+      635,
+      py,
+      C.grid,
+      'stroke-opacity=".5" stroke-dasharray="3 6"',
+    );
+    execution += rect(650, py - 15, initial * 3.2, 30, "#203036", 'rx="4"');
+    execution += rect(
+      650,
+      py - 15,
+      amount * 3.2,
+      30,
+      C.sell,
+      `rx="4" fill-opacity=".52" data-case="${source.id}" data-ask-price="${price}" data-ask-size="${amount}"`,
+    );
+    execution += text(
+      892,
+      py + 7,
+      amount,
+      amount ? C.ink : C.faint,
+      20,
+      `${mid} class="number"`,
+    );
+    if (latest?.price === price) {
+      execution += group(
+        rect(
+          648,
+          py - 17,
+          initial * 3.2 + 4,
+          34,
+          "none",
+          `rx="5" stroke="${C.buy}" stroke-opacity=".7"`,
+        ),
+        flash,
+      );
+      if (!reduced && age >= 0 && age < 850) {
+        const progress = ease(age / 850);
+        execution += `<circle cx="${640 - 106 * progress}" cy="${py}" r="5" fill="${C.buy}" opacity="${1 - progress * 0.6}"/>`;
+      }
+    }
+  }
+  execution += text(200, 324, "本段主動買入", C.muted, 11);
+  execution += rect(200, 338, 195, 7, C.grid, 'rx="3.5" fill-opacity=".65"');
+  execution += rect(
+    200,
+    338,
+    current.volume * 3,
+    7,
+    C.buy,
+    'rx="3.5" fill-opacity=".65"',
+  );
+  execution += text(
+    448,
+    348,
+    current.volume,
+    C.ink,
+    28,
+    `${mid} class="number" data-active-volume="${current.volume}"`,
+  );
+  execution += text(481, 347, "隻", C.muted, 11);
+  execution += text(755, 325, `102 起初 ${source.depth} 隻`, C.sell, 12, mid);
+  execution += text(755, 346, "103 起初 20 隻", C.muted, 11, mid);
+  world += group(
+    execution,
+    detail * resetAlpha * show(TIMING.reset),
+    `data-active-case="${source.id}"`,
+  );
+  const transform = (c) =>
+    `translate(${c.x} ${c.y}) scale(${c.scale}) translate(${-c.originX} ${-c.originY})`;
+  svg += `<g clip-path="url(#breakout-window)"><g data-main-history="true" data-camera-scale="${mainCamera.scale}" transform="${transform(mainCamera)}">${world}</g>`;
+  if (state.comparing)
+    svg += group(
+      historyWorld(story.markets[1].completedBars, story.targetIndex, 0, 0),
+      comparisonReveal,
+      `data-comparison-history="true" transform="${transform(secondCamera)}"`,
+    );
+  svg += "</g>";
+
+  svg += group(
+    text(76, 69, `${source.id} · 102 掛賣 ${source.depth} 隻`, C.ink, 12),
+    detail * resetAlpha * show(TIMING.reset),
+  );
+  svg += group(
+    text(500, 377, "14:30 · 同一個成交起點 101", C.muted, 11, mid),
+    detail,
+    'data-footer="detail"',
   );
   svg += group(
     text(
-      936,
-      404,
-      "本段主動買量：A 65　/　B 15",
-      C.ink,
-      12,
-      'text-anchor="end"',
+      500,
+      409,
+      "本段買量不含共同起始 101 × 1 · K 線保留這筆成交",
+      C.faint,
+      10,
+      mid,
     ),
-    compare,
+    detail,
+    'data-scope="detail"',
   );
+  for (const bar of mainBars.filter(Boolean)) {
+    const px = projectPoint(columnX(bar.index), 0, mainCamera).x;
+    if (px < 70 || px > 930) continue;
+    svg += group(
+      text(
+        px,
+        377 - 77 * comparison,
+        bar.label,
+        bar.index === story.targetIndex ? C.ink : C.muted,
+        10,
+        mid,
+      ),
+      macro,
+    );
+  }
+  const target = projectPoint(500, 130, mainCamera);
+  svg += group(
+    text(
+      target.x,
+      target.y - 24,
+      playhead < TIMING.reset ? "越過 102 的這根 K" : "同樣的突破 K",
+      C.ink,
+      11,
+      mid,
+    ) +
+      line(
+        target.x,
+        target.y - 16,
+        target.x,
+        target.y - 4,
+        C.muted,
+        'stroke-opacity=".5"',
+      ),
+    macro * (1 - comparison) * show(850),
+  );
+  svg += group(
+    text(
+      500,
+      409,
+      state.comparing
+        ? "本段主動買量 · 不含共同起始成交 1 隻"
+        : "同一段已完成歷史 · 先看位置，再看成交",
+      C.muted,
+      10,
+      mid,
+    ),
+    macro,
+    'data-footer="macro"',
+  );
+  if (state.comparing) {
+    for (const [index, panel] of [mainCamera, secondCamera].entries()) {
+      const market = story.markets[index],
+        result = state.markets[index];
+      let comparisonLabels = text(
+        panel.x,
+        112,
+        `${market.id} · 102 掛賣 ${market.depth} 隻`,
+        C.muted,
+        12,
+        mid,
+      );
+      comparisonLabels += text(panel.x, 333, "本段主動買入", C.muted, 11, mid);
+      comparisonLabels += text(
+        panel.x,
+        371,
+        `${result.volume}`,
+        C.ink,
+        32,
+        `${mid} class="number" data-comparison-volume="${market.id}"`,
+      );
+      comparisonLabels += text(panel.x + 40, 369, "隻", C.muted, 11);
+      if (index === 1)
+        for (const bar of market.completedBars)
+          comparisonLabels += text(
+            projectPoint(columnX(bar.index), 0, panel).x,
+            300,
+            bar.label,
+            bar.index === story.targetIndex ? C.ink : C.muted,
+            10,
+            mid,
+          );
+      svg += group(
+        comparisonLabels,
+        comparisonReveal,
+        `data-comparison-labels="${market.id}"`,
+      );
+    }
+    svg += group(
+      line(500, 112, 500, 372, C.grid, 'stroke-opacity=".45"'),
+      comparisonReveal,
+    );
+  }
   return { svg, viewBox: "0 0 1000 430", width: 1000, height: 430 };
 }

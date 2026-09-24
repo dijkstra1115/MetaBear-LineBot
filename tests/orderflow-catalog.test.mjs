@@ -79,20 +79,29 @@ test("the curriculum has unique ids, existing available pages and an acyclic pre
 });
 
 test("available, new, planned and route filtering work together without exposing unbuilt links", () => {
-  assert.equal(selectCourses().length, 19);
-  assert.equal(selectCourses({ view: "new" }).length, 3);
-  assert.equal(selectCourses({ view: "all" }).length, 21);
+  assert.equal(selectCourses().length, 18);
+  assert.equal(selectCourses({ view: "new" }).length, 6);
+  assert.equal(selectCourses({ view: "all" }).length, 18);
   assert.equal(
     selectCourses({ view: "all", query: "訂單塊" })[0].id,
     "order-block",
   );
-  assert.equal(selectCourses({ query: "訂單塊" }).length, 0);
+  assert.equal(selectCourses({ query: "訂單塊" }).length, 1);
   assert.deepEqual(
     selectCourses({ view: "all", path: "risk" }).map((c) => c.id),
     paths[2].ids,
   );
   for (const course of courses.filter((c) => !isAvailable(c)))
     assert.doesNotMatch(renderCard(course), /href=/);
+  // Keep planned-card coverage even when every current lesson is available.
+  assert.doesNotMatch(
+    renderCard({
+      ...courseById("order-block"),
+      status: "planned",
+      href: undefined,
+    }),
+    /href=/,
+  );
   assert.match(renderSections([]), /data-reset-filter/);
 });
 
@@ -103,10 +112,11 @@ test("lesson navigation selects only its own course and keeps its chapter contro
   assert.equal([...nav.matchAll(/aria-current="page"/g)].length, 1);
   assert.equal([...nav.matchAll(/data-story-scene="0"/g)].length, 1);
   assert.match(nav, /href="\.\/leverage.html" class="course-current"/);
-  assert.doesNotMatch(
-    nav,
-    /href="[^\"]*(?:delta\.html|mark-price\.html|order-block\.html)/,
-  );
+  assert.doesNotMatch(nav, /href="[^\"]*(?:delta\.html|mark-price\.html)/);
+  assert.doesNotMatch(nav, /href="\.\/accumulation.html"/);
+  assert.doesNotMatch(nav, /href="\.\/(?:breakout|withdrawal).html"/);
+  assert.match(nav, /href="\.\/absorption-story.html"/);
+  assert.match(nav, /href="\.\/order-block.html"/);
   assert.match(renderPrerequisites("liquidation"), /href="\.\/leverage.html"/);
 });
 
@@ -125,6 +135,10 @@ test("old academy scene bookmarks still reach the original lesson, and named les
     ["?lesson=profile", "#scene-2", "./volume-profile.html#scene-2"],
     ["?lesson=funding", "#scene-3", "./funding.html#scene-3"],
     ["?lesson=breakout-volume", "#scene-2", "./breakout-volume.html#scene-2"],
+    ["?lesson=breakout", "#scene-3", "./absorption-story.html"],
+    ["?lesson=withdrawal", "#scene-2", "./absorption-story.html"],
+    ["?lesson=accumulation", "#scene-3", "./courses.html"],
+    ["?lesson=order-block", "#scene-2", "./order-block.html#scene-2"],
   ]) {
     let actual;
     await runInNewContext(`(async () => { ${source} })()`, {

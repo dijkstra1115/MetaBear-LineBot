@@ -12,12 +12,14 @@ const source = readFileSync(
 function player({
   continuousDesktop = true,
   mobile = false,
+  reduced = false,
   desktopSceneHold = 0,
 } = {}) {
   const nodes = new Map(),
     queue = new Map(),
     renders = [],
-    documentEvents = {};
+    documentEvents = {},
+    media = new Map();
   let now = 0,
     id = 0;
   function element(dataset = {}) {
@@ -66,10 +68,16 @@ function player({
     location: { hash: "" },
     performance: { now: () => now },
     window: { scrollY: 0, addEventListener() {} },
-    matchMedia: (query) => ({
-      matches: query.includes("max-width") && mobile,
-      addEventListener() {},
-    }),
+    matchMedia: (query) => {
+      const preference = {
+        matches: query.includes("max-width") ? mobile : reduced,
+        addEventListener(name, fn) {
+          this.onchange = fn;
+        },
+      };
+      media.set(query, preference);
+      return preference;
+    },
     requestAnimationFrame(fn) {
       queue.set(++id, fn);
       return id;
@@ -86,9 +94,10 @@ function player({
         eyebrow: `eyebrow ${i}`,
         lens: `lens ${i}`,
       })),
-      position: (scene, elapsed) => ({
+      position: (scene, elapsed, reduced) => ({
         scene,
         elapsed,
+        reduced,
         progress: elapsed / durations[scene],
         mode: String(scene),
       }),
@@ -125,6 +134,11 @@ function player({
     seek(value) {
       nodes.get("#scene-progress").events.input({ currentTarget: { value } });
     },
+    setReduced(value) {
+      const preference = media.get("(prefers-reduced-motion:reduce)");
+      preference.matches = value;
+      preference.onchange();
+    },
     hide() {
       document.hidden = true;
       documentEvents.visibilitychange();
@@ -147,6 +161,21 @@ test("desktop automatically connects scenes, stops at the course ending, and rep
   assert.equal(p.body.dataset.scene, "1");
   assert.equal(p.node("#scene-progress").value, 0);
   assert.equal(p.node("#back").disabled, true);
+});
+
+test("reduced motion reaches rendering and changing it preserves the paused playhead", () => {
+  const p = player({ reduced: true });
+  assert.equal(p.renders.at(-1).reduced, true);
+  p.seek(650);
+  p.setReduced(false);
+  assert.equal(p.renders.at(-1).reduced, false);
+  assert.equal(p.renders.at(-1).scene, 2);
+  assert.equal(p.renders.at(-1).elapsed, 150);
+  assert.equal(p.body.dataset.paused, "true");
+  p.setReduced(true);
+  assert.equal(p.renders.at(-1).reduced, true);
+  p.tick();
+  assert.equal(p.renders.at(-1).elapsed, 150);
 });
 
 test("whole-course seeking restores scene, subtitle, chapter selection and pauses the clock", () => {
@@ -183,8 +212,11 @@ test("chapter navigation and replay reset playback and a hidden tab pauses", () 
   assert.equal(p.body.dataset.paused, "true");
 });
 
-test("mobile and courses without the option retain their scene-by-scene playback", () => {
-  for (const options of [{ mobile: true }, { continuousDesktop: false }]) {
+test("courses without the continuous option retain scene-by-scene playback", () => {
+  for (const options of [
+    { continuousDesktop: false },
+    { continuousDesktop: false, mobile: true },
+  ]) {
     const p = player(options);
     p.tick();
     p.tick();
@@ -199,7 +231,7 @@ test("mobile and courses without the option retain their scene-by-scene playback
   }
 });
 
-test("caption holds remain part of the desktop timeline without changing mobile timing", () => {
+test("caption holds have the same timing on desktop and phone", () => {
   const p = player({ desktopSceneHold: 100 });
   p.tick();
   p.tick();
@@ -215,6 +247,31 @@ test("caption holds remain part of the desktop timeline without changing mobile 
   m.tick();
   m.tick();
   assert.equal(m.body.dataset.scene, "1");
-  assert.equal(m.body.dataset.running, "false");
-  assert.equal(m.node("#scene-progress").max, 200);
+  assert.equal(m.body.dataset.running, "true");
+  assert.equal(m.node("#scene-progress").max, 1200);
+  m.tick();
+  assert.equal(m.body.dataset.scene, "2");
+  m.seek(750);
+  assert.equal(m.body.dataset.scene, "3");
+  assert.equal(m.renders.at(-1).elapsed, 50);
+});
+
+test("phone playback continues, scrubs both ways, and replays the same market camera", () => {
+  const p = player({ mobile: true });
+  p.tick();
+  p.tick();
+  assert.equal(p.body.dataset.scene, "2");
+  assert.equal(p.node("#scene-progress").max, 900);
+  assert.equal(p.renders.at(-1).mobile, false);
+  p.seek(650);
+  assert.equal(p.body.dataset.scene, "3");
+  assert.equal(p.renders.at(-1).elapsed, 150);
+  p.seek(50);
+  assert.equal(p.body.dataset.scene, "1");
+  assert.equal(p.body.dataset.paused, "true");
+  p.seek(900);
+  assert.equal(p.node("#pause").textContent, "重播本課");
+  p.click("#pause");
+  assert.equal(p.body.dataset.scene, "1");
+  assert.equal(p.node("#scene-progress").value, 0);
 });

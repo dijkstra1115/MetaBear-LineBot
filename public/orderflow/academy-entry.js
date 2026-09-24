@@ -19,9 +19,11 @@ const stories = {
   "delta-concept": "delta-concept.html",
   "mark-price": "courses.html",
   "stop-orders": "stop-orders.html",
-  breakout: "breakout.html",
+  breakout: "absorption-story.html",
   "breakout-volume": "breakout-volume.html",
-  withdrawal: "withdrawal.html",
+  accumulation: "courses.html",
+  "order-block": "order-block.html",
+  withdrawal: "absorption-story.html",
   "open-interest": "open-interest.html",
   funding: "funding.html",
   "volume-profile": "volume-profile.html",
@@ -37,8 +39,10 @@ if (
   if (!params.has("workspace")) target.searchParams.set("classic", "1");
   target.hash = location.hash;
   location.replace(target.href);
-} else if (["delta", "cvd", "mark-price"].includes(lesson)) {
+} else if (["delta", "cvd", "mark-price", "accumulation"].includes(lesson)) {
   location.replace("./courses.html");
+} else if (["breakout", "withdrawal"].includes(lesson)) {
+  location.replace("./absorption-story.html");
 } else if (lesson) {
   location.replace(`./${stories[lesson]}${location.hash}`);
 } else if (/^#scene-\d+$/.test(location.hash)) {

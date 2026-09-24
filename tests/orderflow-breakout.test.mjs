@@ -14,6 +14,11 @@ import {
   drawBreakout,
   cameraAt,
   priceY,
+  columnX,
+  fillX,
+  projectPoint,
+  comparisonAt,
+  panelCamera,
 } from "../public/orderflow/breakout-view.js";
 const story = createBreakoutStory();
 function at(playhead, reduced = false) {
@@ -68,8 +73,8 @@ test("different known depths produce equal final candles from different exact ac
 
 test("exhausting the crossed level is separate from the fill above it", () => {
   for (const [index, emptyAt, breakAt] of [
-    [0, 17000, TIMING.deepBreak],
-    [1, 11500, TIMING.thinBreak],
+    [0, 13000, TIMING.deepBreak],
+    [1, 24000, TIMING.thinBreak],
   ]) {
     const exhausted = at(emptyAt).state.markets[index],
       before = at(breakAt - 1).state.markets[index],
@@ -82,7 +87,9 @@ test("exhausting the crossed level is separate from the fill above it", () => {
     assert.equal(after.broke, true);
     assert.equal(after.volume - before.volume, 5);
   }
-  assert.equal(at(TIMING.thinBreak).state.markets[0].broke, false);
+  assert.equal(at(TIMING.deepBreak).state.markets[0].broke, true);
+  assert.equal(at(TIMING.deepBreak).state.markets[1].broke, false);
+  assert.equal(at(TIMING.thinBreak).state.markets[0].broke, true);
   assert.equal(at(TIMING.thinBreak).state.markets[1].broke, true);
 });
 
@@ -117,10 +124,10 @@ test("the shared starting print is context and both markets conserve measured su
   assert.ok(at(TIMING.reset).state.markets.every((m) => m.volume === 0));
 });
 
-test("35-second chapters and reverse seeks preserve models and finite geometry", () => {
+test("40-second chapters and reverse seeks preserve models and finite geometry", () => {
   assert.equal(
     SCENE_DURATIONS.reduce((a, b) => a + b),
-    35000,
+    40000,
   );
   for (let scene = 0; scene < 3; scene++)
     assert.equal(
@@ -138,36 +145,181 @@ test("35-second chapters and reverse seeks preserve models and finite geometry",
       );
   }
   for (const reduced of [false, true]) {
-    assert.equal(cameraAt(0, reduced).scale, 1);
-    assert.equal(cameraAt(TIMING.focused, reduced).scale, 1.1400000000000001);
-    assert.equal(cameraAt(TOTAL_DURATION, reduced).scale, 1);
+    assert.equal(cameraAt(0, reduced).scale, 0.3);
+    assert.equal(cameraAt(TIMING.focused, reduced).scale, 1);
+    assert.equal(cameraAt(TOTAL_DURATION, reduced).scale, 0.3);
   }
 });
 
-test("upper executions and lower totals remain clear of the camera crop", () => {
-  for (let time = 5500; time <= TOTAL_DURATION; time += 125) {
-    const camera = cameraAt(time);
-    const transformX = (px) => camera.x + (px - 620) * camera.scale;
-    const transformY = (py) => camera.y + (py - 207) * camera.scale;
-    for (const [index, source] of story.markets.entries()) {
-      for (const fill of source.fills) {
-        const top = transformY(priceY(fill.price, index) - 18 - 12);
-        const bottom = transformY(priceY(fill.price, index) - 18 + 3);
-        assert.ok(top >= 65 && bottom <= 375);
-      }
+test("the opening and returned panoramas preserve all nine OHLC bars and share the same context", () => {
+  const priceSignature = (bars) =>
+    bars.map(({ index, open, high, low, close }) => [
+      index,
+      open,
+      high,
+      low,
+      close,
+    ]);
+  const completed = story.markets.map((market) => market.completedBars);
+  assert.equal(completed[0].length, 9);
+  assert.deepEqual(priceSignature(completed[0]), priceSignature(completed[1]));
+  for (const [index, market] of story.markets.entries())
+    for (const bar of market.completedBars) {
+      assert.equal(bar.open, bar.rows[0].price);
+      assert.equal(bar.close, bar.rows.at(-1).price);
+      assert.equal(bar.high, Math.max(...bar.rows.map((row) => row.price)));
+      assert.equal(bar.low, Math.min(...bar.rows.map((row) => row.price)));
+      if (bar.index === story.targetIndex)
+        assert.deepEqual(bar.rows, [market.seed, ...market.fills]);
+      else assert.deepEqual(bar, completed[1 - index][bar.index]);
     }
-    assert.ok(transformY(346 + 4) < 375);
-    const labels = [
-      ...drawBreakout(at(time)).svg.matchAll(
-        /<text x="([\d.]+)" y="([\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>本段主動買入<\/text>/g,
-      ),
-    ];
-    assert.equal(labels.length, 2);
-    for (const [, labelX, , fontSize] of labels) {
-      assert.ok(transformX(Number(labelX)) >= 60);
+  assert.deepEqual(
+    priceSignature(at(0).state.bars),
+    priceSignature(at(TIMING.panorama).state.bars),
+  );
+  assert.deepEqual(at(TIMING.zoomOut).state.bars, completed[1]);
+  for (const reduced of [false, true]) {
+    assert.deepEqual(cameraAt(0, reduced), cameraAt(TIMING.panorama, reduced));
+    assert.equal(comparisonAt(TIMING.panorama, reduced), 0);
+  }
+  assert.equal(
+    [...drawBreakout(at(0)).svg.matchAll(/data-candle=/g)].length,
+    9,
+  );
+  assert.equal(
+    [...drawBreakout(at(TIMING.panorama)).svg.matchAll(/data-candle=/g)].length,
+    9,
+  );
+  assert.equal(
+    [...drawBreakout(at(TOTAL_DURATION)).svg.matchAll(/data-candle=/g)].length,
+    18,
+  );
+});
+
+test("A completes before B rewinds to the same seed, with no unplayed history entering either replay", () => {
+  assert.equal(at(TIMING.reset).state.active.id, "A");
+  assert.equal(at(TIMING.reset).state.active.volume, 0);
+  assert.equal(at(TIMING.resetB - 1).state.active.id, "A");
+  assert.equal(at(TIMING.resetB - 1).state.active.volume, 65);
+  const reset = at(TIMING.resetB).state;
+  assert.equal(reset.active.id, "B");
+  assert.equal(reset.active.volume, 0);
+  assert.equal(reset.active.price, 101);
+  assert.equal(reset.active.remaining102, 10);
+  assert.deepEqual(reset.active.candle, {
+    open: 101,
+    high: 101,
+    low: 101,
+    close: 101,
+  });
+  assert.equal(reset.markets[0].volume, 65);
+  for (let time = TIMING.reset; time < TIMING.zoomOut; time += 100) {
+    const state = at(time).state;
+    assert.ok(
+      state.bars.slice(story.targetIndex + 1).every((bar) => bar === null),
+    );
+    assert.ok(state.active.trades.every((trade) => trade.at <= time));
+    assert.deepEqual(state.bars[story.targetIndex].rows, [
+      story.markets[state.activeIndex].seed,
+      ...state.active.trades,
+    ]);
+    const svg = drawBreakout(at(time)).svg;
+    assert.equal([...svg.matchAll(/data-active-case=/g)].length, 1);
+    assert.match(svg, new RegExp(`data-active-case="${state.active.id}"`));
+    assert.doesNotMatch(svg, /data-comparison-history=/);
+  }
+});
+
+test("each visible fill updates the selected K, remaining depth and exact active volume together", () => {
+  for (const [index, market] of story.markets.entries())
+    for (const trade of market.fills) {
+      const before = at(trade.at - 1).state,
+        after = at(trade.at).state;
+      assert.equal(after.activeIndex, index);
+      assert.equal(after.active.volume - before.active.volume, trade.size);
+      assert.equal(after.bars[story.targetIndex].close, trade.price);
+      assert.equal(after.active.price, trade.price);
+      assert.equal(
+        after.bars[story.targetIndex].rows.reduce((n, row) => n + row.size, 0),
+        after.active.volume + market.seed.size,
+      );
+      const svg = drawBreakout(at(trade.at)).svg;
+      assert.match(
+        svg,
+        new RegExp(`data-fill-at="${trade.at}" data-fill-size="${trade.size}"`),
+      );
+      assert.match(
+        svg,
+        new RegExp(`data-active-volume="${after.active.volume}"`),
+      );
+      assert.match(
+        svg,
+        new RegExp(`data-candle="4"[^>]+data-close="${trade.price}"`),
+      );
+      assert.deepEqual(after.active, at(trade.at + 1).state.active);
+    }
+});
+
+test("detail labels, execution dots and depth outlines remain inside the moving crop", () => {
+  for (const reduced of [false, true])
+    for (let time = 0; time <= TIMING.panorama; time += 25) {
+      const camera = cameraAt(time, reduced);
+      for (const [left, top, right, bottom] of [
+        [180, 92, 914, 357],
+        [478, priceY(103) - 2, 522, priceY(101) + 2],
+        [648, priceY(103) - 17.5, 845, priceY(102) + 17.5],
+      ]) {
+        const p = projectPoint(left, top, camera),
+          q = projectPoint(right, bottom, camera);
+        assert.ok(
+          p.x >= 56 && q.x <= 944,
+          `horizontal detail bounds at ${time}`,
+        );
+        assert.ok(p.y >= 85 && q.y <= 359, `vertical detail bounds at ${time}`);
+      }
+      for (const market of story.markets)
+        for (const [index, fill] of market.fills.entries()) {
+          const p = projectPoint(fillX(index), priceY(fill.price) + 29, camera);
+          assert.ok(p.y <= 359);
+        }
+    }
+});
+
+test("late comparison waits for space, with separated histories, dates and volume labels", () => {
+  for (const reduced of [false, true])
+    for (let time = TIMING.compare; time <= TOTAL_DURATION; time += 25) {
+      const comparison = comparisonAt(time, reduced),
+        base = cameraAt(time, reduced);
+      const left = panelCamera(base, comparison),
+        right = panelCamera(base, comparison, true);
+      const svg = drawBreakout(at(time, reduced)).svg;
+      const alpha = Number(
+        svg.match(/<g opacity="([\d.]+)" data-comparison-history=/)[1],
+      );
+      if (!alpha) continue;
+      const leftMax = projectPoint(columnX(8) + 22, 0, left).x;
+      const rightMin = projectPoint(columnX(0) - 22, 0, right).x;
+      assert.ok(leftMax < 493 && rightMin > 560);
+      assert.ok(rightMin - leftMax > 65);
+      const lowest = projectPoint(0, priceY(96), left).y;
+      const dateBaseline = 377 - 77 * comparison;
       assert.ok(
-        transformX(Number(labelX) + 6 * Number(fontSize)) < transformX(258),
+        dateBaseline - 10 > lowest + 5,
+        `dates stay below history at ${time}`,
+      );
+      assert.ok(
+        dateBaseline + 3 < 322,
+        `dates stay above comparison label at ${time}`,
       );
     }
+  for (let time = 0; time <= TOTAL_DURATION; time += 25) {
+    const svg = drawBreakout(at(time)).svg;
+    const detail = Number(
+      svg.match(/<g opacity="([\d.]+)" data-footer="detail">/)[1],
+    );
+    const macro = Number(
+      svg.match(/<g opacity="([\d.]+)" data-footer="macro">/)[1],
+    );
+    assert.equal(detail * macro, 0, `footer separation at ${time}`);
   }
 });

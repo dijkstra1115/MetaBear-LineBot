@@ -16,14 +16,18 @@ mountStory({
   continuousDesktop: true,
   completionLabel: "本課完成",
   render(p) {
-    const state = breakoutVolumeSnapshot(story, p.playhead);
-    const active = state.bars[state.activeIndex];
+    const state = breakoutVolumeSnapshot(story, p.time),
+      bar = state.currentBar;
     return {
       ...drawBreakoutVolume({ story, state, ...p }),
-      clock: `${active.label} · ${active.complete ? "已收盤" : "形成中"}`,
-      price: active.candle.close,
-      playback: "同一行情 · 逐步向前",
-      description: `${scenes[p.scene].label}。前五根一分鐘成交量為16、24、18、22、20，平均20；突破K線成交60、收盤106，為均量3倍並高於104。現在後續已收盤${state.observed.length}根，成交量依序${state.observed.map((bar) => bar.volume).join("、") || "尚未完成"}，收盤依序${state.observed.map((bar) => bar.candle.close).join("、") || "尚未完成"}。${state.followAverage === null ? "" : `這些已完成K線的平均成交量為${state.followAverage}。`}成交量與價格逐筆更新，完成後才計入本段平均。`,
+      clock: story.barRanges[state.activeBarIndex].label,
+      price: state.price ?? "—",
+      playback: state.preview
+        ? "完整行情 · 準備回看"
+        : state.replay
+          ? "同一份成交 · 選段回看"
+          : "同一段行情 · 完整結果",
+      description: `${scenes[p.scene].label}。最新成交${state.price}元，CVD ${state.cvd}隻。本根成交${bar?.volume ?? 0}隻、Delta ${bar?.delta ?? 0}隻。足跡左側是主動賣出、右側是主動買入，量柱、K線與CVD來自同一份成交，熱力圖顯示等待的掛買與掛賣。`,
     };
   },
 });

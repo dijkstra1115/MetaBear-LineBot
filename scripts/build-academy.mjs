@@ -93,6 +93,17 @@ export async function buildAcademy() {
         '<script type="module"',
         '<script type="module" src="./academy-navigation.js"></script>\n    <script type="module"',
       );
+    for (const sheet of ["academy-mobile.css", "academy-navigation.css"])
+      if (!html.includes(`href="./${sheet}"`))
+        html = html.replace(
+          "</head>",
+          `  <link rel="stylesheet" href="./${sheet}" />\n  </head>`,
+        );
+    if (!html.includes('src="./academy-mobile.js"'))
+      html = html.replace(
+        "</head>",
+        '  <script type="module" src="./academy-mobile.js"></script>\n  </head>',
+      );
     await writeFile(path, html);
   }
   let map = await readFile(root + "courses.html", "utf8");

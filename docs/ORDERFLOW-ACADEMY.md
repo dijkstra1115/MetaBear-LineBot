@@ -1,6 +1,6 @@
 # Orderflow Academy · 訂單流沉浸式教學
 
-> 舊版已集中到 `public/orderflow/legacy/`。總覽：`/orderflow/legacy/`；15 課入口：`/orderflow/legacy/classic.html?classic=1`。以下為此版功能說明，正式入口目前使用四段故事版。
+> 以下為舊版 15 課的功能紀錄，檔案已集中到 `public/orderflow/legacy/`。總覽：`/orderflow/legacy/`；入口：`/orderflow/legacy/classic.html?classic=1`。目前 20 課動態教材使用 `/orderflow/courses.html`，最新架構與狀態見 [課程架構](ACADEMY-CURRICULUM.md) 和 [接續指南](ACADEMY-HANDOFF.md)。
 
 ## 教學入口
 

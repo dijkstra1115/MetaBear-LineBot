@@ -20,7 +20,9 @@ export function mountStory({
     paused = false,
     raf = 0,
     last = 0;
-  const continuous = () => continuousDesktop && !mobile.matches;
+  // The historic option name is retained for existing lessons. The same
+  // timeline now runs on phones, so rotating never changes its duration.
+  const continuous = () => continuousDesktop;
   const offsets = durations.map((_, i) =>
     durations.slice(0, i).reduce((a, b) => a + b, 0),
   );
@@ -36,7 +38,8 @@ export function mountStory({
   function draw() {
     const p = {
       ...position(scene, elapsed, reduced.matches),
-      mobile: mobile.matches,
+      // Continuous lessons share one camera and market history across layouts.
+      mobile: mobile.matches && !continuous(),
     };
     const result = render(p);
     for (const [id, value] of [
@@ -65,7 +68,7 @@ export function mountStory({
         ? "已暫停"
         : result.playback;
     $("#chart-description").textContent = result.description;
-    const current = narrative(scene, elapsed, reduced.matches, mobile.matches);
+    const current = narrative(scene, elapsed, reduced.matches, p.mobile);
     for (const key of ["headline", "question"]) {
       if ($(`#${key}`).textContent !== current[key])
         $(`#${key}`).textContent = current[key];
@@ -155,8 +158,6 @@ export function mountStory({
     sceneLabels();
     draw();
     controls();
-    if (mobile.matches && window.scrollY > 80)
-      $(".scene-meta").scrollIntoView({ block: "start" });
     last = performance.now();
     raf = requestAnimationFrame(tick);
     if (document.hidden) togglePause();
@@ -212,6 +213,10 @@ export function mountStory({
     );
   });
   reduced.addEventListener("change", draw);
+  document.addEventListener("academy:theater", draw);
+  document.addEventListener("academy:pause", () => {
+    if (!complete() && !paused) togglePause();
+  });
   mobile.addEventListener("change", () => {
     draw();
     controls();

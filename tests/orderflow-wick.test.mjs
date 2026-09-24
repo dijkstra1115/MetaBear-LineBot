@@ -307,7 +307,7 @@ test("the final replay explicitly rewinds and retells the same executions one cl
     previous = p.time;
     assert.equal(p.zoom, 0);
     const state = wickSnapshot(story, p.time);
-    const opening = scenePosition(0, p.time / 6);
+    const opening = scenePosition(0, (p.time * SCENE_DURATIONS[0]) / 60000);
     assert.deepEqual(state, wickSnapshot(story, opening.time));
     const svg = drawWick({ story, state, ...p }).svg;
     assert.doesNotMatch(svg, /被動掛單 · 等待成交|隻  @|Maker|Taker/);

@@ -4,6 +4,7 @@ import {
   createWickStory,
   wickSnapshot,
   scenePosition,
+  desktopScenePosition,
   SCENE_DURATIONS,
   continuationCamera,
 } from "./wick-model.js";
@@ -34,13 +35,15 @@ mountStory({
   previousStory: "./matching.html#scene-8",
   completionLabel: "本課完成",
   render(p) {
+    if (!p.mobile)
+      p = { ...p, ...desktopScenePosition(p.scene, p.elapsed, p.reduced) };
     if (p.time !== stateTime) {
       state = wickSnapshot(story, p.time);
       stateTime = p.time;
     }
     const { scene, elapsed, reduced } = p;
     const labels = {
-      overview: "一分鐘快轉 · 6×",
+      overview: p.mobile ? "一分鐘快轉 · 10×" : "已完成行情 · 選段回看",
       rewind: "時間倒回",
       approach: "靠近起點",
       quotes: "回看掛單 · 慢放",

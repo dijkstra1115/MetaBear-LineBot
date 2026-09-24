@@ -1,7 +1,7 @@
-import { scenePosition } from "./wick-model.js";
+import { desktopScenePosition } from "./wick-model.js";
 
 export const chapters = [
-  "先看這一分鐘",
+  "衝高，又回到原處",
   "回到行情起點",
   "成交，才改變價格",
   "賣單不斷補回",
@@ -190,13 +190,21 @@ const beats = [
 ];
 
 export function desktopNarrativeAt(scene, elapsed, reduced = false) {
-  const p = scenePosition(scene, elapsed, reduced);
+  const p = desktopScenePosition(scene, elapsed, reduced);
+  if (scene === 0)
+    return {
+      headline:
+        elapsed < 2800
+          ? "這根衝到 136，卻又收回 103。"
+          : "走進這根 K，看看買賣如何交手。",
+      question: "",
+    };
   if (p.mode === "rewind" || p.mode === "recap-rewind")
     return {
       headline: "同一段行情，時間倒回。",
-      question: "我們回到 14:32，重新看一次。",
+      question: "",
     };
   const [, headline, question] =
     beats[scene].findLast(([at]) => at <= p.time) ?? beats[scene][0];
-  return { headline, question };
+  return { headline, question: "" };
 }

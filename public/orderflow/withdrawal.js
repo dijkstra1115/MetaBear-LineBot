@@ -21,8 +21,8 @@ mountStory({
       ...drawWithdrawal({ ...p, state }),
       clock: `00:${String(Math.floor(p.playhead / 1000)).padStart(2, "0")}`,
       price: state.price,
-      playback: "掛單變化 · 成交紀錄",
-      description: `${scenes[p.scene].label}。最新成交 ${state.price} 元，本段成交量 ${state.volume} 隻。K 線開 ${state.candle.open}、高 ${state.candle.high}、低 ${state.candle.low}、目前收 ${state.candle.close}。最低可見掛賣 ${state.bestAsk} 元，已撤回 ${state.cancellations.reduce((n, e) => n + e.size, 0)} 隻掛賣。撤單只減少等待中的掛單；下一筆 5 隻在 104 元成交時，成交價與量才更新。`,
+      playback: state.replay ? "14:30 選段回看" : "已完成行情 · 全景",
+      description: `${scenes[p.scene].label}。${state.replay ? "回看 14:30 當時事件" : "已完成的 11 根一分 K 歷史"}。最新成交 ${state.price} 元；選中 14:30 的 K 線成交量 ${state.volume} 隻，開 ${state.candle.open}、高 ${state.candle.high}、低 ${state.candle.low}、收 ${state.candle.close}。${state.replay ? `最低可見掛賣 ${state.bestAsk} 元，已撤回 ${state.cancellations.reduce((n, e) => n + e.size, 0)} 隻掛賣。` : "起始與結尾展示相同完整行情。"}撤單只減少等待中的掛單；下一筆 5 隻在 104 元成交時，選中 K 線才從 101 延伸到 104，量從 5 變成 10。`,
     };
   },
 });

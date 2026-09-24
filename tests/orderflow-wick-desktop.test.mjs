@@ -4,6 +4,7 @@ import {
   createWickStory,
   wickSnapshot,
   scenePosition,
+  desktopScenePosition,
   SCENE_DURATIONS,
 } from "../public/orderflow/wick-model.js";
 import {
@@ -16,7 +17,7 @@ import { desktopNarrativeAt } from "../public/orderflow/wick-desktop-script.js";
 const story = createWickStory();
 function frame(scene, elapsed, reduced = false) {
   const p = {
-    ...scenePosition(scene, elapsed, reduced),
+    ...desktopScenePosition(scene, elapsed, reduced),
     scene,
     elapsed,
     reduced,
@@ -64,6 +65,27 @@ test("desktop seeks restore exact candle and book values with no future feedback
         seen.set(fraction, f.svg);
       }
     }
+  }
+});
+
+test("desktop opening and ending retain the same nine-candle panorama", () => {
+  const opening = frame(0, 0),
+    ending = frame(11, SCENE_DURATIONS[11]);
+  assert.equal(opening.p.time, 60000);
+  assert.equal(SCENE_DURATIONS[0], 6000);
+  assert.deepEqual(opening.state.candle, ending.state.candle);
+  const contexts = (svg) =>
+    [
+      ...svg.matchAll(
+        /data-candle data-open="[^"]+" data-high="[^"]+" data-low="[^"]+" data-close="[^"]+" data-context-index="\d+"/g,
+      ),
+    ].map((m) => m[0]);
+  assert.equal(contexts(opening.svg).length, 8);
+  assert.deepEqual(contexts(opening.svg), contexts(ending.svg));
+  for (const value of [opening.p, ending.p]) {
+    const camera = desktopCamera(opening.state, value);
+    assert.ok(camera.y(opening.state.candle.high) >= 62);
+    assert.ok(camera.y(opening.state.candle.low) <= 306);
   }
 });
 

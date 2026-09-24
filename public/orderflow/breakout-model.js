@@ -1,16 +1,18 @@
 import { Market } from "./engine.js";
-export const SCENE_DURATIONS = [4000, 8500, 11500, 11000];
-export const SCENE_STARTS = [0, 4000, 12500, 24000];
-export const TOTAL_DURATION = 35000;
+export const SCENE_DURATIONS = [6000, 13000, 11000, 10000];
+export const SCENE_STARTS = [0, 6000, 19000, 30000];
+export const TOTAL_DURATION = 40000;
 export const TIMING = {
   zoomIn: 4000,
-  focused: 5500,
-  reset: 5500,
-  thinBreak: 14000,
-  deepBreak: 20000,
-  compare: 24000,
-  zoomOut: 28000,
-  panorama: 30000,
+  focused: 6000,
+  reset: 6000,
+  deepBreak: 15500,
+  resetB: 19000,
+  thinBreak: 26500,
+  zoomOut: 31000,
+  panorama: 33500,
+  compare: 35000,
+  compared: 36200,
 };
 export const clamp = (value) => Math.max(0, Math.min(1, value));
 export const ease = (value) => {
@@ -27,7 +29,7 @@ export function scenePosition(scene, elapsed, reduced = false) {
     playhead,
     time: playhead,
     reduced,
-    mode: ["same-break", "depth", "execute", "compare"][scene],
+    mode: ["overview", "deep", "thin", "compare"][scene],
   };
 }
 function makeMarket(id, depth, operations) {
@@ -81,21 +83,65 @@ function makeMarket(id, depth, operations) {
   };
 }
 export function createBreakoutStory() {
+  const targetIndex = 4;
+  const contextPrices = [
+    [97, 99, 96, 98],
+    [98, 100, 97, 99],
+    [99, 102, 98, 101],
+    [101, 102, 100, 101],
+    null,
+    [103, 105, 102, 104],
+    [104, 106, 103, 105],
+    [105, 105, 103, 104],
+    [104, 107, 103, 106],
+  ];
+  const context = contextPrices.map((prices, index) =>
+    prices
+      ? {
+          index,
+          label: `14:${26 + index}`,
+          open: prices[0],
+          high: Math.max(...prices),
+          low: Math.min(...prices),
+          close: prices.at(-1),
+          rows: prices.map((price, tick) => ({
+            price,
+            size: [4, 6, 5, 5][tick],
+          })),
+        }
+      : null,
+  );
+  const markets = [
+    makeMarket("A", 60, [
+      { at: 8000, size: 20 },
+      { at: 10500, size: 20 },
+      { at: 13000, size: 20 },
+      { at: TIMING.deepBreak, size: 5 },
+    ]),
+    makeMarket("B", 10, [
+      { at: 21500, size: 5 },
+      { at: 24000, size: 5 },
+      { at: TIMING.thinBreak, size: 5 },
+    ]),
+  ];
+  for (const market of markets) {
+    const completed = marketSnapshot(market, Infinity);
+    market.completedBars = context.map((bar, index) =>
+      index === targetIndex
+        ? {
+            ...completed.candle,
+            index,
+            label: "14:30",
+            rows: [market.seed, ...market.fills],
+          }
+        : bar,
+    );
+  }
   return {
     level: 102,
-    markets: [
-      makeMarket("A", 60, [
-        { at: 7000, size: 20 },
-        { at: 12000, size: 20 },
-        { at: 17000, size: 20 },
-        { at: TIMING.deepBreak, size: 5 },
-      ]),
-      makeMarket("B", 10, [
-        { at: 8500, size: 5 },
-        { at: 11500, size: 5 },
-        { at: TIMING.thinBreak, size: 5 },
-      ]),
-    ],
+    targetIndex,
+    context,
+    markets,
   };
 }
 export function marketSnapshot(market, time) {
@@ -122,8 +168,34 @@ export function marketSnapshot(market, time) {
   };
 }
 export function breakoutSnapshot(story, playhead) {
+  const time = Math.max(0, Math.min(TOTAL_DURATION, playhead));
+  const preview = time < TIMING.reset;
+  const replay = !preview && time < TIMING.zoomOut;
+  const markets = story.markets.map((market) =>
+    marketSnapshot(market, preview ? Infinity : time),
+  );
+  const activeIndex = time < TIMING.resetB ? 0 : 1;
+  const active = markets[activeIndex];
+  const bars = replay
+    ? story.context.map((bar, index) => {
+        if (index < story.targetIndex) return bar;
+        if (index > story.targetIndex) return null;
+        return {
+          ...active.candle,
+          index,
+          label: "14:30",
+          rows: [story.markets[activeIndex].seed, ...active.trades],
+        };
+      })
+    : story.markets[activeIndex].completedBars;
   return {
-    preview: playhead < TIMING.reset,
-    markets: story.markets.map((market) => marketSnapshot(market, playhead)),
+    playhead: time,
+    preview,
+    replay,
+    activeIndex,
+    active,
+    markets,
+    bars,
+    comparing: time >= TIMING.compare,
   };
 }

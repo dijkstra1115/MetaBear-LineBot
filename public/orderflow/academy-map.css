@@ -581,60 +581,245 @@ noscript {
 @media (max-width: 650px) {
   main,
   footer {
-    width: calc(100% - 36px);
+    width: calc(100% - 32px);
+    min-width: 0;
   }
   .map-header {
-    padding: 0 18px;
+    padding: 0 16px;
     height: 64px;
+  }
+  .brand {
+    min-height: 44px;
   }
   .map-header nav > a,
   .brand > span {
     display: none;
   }
   .map-hero {
-    grid-template-columns: 1fr;
-    padding: 35px 0 25px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 32px 0 28px;
   }
   .hero-scene {
     display: none;
   }
+  .eyebrow {
+    margin-bottom: 20px;
+    letter-spacing: 1.7px;
+    line-height: 1.8;
+  }
   .hero-copy h1 {
-    font-size: 35px;
+    font-size: clamp(30px, 8.4vw, 36px);
+    letter-spacing: -1px;
+    line-height: 1.45;
+  }
+  .hero-description {
+    font-size: 13px;
+    line-height: 1.9;
+    margin: 18px 0;
+  }
+  .hero-actions {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .hero-actions button {
+    min-height: 48px;
+    font-size: 14px;
+  }
+  .hero-actions > span {
+    font-size: 11px;
+    line-height: 1.7;
   }
   .learning-paths {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .learning-path {
+    min-height: 78px;
+    padding: 15px 16px;
+    gap: 14px;
+  }
+  .learning-path > span:nth-child(2) {
+    min-width: 0;
+  }
+  .path-index,
+  .path-arrow {
+    flex-shrink: 0;
+  }
+  .learning-path strong {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .learning-path small {
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 4px;
   }
   .map-summary {
-    gap: 18px;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    padding: 21px 0;
   }
   .map-summary > div {
+    min-width: 0;
     flex-direction: column;
     gap: 5px;
+  }
+  .map-summary span {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .path-section {
+    padding: 28px 0 30px;
+  }
+  .path-heading h2 {
+    font-size: 16px;
+    line-height: 1.6;
   }
   .filter-bar {
     align-items: stretch;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
   }
   .view-filters {
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+  }
+  .view-filters button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 6px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .course-search {
+    min-width: 0;
+    min-height: 48px;
+    padding: 0 4px;
+  }
+  .course-search > span {
+    flex-shrink: 0;
   }
   .course-search input {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+    width: 0;
+    min-height: 46px;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .filter-result {
+    margin: 14px 0 24px;
+    font-size: 12px;
+    line-height: 1.7;
   }
   .course-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .section-heading {
+    gap: 12px;
+    margin: 24px 0 16px;
+  }
+  .section-emblem {
+    flex-shrink: 0;
+  }
+  .section-heading h2 span {
+    font-size: 12px;
+    margin-left: 12px;
   }
   .section-description {
     display: none;
   }
+  .lesson-card {
+    min-width: 0;
+    min-height: 0;
+    padding: 18px 18px 16px;
+    overflow-wrap: anywhere;
+  }
+  .card-top {
+    gap: 12px;
+  }
+  .card-id,
+  .course-status {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .card-title {
+    margin-top: 12px;
+  }
+  .card-title h3 {
+    min-width: 0;
+    font-size: 17px;
+    line-height: 1.65;
+  }
+  .lesson-card > p {
+    font-size: 13px;
+    line-height: 1.85;
+    margin: 9px 0 16px;
+  }
+  .card-bottom {
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 11px;
+    line-height: 1.75;
+  }
+  .card-bottom > span:first-child {
+    flex-shrink: 0;
+  }
+  .card-bottom > span:last-child {
+    min-width: 0;
+  }
+  .empty-state {
+    padding: 42px 12px;
+    line-height: 1.8;
+  }
+  .empty-state button {
+    min-height: 44px;
+    font-size: 13px;
+  }
   .map-note {
-    padding: 20px;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px;
+    margin: 32px 0 26px;
+  }
+  .note-orbit {
+    flex-shrink: 0;
+  }
+  .map-note > div {
+    min-width: 0;
+  }
+  .map-note strong {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .map-note p {
+    font-size: 12px;
+    line-height: 1.85;
   }
   footer {
-    font-size: 8px;
-    gap: 20px;
+    flex-direction: column;
+    font-size: 10px;
+    line-height: 1.7;
+    gap: 8px;
+    padding: 22px 0 26px;
+  }
+  .hero-actions button,
+  .learning-path,
+  .view-filters button,
+  .empty-state button,
+  .lesson-card {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: #a0dfce18;
+  }
+}
+@media (hover: none) {
+  .lesson-card[href]:hover {
+    transform: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
