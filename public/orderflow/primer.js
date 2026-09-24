@@ -7,6 +7,7 @@ import {
   candleAt,
 } from "./primer-model.js";
 import { scenes, narrativeAt } from "./primer-script.js";
+import { desktopNarrativeAt } from "./primer-desktop-script.js";
 import { drawPrimer } from "./primer-view.js";
 import { mountStory } from "./story-player.js";
 const story = createPrimerStory();
@@ -16,7 +17,12 @@ mountStory({
   scenes,
   durations: SCENE_DURATIONS,
   position: scenePosition,
-  narrative: narrativeAt,
+  narrative: (scene, elapsed, reduced, mobile) =>
+    mobile
+      ? narrativeAt(scene, elapsed, reduced)
+      : desktopNarrativeAt(scene, elapsed, reduced),
+  continuousDesktop: true,
+  desktopSceneHold: 1800,
   nextStory: "./wick.html",
   render(p) {
     if (p.time !== stateTime) {

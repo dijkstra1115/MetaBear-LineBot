@@ -25,6 +25,10 @@
 
 舊版交易學院集中保存在 `public/orderflow/legacy/`，總覽入口 `/orderflow/legacy/`；版本與相容連結見 [舊版教學整理](docs/ACADEMY-LEGACY.md)。
 
+互動學院本地預覽：執行 `npm run build:site`，再執行 `npm run preview:academy`，開啟 <http://127.0.0.1:8790/orderflow/>。入口是課程地圖，可搜尋並篩選「可觀看／本次更新／完整規劃」，三條建議路線不限制自由選看。課程地圖統一顯示各課的完成狀態；名詞圖解使用簡短名稱，市場故事保留疑問句，沿用統一側欄、前置概念連結、連續播放、固定短字幕與整課回拖。本輪將未平倉量（OI）改為 K 線與 OI 全景進入四種開平倉組合，停損單加入限價先成交一半、餘量等待，並新增「放量突破，怎樣才算站穩？」的後續收盤觀察故事。「重返同一價位」、舊 CVD 故事及「標記價格」已移除，舊網址回到課程地圖。課程方向詳見 [課程架構](docs/ACADEMY-CURRICULUM.md) 與 [設計語言](docs/ACADEMY-DESIGN-LANGUAGE.md)。預覽只監聽本機，不會啟動後端或部署；本輪不調整手機專版。
+
+新 session 接續課程製作，請先閱讀 [互動學院交接指南](docs/ACADEMY-HANDOFF.md)，內含尚待製作題目、已確認的美感與鏡頭標準、最新修正及驗收流程。
+
 ### 訂單流量化研究室（獨立服務）
 
 原始行情收集：`npm run quant:collect`，獨立保存 BTC／ETH 永續 50／1000 檔訂單簿更新與現貨／永續逐筆成交，含斷線紀錄及回放驗證。詳見 [原始訂單流收集器](docs/QUANT-RECORDER.md)。
@@ -83,7 +87,6 @@ npm run build
 - 首頁使用固定美元行情快照，資料集中於 `web/market-data.js`，包含報價、日期、每日開高低收數列與來源。更新時一併查證並替換資料，執行 `npm run build:site`。
 - BTC／ETH 報價來源為 CoinGecko，K 線來源為 CoinLore，美股為 QQQ（Nasdaq-100 ETF），來源為 Stock Analysis。價格為查詢時快照，走勢為有日期的日 K 線（綠漲紅跌），兩者分別標示日期。
 - 不載入外部行情圖表，不自動更新；頁面標示「固定快照 · 非即時行情」。
-
 
 ### 支撐與壓力教學
 
