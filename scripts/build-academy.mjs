@@ -120,6 +120,10 @@ export async function buildAcademy() {
   }
   map = map
     .replace(
+      /(id="filter-result"[^>]*>)[^<]*/,
+      `$1${counts["available-count"]} 堂可觀看課程`,
+    )
+    .replace(
       /<!-- paths:start -->[\s\S]*?<!-- paths:end -->/,
       `<!-- paths:start -->${renderPaths()}<!-- paths:end -->`,
     )
