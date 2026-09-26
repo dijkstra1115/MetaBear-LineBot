@@ -31,6 +31,14 @@
 
 也可開啟[報價方向對照](http://127.0.0.1:8790/orderflow/taker-compare.html)：同種子並排比較「買賣方向獨立隨機」與「抽到現價下方就賣、上方就買」兩種限價委託模式。只有目標價碰到可成交對手價才撮合，否則掛單。兩張 K 線共用價格座標，並列顯示成交率、當下簿上量與到期撤單。
 
+### 現貨交易沙盒
+
+開啟 [交易沙盒](http://127.0.0.1:8790/orderflow/exchange.html)。完整獨立現貨市場，四種背景參與者持續掛單、撤單與撮合；開局持有 25,000 USDT 與 250 BEAR。支援限價／市價、資產預留、手續費、深度與 K 線、暫停、1–10 倍速、最近 20 分鐘倒帶與重新操作。進度自動儲存在此瀏覽器，無外部行情或真實資金連線。
+
+可選 Footprint、CVD、掛單熱力圖、Delta 與成交量；滾輪／雙指縮放、拖曳歷史，拉近後顯示 Footprint。保留 4,320 根 10 秒 K 線，支援 10 秒至 5 分週期，IndexedDB 存檔相容舊進度。現貨不提供 OI。
+
+使用下方既有 `preview:academy` 預覽即可，不需要後端或伺服器資料庫。`npm run test:exchange` 驗證撮合、帳務、NPC 與重播。設計規則及交接見 [交易沙盒](docs/EXCHANGE-SANDBOX.md)。
+
 舊版交易學院集中保存在 `public/orderflow/legacy/`，總覽入口 `/orderflow/legacy/`；版本與相容連結見 [舊版教學整理](docs/ACADEMY-LEGACY.md)。
 
 互動學院本地預覽：執行 `npm run build:site`；確認 8790 尚未運作時才執行 `npm run preview:academy`，開啟 [課程地圖](http://127.0.0.1:8790/orderflow/courses.html)。18 堂課皆可觀看，可搜尋並篩選「可觀看／本次更新／完整規劃」，三條建議路線不限制自由選看。沿用統一側欄、前置概念連結、連續播放、固定短字幕與整課正反回拖。
