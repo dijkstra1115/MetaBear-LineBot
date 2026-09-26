@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>流動性實驗室 · MetaBear</title>
+  <link rel="stylesheet" href="./liquidity-lab.css" />
+  <script type="module" src="./liquidity-lab.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./courses.html"><span class="brand-mark">M</span><span>METABEAR<small>ORDER FLOW LAB</small></span></a>
+    <nav aria-label="頁面導覽"><a href="./taker-only.html">隨機限價委託 ↗</a><a href="./taker-compare.html">報價方向對照 ↗</a><a href="./challenge.html">合約挑戰 ↗</a><a href="./courses.html">返回學院 ↗</a></nav>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="hero-copy"><span class="eyebrow"><i></i> EXPERIMENT 001 / ZERO-INTELLIGENCE ORDER BOOK</span><h1>同一串買賣，<br /><em>不同的流動性。</em></h1><p>四個市場共用完全相同的隨機 taker 訂單。調整 maker 的掛單距離與保留時間，再比較不同到達率下，成交價格如何由委託簿逐筆形成。</p></div>
+      <div class="hero-controls"><label for="seed">隨機種子 <span>SEED</span></label><div><input id="seed" type="number" min="1" max="4294967295" step="1" value="44021" /><button id="run" type="button">重跑實驗 ↗</button></div><button id="shuffle" class="shuffle" type="button">換一組 taker 訂單</button><p id="taker-count" aria-live="polite">—</p></div>
+    </section>
+    <section class="maker-controls" aria-label="Maker 掛單參數"><div class="maker-intro"><strong>Maker 報價實驗</strong><span>固定種子時，改動下列參數不會重抽 taker 訂單。</span></div><label for="distance">距中間價的掛單位置<select id="distance"><option value="0.6">靠近 · 原距離 × 0.6</option><option value="1" selected>原本 · 原距離 × 1</option><option value="1.8">較遠 · 原距離 × 1.8</option></select></label><label for="lifetime">掛單保留時間<select id="lifetime"><option value="1">原本 · 50–130 秒</option><option value="3" selected>較久 · 150–390 秒</option><option value="6">很久 · 300–780 秒</option></select></label><p id="maker-note">變更參數後會同步重算四張 K 線與下方 40 組平均值。</p></section>
+    <section class="scale-row" aria-label="圖表尺度"><div><strong>逐局比較</strong><span>每張圖使用同一段時間與同一組 taker；maker 候選亂數也相同。</span></div><fieldset><legend>價格尺度</legend><label><input type="radio" name="scale" value="shared" checked /> 共用縱軸</label><label><input type="radio" name="scale" value="individual" /> 各自縮放</label></fieldset></section>
+    <div id="paths" class="paths" aria-live="polite"></div>
+    <section class="batch"><div class="batch-heading"><div><span class="eyebrow">ROBUSTNESS CHECK</span><h2>跨 40 組種子的平均結果</h2></div><p>每組都重新生成 taker 與 maker 候選亂數；同組四種條件仍共享 taker 訂單。這是模擬內部對照，不是與真實市場的實證比較。</p></div><div class="table-wrap"><table><thead><tr><th>Maker / Taker 到達率</th><th>價格區間</th><th>平均價差</th><th>每筆 taker 價格變動</th><th>波動聚集*</th><th>成交率</th><th>空簿時間</th></tr></thead><tbody id="batch-rows"></tbody></table></div><p class="batch-footnote">* 相鄰 K 線絕對報酬的相關係數；正值表示大幅波動較容易接連出現。</p></section>
+    <section class="method"><span class="eyebrow">METHOD / READ THIS BEFORE INTERPRETING PATTERNS</span><div class="method-grid"><p><strong>控制變數</strong>taker 到達、方向與數量事先生成；買賣方向各 50%。Maker 的方向、基準報價距離、數量與基準存活時間也隨機生成。沒有固定劇情、外部價格路徑或事後修改 K 線。</p><p><strong>變動的條件</strong>每個時間步有 8 次 maker 候選機會；接受機率隨標示的 maker／taker 到達率改變。掛單距離與保留時間可獨立調整；掛單一律被動，會被成交或到期撤除。</p><p><strong>解讀界線</strong>價格區間變大不等於更真實或更可預測。空簿時市價單無法成交，最後成交價會暫停更新。要判斷接近真實市場，下一步須與真實逐筆與委託簿資料比較。</p></div></section>
+  </main>
+  <footer><span>METABEAR / LIQUIDITY LAB</span><span>可重現 · 無真實交易 · 桌面實驗</span></footer>
+</body>
+</html>

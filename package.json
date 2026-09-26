@@ -26,6 +26,7 @@
     "deploy:staging": "wrangler deploy --env staging",
     "build:site": "node scripts/build-site.mjs",
     "preview:academy": "node scripts/orderflow-preview.mjs",
+    "test:liquidity-lab": "node --test tests/liquidity-lab.test.mjs",
     "predev": "npm run build:site",
     "prebuild": "npm run build:site",
     "prebuild:staging": "npm run build:site",

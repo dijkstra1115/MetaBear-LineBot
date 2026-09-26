@@ -23,6 +23,14 @@
 
 ## 開始使用
 
+### 隨機 maker／taker 流動性實驗
+
+執行 `npm run preview:academy`，開啟[流動性實驗室](http://127.0.0.1:8790/orderflow/liquidity-lab.html)。四個市場重播同一串隨機 taker 訂單，只改 maker 限價單的到達率；並排比較 K 線、價差、成交率與空簿時間，另附 40 組種子的平均結果。方法與解讀界線見[實驗說明](docs/LIQUIDITY-LAB.md)。
+
+另可開啟[隨機限價委託的連續市場](http://127.0.0.1:8790/orderflow/taker-only.html)：每筆固定 1 BEAR，在最新成交價 ±1% 內隨機出價，能撮合就成交，剩餘量留在簿上。成交 K 線背後疊加歷史掛單熱圖；可暫停、改速度、換種子，並即時調整掛單保留時間與觀察到期撤單量。模擬沒有固定結束時間。
+
+也可開啟[報價方向對照](http://127.0.0.1:8790/orderflow/taker-compare.html)：同種子並排比較「買賣方向獨立隨機」與「抽到現價下方就賣、上方就買」兩種限價委託模式。只有目標價碰到可成交對手價才撮合，否則掛單。兩張 K 線共用價格座標，並列顯示成交率、當下簿上量與到期撤單。
+
 舊版交易學院集中保存在 `public/orderflow/legacy/`，總覽入口 `/orderflow/legacy/`；版本與相容連結見 [舊版教學整理](docs/ACADEMY-LEGACY.md)。
 
 互動學院本地預覽：執行 `npm run build:site`；確認 8790 尚未運作時才執行 `npm run preview:academy`，開啟 [課程地圖](http://127.0.0.1:8790/orderflow/courses.html)。18 堂課皆可觀看，可搜尋並篩選「可觀看／本次更新／完整規劃」，三條建議路線不限制自由選看。沿用統一側欄、前置概念連結、連續播放、固定短字幕與整課正反回拖。
