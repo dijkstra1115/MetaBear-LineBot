@@ -595,6 +595,11 @@ noscript {
   .brand > span {
     display: none;
   }
+  .map-header nav > a.preview-indicator {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
   .map-hero {
     grid-template-columns: minmax(0, 1fr);
     padding: 32px 0 28px;

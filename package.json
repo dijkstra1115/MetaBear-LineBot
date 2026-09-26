@@ -27,6 +27,8 @@
     "build:site": "node scripts/build-site.mjs",
     "preview:academy": "node scripts/orderflow-preview.mjs",
     "test:exchange": "node --test tests/exchange.test.mjs",
+    "test:challenge": "node --test tests/challenge.test.mjs",
+    "test:flow-arena": "node --test tests/flow-arena.test.mjs tests/taker-only.test.mjs",
     "test:liquidity-lab": "node --test tests/liquidity-lab.test.mjs",
     "predev": "npm run build:site",
     "prebuild": "npm run build:site",
