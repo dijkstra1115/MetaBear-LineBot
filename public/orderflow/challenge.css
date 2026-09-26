@@ -192,3 +192,18 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 @keyframes dialog-in{from{opacity:0;transform:scale(.85) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 @media(max-width:1400px){.workbench{grid-template-columns:206px minmax(0,1fr) 238px;gap:8px}.hud{grid-template-columns:minmax(200px,1.2fr) 124px 1.1fr 1fr 120px auto}.hud-cell strong{font-size:21px}.hud-equity strong{font-size:22px}.hud>div{padding:9px 12px}.market-head-metrics{gap:10px;padding-left:10px}.quick-actions .quick-buy,.quick-actions .quick-sell{min-width:118px}.quick-trade button{padding:0 9px}.quick-size button{min-width:40px}}
+
+/* Hidden players, reading notes and the post-round review */
+.actor-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}.actor-list li{display:grid;gap:2px;padding-left:10px;border-left:2px solid #4a6b70}.actor-list b{font-size:11px;color:var(--ink)}.actor-list span{color:#849fa7;font-size:10px;line-height:1.5}
+.guide-panel{padding:0!important}.guide-panel summary{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;color:#8fa9af;font-size:10px;cursor:pointer;list-style:none}.guide-panel summary::-webkit-details-marker{display:none}.guide-panel[open] summary{border-bottom:1px solid #29404b}
+.guide-panel ol{margin:0;padding:10px 14px 12px 30px;display:grid;gap:7px;color:#a8bfc1;font-size:10px;line-height:1.55}.guide-panel b{color:var(--gold)}
+.fx-label.amber{color:#2e2206;background:linear-gradient(90deg,#f2c575,#ffe7ad);box-shadow:0 0 22px #f2c575aa}
+.result-review{padding:14px 22px 0}.result-review>span{font:10px Consolas,monospace;color:var(--mint);letter-spacing:.1em}
+.result-review ol{margin:8px 0 0;padding-left:18px;display:grid;gap:7px;color:#d6e6e2;font-size:11px;line-height:1.6}
+.review-episodes{display:grid;gap:6px;margin-top:8px;max-height:210px;overflow:auto}
+.episode-row{display:grid;grid-template-columns:82px 1fr auto;gap:4px 8px;align-items:center;padding:7px 9px;border-radius:5px;background:#0d2029;border-left:3px solid var(--mint);font:11px Consolas,monospace}.episode-row.loss{border-left-color:var(--coral)}
+.episode-row span{color:#7f9ca3}.episode-row em{font-style:normal;font-weight:700}.episode-row.gain em{color:var(--mint)}.episode-row.loss em{color:var(--coral)}
+.episode-tags{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px}.episode-tags i{font-style:normal;padding:2px 6px;border-radius:3px;background:#1a3440;color:#a9c3c6;font-size:10px}.episode-tags .tag-gold{background:#40341a;color:var(--gold)}.episode-tags .tag-amber{background:#3d3218;color:#ffd98e}.episode-tags .tag-coral{background:#3f1f29;color:#ffb3bf}
+.review-reveals{margin:6px 0 0;padding-left:18px;display:grid;gap:5px;color:#b4c9c8;font-size:11px;line-height:1.6}
+.mobile-notice{display:none;margin:0 0 10px;padding:10px 14px;border:1px solid #c9a45a;border-radius:8px;background:#3a2f17;color:#f7e2b0;font-size:13px;line-height:1.6}.mobile-notice a{color:var(--gold);text-decoration:underline}
+@media(max-width:900px){.mobile-notice{display:block;position:sticky;left:0;max-width:calc(100vw - 32px)}}

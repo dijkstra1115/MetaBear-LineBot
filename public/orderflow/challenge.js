@@ -15,8 +15,9 @@ const size = (lots) => fmt(lots / 100, lots % 100 === 0 ? 0 : 2);
 const btc = (lots) => `${fmt(lots / 100, lots >= 1000 ? 0 : 1)} BTC`;
 const clock = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const numberClass = (value) => value > 0 ? "positive" : value < 0 ? "negative" : "";
-const grade = (score, qualified = true) => !qualified ? "D" : score >= 250 ? "S" : score >= 120 ? "A" : score >= 50 ? "B" : score > 0 ? "C" : "D";
-const STORAGE_KEY = "metabear-flow-arena-v4";
+const grade = (score, qualified = true) => !qualified ? "D" : score >= 200 ? "S" : score >= 100 ? "A" : score >= 40 ? "B" : score > 0 ? "C" : "D";
+const STORAGE_KEY = "metabear-flow-arena-v5";
+const GUIDE_KEY = "metabear-flow-arena-guide";
 const PROFILE_KEY = "metabear-flow-arena-handle";
 const SOUND_KEY = "metabear-flow-arena-sound";
 const UNIT_SIZES = [10, 25, 50, 100];
@@ -24,6 +25,17 @@ const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").ma
 
 function randomSeed() {
   return crypto.getRandomValues(new Uint32Array(1))[0] || 1;
+}
+
+// Everyone opening the daily market on the same local date gets the same seed.
+function dailyKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function dailySeed(key = dailyKey()) {
+  let hash = 2166136261;
+  for (const character of `flow-arena:${key}`) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0;
+  return hash || 1;
 }
 
 function encodeChallenge(data) {
@@ -307,6 +319,12 @@ function processExecution() {
     ring(point.x, point.y, up ? "mint" : "coral", Math.min(1, Math.abs(execution.impact) / 2));
   }
   if (execution.lots >= 2500) shake(execution.lots >= 5000 ? 2 : 1);
+  // The visible book promised a bigger move: something hidden absorbed the order.
+  if (execution.stalled) {
+    floatLabel("推不動！", point.x - 40, point.y + (up ? -30 : 30), "amber", true);
+    tone(160, 0.3, "square", 0.03, 110);
+    setMessage(`預估推動 ${execution.expectedMove >= 0 ? "+" : ""}${fmt(execution.expectedMove)}%，實際只有 ${execution.impact >= 0 ? "+" : ""}${fmt(execution.impact)}%：簿上看不到的${execution.side === "buy" ? "賣單" : "買單"}在吸收你的單。`, true);
+  }
   $("last-slippage").textContent = `${execution.slippage >= 0 ? "" : "−"}${fmt(Math.abs(execution.slippage), 2)}%`;
   $("last-slippage").className = execution.slippage > 0.5 ? "negative" : "";
 }
@@ -365,7 +383,7 @@ function renderOrders() {
 function renderBoard() {
   const container = $("leaderboard-list");
   container.replaceChildren();
-  const top = records.filter((row) => row.mode === "random").sort((a, b) => b.score - a.score).slice(0, 5);
+  const top = records.filter((row) => row.mode === "random" || row.mode === "daily").sort((a, b) => b.score - a.score).slice(0, 5);
   if (!top.length) {
     const empty = document.createElement("p");
     empty.className = "board-empty";
@@ -379,7 +397,7 @@ function renderBoard() {
     button.className = "board-entry";
     button.dataset.record = String(record.id);
     const rank = document.createElement("span"); rank.className = "rank"; rank.textContent = grade(record.score, record.qualified);
-    const label = document.createElement("span"); label.className = "run-id"; label.textContent = `市場 #${String(record.seed).slice(-5)}`;
+    const label = document.createElement("span"); label.className = "run-id"; label.textContent = record.mode === "daily" ? `每日 ${record.day ?? ""}` : `市場 #${String(record.seed).slice(-5)}`;
     const score = document.createElement("strong"); score.textContent = record.score.toLocaleString("zh-TW");
     const detail = document.createElement("small"); detail.textContent = `${signed(record.roi)}% · 引爆 ${compactMoney(record.ignitedValue ?? 0)} · ${index === 0 ? "最佳" : "挑戰"}`;
     button.append(rank, label, score, detail);
@@ -432,7 +450,7 @@ function renderPreview() {
     const crossed = levels.reduce((sum, row) => side === "buy"
       ? sum + (row.price > last && row.price <= preview.worstPrice ? row.short : 0)
       : sum + (row.price < last && row.price >= preview.worstPrice ? row.long : 0), 0);
-    box.innerHTML = `${side === "buy" ? "▲" : "▼"} ${unitSize} BTC 推到 <b>${price(preview.worstPrice)}</b> (${move >= 0 ? "+" : ""}${fmt(move)}%)${crossed ? ` · <strong>穿過 ${btc(crossed)} ${side === "buy" ? "空單" : "多單"}強平</strong>` : ""}`;
+    box.innerHTML = `${side === "buy" ? "▲" : "▼"} ${unitSize} BTC 依可見掛單推到 <b>${price(preview.worstPrice)}</b> (${move >= 0 ? "+" : ""}${fmt(move)}%)${crossed ? ` · <strong>穿過 ${btc(crossed)} ${side === "buy" ? "空單" : "多單"}強平</strong>` : ""}`;
     box.classList.toggle("hot", crossed >= 800);
   }
 }
@@ -448,7 +466,7 @@ function render() {
   const priceChange = (market.last / run.startPrice - 1) * 100;
   const mark = run.markPrice();
   const floating = account.position * (mark - account.entry) * ARENA_CONTRACT_BTC / 10000;
-  $("mode-badge").textContent = mode === "random" ? "未知隨機市場" : mode === "shadow" ? `影子挑戰 / ${ghost?.name ?? "玩家"}` : "練習重玩";
+  $("mode-badge").textContent = mode === "random" ? "未知隨機市場" : mode === "daily" ? `每日市場 ${dailyKey()}` : mode === "shadow" ? `影子挑戰 / ${ghost?.name ?? "玩家"}` : "練習重玩";
   $("seed-label").textContent = mode === "random" && !run.finished ? "SEED HIDDEN" : `SEED ${run.seed}`;
   const remaining = Math.max(0, run.duration - run.time);
   $("clock").textContent = clock(remaining);
@@ -575,20 +593,70 @@ function drawChart(now) {
 }
 
 function saveResult(result) {
-  const record = { ...result, mode, id: Date.now() + Math.floor(Math.random() * 1000) };
+  const record = { ...result, mode, day: mode === "daily" ? dailyKey() : null, id: Date.now() + Math.floor(Math.random() * 1000) };
   records.unshift(record);
   records = records.sort((a, b) => b.score - a.score).slice(0, 40);
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch { /* Local preview remains playable. */ }
   renderBoard();
 }
 
+function listItem(tag, text, className = "") {
+  const item = document.createElement(tag);
+  if (className) item.className = className;
+  item.textContent = text;
+  return item;
+}
+
+// Post-round review: coaching notes, each position, and what the hidden players did.
+function renderReview() {
+  const review = run.review();
+  const notes = $("review-notes");
+  notes.replaceChildren();
+  const texts = review.notes.map((note) => note.text);
+  if (!texts.length) texts.push(review.episodes.length ? "沒有明顯失誤：挑對亮帶、推得動、出得乾淨。下一局試著加大部位或多抓一次反手。" : "這局沒有開倉。先找一條近、夠亮、前面沒有牆的亮帶，用 10 BTC 試探看看。");
+  for (const text of texts) notes.append(listItem("li", text));
+
+  const episodes = $("review-episodes");
+  episodes.replaceChildren();
+  if (!review.episodes.length) episodes.append(listItem("p", "沒有持倉紀錄。", "empty-state"));
+  for (const episode of review.episodes.slice(-8)) {
+    const row = document.createElement("div");
+    row.className = `episode-row ${episode.pnl >= 0 ? "gain" : "loss"}`;
+    row.append(
+      listItem("span", `${clock(Math.max(0, episode.start))}–${clock(Math.max(0, episode.end))}`),
+      listItem("strong", `${episode.direction > 0 ? "多" : "空"} ${size(episode.peakLots)} BTC`),
+      listItem("em", money(episode.pnl)),
+    );
+    const tags = document.createElement("div");
+    tags.className = "episode-tags";
+    if (episode.ignited) tags.append(listItem("i", `引爆 ${btc(episode.ignited)}`, "tag-gold"));
+    if (episode.absorbed >= 100) tags.append(listItem("i", `撞冰山 ${btc(episode.absorbed)}`, "tag-amber"));
+    if (episode.slippage >= 5000) tags.append(listItem("i", `滑價 ${compactMoney(episode.slippage)}`, "tag-coral"));
+    if (episode.bestMove != null) tags.append(listItem("i", `最佳 ${signed(episode.bestMove)}% → 出場 ${signed(episode.exitMove)}%`));
+    if (episode.hunted) tags.append(listItem("i", "被獵手盯上", "tag-coral"));
+    row.append(tags);
+    episodes.append(row);
+  }
+
+  const reveals = $("review-reveals");
+  reveals.replaceChildren();
+  if (!review.defenders.length) reveals.append(listItem("li", "護盤者：這局沒有人守亮帶。"));
+  for (const defender of review.defenders) {
+    const status = defender.status === "broken" ? `第 ${defender.brokenAt} 秒被吃穿` : defender.status === "withdrawn" ? "價格遠離後撤單" : "守到最後";
+    reveals.append(listItem("li", `護盤者：在 ${price(defender.price)} 藏了 ${btc(defender.total)} 冰山${defender.side === "sell" ? "賣單" : "買單"}，守住 ${price(defender.band)} 的 ${btc(defender.bandLots)} ${defender.side === "sell" ? "空單" : "多單"}強平帶；吃掉 ${btc(defender.absorbed)}${defender.fromPlayer ? `（其中 ${btc(defender.fromPlayer)} 是你的單）` : ""}，${status}。`));
+  }
+  const strikes = review.hunter.strikes;
+  const aimed = strikes.filter((strike) => strike.target === "player").length;
+  reveals.append(listItem("li", strikes.length ? `獵手：出手 ${strikes.length} 次${aimed ? `，其中 ${aimed} 次瞄準你的強平價` : ""}，損益 ${money(review.hunter.pnl)}。` : "獵手：這局沒有找到值得出手的目標。"));
+}
+
 function showResult() {
   const result = run.result ?? run.finish();
-  const best = records.filter((row) => row.mode === "random").reduce((top, row) => Math.max(top, row.score), 0);
+  const best = records.filter((row) => row.mode === mode && (mode !== "daily" || row.day === dailyKey())).reduce((top, row) => Math.max(top, row.score), 0);
   if (!run.saved) { saveResult(result); run.saved = true; }
   playing = false;
   const letter = grade(result.score, result.qualified);
-  $("result-label").textContent = result.qualified ? (result.score > best && mode === "random" ? "新紀錄！本局成績" : "本局最終成績") : "帳戶已被強平";
+  $("result-label").textContent = result.qualified ? (result.score > best && (mode === "random" || mode === "daily") ? "新紀錄！本局成績" : "本局最終成績") : "帳戶已被強平";
   $("result-score").textContent = String(result.score).padStart(4, "0");
   $("result-grade").textContent = letter;
   $("result-grade").className = `grade-${letter}`;
@@ -602,6 +670,7 @@ function showResult() {
   $("result-ignited").textContent = compactMoney(result.ignitedValue);
   $("result-cascade").textContent = `${fmt(result.biggestCascadeUnits, 1)} BTC`;
   $("result-reveal").textContent = `隱藏大戶分批${result.whaleSide === "buy" ? "買進" : "賣出"}，送出 ${result.whaleOrders} 筆子單。本局共 ${fmt(result.liquidatedUnits, 1)} BTC 槓桿倉被強平，其中 ${fmt(result.ignitedUnits, 1)} BTC 由你推價觸發。${result.news.length ? `事件：${result.news.join("、")}。` : "本局沒有突發消息。"}`;
+  renderReview();
   $("share-status").textContent = "連結包含種子與影子分數，可傳給朋友挑戰。";
   if (!$("result-dialog").open) $("result-dialog").showModal();
   if (result.qualified && result.score > 0) {
@@ -644,7 +713,7 @@ function beginNew(seed, nextMode = "random", nextGhost = null) {
   $("particle-layer").replaceChildren();
   $("fx-layer").replaceChildren();
   if ($("result-dialog").open) $("result-dialog").close();
-  if (nextMode === "random") history.replaceState(null, "", location.pathname);
+  if (nextMode === "random" || nextMode === "daily") history.replaceState(null, "", location.pathname);
   render();
 }
 
@@ -712,6 +781,7 @@ function frame(now) {
 
 $("play-button").addEventListener("click", togglePlay);
 $("new-button").addEventListener("click", () => beginNew(randomSeed()));
+$("daily-button").addEventListener("click", () => beginNew(dailySeed(), "daily"));
 document.querySelectorAll("[data-unit]").forEach((button) => button.addEventListener("click", () => setUnit(Number(button.dataset.unit))));
 document.querySelectorAll("[data-layer]").forEach((button) => button.addEventListener("click", () => {
   chartView.layer = button.dataset.layer;
@@ -815,6 +885,10 @@ document.addEventListener("keydown", (event) => {
   else if (key === " ") { event.preventDefault(); togglePlay(); }
 });
 try { $("handle").value = localStorage.getItem(PROFILE_KEY) || ""; } catch { /* Optional profile. */ }
+try { if (localStorage.getItem(GUIDE_KEY) === "closed") $("guide-panel").open = false; } catch { /* Optional preference. */ }
+$("guide-panel").addEventListener("toggle", () => {
+  try { localStorage.setItem(GUIDE_KEY, $("guide-panel").open ? "open" : "closed"); } catch { /* Optional preference. */ }
+});
 renderSoundToggle();
 renderBoard();
 render();

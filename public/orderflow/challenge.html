@@ -17,10 +17,11 @@
     <a class="brand" href="./courses.html"><img src="/favicon-v2.png" width="28" height="28" alt="" />MetaBear<span>互動學院</span></a>
     <div class="top-divider"></div>
     <div class="top-product"><span class="live-dot"></span> FLOW ARENA <em>/</em> LIQUIDATION HUNT</div>
-    <div class="top-links"><span class="test-badge">DESKTOP PLAYTEST · V4</span><a href="./exchange.html">交易沙盒 ↗</a><a href="./taker-compare.html">市場實驗 ↗</a><a href="./courses.html">返回學院 ↗</a></div>
+    <div class="top-links"><span class="test-badge">DESKTOP PLAYTEST · V5</span><a href="./exchange.html">交易沙盒 ↗</a><a href="./taker-compare.html">市場實驗 ↗</a><a href="./courses.html">返回學院 ↗</a></div>
   </header>
 
   <main id="main" class="app-shell">
+    <p class="mobile-notice">合約挑戰目前是桌面版，手機上畫面會很擠。建議用電腦遊玩，或先到 <a href="./exchange.html">交易沙盒</a> 或 <a href="./courses.html">課程地圖</a>。</p>
     <section class="hud" aria-label="本局狀態">
       <div class="hud-title"><span class="eyebrow"><i></i> BTC 合約挑戰 · 120 秒</span><strong>推動市場，<em>引爆槓桿。</em></strong><small><span id="mode-badge">未知隨機市場</span> · <span id="seed-label">SEED HIDDEN</span></small></div>
       <div class="hud-cell hud-clock"><span>ROUND CLOCK</span><strong id="clock">02:00</strong><i id="clock-fill"></i></div>
@@ -30,6 +31,7 @@
       <div class="hud-controls">
         <button id="play-button" class="button-primary" type="button">▶ 開始交易</button>
         <button id="new-button" class="button-outline" type="button" title="換一個隨機市場">↻ 新市場</button>
+        <button id="daily-button" class="button-outline" type="button" title="同一天所有人都打同一個市場">📅 每日市場</button>
         <label class="speed-select">速度 <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
         <button id="sound-toggle" class="button-outline" type="button" aria-pressed="true">♫ 音效開</button>
         <span id="run-status"><i></i> 等待開始</span>
@@ -46,7 +48,23 @@
           <p>推穿亮帶會觸發強平市價單，強平又推價、再觸發下一帶。推不到亮帶的單子，造市商會慢慢拉回。</p>
         </section>
         <section class="panel feed-panel"><div class="panel-title"><span class="eyebrow">LIQUIDATION TAPE</span><span class="mini-indicator">● LIVE</span></div><div id="liq-feed" class="liq-feed"><p class="empty-state">還沒有人被強平</p></div></section>
-        <section class="panel rival-panel"><div class="panel-title"><span class="eyebrow">HIDDEN WHALE</span><span class="rival-icon">◈</span></div><h3>一位大戶正在分批執行</h3><p>方向與目標結算後揭曉。它的大額成交會出現在跑馬燈與足跡圖。</p></section>
+        <section class="panel rival-panel"><div class="panel-title"><span class="eyebrow">HIDDEN PLAYERS</span><span class="rival-icon">◈</span></div>
+          <ul class="actor-list">
+            <li><b>大戶</b><span>分批買或賣，方向結算才揭曉。</span></li>
+            <li><b>護盤者</b><span>有些亮帶前面藏著冰山單，簿上只露幾 BTC。</span></li>
+            <li><b>獵手</b><span>也在獵亮帶；你的部位太重時，會改獵你的強平價。</span></li>
+          </ul>
+        </section>
+        <details class="panel guide-panel" id="guide-panel" open><summary><span class="eyebrow">READING NOTES</span><span>讀盤筆記</span></summary>
+          <ol>
+            <li><b>先算帳</b>：亮帶的量要大於你推到那裡要花的單量，而且越近越好。</li>
+            <li><b>看有沒有牆</b>：切到「掛單熱圖」，亮帶前面若有一條不動的掛單線，可能有人守著。</li>
+            <li><b>先試探</b>：沒把握時先丟 10 BTC。推不動、成交全堆在同一價位，就是冰山。</li>
+            <li><b>跟著撤</b>：金色「疑似冰山」線出現時，別往上撞；推不動的人稍後會被拉回。</li>
+            <li><b>快進快出</b>：連環爆倉停下後造市商會拉回，大部位出場也會滑價。</li>
+            <li><b>別被獵</b>：曝險太高、強平價太近時，獵手會來掃你。</li>
+          </ol>
+        </details>
         <section class="panel leaderboard"><div class="panel-title"><span class="eyebrow">LOCAL RUNS</span><span>本機紀錄</span></div><div id="leaderboard-list" class="leaderboard-list"></div></section>
       </aside>
 
@@ -89,7 +107,7 @@
     </div>
   </main>
 
-  <dialog id="result-dialog" class="result-dialog"><div class="result-top"><span>RUN COMPLETE / AFTER ACTION</span><button id="result-close" type="button" aria-label="關閉">✕</button></div><div class="result-hero"><span id="result-label">本局成績</span><div class="result-score-line"><strong id="result-score">0000</strong><b id="result-grade">—</b></div><em id="result-pnl">+$0</em><p id="result-summary"></p></div><div class="result-metrics"><div><span>淨報酬</span><strong id="result-roi"></strong></div><div><span>最大回撤</span><strong id="result-mdd"></strong></div><div><span>引爆爆倉</span><strong id="result-ignited"></strong></div><div><span>最大連環</span><strong id="result-cascade"></strong></div></div><div class="result-reveal"><span>盤後揭曉</span><p id="result-reveal"></p></div><div class="result-share"><label for="handle">分享名稱</label><input id="handle" maxlength="18" placeholder="匿名交易者" /><button id="share-button" type="button">複製影子挑戰連結 ↗</button><p id="share-status" role="status">連結包含種子與影子分數，可傳給朋友挑戰。</p></div><div class="result-actions"><button id="retry-button" type="button">重玩此市場</button><button id="next-button" type="button">新隨機市場 ↗</button></div></dialog>
-  <footer class="page-footer"><span>METABEAR / FLOW ARENA V4</span><span>虛構市場 · 模擬合約 · 無真實資金</span></footer>
+  <dialog id="result-dialog" class="result-dialog"><div class="result-top"><span>RUN COMPLETE / AFTER ACTION</span><button id="result-close" type="button" aria-label="關閉">✕</button></div><div class="result-hero"><span id="result-label">本局成績</span><div class="result-score-line"><strong id="result-score">0000</strong><b id="result-grade">—</b></div><em id="result-pnl">+$0</em><p id="result-summary"></p></div><div class="result-metrics"><div><span>淨報酬</span><strong id="result-roi"></strong></div><div><span>最大回撤</span><strong id="result-mdd"></strong></div><div><span>引爆爆倉</span><strong id="result-ignited"></strong></div><div><span>最大連環</span><strong id="result-cascade"></strong></div></div><div class="result-review"><span>教練筆記</span><ol id="review-notes"></ol></div><div class="result-review"><span>你的每一段持倉</span><div id="review-episodes" class="review-episodes"></div></div><div class="result-reveal"><span>盤後揭曉</span><p id="result-reveal"></p><ul id="review-reveals" class="review-reveals"></ul></div><div class="result-share"><label for="handle">分享名稱</label><input id="handle" maxlength="18" placeholder="匿名交易者" /><button id="share-button" type="button">複製影子挑戰連結 ↗</button><p id="share-status" role="status">連結包含種子與影子分數，可傳給朋友挑戰。</p></div><div class="result-actions"><button id="retry-button" type="button">重玩此市場</button><button id="next-button" type="button">新隨機市場 ↗</button></div></dialog>
+  <footer class="page-footer"><span>METABEAR / FLOW ARENA V5</span><span>虛構市場 · 模擬合約 · 無真實資金</span></footer>
 </body>
 </html>

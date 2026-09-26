@@ -43,10 +43,17 @@ export function arenaChartPriceAtY(canvas, run, view, clientY) {
   return clamp(Math.round(price / 1000) * 1000, 100, run.market.maxPrice); // $10 tick for chart orders.
 }
 
+// Tags placed during one draw; a new tag steps up or down until it clears the earlier ones.
+const placedTags = [];
+
 function tag(ctx, text, x, y, fill, ink, align = "left") {
   ctx.font = "bold 10px Consolas, monospace";
   const width = ctx.measureText(text).width + 12;
   const left = align === "right" ? x - width : x;
+  const clear = (top) => placedTags.every((rect) => left + width <= rect.left || left >= rect.left + rect.width || top + 18 <= rect.top || top >= rect.top + 18);
+  const offset = [0, 20, -20, 40, -40].find((step) => clear(y - 9 + step)) ?? 0;
+  y += offset;
+  placedTags.push({ left, top: y - 9, width });
   ctx.fillStyle = fill;
   ctx.fillRect(left, y - 9, width, 18);
   ctx.fillStyle = ink;
@@ -79,6 +86,7 @@ export function drawArenaChart(canvas, run, view = {}) {
     canvas.height = Math.round(height * dpr);
   }
   const ctx = canvas.getContext("2d");
+  placedTags.length = 0;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#091923";
@@ -193,6 +201,14 @@ export function drawArenaChart(canvas, run, view = {}) {
       tag(ctx, `${label} ${labelPrice(price)}`, plotRight - 4, y(price) - 11, "#12242de6", color, "right");
     }
   }
+  // Suspected icebergs: far more volume traded at one price than was ever shown there.
+  for (const signal of run.icebergSignals()) {
+    if (!visible(signal.price)) continue;
+    const yy = y(signal.price);
+    horizontal(ctx, left, plotRight, yy, "rgba(242,197,117,.9)", [10, 4], 1.8);
+    tag(ctx, `疑似冰山${signal.side === "sell" ? "賣單" : "買單"} · 已成交 ${units(signal.traded)} / 掛出 ${units(signal.shown)}`, left + (plotRight - left) * 0.36, yy + (signal.side === "sell" ? -12 : 12), "#3a2f17f0", "#f7d58e");
+  }
+
   for (const order of run.playerOrders()) {
     if (!visible(order.price)) continue;
     horizontal(ctx, left, plotRight, y(order.price), order.side === "buy" ? "#70e6c9aa" : "#fb7f91aa", [3, 3]);

@@ -4,7 +4,7 @@ import {
   TakerOnlyMarket,
 } from "./taker-only-engine.js";
 
-export const ARENA_VERSION = 4;
+export const ARENA_VERSION = 5;
 export const ARENA_DURATION = 120;
 export const ARENA_START_BALANCE = 10000000;
 export const ARENA_MAX_DRAWDOWN = 20;
@@ -22,6 +22,12 @@ const TAKER_FEE = 0.0005;
 const RETAIL_PER_SECOND = 10;
 const RETAIL_QUOTE_RANGE = 0.004;
 const MAKER_REFRESH_STEPS = 4;
+const MAKER_REFILL = 0.3;
+const MAKER_TOLERANCE = 0.35;
+const WHALE_STALE_DISTANCE = 0.012;
+const WHALE_STALE_AGE = 25;
+const DEFEND_CHANCE = 0.65;
+const HUNTER_MAX_LOTS = 4000;
 const FAIR_FOLLOW = 0.06;
 const MAKER_LEAN = 0.1;
 const VALUE_FOLLOW = 0.01;
@@ -39,6 +45,17 @@ const MAX_COHORTS = 520;
 const round = (value) => Math.round(value * 10000) / 10000;
 const notional = (price, lots) => price * lots / CONTRACT_DENOMINATOR;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+function insertPrice(prices, price) {
+  let low = 0;
+  let high = prices.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (prices[middle] < price) low = middle + 1;
+    else high = middle;
+  }
+  prices.splice(low, 0, price);
+}
 
 const HEADLINES = [
   { title: "全球關稅談判升溫", detail: "模擬快訊：賣方追價增加，造市商縮減近價掛單。", side: -1, depth: 0.6, activity: 1.35 },
@@ -75,6 +92,42 @@ class ArenaMarket extends TakerOnlyMarket {
     super(seed, lifetimeSeconds, FLOW_MODE_TARGET, options);
     this.simTime = 0;
     this.expiryDue = false;
+    this.orderIndex = new Map();
+  }
+
+  order(id) {
+    const order = this.orderIndex.get(id);
+    if (order && order.lots > 0) return order;
+    this.orderIndex.delete(id);
+    return null;
+  }
+
+  // Iceberg orders show a small display size and refill it from hidden size inside the
+  // matching loop, so one sweep keeps hitting the same price until the hidden size is gone.
+  removeResting(order, lots) {
+    super.removeResting(order, lots);
+    const iceberg = order.iceberg;
+    if (!iceberg || order.lots > 0 || iceberg.hidden <= 0) return;
+    const refill = Math.min(iceberg.display, iceberg.hidden);
+    iceberg.hidden -= refill;
+    iceberg.refills++;
+    const prices = order.side === "buy" ? this.bids : this.asks;
+    const levels = order.side === "buy" ? this.bidLots : this.askLots;
+    if (!levels.has(order.price)) insertPrice(prices, order.price);
+    levels.set(order.price, (levels.get(order.price) ?? 0) + refill);
+    order.lots = refill;
+    this.restingLots += refill;
+  }
+
+  // Canceling an iceberg drops its hidden size too; otherwise the removal would refill it.
+  cancel(id, owner) {
+    const order = this.order(id);
+    if (order?.iceberg && order.owner === owner) order.iceberg.hidden = 0;
+    return super.cancel(id, owner);
+  }
+
+  cancelIceberg(order) {
+    return this.cancel(order.id, order.owner);
   }
 
   candle() {
@@ -114,7 +167,10 @@ class ArenaMarket extends TakerOnlyMarket {
     const arrival = super.submit(side, price, lots, options);
     if (arrival.resting) {
       const order = this.restingOrders.at(-1);
-      if (order?.id === arrival.id) order.bornAt = this.simTime;
+      if (order?.id === arrival.id) {
+        order.bornAt = this.simTime;
+        this.orderIndex.set(order.id, order);
+      }
     }
     return arrival;
   }
@@ -138,12 +194,14 @@ class ArenaMarket extends TakerOnlyMarket {
   expireRetail() {
     this.expiryDue = true;
     this.expireOldOrders();
+    if (this.orderIndex.size > 4000) this.orderIndex = new Map(this.restingOrders.map((order) => [order.id, order]));
   }
 
   removeOwner(owner) {
     let count = 0;
     for (const order of this.restingOrders) {
       if (order.owner !== owner || !order.lots) continue;
+      if (order.iceberg) order.iceberg.hidden = 0;
       this.removeResting(order, order.lots);
       count++;
     }
@@ -227,7 +285,7 @@ export class FlowArenaRun {
       this.eventPlan.push({ ...headline, start, duration: this.rng.int(8, 13), happened: false });
     }
     this.activeEvent = null;
-    this.maker = { inventory: 0, maxInventory: 60000, fair: ARENA_INITIAL_PRICE, value: ARENA_INITIAL_PRICE, posted: 0, fills: 0 };
+    this.maker = { inventory: 0, maxInventory: 60000, fair: ARENA_INITIAL_PRICE, value: ARENA_INITIAL_PRICE, posted: 0, fills: 0, requotes: 0, quotes: new Map() };
     const whaleSide = this.rng.next() < 0.5 ? "buy" : "sell";
     const whaleStart = this.rng.int(14, 34);
     this.whale = {
@@ -238,7 +296,13 @@ export class FlowArenaRun {
       next: whaleStart,
       childOrders: 0,
       filled: 0,
+      orders: [],
+      canceled: 0,
     };
+    this.defenders = [];
+    this.hunter = { position: 0, entry: 0, realized: 0, next: this.rng.int(18, 32), exitAt: null, strike: null, strikes: [] };
+    this.episodes = [];
+    this.episode = null;
 
     // A warm-up market builds real history, resting depth and leveraged crowd positions.
     this.warming = true;
@@ -253,6 +317,7 @@ export class FlowArenaRun {
     this.rebase(ARENA_INITIAL_PRICE);
     this.seedTrappedCrowds();
     this.actMaker(false);
+    this.seedDefenders();
     this.market.captureDepth();
     this.warming = false;
     this.startPrice = this.market.last;
@@ -264,6 +329,7 @@ export class FlowArenaRun {
     const shift = rebaseMarket(this.market, target);
     this.maker.fair += shift;
     this.maker.value += shift;
+    for (const quote of this.maker.quotes.values()) quote.price += shift;
     this.priceTrail = this.priceTrail.map((price) => price + shift);
     for (const cohort of this.cohorts) {
       cohort.entry += shift;
@@ -407,7 +473,71 @@ export class FlowArenaRun {
     account.balance = round(account.balance + realized - fee);
     account.realized = round(account.realized + realized);
     account.fees = round(account.fees + fee);
+    this.trackEpisode(old, next, direction, lots, trade.price, realized, fee);
     return realized;
+  }
+
+  // One episode runs from flat to flat (a flip closes one and opens the next).
+  trackEpisode(old, next, direction, lots, price, realized, fee) {
+    if (!old && next) this.openEpisode(Math.sign(next));
+    const episode = this.episode;
+    if (!episode) return;
+    const closing = old && Math.sign(old) !== direction ? Math.min(Math.abs(old), lots) : 0;
+    const opening = lots - closing;
+    episode.fees += fee;
+    episode.realized += realized;
+    if (closing) {
+      episode.exitLots += closing;
+      episode.exitValue += price * closing;
+    }
+    if (direction === episode.direction && opening) {
+      episode.entryLots += opening;
+      episode.entryValue += price * opening;
+    }
+    episode.peakLots = Math.max(episode.peakLots, Math.abs(next));
+    if (!next || Math.sign(next) !== episode.direction) {
+      this.closeEpisode();
+      if (next) {
+        this.openEpisode(Math.sign(next));
+        this.episode.entryLots = Math.abs(next);
+        this.episode.entryValue = price * Math.abs(next);
+        this.episode.peakLots = Math.abs(next);
+      }
+    }
+  }
+
+  openEpisode(direction) {
+    this.episode = {
+      start: this.time, end: null, direction, peakLots: 0, entryLots: 0, entryValue: 0, exitLots: 0, exitValue: 0,
+      realized: 0, fees: 0, slippage: 0, absorbed: 0, stalled: 0, pushes: 0,
+      ignitedStart: this.stats.ignitedLots, best: this.market.last, bestAt: this.time, hunted: false,
+    };
+  }
+
+  closeEpisode() {
+    const episode = this.episode;
+    if (!episode) return;
+    episode.end = this.time;
+    episode.avgEntry = episode.entryLots ? Math.round(episode.entryValue / episode.entryLots) : null;
+    episode.avgExit = episode.exitLots ? Math.round(episode.exitValue / episode.exitLots) : null;
+    episode.pnl = round(episode.realized - episode.fees);
+    episode.ignited = this.stats.ignitedLots - episode.ignitedStart;
+    if (episode.avgEntry) {
+      episode.bestMove = round(episode.direction * (episode.best / episode.avgEntry - 1) * 100);
+      episode.exitMove = episode.avgExit ? round(episode.direction * (episode.avgExit / episode.avgEntry - 1) * 100) : 0;
+    }
+    this.episodes.push(episode);
+    this.episode = null;
+  }
+
+  trackEpisodeExtreme() {
+    const episode = this.episode;
+    if (!episode) return;
+    const last = this.market.last;
+    if (episode.direction > 0 ? last > episode.best : last < episode.best) {
+      episode.best = last;
+      episode.bestAt = this.time;
+    }
   }
 
   processTrades() {
@@ -423,6 +553,15 @@ export class FlowArenaRun {
         playerFilled = true;
       }
       if (trade.makerOwner === "whale" || trade.takerOwner === "whale") this.whale.filled += trade.lots;
+      if (trade.makerOwner === "hunter" || trade.takerOwner === "hunter") this.applyHunterFill(trade);
+      if (trade.makerOwner === "defender") {
+        const defender = this.defenders.find((item) => item.price === trade.price);
+        if (defender) {
+          defender.absorbed += trade.lots;
+          if (trade.takerOwner === "player") defender.fromPlayer += trade.lots;
+        }
+        if (trade.takerOwner === "player" && this.episode) this.episode.absorbed += trade.lots;
+      }
       if (trade.makerOwner === "maker") {
         this.maker.inventory += trade.aggressorSide === "sell" ? trade.lots : -trade.lots;
         this.maker.fills += trade.lots;
@@ -464,6 +603,7 @@ export class FlowArenaRun {
     if (error) return { ok: false, error };
     const before = this.market.last;
     const reference = this.markPrice();
+    const expected = type === "market" ? this.previewOrder(side, "market", lots) : null;
     const firstTrade = this.market.tradeLog.length;
     const result = this.market.submit(side, price, lots, { owner: "player", restRemainder: type === "limit" });
     let value = 0;
@@ -476,6 +616,17 @@ export class FlowArenaRun {
     this.updateRisk();
     this.actions.push({ time: this.time, kind: "submit", side, type, lots, price: type === "limit" ? price : null });
     const impact = (this.market.last / before - 1) * 100;
+    // A sweep that stops well short of where the visible book said it would go hit hidden size.
+    const expectedMove = expected?.worstPrice != null ? (expected.worstPrice / before - 1) * 100 : null;
+    const stalled = expectedMove != null && Math.abs(expectedMove) >= 0.2 && Math.abs(impact) < Math.abs(expectedMove) * 0.6;
+    const episode = this.episode ?? (this.episodes.at(-1)?.end === this.time ? this.episodes.at(-1) : null);
+    if (episode && result.matched) {
+      const adverse = side === "buy" ? avgPrice - reference : reference - avgPrice;
+      episode.slippage = round(episode.slippage + Math.max(0, adverse) * result.matched / CONTRACT_DENOMINATOR);
+      if (type === "market" && result.matched >= 500 && side === (episode.direction > 0 ? "buy" : "sell")) episode.pushes++;
+      if (stalled) episode.stalled++;
+    }
+    this.trackEpisodeExtreme();
     this.lastExecution = result.matched ? {
       id: this.market.orders,
       side,
@@ -484,12 +635,14 @@ export class FlowArenaRun {
       reference,
       slippage: round((side === "buy" ? avgPrice / reference - 1 : 1 - avgPrice / reference) * 100),
       impact: round(impact),
+      expectedMove: expectedMove == null ? null : round(expectedMove),
+      stalled,
       cascade,
     } : null;
     if (result.matched >= 2000) {
       this.announce(Math.abs(impact) >= 0.5 ? "你推動了市場" : "大額成交", `${(result.matched / 100).toFixed(0)} 單位 · 價格 ${impact >= 0 ? "+" : ""}${impact.toFixed(2)}%`, side === "buy" ? "mint" : "coral");
     }
-    return { ok: true, ...result, avgPrice, impact: round(impact), cascade };
+    return { ok: true, ...result, avgPrice, impact: round(impact), expectedMove: expectedMove == null ? null : round(expectedMove), stalled, cascade };
   }
 
   close(reason = "manual") {
@@ -530,6 +683,9 @@ export class FlowArenaRun {
     return null;
   }
 
+  // Quotes rest on the book and keep their queue place. Each refresh tops up what was taken
+  // (about a third of the level at a time) and only moves a level that drifted too far from
+  // its target or no longer fits the target size.
   actMaker(newSecond = true) {
     const maker = this.maker;
     const market = this.market;
@@ -539,7 +695,6 @@ export class FlowArenaRun {
       maker.value += (last - maker.value) * VALUE_FOLLOW;
     }
     const toxicity = this.toxicity();
-    market.removeOwner("maker");
     const event = this.activeEvent;
     const nearDepth = event ? event.depth : 1;
     const backDepth = event?.drought ? 0.6 : 1;
@@ -552,41 +707,197 @@ export class FlowArenaRun {
     const valueLean = VALUE_LEAN * clamp((drift - VALUE_BAND) / VALUE_BAND, 0, 1);
     const center = last + ((maker.fair - last) * MAKER_LEAN + (maker.value - last) * valueLean) * calm - maker.inventory / 100 * INVENTORY_SKEW * last;
     for (const side of ["buy", "sell"]) {
-      const opposing = side === "buy" ? market.bestAsk() : market.bestBid();
       const loaded = side === "buy" ? Math.max(0, maker.inventory) : Math.max(0, -maker.inventory);
       const room = clamp(1 - loaded / maker.maxInventory, 0.15, 1);
-      for (const level of MAKER_LADDER) {
+      const opposing = this.bestNonMaker(side === "buy" ? "sell" : "buy");
+      MAKER_LADDER.forEach((level, index) => {
+        const key = `${side}:${index}`;
+        const quote = maker.quotes.get(key) ?? { ids: [], price: null, jitter: 0.9 + this.rng.next() * 0.2 };
+        maker.quotes.set(key, quote);
         const near = level.distance < 0.01;
         const widen = near ? 1 + toxicity * 0.9 : 1 + toxicity * 0.25;
-        const offset = Math.max(100, Math.round(center * level.distance * widen * (0.9 + this.rng.next() * 0.2)));
-        let price = Math.round(side === "buy" ? center - offset : center + offset);
-        if (opposing != null) price = side === "buy" ? Math.min(price, opposing - 100) : Math.max(price, opposing + 100);
-        price = clamp(price, 100, market.maxPrice);
+        const offset = Math.max(100, Math.round(center * level.distance * widen * quote.jitter));
+        let target = Math.round(side === "buy" ? center - offset : center + offset);
+        if (opposing != null) target = side === "buy" ? Math.min(target, opposing - 100) : Math.max(target, opposing + 100);
+        target = clamp(target, 100, market.maxPrice);
         const factor = (near ? nearDepth / (1 + toxicity * 0.6) : backDepth) * room;
-        const lots = Math.round(level.units * 100 * factor * (0.8 + this.rng.next() * 0.4));
-        if (lots < 10) continue;
-        market.submit(side, price, lots, { owner: "maker" });
-        maker.posted++;
-      }
+        const size = Math.round(level.units * 100 * factor);
+        const alive = quote.ids.map((id) => market.order(id)).filter(Boolean);
+        const resting = alive.reduce((sum, order) => sum + order.lots, 0);
+        const tolerance = Math.max(center * 0.0003, center * level.distance * MAKER_TOLERANCE);
+        const crossed = opposing != null && quote.price != null && (side === "buy" ? quote.price >= opposing : quote.price <= opposing);
+        const keep = alive.length && Math.abs(quote.price - target) <= tolerance && !crossed && resting <= size * 1.6;
+        if (keep) {
+          quote.ids = alive.map((order) => order.id);
+          const refill = Math.min(size - resting, Math.round(size * MAKER_REFILL));
+          if (refill >= 10) this.postMakerQuote(quote, side, quote.price, refill);
+          return;
+        }
+        for (const order of alive) market.cancel(order.id, "maker");
+        if (alive.length) maker.requotes++;
+        quote.ids = [];
+        quote.price = target;
+        quote.jitter = 0.9 + this.rng.next() * 0.2;
+        const fresh = Math.round(size * (0.8 + this.rng.next() * 0.4));
+        if (fresh >= 10) this.postMakerQuote(quote, side, target, fresh);
+      });
     }
   }
 
+  postMakerQuote(quote, side, price, lots) {
+    const arrival = this.market.submit(side, price, lots, { owner: "maker" });
+    if (arrival.resting) quote.ids.push(arrival.id);
+    this.maker.posted++;
+  }
+
+  // Best resting price from anyone but the maker (the player's quotes included).
+  bestNonMaker(side) {
+    let best = null;
+    for (const order of this.market.restingOrders) {
+      if (order.owner === "maker" || order.side !== side || order.lots <= 0) continue;
+      if (best == null || (side === "buy" ? order.price > best : order.price < best)) best = order.price;
+    }
+    return best;
+  }
+
+  // The whale works passive child orders too, and pulls them when the price leaves them
+  // behind; unfilled size goes back into its remaining target.
   actWhale() {
     const whale = this.whale;
-    if (this.time < whale.start || this.time > whale.end || this.time < whale.next || whale.remaining <= 0) return;
+    const last = this.market.last;
+    const done = this.time > whale.end;
+    whale.orders = whale.orders.filter((entry) => {
+      const order = this.market.order(entry.id);
+      if (!order) return false;
+      const stale = Math.abs(order.price / last - 1) > WHALE_STALE_DISTANCE || this.time - entry.born > WHALE_STALE_AGE;
+      if (!stale && !done) return true;
+      if (!done) whale.remaining += order.lots;
+      whale.canceled += order.lots;
+      this.market.cancel(order.id, "whale");
+      return false;
+    });
+    if (this.time < whale.start || done || this.time < whale.next || whale.remaining <= 0) return;
     const lots = Math.min(whale.remaining, this.rng.int(450, 1050));
     const aggressive = this.rng.next() < 0.62;
     const reference = whale.side === "buy" ? this.market.bestAsk() : this.market.bestBid();
-    const aggressiveOffset = Math.round(this.market.last * this.rng.int(8, 28) / 10000);
-    const passiveOffset = Math.round(this.market.last * this.rng.int(8, 38) / 10000);
+    const aggressiveOffset = Math.round(last * this.rng.int(8, 28) / 10000);
+    const passiveOffset = Math.round(last * this.rng.int(8, 38) / 10000);
     const price = aggressive
-      ? whale.side === "buy" ? Math.min(this.market.maxPrice, (reference ?? this.market.last) + aggressiveOffset) : Math.max(100, (reference ?? this.market.last) - aggressiveOffset)
-      : whale.side === "buy" ? Math.max(100, this.market.last - passiveOffset) : Math.min(this.market.maxPrice, this.market.last + passiveOffset);
-    this.market.submit(whale.side, price, lots, { owner: "whale", restRemainder: !aggressive });
+      ? whale.side === "buy" ? Math.min(this.market.maxPrice, (reference ?? last) + aggressiveOffset) : Math.max(100, (reference ?? last) - aggressiveOffset)
+      : whale.side === "buy" ? Math.max(100, last - passiveOffset) : Math.min(this.market.maxPrice, last + passiveOffset);
+    const arrival = this.market.submit(whale.side, price, lots, { owner: "whale", restRemainder: !aggressive });
+    if (arrival.resting) whale.orders.push({ id: arrival.id, born: this.time });
     whale.remaining -= lots;
     whale.childOrders++;
     whale.next = this.time + this.rng.int(3, 7);
     if (aggressive && lots >= 700) this.announce("大額委託進場", `${(lots / 100).toFixed(0)} 單位 ${whale.side === "buy" ? "主動買入" : "主動賣出"}，觀察是否持續。`, whale.side === "buy" ? "mint" : "coral");
+  }
+
+  // Some trapped crowds are protected: a large holder hides an iceberg a little before the
+  // band. The book only ever shows a few BTC at that price; the footprint shows the rest.
+  seedDefenders() {
+    const last = this.market.last;
+    for (const cohort of this.cohorts.filter((item) => item.kind === "trapped")) {
+      if (this.rng.next() > DEFEND_CHANCE) continue;
+      const side = cohort.side < 0 ? "sell" : "buy";
+      const gap = 0.002 + this.rng.next() * 0.003;
+      const price = Math.round(cohort.side < 0 ? cohort.liq * (1 - gap) : cohort.liq * (1 + gap));
+      if (side === "sell" ? price <= last * 1.002 : price >= last * 0.998) continue;
+      const total = Math.round(cohort.lots * (0.9 + this.rng.next() * 0.9));
+      const display = this.rng.int(2, 4) * 100;
+      const arrival = this.market.submit(side, price, display, { owner: "defender" });
+      const order = this.market.order(arrival.id);
+      if (!order) continue;
+      order.iceberg = { display, hidden: total - display, refills: 0 };
+      this.defenders.push({ id: arrival.id, cohortId: cohort.id, side, price, total, band: cohort.liq, bandLots: cohort.lots, absorbed: 0, fromPlayer: 0, broken: false, withdrawn: false });
+    }
+  }
+
+  // Defenders stay until their iceberg is eaten or the price walks far away from it.
+  actDefenders() {
+    for (const defender of this.defenders) {
+      if (defender.broken || defender.withdrawn) continue;
+      const order = this.market.order(defender.id);
+      if (!order) {
+        defender.broken = true;
+        defender.brokenAt = this.time;
+        continue;
+      }
+      const away = defender.side === "sell" ? this.market.last < defender.price * 0.97 : this.market.last > defender.price * 1.03;
+      if (away) {
+        this.market.cancelIceberg(order);
+        defender.withdrawn = true;
+      }
+    }
+  }
+
+  // The hunter reads the same visible book and liquidation map as the player. It pushes
+  // into bands it can afford to reach, takes profit within a few seconds, and goes after
+  // the player's liquidation price when the player carries heavy exposure near it.
+  actHunter() {
+    const hunter = this.hunter;
+    if (hunter.position) {
+      if (this.time >= hunter.exitAt) {
+        const side = hunter.position > 0 ? "sell" : "buy";
+        this.market.submit(side, side === "buy" ? this.market.maxPrice : 100, Math.abs(hunter.position), { owner: "hunter", restRemainder: false });
+        this.processTrades();
+        if (!hunter.position && hunter.strike) {
+          hunter.strike.pnl = round(hunter.realized - hunter.strike.realizedBefore);
+          hunter.strike = null;
+        }
+      }
+      return;
+    }
+    if (this.time < hunter.next || this.time > this.duration - 6) return;
+    const last = this.market.last;
+    const targets = [];
+    for (const row of this.liquidationLevels(25000)) {
+      if (row.short >= 1500 && row.price > last && row.price < last * 1.018) targets.push({ direction: 1, price: row.price, lots: row.short, kind: "band" });
+      if (row.long >= 1500 && row.price < last && row.price > last * 0.982) targets.push({ direction: -1, price: row.price, lots: row.long, kind: "band" });
+    }
+    const liq = this.playerLiquidationPrice();
+    if (liq && Math.abs(this.account.position) >= 3000 && Math.abs(liq / last - 1) < 0.022) {
+      targets.push({ direction: liq > last ? 1 : -1, price: liq, lots: Math.abs(this.account.position) * 2, kind: "player" });
+    }
+    let best = null;
+    for (const target of targets) {
+      const side = target.direction > 0 ? "buy" : "sell";
+      let lots = 500;
+      let preview = this.previewOrder(side, "market", lots);
+      while (lots < HUNTER_MAX_LOTS && !(preview?.worstPrice != null && (target.direction > 0 ? preview.worstPrice >= target.price : preview.worstPrice <= target.price))) {
+        lots += 500;
+        preview = this.previewOrder(side, "market", lots);
+      }
+      if (preview?.worstPrice == null || (target.direction > 0 ? preview.worstPrice < target.price : preview.worstPrice > target.price)) continue;
+      const appeal = target.lots / lots;
+      if (appeal >= 1.1 && (!best || appeal > best.appeal)) best = { ...target, side, lots, appeal };
+    }
+    hunter.next = this.time + 4;
+    if (!best) return;
+    const realizedBefore = hunter.realized;
+    const arrival = this.market.submit(best.side, best.side === "buy" ? this.market.maxPrice : 100, best.lots, { owner: "hunter", restRemainder: false });
+    this.processTrades();
+    if (!arrival.matched) return;
+    hunter.strike = { time: this.time, side: best.side, lots: arrival.matched, target: best.kind, targetPrice: best.price, realizedBefore, pnl: null };
+    if (best.kind === "player" && this.episode) this.episode.hunted = true;
+    hunter.strikes.push(hunter.strike);
+    hunter.exitAt = this.time + this.rng.int(2, 4);
+    hunter.next = this.time + this.rng.int(16, 26);
+    this.announce("大額主動單掃盤", `${(arrival.matched / 100).toFixed(0)} 單位 ${best.side === "buy" ? "主動買入" : "主動賣出"}，一次吃穿多檔掛單。`, best.side === "buy" ? "mint" : "coral");
+  }
+
+  applyHunterFill(trade) {
+    const hunter = this.hunter;
+    const side = trade.takerOwner === "hunter" ? trade.aggressorSide : trade.aggressorSide === "buy" ? "sell" : "buy";
+    const direction = side === "buy" ? 1 : -1;
+    const old = hunter.position;
+    const closing = old && Math.sign(old) !== direction ? Math.min(Math.abs(old), trade.lots) : 0;
+    if (closing) hunter.realized = round(hunter.realized + Math.sign(old) * (trade.price - hunter.entry) * closing / CONTRACT_DENOMINATOR);
+    const next = old + direction * trade.lots;
+    if (!old || Math.sign(old) === direction) hunter.entry = next ? Math.round((Math.abs(old) * hunter.entry + trade.lots * trade.price) / Math.abs(next)) : 0;
+    else if (!next) hunter.entry = 0;
+    else if (Math.sign(next) !== Math.sign(old)) hunter.entry = trade.price;
+    hunter.position = next;
   }
 
   actNews() {
@@ -775,7 +1086,11 @@ export class FlowArenaRun {
     this.market.expireRetail();
     this.decayCohorts();
     this.actMaker();
-    if (!this.warming) this.actWhale();
+    if (!this.warming) {
+      this.actWhale();
+      this.actDefenders();
+      this.actHunter();
+    }
     const count = Math.round(RETAIL_PER_SECOND * (this.activeEvent?.activity ?? 1));
     for (let i = 0; i < count; i++) {
       if (i && i % MAKER_REFRESH_STEPS === 0) this.actMaker(false);
@@ -824,6 +1139,7 @@ export class FlowArenaRun {
     if (this.playerPush && this.time > this.playerPush.until) this.playerPush = null;
     const firstTrade = this.market.tradeLog.length;
     this.simulateSecond();
+    this.trackEpisodeExtreme();
     this.checkProtection();
     this.updateRisk();
     this.equityPath.push({ time: this.time, equity: this.equity() });
@@ -853,6 +1169,13 @@ export class FlowArenaRun {
         this.account.balance = round(this.account.balance + realized - fee);
         this.account.realized = round(this.account.realized + realized);
         this.account.fees = round(this.account.fees + fee);
+        if (this.episode) {
+          this.episode.realized += realized;
+          this.episode.fees += fee;
+          this.episode.exitLots += remaining;
+          this.episode.exitValue += price * remaining;
+          this.closeEpisode();
+        }
         this.account.position = 0;
         this.account.entry = 0;
       }
@@ -889,12 +1212,94 @@ export class FlowArenaRun {
       ignitedValue: round(this.stats.ignitedValue),
       liquidatedUnits: round((this.stats.liquidatedLong + this.stats.liquidatedShort) / 100),
       biggestCascadeUnits: round(this.stats.biggestCascade / 100),
+      episodes: this.episodes.length,
+      absorbedUnits: round(this.episodes.reduce((sum, episode) => sum + episode.absorbed, 0) / 100),
+      slippageCost: round(this.episodes.reduce((sum, episode) => sum + episode.slippage, 0)),
       path: this.equityPath.filter(({ time }) => time % 4 === 0).map(({ equity }) => Math.round(equity)),
     };
     if (this.time % 4 === 0) this.result.path[this.result.path.length - 1] = Math.round(this.account.balance);
     else this.result.path.push(Math.round(this.account.balance));
     this.announce("回合結算", qualified ? `最終得分 ${score.toLocaleString("zh-TW")}。` : "風險限制未達標，得分為 0。", qualified ? "mint" : "coral");
     return this.result;
+  }
+
+  // Post-round review: what each position did, what the hidden actors were, and the
+  // costliest mistakes worth fixing next round.
+  review() {
+    const notes = [];
+    for (const episode of this.episodes) {
+      const at = `第 ${Math.max(0, episode.start)} 秒的${episode.direction > 0 ? "多單" : "空單"}`;
+      const notional = (episode.avgEntry ?? this.market.last) * episode.peakLots / CONTRACT_DENOMINATOR;
+      if (episode.absorbed >= 300) {
+        notes.push({ kind: "absorbed", cost: episode.absorbed / 100 * 1000 + Math.max(0, -episode.pnl), text: `${at}：${(episode.absorbed / 100).toFixed(1)} BTC 被同一價位的冰山單吃掉。推了價格卻不動、Footprint 在同一價位堆出大量成交時，代表有人在吸收，先停手或出場。` });
+      }
+      if (episode.slippage >= Math.max(15000, Math.abs(episode.pnl) * 0.3)) {
+        notes.push({ kind: "slippage", cost: episode.slippage, text: `${at}：滑價成本約 ${Math.round(episode.slippage).toLocaleString("en-US")}。大部位可以分批出場，或在強平潮到來前預掛限價單，讓被迫平倉的人來吃你的單。` });
+      }
+      if (episode.bestMove != null && episode.bestMove - episode.exitMove >= 0.8 && episode.bestAt < episode.end) {
+        notes.push({ kind: "late", cost: (episode.bestMove - episode.exitMove) / 100 * notional, text: `${at}：最佳時曾有 ${episode.bestMove >= 0 ? "+" : ""}${episode.bestMove.toFixed(2)}%，出場只剩 ${episode.exitMove >= 0 ? "+" : ""}${episode.exitMove.toFixed(2)}%，高點後 ${episode.end - episode.bestAt} 秒才走。連環爆倉停下後造市商就會拉回。` });
+      }
+      if (!episode.ignited && episode.entryLots >= 2500 && episode.pnl < 0) {
+        notes.push({ kind: "empty", cost: -episode.pnl, text: `${at}：推了 ${(episode.entryLots / 100).toFixed(0)} BTC 卻沒引爆任何強平。亮帶太遠、太薄，或燃料早被別人引爆了，推價成本只能自己吞。` });
+      }
+      if (episode.hunted) {
+        notes.push({ kind: "hunted", cost: Math.max(0, -episode.pnl) + 5000, text: `${at}：獵手盯上了你的強平價。部位越大、強平價越靠近價格，越容易被反向掃盤。` });
+      }
+    }
+    if (this.liquidated) notes.push({ kind: "liquidated", cost: Infinity, text: "帳戶被強平：曝險超過權益太多時，一次反向掃盤就足以結束這局。" });
+    // Costliest note of each kind first, so one habit does not crowd out the others.
+    notes.sort((a, b) => b.cost - a.cost);
+    const seen = new Set();
+    const distinct = notes.filter((note) => !seen.has(note.kind) && seen.add(note.kind));
+    const ranked = [...distinct, ...notes.filter((note) => !distinct.includes(note))];
+    const defenders = this.defenders.map((defender) => ({
+      side: defender.side,
+      price: defender.price,
+      band: defender.band,
+      bandLots: defender.bandLots,
+      total: defender.total,
+      absorbed: defender.absorbed,
+      fromPlayer: defender.fromPlayer,
+      status: defender.broken ? "broken" : defender.withdrawn ? "withdrawn" : "holding",
+      brokenAt: defender.brokenAt ?? null,
+    }));
+    const hunterPnl = round(this.hunter.realized);
+    return {
+      episodes: this.episodes.map((episode) => ({ ...episode })),
+      notes: ranked.slice(0, 3),
+      defenders,
+      hunter: { strikes: this.hunter.strikes.map((strike) => ({ ...strike })), pnl: hunterPnl },
+      whale: { side: this.whale.side, filled: this.whale.filled, orders: this.whale.childOrders },
+    };
+  }
+
+  // Public iceberg read: a price that traded far more passive volume than it ever shows,
+  // and still has an order resting there. Built only from the tape and the visible book.
+  icebergSignals(windowSeconds = 45, minLots = 800) {
+    const key = `${this.time}:${this.market.trades}:${this.market.restingLots}:${windowSeconds}:${minLots}`;
+    if (this.icebergCache?.key === key) return this.icebergCache.value;
+    const value = this.readIcebergs(windowSeconds, minLots);
+    this.icebergCache = { key, value };
+    return value;
+  }
+
+  readIcebergs(windowSeconds, minLots) {
+    const traded = new Map();
+    const log = this.market.tradeLog;
+    for (let i = log.length - 1; i >= 0 && log[i].time > this.time - windowSeconds; i--) {
+      const trade = log[i];
+      if (trade.makerOwner === "player") continue;
+      traded.set(trade.price, (traded.get(trade.price) ?? 0) + trade.lots);
+    }
+    const signals = [];
+    for (const [price, lots] of traded) {
+      if (lots < minLots) continue;
+      const side = this.market.bidLots.has(price) ? "buy" : this.market.askLots.has(price) ? "sell" : null;
+      if (!side) continue;
+      const shown = (side === "buy" ? this.market.bidLots : this.market.askLots).get(price);
+      if (lots >= shown * 3) signals.push({ price, side, traded: lots, shown });
+    }
+    return signals.sort((a, b) => b.traded - a.traded);
   }
 
   footprint(windowSeconds = 30, binCents = 10) {
