@@ -29,6 +29,7 @@
     "test:exchange": "node --test tests/exchange.test.mjs",
     "test:challenge": "node --test tests/challenge.test.mjs",
     "test:flow-arena": "node --test tests/flow-arena.test.mjs tests/taker-only.test.mjs",
+    "lab:flow-arena": "node scripts/flow-arena-lab.mjs",
     "test:liquidity-lab": "node --test tests/liquidity-lab.test.mjs",
     "predev": "npm run build:site",
     "prebuild": "npm run build:site",
