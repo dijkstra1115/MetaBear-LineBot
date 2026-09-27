@@ -2,6 +2,9 @@ import { BUSINESS, STEPS, LESSONS } from "./content";
 import { getRate } from "./rates";
 import { json } from "./http";
 import { siteSecurityHeaders } from "./site-security";
+import { arenaSocket } from "./arena";
+
+export { ArenaRoom } from "./arena";
 
 // The public-site preview has only ASSETS: no CRM database, queues or credentials.
 export default {
@@ -35,6 +38,8 @@ export default {
       );
     if (path === "/health")
       return finish(json({ status: "ok", service: "metabear-site-preview" }));
+    // Flow Arena rooms: a WebSocket upgrade, passed through untouched.
+    if (path === "/arena/ws") return await arenaSocket(request, env);
     if (path === "/robots.txt")
       return finish(
         new Response("User-agent: *\nDisallow: /\n", {
@@ -61,7 +66,7 @@ export default {
       url.origin,
     );
   },
-} satisfies ExportedHandler<Pick<Env, "ASSETS">>;
+} satisfies ExportedHandler<Pick<Env, "ASSETS" | "ARENA_ROOM">>;
 
 function finish(response: Response, path = "", origin = ""): Response {
   const headers = new Headers(response.headers);

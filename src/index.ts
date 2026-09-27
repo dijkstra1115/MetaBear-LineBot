@@ -7,6 +7,7 @@ import { BUSINESS, STEPS, LESSONS } from "./content";
 import { HttpError, json } from "./http";
 import type { LineEvent } from "./types";
 import { adminIdentity, staffIdentity } from "./auth";
+import { arenaSocket } from "./arena";
 import { authRoute, cleanupAuth } from "./native-auth";
 import { cleanupConversations } from "./conversations";
 import {
@@ -34,6 +35,8 @@ import {
   signalMedia,
   type SignalMessage,
 } from "./signals";
+
+export { ArenaRoom } from "./arena";
 
 export default {
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
@@ -109,6 +112,7 @@ export default {
         return await authRoute(request, env);
       if (url.pathname === "/health")
         return json({ status: "ok", service: "metabear-line-crm" });
+      if (url.pathname === "/arena/ws") return await arenaSocket(request, env);
       if (url.pathname === "/webhook/line") {
         if (request.method !== "POST")
           return new Response("Method not allowed", {

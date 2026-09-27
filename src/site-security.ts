@@ -17,6 +17,9 @@ export function siteSecurityHeaders(path: string, origin: string): Headers {
   )
     connections.push("wss://stream.bybit.com");
   if (productionAnalytics) connections.push("https://cloudflareinsights.com");
+  // The arena room's WebSocket on this same host; not every browser treats 'self' as covering wss.
+  if (path === "/orderflow/arena.html" && origin.startsWith("https://"))
+    connections.push(origin.replace(/^https:/, "wss:"));
   return new Headers({
     "Content-Security-Policy": `default-src 'self'; script-src ${scriptSources}; style-src 'self'; img-src 'self' data:; connect-src ${connections.join(" ")}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
     "X-Content-Type-Options": "nosniff",

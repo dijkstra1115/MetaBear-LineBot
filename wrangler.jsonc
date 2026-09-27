@@ -56,6 +56,11 @@
     ],
   },
   "triggers": { "crons": ["*/5 * * * *"] },
+  // Flow Arena rooms. Bindings are per environment; the migration below applies to all of them.
+  "durable_objects": {
+    "bindings": [{ "name": "ARENA_ROOM", "class_name": "ArenaRoom" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ArenaRoom"] }],
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "env": {
     "production": {
@@ -72,6 +77,9 @@
         "binding": "ASSETS",
         "run_worker_first": true,
         "html_handling": "none",
+      },
+      "durable_objects": {
+        "bindings": [{ "name": "ARENA_ROOM", "class_name": "ArenaRoom" }],
       },
       "d1_databases": [
         {
@@ -135,6 +143,9 @@
         "html_handling": "none",
       },
       "vars": { "ENVIRONMENT": "preview", "LINE_DELIVERY_MODE": "disabled" },
+      "durable_objects": {
+        "bindings": [{ "name": "ARENA_ROOM", "class_name": "ArenaRoom" }],
+      },
       "d1_databases": [],
       "queues": { "producers": [], "consumers": [] },
       "triggers": { "crons": [] },
