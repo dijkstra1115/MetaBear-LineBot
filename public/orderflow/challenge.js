@@ -1,4 +1,4 @@
-import { ARENA_CONTRACT_BTC, ARENA_MAX_DRAWDOWN, ARENA_START_BALANCE, ARENA_VERSION, FlowArenaRun } from "./flow-arena-engine.js";
+import { ARENA_CONTRACT_BTC, ARENA_DEFAULT_LEVERAGE, ARENA_LEVERAGES, ARENA_MAX_DRAWDOWN, ARENA_RISK_LIMITS, ARENA_START_BALANCE, ARENA_VERSION, FlowArenaRun, arenaBtc } from "./flow-arena-engine.js";
 import { arenaChartGeometry, arenaChartPriceAtY, drawArenaChart } from "./flow-arena-chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -11,15 +11,22 @@ const compactMoney = (value) => {
   return `$${text}`;
 };
 const price = (cents) => fmt(cents / 100);
-const size = (lots) => fmt(lots / 100, lots % 100 === 0 ? 0 : 2);
-const btc = (lots) => `${fmt(lots / 100, lots >= 1000 ? 0 : 1)} BTC`;
+const size = (lots) => fmt(arenaBtc(lots), Number.isInteger(arenaBtc(lots)) ? 0 : 1);
+const btc = (lots) => `${fmt(arenaBtc(lots), arenaBtc(lots) >= 10 ? 0 : 1)} BTC`;
 const clock = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const numberClass = (value) => value > 0 ? "positive" : value < 0 ? "negative" : "";
 const grade = (score, qualified = true) => !qualified ? "D" : score >= 200 ? "S" : score >= 100 ? "A" : score >= 40 ? "B" : score > 0 ? "C" : "D";
-const STORAGE_KEY = "metabear-flow-arena-v5";
+const STORAGE_KEY = "metabear-flow-arena-v6";
+const LEVERAGE_KEY = "metabear-flow-arena-leverage";
 const GUIDE_KEY = "metabear-flow-arena-guide";
 const PROFILE_KEY = "metabear-flow-arena-handle";
 const SOUND_KEY = "metabear-flow-arena-sound";
+function loadLeverage() {
+  try {
+    const value = Number(localStorage.getItem(LEVERAGE_KEY));
+    return ARENA_LEVERAGES.includes(value) ? value : ARENA_DEFAULT_LEVERAGE;
+  } catch { return ARENA_DEFAULT_LEVERAGE; }
+}
 const UNIT_SIZES = [10, 25, 50, 100];
 const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
@@ -70,6 +77,7 @@ let records = loadRecords();
 let ghost = decodeChallenge(new URL(location.href).searchParams.get("challenge"));
 let mode = ghost ? "shadow" : "random";
 let run = new FlowArenaRun(ghost?.seed ?? randomSeed());
+run.setLeverage(loadLeverage());
 let playing = false;
 let unitSize = 25;
 const chartView = { zoom: 1, offset: 0, cursorPrice: null, size: unitSize, layer: "liq", flashes: [], pulse: 0 };
@@ -90,6 +98,7 @@ let lastEquityTick = 0;
 let seenFeedId = run.feedId;
 let feedRenderedId = null;
 let seenExecution = null;
+let seenPlayerLiquidation = null;
 let peakShown = ARENA_START_BALANCE;
 
 function setMessage(message, error = false) {
@@ -308,6 +317,20 @@ function processLiquidations() {
   }
 }
 
+// Your own position blowing up gets the loudest effect in the game.
+function processPlayerLiquidation() {
+  const event = run.lastLiquidation;
+  if (!event || event === seenPlayerLiquidation) return;
+  seenPlayerLiquidation = event;
+  const point = chartPoint(event.price);
+  flashScreen("danger", 1);
+  shake(3);
+  boom(1);
+  floatLabel(`💥 你的${event.side === "long" ? "多單" : "空單"}被強平`, point.x - 12, point.y, "coral", true);
+  banner(`你被強平了 ${money(-event.lost)}`, "coral");
+  setMessage(`${size(event.lots)} BTC ${event.side === "long" ? "多單" : "空單"}在 ${price(event.price)} 爆倉，賠掉這筆倉位的保證金 ${compactMoney(event.lost)}。其他資金不受影響，這局繼續。`, true);
+}
+
 function processExecution() {
   const execution = run.lastExecution;
   if (!execution || execution === seenExecution) return;
@@ -323,7 +346,7 @@ function processExecution() {
   if (execution.stalled) {
     floatLabel("推不動！", point.x - 40, point.y + (up ? -30 : 30), "amber", true);
     tone(160, 0.3, "square", 0.03, 110);
-    setMessage(`預估推動 ${execution.expectedMove >= 0 ? "+" : ""}${fmt(execution.expectedMove)}%，實際只有 ${execution.impact >= 0 ? "+" : ""}${fmt(execution.impact)}%：簿上看不到的${execution.side === "buy" ? "賣單" : "買單"}在吸收你的單。`, true);
+    setMessage(`預估推動 ${execution.expectedMove >= 0 ? "+" : ""}${fmt(execution.expectedMove)}%，實際只推到 ${execution.reach >= 0 ? "+" : ""}${fmt(execution.reach)}%：簿上看不到的${execution.side === "buy" ? "賣單" : "買單"}在吸收你的單。`, true);
   }
   $("last-slippage").textContent = `${execution.slippage >= 0 ? "" : "−"}${fmt(Math.abs(execution.slippage), 2)}%`;
   $("last-slippage").className = execution.slippage > 0.5 ? "negative" : "";
@@ -343,7 +366,7 @@ function renderBook() {
   $("book-asks").innerHTML = asks.length ? makeRows(asks, "ask") : `<p class="empty-state">賣方暫無掛單</p>`;
   $("book-bids").innerHTML = bids.length ? makeRows(bids, "bid") : `<p class="empty-state">買方暫無掛單</p>`;
   $("book-last").textContent = price(run.market.last);
-  $("book-depth-label").textContent = `${size(run.market.restingLots)} 單位掛單中`;
+  $("book-depth-label").textContent = `${size(run.market.restingLots)} BTC 掛單中`;
 }
 
 function renderTape() {
@@ -450,7 +473,7 @@ function renderPreview() {
     const crossed = levels.reduce((sum, row) => side === "buy"
       ? sum + (row.price > last && row.price <= preview.worstPrice ? row.short : 0)
       : sum + (row.price < last && row.price >= preview.worstPrice ? row.long : 0), 0);
-    box.innerHTML = `${side === "buy" ? "▲" : "▼"} ${unitSize} BTC 依可見掛單推到 <b>${price(preview.worstPrice)}</b> (${move >= 0 ? "+" : ""}${fmt(move)}%)${crossed ? ` · <strong>穿過 ${btc(crossed)} ${side === "buy" ? "空單" : "多單"}強平</strong>` : ""}`;
+    box.innerHTML = `${side === "buy" ? "▲" : "▼"} ${size(unitSize * 100)} BTC 依可見掛單推到 <b>${price(preview.worstPrice)}</b> (${move >= 0 ? "+" : ""}${fmt(move)}%)${crossed ? ` · <strong>穿過 ${btc(crossed)} ${side === "buy" ? "空單" : "多單"}強平</strong>` : ""}`;
     box.classList.toggle("hot", crossed >= 800);
   }
 }
@@ -461,8 +484,7 @@ function render() {
   const equity = run.equity();
   const pnl = equity - ARENA_START_BALANCE;
   const roi = (equity / ARENA_START_BALANCE - 1) * 100;
-  const utilizationFactor = 1 / (1 + Math.max(0, run.peakExposure - 100) / 100);
-  const liveScore = Math.round(Math.max(0, roi) * Math.max(0, 1 - run.maxDrawdown / ARENA_MAX_DRAWDOWN) * utilizationFactor * 100);
+  const liveScore = Math.round(Math.max(0, roi) * Math.max(0, 1 - run.maxDrawdown / ARENA_MAX_DRAWDOWN) * 100);
   const priceChange = (market.last / run.startPrice - 1) * 100;
   const mark = run.markPrice();
   const floating = account.position * (mark - account.entry) * ARENA_CONTRACT_BTC / 10000;
@@ -480,13 +502,13 @@ function render() {
   $("mark-price").textContent = price(mark);
   $("spread").textContent = market.spread() == null ? "—" : price(market.spread());
   $("liq-total").textContent = btc(run.stats.liquidatedLong + run.stats.liquidatedShort);
-  $("cvd-value").textContent = signed(market.cvd / 100, 0);
+  $("cvd-value").textContent = signed(arenaBtc(market.cvd), 0);
   $("cvd-value").className = numberClass(market.cvd);
   $("hud-pnl").textContent = `${money(pnl)} · ${signed(roi)}%`;
   $("hud-pnl").className = numberClass(pnl);
   $("ignited-total").textContent = compactMoney(run.stats.ignitedValue);
   $("ignited-units").textContent = `${btc(run.stats.ignitedLots)} · 最大連環 ${btc(run.stats.biggestCascade)}`;
-  $("floating-pnl").innerHTML = `${signed(floating)} <span>浮動損益</span>`;
+  $("floating-pnl").innerHTML = `${signed(floating)} <span>未實現盈虧</span>`;
   $("floating-pnl").className = `floating-pnl ${numberClass(floating)}`;
   $("position").textContent = account.position ? `${account.position > 0 ? "多" : "空"} ${size(Math.abs(account.position))} BTC` : "空倉";
   $("position").className = account.position > 0 ? "positive" : account.position < 0 ? "negative" : "";
@@ -496,11 +518,23 @@ function render() {
   $("player-liq").className = liq && Math.abs(liq / mark - 1) < 0.02 ? "negative" : "";
   $("realized").textContent = signed(account.realized - account.fees);
   $("realized").className = numberClass(account.realized - account.fees);
-  $("exposure-value").textContent = `$${fmt(run.exposure(), 0)}`;
-  const utilization = run.exposureRatio() * 100;
-  $("utilization").textContent = `${fmt(utilization, 0)}%`;
-  $("utilization-fill").style.width = `${Math.min(100, utilization)}%`;
-  $("utilization-fill").classList.toggle("overused", utilization > 100);
+  // Wallet balance splits into position margin, margin held for resting orders, and free funds.
+  const reserve = run.reservedMargin();
+  $("wallet-balance").textContent = `$${fmt(account.balance, 0)}`;
+  $("unrealized").textContent = money(floating);
+  $("unrealized").className = numberClass(floating);
+  $("position-margin").textContent = `$${fmt(account.margin, 0)}`;
+  $("order-reserve").textContent = `$${fmt(reserve, 0)}`;
+  $("leverage-value").textContent = `${run.leverage}×`;
+  const available = run.availableMargin();
+  $("available-margin").textContent = `$${fmt(Math.max(0, available), 0)}`;
+  $("open-room").textContent = `可再開約 ${size(run.maxOpenLots())} BTC（${run.leverage}×）`;
+  const base = Math.max(1, account.balance);
+  const marginShare = Math.min(100, account.margin / base * 100);
+  const reserveShare = Math.min(100 - marginShare, reserve / base * 100);
+  $("bar-margin").style.width = `${marginShare}%`;
+  $("bar-reserve").style.width = `${reserveShare}%`;
+  $("bar-free").style.width = `${Math.max(0, 100 - marginShare - reserveShare)}%`;
   const hud = $("position-hud");
   hud.hidden = !account.position;
   if (account.position) {
@@ -522,7 +556,14 @@ function render() {
   $("roi").className = numberClass(roi);
   $("mdd").textContent = `${fmt(run.maxDrawdown)}%`;
   $("peak-exposure").textContent = `${fmt(run.peakExposure, 1)}%`;
-  $("utilization-factor").textContent = `${fmt(utilizationFactor, 2)}×`;
+  $("player-liquidations").textContent = `${run.stats.playerLiquidations} 次`;
+  $("player-liquidations").className = run.stats.playerLiquidations ? "negative" : "";
+  const flat = !account.position && !run.playerOrders().length;
+  for (const button of document.querySelectorAll("[data-leverage]")) {
+    button.classList.toggle("active", Number(button.dataset.leverage) === run.leverage);
+    button.disabled = !flat;
+  }
+  $("leverage-hint").textContent = flat ? "空倉時可調整" : "有倉位或掛單時鎖定";
   $("score-fill").style.width = `${Math.min(100, liveScore / Math.max(250, ghost?.score ?? 250) * 100)}%`;
   const ghostBox = $("ghost-comparison");
   ghostBox.hidden = mode !== "shadow" || !ghost;
@@ -541,6 +582,7 @@ function render() {
   previousRealized = account.realized;
   processExecution();
   processLiquidations();
+  processPlayerLiquidation();
   if (document.querySelector(".market-details").open) { renderBook(); renderTape(); }
   renderFuel();
   renderFeed();
@@ -576,7 +618,7 @@ function animateEquity(now) {
     lastTickEquity = equity;
     lastEquityTick = now;
   }
-  if (equity > peakShown + 2000 && equity > ARENA_START_BALANCE + 5000 && playing) {
+  if (equity > peakShown + 2000 * ARENA_CONTRACT_BTC && equity > ARENA_START_BALANCE + 5000 * ARENA_CONTRACT_BTC && playing) {
     peakShown = equity;
     const wallet = document.querySelector(".wallet-panel");
     wallet.classList.remove("new-high");
@@ -613,7 +655,7 @@ function renderReview() {
   const notes = $("review-notes");
   notes.replaceChildren();
   const texts = review.notes.map((note) => note.text);
-  if (!texts.length) texts.push(review.episodes.length ? "沒有明顯失誤：挑對亮帶、推得動、出得乾淨。下一局試著加大部位或多抓一次反手。" : "這局沒有開倉。先找一條近、夠亮、前面沒有牆的亮帶，用 10 BTC 試探看看。");
+  if (!texts.length) texts.push(review.episodes.length ? "沒有明顯失誤：挑對亮帶、推得動、出得乾淨。下一局試著加大部位或多抓一次反手。" : "這局沒有開倉。先找一條近、夠亮、前面沒有牆的亮帶，用 500 BTC 試探看看。");
   for (const text of texts) notes.append(listItem("li", text));
 
   const episodes = $("review-episodes");
@@ -631,7 +673,7 @@ function renderReview() {
     tags.className = "episode-tags";
     if (episode.ignited) tags.append(listItem("i", `引爆 ${btc(episode.ignited)}`, "tag-gold"));
     if (episode.absorbed >= 100) tags.append(listItem("i", `撞冰山 ${btc(episode.absorbed)}`, "tag-amber"));
-    if (episode.slippage >= 5000) tags.append(listItem("i", `滑價 ${compactMoney(episode.slippage)}`, "tag-coral"));
+    if (episode.slippage >= 5000 * ARENA_CONTRACT_BTC) tags.append(listItem("i", `滑價 ${compactMoney(episode.slippage)}`, "tag-coral"));
     if (episode.bestMove != null) tags.append(listItem("i", `最佳 ${signed(episode.bestMove)}% → 出場 ${signed(episode.exitMove)}%`));
     if (episode.hunted) tags.append(listItem("i", "被獵手盯上", "tag-coral"));
     row.append(tags);
@@ -656,7 +698,7 @@ function showResult() {
   if (!run.saved) { saveResult(result); run.saved = true; }
   playing = false;
   const letter = grade(result.score, result.qualified);
-  $("result-label").textContent = result.qualified ? (result.score > best && (mode === "random" || mode === "daily") ? "新紀錄！本局成績" : "本局最終成績") : "帳戶已被強平";
+  $("result-label").textContent = result.qualified ? (result.score > best && (mode === "random" || mode === "daily") ? "新紀錄！本局成績" : "本局最終成績") : "本局無成績";
   $("result-score").textContent = String(result.score).padStart(4, "0");
   $("result-grade").textContent = letter;
   $("result-grade").className = `grade-${letter}`;
@@ -668,8 +710,9 @@ function showResult() {
   $("result-roi").className = numberClass(result.roi);
   $("result-mdd").textContent = `${fmt(result.maxDrawdown)}%`;
   $("result-ignited").textContent = compactMoney(result.ignitedValue);
-  $("result-cascade").textContent = `${fmt(result.biggestCascadeUnits, 1)} BTC`;
-  $("result-reveal").textContent = `隱藏大戶分批${result.whaleSide === "buy" ? "買進" : "賣出"}，送出 ${result.whaleOrders} 筆子單。本局共 ${fmt(result.liquidatedUnits, 1)} BTC 槓桿倉被強平，其中 ${fmt(result.ignitedUnits, 1)} BTC 由你推價觸發。${result.news.length ? `事件：${result.news.join("、")}。` : "本局沒有突發消息。"}`;
+  $("result-cascade").textContent = `${fmt(result.biggestCascadeUnits * ARENA_CONTRACT_BTC, 0)} BTC`;
+  const blown = result.playerLiquidations ? `你的倉位被強平 ${result.playerLiquidations} 次，共賠掉保證金 ${compactMoney(result.marginLost)}。` : "";
+  $("result-reveal").textContent = `${blown}隱藏大戶分批${result.whaleSide === "buy" ? "買進" : "賣出"}，送出 ${result.whaleOrders} 筆子單。本局共 ${fmt(result.liquidatedUnits * ARENA_CONTRACT_BTC, 0)} BTC 槓桿倉被強平，其中 ${fmt(result.ignitedUnits * ARENA_CONTRACT_BTC, 0)} BTC 由你推價觸發。${result.news.length ? `事件：${result.news.join("、")}。` : "本局沒有突發消息。"}`;
   renderReview();
   $("share-status").textContent = "連結包含種子與影子分數，可傳給朋友挑戰。";
   if (!$("result-dialog").open) $("result-dialog").showModal();
@@ -686,6 +729,8 @@ function beginNew(seed, nextMode = "random", nextGhost = null) {
   mode = nextMode;
   ghost = nextGhost;
   run = new FlowArenaRun(seed);
+  run.setLeverage(loadLeverage());
+  seenPlayerLiquidation = null;
   accumulated = 0;
   lastFrame = performance.now();
   previousRealized = 0;
@@ -733,7 +778,8 @@ function togglePlay() {
 
 function submitOrder(side, type, limit = null) {
   if (!playing || document.hidden) { setMessage("先按「開始交易」啟動市場", true); return; }
-  const result = run.submit(side, type, unitSize * 100, limit);
+  const reduceOnly = $("reduce-only").checked;
+  const result = run.submit(side, type, unitSize * 100, limit, { reduceOnly });
   if (!result.ok) setMessage(result.error, true);
   else {
     const fill = result.matched ? `成交 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""}` : "尚未成交";
@@ -742,6 +788,13 @@ function submitOrder(side, type, limit = null) {
     setMessage(`${side === "buy" ? "買入" : "賣出"} ${fill}${rest}${cascade}${type === "market" && result.unfilled ? ` · ${size(result.unfilled)} BTC 未成交` : ""}`);
     tone(side === "buy" ? 540 : 320, 0.09, "triangle", 0.045, side === "buy" ? 700 : 240);
   }
+  render();
+}
+
+function closePart(fraction) {
+  if (!playing) { setMessage("先按「開始交易」啟動市場", true); return; }
+  const result = run.closePart(fraction);
+  setMessage(result.ok ? `已減倉 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""} · 剩 ${size(Math.abs(run.account.position))} BTC` : result.error, !result.ok);
   render();
 }
 
@@ -790,6 +843,16 @@ document.querySelectorAll("[data-layer]").forEach((button) => button.addEventLis
 $("quick-buy").addEventListener("click", () => submitOrder("buy", "market"));
 $("quick-sell").addEventListener("click", () => submitOrder("sell", "market"));
 $("close-position").addEventListener("click", closeNow);
+$("close-half").addEventListener("click", () => closePart(0.5));
+$("close-quarter").addEventListener("click", () => closePart(0.25));
+document.querySelectorAll("[data-leverage]").forEach((button) => button.addEventListener("click", () => {
+  const leverage = Number(button.dataset.leverage);
+  const error = run.setLeverage(leverage);
+  if (error) { setMessage(error, true); return; }
+  try { localStorage.setItem(LEVERAGE_KEY, String(leverage)); } catch { /* Optional preference. */ }
+  setMessage(`槓桿改為 ${leverage}×：每開 1 BTC 佔用約 $${fmt(run.market.last / 100 / leverage, 0)} 保證金，強平價在進場價反向約 ${fmt((1 / leverage - 0.004) * 100, 1)}%${leverage === 1 ? "，幾乎不會爆倉" : ""}${Number.isFinite(ARENA_RISK_LIMITS[leverage]) ? `；風險限額最多持有 ${size(ARENA_RISK_LIMITS[leverage])} BTC（含掛單）` : ""}。`);
+  render();
+}));
 function renderSoundToggle() {
   $("sound-toggle").textContent = soundEnabled ? "♫ 音效開" : "♪ 音效關";
   $("sound-toggle").setAttribute("aria-pressed", String(soundEnabled));
@@ -864,6 +927,20 @@ $("leaderboard-list").addEventListener("click", (event) => {
 $("result-close").addEventListener("click", () => $("result-dialog").close());
 $("retry-button").addEventListener("click", () => beginNew(run.seed, "shadow", { seed: run.seed, score: run.result.score, path: run.result.path, name: "你的上一局" }));
 $("next-button").addEventListener("click", () => beginNew(randomSeed()));
+$("export-button").addEventListener("click", async () => {
+  const text = JSON.stringify(run.exportData(), null, 1);
+  try {
+    await navigator.clipboard.writeText(text);
+    $("share-status").textContent = `本局數據已複製（${Math.round(text.length / 1024)} KB），可以直接貼上。`;
+  } catch {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    link.download = `flow-arena-${run.seed}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    $("share-status").textContent = "無法寫入剪貼簿，已改為下載 JSON 檔。";
+  }
+});
 $("share-button").addEventListener("click", async () => {
   const name = $("handle").value.trim().slice(0, 18) || "匿名交易者";
   try { localStorage.setItem(PROFILE_KEY, name); } catch { /* Optional profile. */ }
@@ -881,6 +958,7 @@ document.addEventListener("keydown", (event) => {
   if (key === "q") submitOrder("buy", "market");
   else if (key === "e") submitOrder("sell", "market");
   else if (key === "f") closeNow();
+  else if (key === "h") closePart(0.5);
   else if (["1", "2", "3", "4"].includes(key)) setUnit(UNIT_SIZES[Number(key) - 1]);
   else if (key === " ") { event.preventDefault(); togglePlay(); }
 });

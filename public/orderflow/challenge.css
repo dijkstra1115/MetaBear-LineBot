@@ -77,7 +77,7 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 .news-strip{display:flex;align-items:center;gap:14px;min-height:31px;padding:0 16px;background:#1a303a;border-bottom:1px solid #2c4954;font-size:11px;color:#bdd0ce}.news-live{display:inline-flex;gap:6px;align-items:center;color:var(--mint);font:700 9px Consolas,monospace;white-space:nowrap}.news-strip #ticker-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.news-strip time{margin-left:auto;color:#75929a;font:9px Consolas,monospace}
 .chart-head{display:flex;justify-content:space-between;align-items:center;padding:7px 14px 0 16px;color:#77929b;font:9px Consolas,monospace;letter-spacing:.09em}.chart-head>span{color:#c1d9d5}
 .layer-toggle{display:flex;gap:2px;padding:2px;border:1px solid #33505a;border-radius:6px;background:#0f222c}.layer-toggle button{height:24px;padding:0 10px;border:0;border-radius:4px;background:transparent;color:#86a3aa;font-size:10px}.layer-toggle button.active{background:#3a3160;color:var(--gold)}
-.chart-wrap{position:relative;height:clamp(360px,calc(100vh - 436px),780px);margin-top:6px;background:#0b1822;overflow:hidden;touch-action:none}
+.chart-wrap{position:relative;height:clamp(360px,calc(100vh - 484px),780px);margin-top:6px;background:#0b1822;overflow:hidden;touch-action:none}
 #market-chart{display:block;width:100%;height:100%;cursor:crosshair}
 .chart-bottom{display:none}
 
@@ -207,3 +207,26 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 .review-reveals{margin:6px 0 0;padding-left:18px;display:grid;gap:5px;color:#b4c9c8;font-size:11px;line-height:1.6}
 .mobile-notice{display:none;margin:0 0 10px;padding:10px 14px;border:1px solid #c9a45a;border-radius:8px;background:#3a2f17;color:#f7e2b0;font-size:13px;line-height:1.6}.mobile-notice a{color:var(--gold);text-decoration:underline}
 @media(max-width:900px){.mobile-notice{display:block;position:sticky;left:0;max-width:calc(100vw - 32px)}}
+
+/* Leverage, reduce-only and partial closes */
+.quick-leverage,.quick-reduce{display:flex;align-items:center;gap:6px;min-width:0}.quick-reduce{justify-content:flex-end}
+.quick-leverage>span{margin-right:4px;color:#87a7a9;font-size:10px}.quick-leverage small{color:#6f8d93;font-size:10px;white-space:nowrap}
+.leverage-toggle{display:flex;gap:2px;padding:2px;border:1px solid #3a5760;border-radius:6px;background:#0f222c}
+.quick-trade .leverage-toggle button{height:28px;min-width:40px;padding:0 8px;border:0;border-radius:4px;background:transparent;color:#8fb0b4;font:800 12px Consolas,monospace}
+.quick-trade .leverage-toggle button.active{background:#4a3a1c;color:var(--gold);box-shadow:inset 0 0 0 1px #c9a45a}
+.quick-trade .leverage-toggle button:disabled{cursor:not-allowed;opacity:.45}
+.reduce-toggle{display:flex;align-items:center;gap:6px;margin-right:6px;color:#b8cfcc;font-size:11px;cursor:pointer;white-space:nowrap}.reduce-toggle input{accent-color:#c9a45a}
+.quick-reduce button{height:32px!important;border-color:#8a7a57!important;color:#e9cf93!important}
+.export-button{border:1px solid #c9a45a;border-radius:5px;background:#3a2f17;color:#f7e2b0;padding:0 12px;font-size:10px;font-weight:700}
+.result-share{grid-template-columns:1fr auto auto}
+.flash-overlay.danger{background:radial-gradient(circle at 50% 50%,#ff3d5aee,transparent 70%)}
+
+/* Account breakdown: equity, wallet balance and where the wallet is committed */
+.equity-label{display:block;color:#9fc3bf;font-size:10px}.equity-label small{color:#6f8d93;font-size:9px;margin-left:4px}
+.ledger{display:grid;gap:5px;margin:12px 0 0;padding:10px 0 0;border-top:1px solid #38575e}
+.ledger div{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.ledger dt{display:flex;align-items:center;gap:6px;color:#8fa9ae;font-size:10px}.ledger dd{margin:0;font:600 12px Consolas,monospace;color:#e4f6ed}
+.ledger .ledger-split{margin-top:4px;padding-top:6px;border-top:1px dashed #2f4a52}
+.ledger .ledger-free dt{color:#d8f5ea;font-weight:700}.ledger .ledger-free dd{font-size:15px;color:var(--mint)}
+.swatch{display:inline-block;width:8px;height:8px;border-radius:2px}.swatch.margin,.funds-bar .margin{background:#c9a45a}.swatch.reserve,.funds-bar .reserve{background:#7b6bd1}.swatch.free,.funds-bar .free{background:#3fbf9c}
+.funds-bar{display:flex;height:8px;margin-top:9px;border-radius:4px;overflow:hidden;background:#243b44}.funds-bar i{display:block;height:100%;transition:width .3s}
+.funds-note{margin:7px 0 0;color:#6f8d93;font-size:9px;line-height:1.55}.funds-note span{display:block;color:#a8cbc4;font:600 10px Consolas,"Noto Sans TC",monospace}

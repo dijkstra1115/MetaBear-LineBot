@@ -1,6 +1,8 @@
+import { arenaBtc } from "./flow-arena-engine.js";
+
 const labelPrice = (cents, digits = 0) => (cents / 100).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const units = (lots) => (lots / 100).toFixed(lots >= 1000 ? 0 : 1);
+const units = (lots) => arenaBtc(lots).toLocaleString("en-US", { maximumFractionDigits: arenaBtc(lots) >= 10 ? 0 : 1 });
 const HEAT_COLD = [92, 64, 170];
 const HEAT_HOT = [255, 214, 102];
 const heat = (t, alpha) => `rgba(${HEAT_COLD.map((cold, index) => Math.round(cold + (HEAT_HOT[index] - cold) * t)).join(",")},${alpha.toFixed(3)})`;
@@ -329,10 +331,10 @@ export function drawArenaChart(canvas, run, view = {}) {
     ctx.font = "10px Consolas, monospace";
     ctx.fillStyle = "#ff9aa8";
     ctx.textAlign = "left";
-    ctx.fillText(String(Math.round(row.sell / 100)), footprintX + 5, yy);
+    ctx.fillText(String(Math.round(arenaBtc(row.sell))), footprintX + 5, yy);
     ctx.fillStyle = "#8feccc";
     ctx.textAlign = "right";
-    ctx.fillText(String(Math.round(row.buy / 100)), width - 10, yy);
+    ctx.fillText(String(Math.round(arenaBtc(row.buy))), width - 10, yy);
     ctx.fillStyle = "#a9c1bd";
     ctx.textAlign = "center";
     ctx.font = "9px Consolas, monospace";

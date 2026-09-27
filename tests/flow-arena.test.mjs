@@ -5,7 +5,8 @@ import {
   ARENA_DURATION,
   ARENA_INITIAL_PRICE,
   ARENA_MAINTENANCE,
-  ARENA_PLAYER_MARGIN,
+  ARENA_DEFAULT_LEVERAGE,
+  ARENA_RISK_LIMITS,
   ARENA_START_BALANCE,
   FlowArenaRun,
   cohortLiquidationPrice,
@@ -13,6 +14,8 @@ import {
 import { arenaChartGeometry, arenaChartPriceAtY } from "../public/orderflow/flow-arena-chart.js";
 import { FLOW_MODE_TARGET, TakerOnlyMarket } from "../public/orderflow/taker-only-engine.js";
 
+// Price cents × lots divided by this gives USDT.
+const CENT_LOTS_PER_USDT = 10000 / ARENA_CONTRACT_BTC;
 const liquidationTrades = (run, from) => run.market.tradeLog.slice(from).filter((trade) => trade.takerOwner === "liquidation");
 // Mechanism tests run without the hidden defenders and hunter so a seeded iceberg cannot absorb the push.
 const quiet = (run) => {
@@ -86,36 +89,36 @@ test("chart zoom, vertical pan and click price use the displayed price scale", (
   assert.equal(arenaChartPriceAtY(canvas, run, { zoom: 2, offset: 0 }, 50), null);
 });
 
-test("BTC round starts with 100 units of purchasing power and keeps orders uncapped", () => {
+test("BTC round starts with 100 units of purchasing power at the default leverage", () => {
   const run = new FlowArenaRun(33084);
   assert.equal(run.market.last, ARENA_INITIAL_PRICE);
   assert.equal(run.startPrice, ARENA_INITIAL_PRICE);
-  assert.equal(ARENA_CONTRACT_BTC, 1);
-  assert.equal(ARENA_START_BALANCE, 10000000);
+  assert.equal(ARENA_CONTRACT_BTC, 50);
+  assert.equal(ARENA_START_BALANCE, 500000000);
   assert.equal(ARENA_START_BALANCE / (ARENA_INITIAL_PRICE / 100 * ARENA_CONTRACT_BTC), 100);
   const accepted = run.submit("buy", "market", 2000);
   assert.equal(accepted.ok, true);
   assert.ok(run.account.position > 0);
   assert.ok(run.exposureRatio() > 0 && run.exposureRatio() < 1);
-  const largeResting = run.submit("buy", "limit", 20000, 100);
-  assert.equal(largeResting.ok, true);
-  assert.equal(largeResting.resting, 20000);
+  assert.equal(run.leverage, ARENA_DEFAULT_LEVERAGE);
+  assert.ok(run.account.margin > 0);
   const close = run.close();
   assert.equal(close.ok, true);
   assert.equal(run.account.position, 0);
   assert.ok(run.account.fees > 0);
   const result = run.finish();
   assert.equal(result.balance, run.account.balance);
-  assert.equal(result.utilizationFactor, 1);
+  assert.equal(run.account.margin, 0);
+  assert.equal(result.leverage, ARENA_DEFAULT_LEVERAGE);
 });
 
-test("one BTC contract gains 100 USDT when BTC rises 100 USDT", () => {
+test("one 50 BTC contract gains 5,000 USDT when BTC rises 100 USDT", () => {
   const run = new FlowArenaRun(77551);
   run.account.position = 100;
   run.account.entry = ARENA_INITIAL_PRICE;
   run.market.restingOrders = [];
   run.market.last = ARENA_INITIAL_PRICE + 10000;
-  assert.equal(run.equity(), ARENA_START_BALANCE + 100);
+  assert.equal(run.equity(), ARENA_START_BALANCE + 100 * ARENA_CONTRACT_BTC);
 });
 
 test("equal seeds reproduce retail, crowd positions, events and results", () => {
@@ -194,6 +197,36 @@ test("a cascade resolves one wave per second instead of all at once", () => {
   assert.ok(new Set(waves.map((item) => item.time)).size >= 2, "waves land on different seconds");
 });
 
+test("a band the push crossed still liquidates after the price snaps back", () => {
+  const run = quiet(new FlowArenaRun(51290));
+  run.actWhale = () => {};
+  const last = run.market.last;
+  run.cohorts = [];
+  run.addCohort(-1, Math.round(last * 1.003 / (1 + 1 / 50 - ARENA_MAINTENANCE)), 2000, 50, "trapped");
+  const band = run.cohorts[0];
+  // The push takes the only ask; nothing is left within reach for the forced buys.
+  for (const order of [...run.market.restingOrders].filter((item) => item.side === "sell")) run.market.cancel(order.id, order.owner);
+  run.market.submit("sell", Math.round(last * 1.005), 300, { owner: "test-ask" });
+  run.submit("buy", "market", 300);
+  assert.ok(run.market.last > band.liq, "the push crossed the band");
+  assert.equal(band.lots, 2000, "the first forced wave found no sellers");
+  // The maker requotes below the band next second; the crossed band still has to buy.
+  for (let i = 0; i < 3; i++) run.tick();
+  assert.ok(!run.cohorts.includes(band) || band.lots === 0, `band still holds ${band.lots} lots after being crossed`);
+});
+
+test("a push is not called absorbed when its own fills reached the visible-book estimate", () => {
+  // Seed 125584611: a 10 BTC probe triggers retail take-profits that pull the last trade back
+  // below the start, though nothing hidden sits on the ask side.
+  const run = new FlowArenaRun(125584611);
+  const shown = run.previewOrder("buy", "market", 1000);
+  const result = run.submit("buy", "market", 1000);
+  assert.ok(run.defenders.every((defender) => defender.side !== "sell"));
+  assert.equal(result.stalled, false);
+  assert.ok(result.reach > 0, "the probe's own fills moved up");
+  assert.ok(shown.worstPrice > run.market.last);
+});
+
 test("a push nobody follows drifts back toward the maker's fair value", () => {
   const a = quiet(new FlowArenaRun(61001));
   const b = quiet(new FlowArenaRun(61001));
@@ -249,16 +282,128 @@ test("a triggered stop retries when the whole opposing book is gone", () => {
   assert.equal(run.exitIntent, null);
 });
 
-test("player liquidation price is where equity meets the risk margin", () => {
-  const run = new FlowArenaRun(33084);
-  run.account.position = 30000;
-  run.account.entry = ARENA_INITIAL_PRICE;
-  const price = run.playerLiquidationPrice();
-  assert.ok(price < ARENA_INITIAL_PRICE);
-  const equity = run.account.balance + run.account.position * (price - run.account.entry) / 10000;
-  const exposure = price * run.account.position / 10000;
-  // The price is rounded to a cent, so allow one cent of movement on the whole position.
-  assert.ok(Math.abs(equity - exposure * ARENA_PLAYER_MARGIN) <= run.account.position / 10000 * 1.06);
+test("isolated liquidation price follows the chosen leverage", () => {
+  for (const leverage of [1, 3, 5, 10, 20]) {
+    const run = quiet(new FlowArenaRun(33084));
+    assert.equal(run.setLeverage(leverage), null);
+    run.submit("buy", "market", 2000);
+    const { entry, margin, position } = run.account;
+    assert.ok(Math.abs(margin - position * entry / CENT_LOTS_PER_USDT / leverage) < 1, "margin is notional / leverage");
+    const liq = run.playerLiquidationPrice();
+    const loss = position * (entry - liq) / CENT_LOTS_PER_USDT;
+    const maintenance = position * liq / CENT_LOTS_PER_USDT * ARENA_MAINTENANCE;
+    assert.ok(Math.abs(loss - (margin - maintenance)) <= position / CENT_LOTS_PER_USDT * 1.01, `${leverage}x liquidation uses the margin down to maintenance`);
+    if (leverage === 10) assert.ok(Math.abs(liq / entry - (1 - 1 / 10 + ARENA_MAINTENANCE)) < 0.001);
+  }
+});
+
+test("opening exposure needs free margin; closing never does", () => {
+  const run = quiet(new FlowArenaRun(33084));
+  assert.equal(run.setLeverage(1), null);
+  const tooBig = run.submit("sell", "market", 15000);
+  assert.equal(tooBig.ok, false);
+  assert.match(tooBig.error, /可用保證金不足/);
+  const room = run.maxOpenLots();
+  assert.ok(room > 9000 && room < 10000, `1x room ${room}`);
+  assert.equal(run.submit("sell", "market", 5000).ok, true);
+  assert.ok(run.availableMargin() < run.account.balance * 0.55);
+  const resting = run.submit("sell", "limit", 4000, Math.round(run.market.last * 1.05));
+  assert.equal(resting.ok, true);
+  assert.ok(run.reservedMargin() > 0, "resting opening orders reserve margin");
+  assert.equal(run.submit("sell", "market", 3000).ok, false);
+  assert.equal(run.close().ok, true, "closing needs no margin");
+  assert.equal(run.account.position, 0);
+  run.submit("buy", "limit", 100, Math.round(run.market.last * 0.95));
+  assert.equal(run.setLeverage(10), "空倉且沒有掛單時才能調整槓桿");
+  run.cancelAll();
+  assert.equal(run.setLeverage(10), null);
+  assert.equal(run.submit("sell", "market", 5000).ok, true);
+});
+
+test("risk limits cap position size by leverage, counting resting orders", () => {
+  const run = quiet(new FlowArenaRun(33084));
+  assert.equal(run.setLeverage(20), null);
+  assert.equal(run.maxOpenLots(), ARENA_RISK_LIMITS[20]);
+  const tooBig = run.submit("buy", "market", ARENA_RISK_LIMITS[20] + 500);
+  assert.equal(tooBig.ok, false);
+  assert.match(tooBig.error, /風險限額/);
+  assert.equal(run.submit("buy", "market", 1500).ok, true);
+  // A resting sell twice the position could flip into a short past the limit.
+  const flip = run.submit("sell", "limit", 1500 + ARENA_RISK_LIMITS[20] + 500, Math.round(run.market.last * 1.03));
+  assert.equal(flip.ok, false);
+  assert.equal(run.submit("sell", "limit", 1500, Math.round(run.market.last * 1.03), { reduceOnly: true }).ok, true, "reduce-only exits never count");
+  run.cancelAll();
+  run.close();
+  assert.equal(run.setLeverage(3), null);
+  assert.ok(run.maxOpenLots() > ARENA_RISK_LIMITS[20], "lower leverage allows a larger position");
+});
+
+test("mid-round build-ups pile one leverage into a new band", () => {
+  const run = new FlowArenaRun(500001);
+  while (!run.finished) run.tick();
+  assert.ok(run.buildups.length >= 3, `${run.buildups.length} build-ups`);
+  for (const buildup of run.buildups) {
+    assert.ok(buildup.start >= 16 && buildup.start <= ARENA_DURATION - 25);
+    assert.ok(buildup.lots >= 1500 && buildup.lots <= 4000);
+    assert.ok([25, 50].includes(buildup.leverage));
+  }
+});
+
+test("reduce-only orders and partial closes never flip the position", () => {
+  const run = quiet(new FlowArenaRun(33084));
+  run.submit("buy", "market", 2500);
+  const half = run.closePart(0.5);
+  assert.equal(half.ok, true);
+  assert.equal(run.account.position, 1250);
+  const clipped = run.submit("sell", "market", 5000, null, { reduceOnly: true });
+  assert.equal(clipped.ok, true);
+  assert.equal(run.account.position, 0, "clipped to the position instead of opening a short");
+  assert.equal(run.submit("sell", "market", 100, null, { reduceOnly: true }).ok, false);
+  run.submit("buy", "market", 1000);
+  run.submit("sell", "limit", 800, Math.round(run.market.last * 1.03), { reduceOnly: true });
+  run.submit("sell", "limit", 800, Math.round(run.market.last * 1.04), { reduceOnly: true });
+  const reduce = run.playerOrders().filter((order) => order.reduceOnly);
+  assert.equal(reduce.reduce((sum, order) => sum + order.lots, 0), 1000, "reduce-only orders are trimmed to the position");
+  run.close();
+  assert.equal(run.playerOrders().length, 0, "reduce-only orders go away once flat");
+});
+
+test("an isolated liquidation loses only the position margin and the round goes on", () => {
+  const run = quiet(new FlowArenaRun(61001));
+  run.setLeverage(10);
+  run.submit("buy", "market", 3000);
+  const margin = run.account.margin;
+  const before = run.account.balance;
+  const liq = run.playerLiquidationPrice();
+  // Wipe the bids and drop the market under the liquidation price.
+  for (const order of [...run.market.restingOrders].filter((item) => item.side === "buy" && item.owner !== "player")) run.market.cancel(order.id, order.owner);
+  run.market.submit("buy", Math.round(liq * 0.97), 50000, { owner: "test-bid" });
+  run.market.submit("sell", Math.round(liq * 0.97), 100, { owner: "test-seller" });
+  run.market.submit("sell", Math.round(liq * 0.975), 100, { owner: "test-ask" });
+  run.markCache.key = "";
+  run.checkPlayerLiquidation();
+  assert.equal(run.account.position, 0);
+  assert.equal(run.stats.playerLiquidations, 1);
+  assert.ok(before - run.account.balance <= margin + 0.01, "loss capped at the margin");
+  assert.equal(run.finished, false);
+  assert.equal(run.episodes.at(-1).liquidated, true);
+  assert.equal(run.review().notes[0].kind, "liquidated");
+  assert.equal(run.submit("buy", "market", 500).ok, true, "the rest of the wallet keeps trading");
+});
+
+test("a round exports its actions, positions and review", () => {
+  const run = quiet(new FlowArenaRun(33084));
+  run.setLeverage(5);
+  run.submit("buy", "market", 1000);
+  run.tick();
+  run.closePart(0.5);
+  while (!run.finished) run.tick();
+  const data = JSON.parse(JSON.stringify(run.exportData()));
+  assert.equal(data.seed, 33084);
+  assert.equal(data.result.leverage, 5);
+  assert.ok(data.actions.some((action) => action.kind === "leverage" && action.leverage === 5));
+  assert.ok(data.actions.filter((action) => action.kind === "submit").length >= 2);
+  assert.ok(data.review.episodes.length >= 1);
 });
 
 test("order preview matches immediate fills; passive quotes stay as pending orders", () => {
@@ -373,9 +518,10 @@ test("the hunter goes after a heavily exposed player's liquidation price", () =>
   for (const defender of run.defenders) run.market.cancel(defender.id, "defender");
   run.defenders = [];
   run.cohorts = [];
-  // 1,000 BTC long bought well above the market: equity is thin and the liquidation price sits about 1.2% below.
-  run.account.position = 100000;
-  run.account.entry = Math.round(run.market.last * 1.0287);
+  // A 5,000 BTC long whose isolated margin only covers a 1.6% drop: the liquidation price sits about 1.2% below.
+  run.account.position = 10000;
+  run.account.entry = run.market.last;
+  run.account.margin = 10000 * run.market.last / CENT_LOTS_PER_USDT * 0.016;
   run.hunter.next = 0;
   run.time = 30;
   const liq = run.playerLiquidationPrice();

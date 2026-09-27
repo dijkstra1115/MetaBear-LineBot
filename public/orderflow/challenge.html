@@ -25,7 +25,7 @@
     <section class="hud" aria-label="本局狀態">
       <div class="hud-title"><span class="eyebrow"><i></i> BTC 合約挑戰 · 120 秒</span><strong>推動市場，<em>引爆槓桿。</em></strong><small><span id="mode-badge">未知隨機市場</span> · <span id="seed-label">SEED HIDDEN</span></small></div>
       <div class="hud-cell hud-clock"><span>ROUND CLOCK</span><strong id="clock">02:00</strong><i id="clock-fill"></i></div>
-      <div class="hud-cell hud-equity"><span>權益 USDT</span><strong id="hud-equity">10,000,000</strong><em id="hud-pnl">+$0 · +0.00%</em></div>
+      <div class="hud-cell hud-equity"><span>權益 USDT</span><strong id="hud-equity">500,000,000</strong><em id="hud-pnl">+$0 · +0.00%</em></div>
       <div class="hud-cell hud-ignite"><span>引爆爆倉</span><strong id="ignited-total">$0</strong><em id="ignited-units">0 BTC · 最大連環 0</em></div>
       <div class="hud-cell hud-score"><span>SCORE</span><strong id="live-score">0000</strong><em id="live-grade">評級 —</em></div>
       <div class="hud-controls">
@@ -51,7 +51,7 @@
         <section class="panel rival-panel"><div class="panel-title"><span class="eyebrow">HIDDEN PLAYERS</span><span class="rival-icon">◈</span></div>
           <ul class="actor-list">
             <li><b>大戶</b><span>分批買或賣，方向結算才揭曉。</span></li>
-            <li><b>護盤者</b><span>有些亮帶前面藏著冰山單，簿上只露幾 BTC。</span></li>
+            <li><b>護盤者</b><span>有些亮帶前面藏著冰山單，簿上只露一小截。</span></li>
             <li><b>獵手</b><span>也在獵亮帶；你的部位太重時，會改獵你的強平價。</span></li>
           </ul>
         </section>
@@ -59,7 +59,7 @@
           <ol>
             <li><b>先算帳</b>：亮帶的量要大於你推到那裡要花的單量，而且越近越好。</li>
             <li><b>看有沒有牆</b>：切到「掛單熱圖」，亮帶前面若有一條不動的掛單線，可能有人守著。</li>
-            <li><b>先試探</b>：沒把握時先丟 10 BTC。推不動、成交全堆在同一價位，就是冰山。</li>
+            <li><b>先試探</b>：沒把握時先丟 500 BTC。推不動、成交全堆在同一價位，就是冰山。</li>
             <li><b>跟著撤</b>：金色「疑似冰山」線出現時，別往上撞；推不動的人稍後會被拉回。</li>
             <li><b>快進快出</b>：連環爆倉停下後造市商會拉回，大部位出場也會滑價。</li>
             <li><b>別被獵</b>：曝險太高、強平價太近時，獵手會來掃你。</li>
@@ -70,13 +70,13 @@
 
       <div class="market-column">
         <section class="market-panel panel">
-          <div class="market-head"><div class="asset-identity"><span class="asset-symbol">₿</span><div><strong>BTC <small>/ USDT 永續</small></strong><span>SIMULATED · 1 UNIT = 1 BTC</span></div></div><div class="last-price-block"><strong id="last-price">100,000.00</strong><span id="price-change">+0.00%</span></div><div class="market-head-metrics"><div><span>MARK</span><strong id="mark-price">100,000.00</strong></div><div><span>SPREAD</span><strong id="spread">—</strong></div><div><span>本局爆倉</span><strong id="liq-total">0 BTC</strong></div><div><span title="包含開局前的市場歷史">累積 CVD</span><strong id="cvd-value">+0</strong></div></div></div>
+          <div class="market-head"><div class="asset-identity"><span class="asset-symbol">₿</span><div><strong>BTC <small>/ USDT 永續</small></strong><span>SIMULATED · 深度比照主流交易所</span></div></div><div class="last-price-block"><strong id="last-price">100,000.00</strong><span id="price-change">+0.00%</span></div><div class="market-head-metrics"><div><span>MARK</span><strong id="mark-price">100,000.00</strong></div><div><span>SPREAD</span><strong id="spread">—</strong></div><div><span>本局爆倉</span><strong id="liq-total">0 BTC</strong></div><div><span title="包含開局前的市場歷史">累積 CVD</span><strong id="cvd-value">+0</strong></div></div></div>
           <div class="news-strip"><span class="news-live"><i></i> FLOW LIVE</span><span id="ticker-text">亮帶是槓桿散戶的強平價；推穿它，他們就得市價平倉。</span><time id="ticker-time">00:00</time></div>
           <div class="chart-head"><span>PRICE × LIQUIDATION MAP</span><div class="layer-toggle" role="group" aria-label="圖表背景"><button type="button" class="active" data-layer="liq">爆倉熱圖</button><button type="button" data-layer="book">掛單熱圖</button></div></div>
           <div class="chart-wrap">
             <canvas id="market-chart" role="img" aria-label="K 線、爆倉熱圖、成交量、CVD、爆倉地圖與 Footprint；點圖表價格可掛限價單"></canvas>
             <div id="flash-overlay" class="flash-overlay" aria-hidden="true"></div>
-            <div id="position-hud" class="position-hud" hidden><span id="position-hud-side">多 25 BTC</span><strong id="position-hud-pnl">+$0</strong><em id="position-hud-roe">+0.00%</em></div>
+            <div id="position-hud" class="position-hud" hidden><span id="position-hud-side">多 1,250 BTC</span><strong id="position-hud-pnl">+$0</strong><em id="position-hud-roe">+0.00%</em></div>
             <div id="chart-event" class="chart-event" hidden><span>MARKET IMPULSE</span><strong id="chart-event-title"></strong><p id="chart-event-detail"></p></div>
             <div id="pnl-burst" class="pnl-burst" hidden></div>
             <div id="combo-banner" class="combo-banner" hidden></div>
@@ -84,10 +84,12 @@
             <div id="particle-layer" class="particle-layer" aria-hidden="true"></div>
           </div>
           <div class="quick-trade">
-            <div class="quick-size"><span>數量</span><button data-unit="10" type="button">10</button><button class="active" data-unit="25" type="button">25</button><button data-unit="50" type="button">50</button><button data-unit="100" type="button">100</button><span class="unit-suffix">BTC</span></div>
+            <div class="quick-size"><span>數量</span><button data-unit="10" type="button">500</button><button class="active" data-unit="25" type="button">1,250</button><button data-unit="50" type="button">2,500</button><button data-unit="100" type="button">5,000</button><span class="unit-suffix">BTC</span></div>
             <div class="quick-actions"><button id="quick-buy" class="quick-buy" type="button">▲ 市價買入 <kbd>Q</kbd></button><button id="quick-sell" class="quick-sell" type="button">▼ 市價賣出 <kbd>E</kbd></button><button id="close-position" type="button">平倉 <kbd>F</kbd></button></div>
+            <div class="quick-leverage"><span>槓桿</span><div class="leverage-toggle" role="group" aria-label="槓桿倍數"><button data-leverage="1" type="button">1×</button><button data-leverage="3" type="button" class="active">3×</button><button data-leverage="5" type="button">5×</button><button data-leverage="10" type="button">10×</button><button data-leverage="20" type="button">20×</button></div><small id="leverage-hint">空倉時可調整</small></div>
+            <div class="quick-reduce"><label class="reduce-toggle"><input id="reduce-only" type="checkbox" /> 只減倉</label><button id="close-quarter" type="button">平 ¼</button><button id="close-half" type="button">平 ½ <kbd>H</kbd></button></div>
             <div id="order-preview" class="order-preview"><span class="preview-buy" id="preview-buy">買入推動 —</span><span class="preview-sell" id="preview-sell">賣出推動 —</span></div>
-            <p id="order-message" class="order-message" role="status">點擊盤面價格可掛限價單；現價下方掛買，上方掛賣。快捷鍵 1–4 切換數量、空白鍵暫停。</p>
+            <p id="order-message" class="order-message" role="status">點擊盤面價格可掛限價單；現價下方掛買，上方掛賣。快捷鍵 1–4 切換數量、H 平一半、空白鍵暫停。</p>
           </div>
           <div id="exit-warning" class="exit-warning" role="status" hidden></div>
         </section>
@@ -99,15 +101,29 @@
       </div>
 
       <aside class="trade-column">
-        <section class="panel wallet-panel"><div class="panel-title"><span class="eyebrow">YOUR POSITION</span><span class="wallet-status">SIMULATION</span></div><div class="wallet-balance"><strong id="equity">10,000,000.00</strong><span>USDT</span></div><div id="floating-pnl" class="floating-pnl">+0.00 <span>浮動損益</span></div><div id="equity-ticks" class="equity-ticks" aria-hidden="true"></div><div class="wallet-grid"><div><span>目前部位</span><strong id="position">空倉</strong></div><div><span>進場均價</span><strong id="entry-price">—</strong></div><div><span>你的強平價</span><strong id="player-liq">—</strong></div><div><span>已實現損益</span><strong id="realized">+0.00</strong></div><div><span>持倉名目</span><strong id="exposure-value">0</strong></div><div><span>上次滑價</span><strong id="last-slippage">—</strong></div></div><div class="risk-rail"><span>資金利用度 <strong id="utilization">0%</strong></span><div><i id="utilization-fill"></i></div></div></section>
-        <section class="panel score-panel"><div class="panel-title"><span class="eyebrow">SCORE BREAKDOWN</span><span>即時</span></div><div class="score-grid"><div><span>目前報酬</span><strong id="roi">+0.00%</strong></div><div><span>最大回撤</span><strong id="mdd">0.00%</strong></div><div><span>最高曝險</span><strong id="peak-exposure">0.0%</strong></div><div><span>資金利用係數</span><strong id="utilization-factor">1.00×</strong></div></div><div id="ghost-comparison" class="ghost-comparison" hidden></div><div class="score-track"><i id="score-fill"></i></div><p>得分＝正報酬 × 回撤係數 × 資金利用係數。回撤到 20% 或被強平，得分歸零。</p></section>
+        <section class="panel wallet-panel"><div class="panel-title"><span class="eyebrow">YOUR ACCOUNT</span><span class="wallet-status">SIMULATION</span></div>
+          <span class="equity-label">帳戶權益 <small>＝ 錢包餘額 ＋ 未實現盈虧</small></span>
+          <div class="wallet-balance"><strong id="equity">500,000,000.00</strong><span>USDT</span></div>
+          <div id="floating-pnl" class="floating-pnl">+0.00 <span>未實現盈虧</span></div>
+          <div id="equity-ticks" class="equity-ticks" aria-hidden="true"></div>
+          <dl class="ledger">
+            <div><dt>錢包餘額</dt><dd id="wallet-balance">$500,000,000</dd></div>
+            <div><dt>未實現盈虧</dt><dd id="unrealized">+$0</dd></div>
+            <div class="ledger-split"><dt><i class="swatch margin"></i>倉位保證金</dt><dd id="position-margin">$0</dd></div>
+            <div><dt><i class="swatch reserve"></i>掛單凍結</dt><dd id="order-reserve">$0</dd></div>
+            <div class="ledger-free"><dt><i class="swatch free"></i>可用資金</dt><dd id="available-margin">$500,000,000</dd></div>
+          </dl>
+          <div class="funds-bar" aria-label="錢包餘額的用途"><i id="bar-margin" class="margin"></i><i id="bar-reserve" class="reserve"></i><i id="bar-free" class="free"></i></div>
+          <p class="funds-note">浮盈要平倉後才進入錢包餘額；只有「可用資金」能開新倉。<span id="open-room">可再開約 — BTC</span></p>
+          <div class="wallet-grid"><div><span>目前部位</span><strong id="position">空倉</strong></div><div><span>進場均價</span><strong id="entry-price">—</strong></div><div><span>槓桿</span><strong id="leverage-value">3×</strong></div><div><span>你的強平價</span><strong id="player-liq">—</strong></div><div><span>已實現損益</span><strong id="realized">+0.00</strong></div><div><span>上次滑價</span><strong id="last-slippage">—</strong></div></div></section>
+        <section class="panel score-panel"><div class="panel-title"><span class="eyebrow">SCORE BREAKDOWN</span><span>即時</span></div><div class="score-grid"><div><span>目前報酬</span><strong id="roi">+0.00%</strong></div><div><span>最大回撤</span><strong id="mdd">0.00%</strong></div><div><span>最高曝險</span><strong id="peak-exposure">0.0%</strong></div><div><span>倉位被強平</span><strong id="player-liquidations">0 次</strong></div></div><div id="ghost-comparison" class="ghost-comparison" hidden></div><div class="score-track"><i id="score-fill"></i></div><p>得分＝正報酬 × 回撤係數。逐倉強平只賠掉那筆倉位的保證金，但回撤會拉低分數；回撤到 20% 得分歸零。</p></section>
         <section class="panel protection-panel"><div class="panel-title"><div><span class="eyebrow">RISK ORDERS</span><h3>止損 / 止盈</h3></div><span>觸價市價平倉</span></div><div class="protection-inputs"><label>止損價<input id="stop-price" type="number" min="1" step="0.01" placeholder="選填" /></label><label>止盈價<input id="take-price" type="number" min="1" step="0.01" placeholder="選填" /></label></div><div class="protection-actions"><button id="set-protection" type="button">設定風險指令</button><button id="clear-protection" type="button">清除</button></div><p id="protection-status">尚未設定</p></section>
         <section class="panel open-orders"><div class="panel-title"><div><span class="eyebrow">YOUR RESTING ORDERS</span><h3>等待成交</h3></div><button id="cancel-all" type="button">全部撤單</button></div><div id="player-orders"><p class="empty-state">目前沒有掛單</p></div></section>
       </aside>
     </div>
   </main>
 
-  <dialog id="result-dialog" class="result-dialog"><div class="result-top"><span>RUN COMPLETE / AFTER ACTION</span><button id="result-close" type="button" aria-label="關閉">✕</button></div><div class="result-hero"><span id="result-label">本局成績</span><div class="result-score-line"><strong id="result-score">0000</strong><b id="result-grade">—</b></div><em id="result-pnl">+$0</em><p id="result-summary"></p></div><div class="result-metrics"><div><span>淨報酬</span><strong id="result-roi"></strong></div><div><span>最大回撤</span><strong id="result-mdd"></strong></div><div><span>引爆爆倉</span><strong id="result-ignited"></strong></div><div><span>最大連環</span><strong id="result-cascade"></strong></div></div><div class="result-review"><span>教練筆記</span><ol id="review-notes"></ol></div><div class="result-review"><span>你的每一段持倉</span><div id="review-episodes" class="review-episodes"></div></div><div class="result-reveal"><span>盤後揭曉</span><p id="result-reveal"></p><ul id="review-reveals" class="review-reveals"></ul></div><div class="result-share"><label for="handle">分享名稱</label><input id="handle" maxlength="18" placeholder="匿名交易者" /><button id="share-button" type="button">複製影子挑戰連結 ↗</button><p id="share-status" role="status">連結包含種子與影子分數，可傳給朋友挑戰。</p></div><div class="result-actions"><button id="retry-button" type="button">重玩此市場</button><button id="next-button" type="button">新隨機市場 ↗</button></div></dialog>
+  <dialog id="result-dialog" class="result-dialog"><div class="result-top"><span>RUN COMPLETE / AFTER ACTION</span><button id="result-close" type="button" aria-label="關閉">✕</button></div><div class="result-hero"><span id="result-label">本局成績</span><div class="result-score-line"><strong id="result-score">0000</strong><b id="result-grade">—</b></div><em id="result-pnl">+$0</em><p id="result-summary"></p></div><div class="result-metrics"><div><span>淨報酬</span><strong id="result-roi"></strong></div><div><span>最大回撤</span><strong id="result-mdd"></strong></div><div><span>引爆爆倉</span><strong id="result-ignited"></strong></div><div><span>最大連環</span><strong id="result-cascade"></strong></div></div><div class="result-review"><span>教練筆記</span><ol id="review-notes"></ol></div><div class="result-review"><span>你的每一段持倉</span><div id="review-episodes" class="review-episodes"></div></div><div class="result-reveal"><span>盤後揭曉</span><p id="result-reveal"></p><ul id="review-reveals" class="review-reveals"></ul></div><div class="result-share"><label for="handle">分享名稱</label><input id="handle" maxlength="18" placeholder="匿名交易者" /><button id="share-button" type="button">複製影子挑戰連結 ↗</button><button id="export-button" type="button" class="export-button">複製本局數據 {}</button><p id="share-status" role="status">連結包含種子與影子分數，可傳給朋友挑戰。本局數據是 JSON，可貼給教練或 AI 逐筆分析。</p></div><div class="result-actions"><button id="retry-button" type="button">重玩此市場</button><button id="next-button" type="button">新隨機市場 ↗</button></div></dialog>
   <footer class="page-footer"><span>METABEAR / FLOW ARENA V5</span><span>虛構市場 · 模擬合約 · 無真實資金</span></footer>
 </body>
 </html>
