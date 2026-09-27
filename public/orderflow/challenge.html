@@ -17,7 +17,7 @@
     <a class="brand" href="./courses.html"><img src="/favicon-v2.png" width="28" height="28" alt="" />MetaBear<span>互動學院</span></a>
     <div class="top-divider"></div>
     <div class="top-product"><span class="live-dot"></span> FLOW ARENA <em>/</em> LIQUIDATION HUNT</div>
-    <div class="top-links"><span class="test-badge">DESKTOP PLAYTEST · V5</span><a href="./exchange.html">交易沙盒 ↗</a><a href="./taker-compare.html">市場實驗 ↗</a><a href="./courses.html">返回學院 ↗</a></div>
+    <div class="top-links"><span class="test-badge">DESKTOP PLAYTEST · V6</span><a href="./arena.html">好友對戰 ↗</a><a href="./exchange.html">交易沙盒 ↗</a><a href="./taker-compare.html">市場實驗 ↗</a><a href="./courses.html">返回學院 ↗</a></div>
   </header>
 
   <main id="main" class="app-shell">
@@ -32,6 +32,7 @@
         <button id="play-button" class="button-primary" type="button">▶ 開始交易</button>
         <button id="new-button" class="button-outline" type="button" title="換一個隨機市場">↻ 新市場</button>
         <button id="daily-button" class="button-outline" type="button" title="同一天所有人都打同一個市場">📅 每日市場</button>
+        <label class="speed-select">對手 <select id="rivals" title="電腦對手和你在同一個市場交易；人越多，市場深度與爆倉帶越大"><option value="none">單人</option><option value="rookie">新手 1 人</option><option value="skilled">中階 1 人</option><option value="expert">高手 1 人</option><option value="mixed">混合 3 人</option></select></label>
         <label class="speed-select">速度 <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
         <button id="sound-toggle" class="button-outline" type="button" aria-pressed="true">♫ 音效開</button>
         <span id="run-status"><i></i> 等待開始</span>
@@ -41,7 +42,7 @@
     <div class="workbench">
       <aside class="intel-column">
         <section class="panel fuel-panel">
-          <div class="panel-title"><span class="eyebrow">FUEL RADAR</span><span>3% 內強平燃料</span></div>
+          <div class="panel-title"><span class="eyebrow">FUEL RADAR</span><span>3% 內強平燃料（熱圖估算）</span></div>
           <div class="fuel-side short"><span>上方 · 空單強平</span><strong id="fuel-short">0 BTC</strong><div class="fuel-bar"><i id="fuel-short-bar"></i></div><small id="fuel-short-peak">—</small></div>
           <div class="fuel-side long"><span>下方 · 多單強平</span><strong id="fuel-long">0 BTC</strong><div class="fuel-bar"><i id="fuel-long-bar"></i></div><small id="fuel-long-peak">—</small></div>
           <div class="fuel-oi"><span>槓桿散戶持倉（OI）</span><strong id="open-interest">0 BTC</strong></div>
@@ -57,10 +58,10 @@
         </section>
         <details class="panel guide-panel" id="guide-panel" open><summary><span class="eyebrow">READING NOTES</span><span>讀盤筆記</span></summary>
           <ol>
-            <li><b>先算帳</b>：亮帶的量要大於你推到那裡要花的單量，而且越近越好。</li>
+            <li><b>熱圖是估的</b>：亮帶是用成交量推算出來的，不一定真的有人在那裡；也可能有沒畫出來的大倉。</li>
+            <li><b>對照 OI</b>：放量時 OI 跟著漲，才是真的有人開倉；量大但 OI 不動或下跌，多半是平倉或大單在進出。</li>
+            <li><b>先試探</b>：沒把握時先丟 500 BTC。推不動、Footprint 在同一價位堆出大量成交，就是有人在吸收。</li>
             <li><b>看有沒有牆</b>：切到「掛單熱圖」，亮帶前面若有一條不動的掛單線，可能有人守著。</li>
-            <li><b>先試探</b>：沒把握時先丟 500 BTC。推不動、成交全堆在同一價位，就是冰山。</li>
-            <li><b>跟著撤</b>：金色「疑似冰山」線出現時，別往上撞；推不動的人稍後會被拉回。</li>
             <li><b>快進快出</b>：連環爆倉停下後造市商會拉回，大部位出場也會滑價。</li>
             <li><b>別被獵</b>：曝險太高、強平價太近時，獵手會來掃你。</li>
           </ol>
@@ -123,7 +124,7 @@
     </div>
   </main>
 
-  <dialog id="result-dialog" class="result-dialog"><div class="result-top"><span>RUN COMPLETE / AFTER ACTION</span><button id="result-close" type="button" aria-label="關閉">✕</button></div><div class="result-hero"><span id="result-label">本局成績</span><div class="result-score-line"><strong id="result-score">0000</strong><b id="result-grade">—</b></div><em id="result-pnl">+$0</em><p id="result-summary"></p></div><div class="result-metrics"><div><span>淨報酬</span><strong id="result-roi"></strong></div><div><span>最大回撤</span><strong id="result-mdd"></strong></div><div><span>引爆爆倉</span><strong id="result-ignited"></strong></div><div><span>最大連環</span><strong id="result-cascade"></strong></div></div><div class="result-review"><span>教練筆記</span><ol id="review-notes"></ol></div><div class="result-review"><span>你的每一段持倉</span><div id="review-episodes" class="review-episodes"></div></div><div class="result-reveal"><span>盤後揭曉</span><p id="result-reveal"></p><ul id="review-reveals" class="review-reveals"></ul></div><div class="result-share"><label for="handle">分享名稱</label><input id="handle" maxlength="18" placeholder="匿名交易者" /><button id="share-button" type="button">複製影子挑戰連結 ↗</button><button id="export-button" type="button" class="export-button">複製本局數據 {}</button><p id="share-status" role="status">連結包含種子與影子分數，可傳給朋友挑戰。本局數據是 JSON，可貼給教練或 AI 逐筆分析。</p></div><div class="result-actions"><button id="retry-button" type="button">重玩此市場</button><button id="next-button" type="button">新隨機市場 ↗</button></div></dialog>
+  <dialog id="result-dialog" class="result-dialog"><div class="result-top"><span>RUN COMPLETE / AFTER ACTION</span><button id="result-close" type="button" aria-label="關閉">✕</button></div><div class="result-hero"><span id="result-label">本局成績</span><div class="result-score-line"><strong id="result-score">0000</strong><b id="result-grade">—</b></div><em id="result-pnl">+$0</em><p id="result-summary"></p></div><div class="result-metrics"><div><span>淨報酬</span><strong id="result-roi"></strong></div><div><span>最大回撤</span><strong id="result-mdd"></strong></div><div><span>引爆爆倉</span><strong id="result-ignited"></strong></div><div><span>最大連環</span><strong id="result-cascade"></strong></div></div><div id="result-standings" class="result-review result-standings" hidden><span>對戰排名</span><ol id="standings-list" class="standings-list"></ol><ul id="duel-list" class="review-reveals"></ul></div><div class="result-review"><span>教練筆記</span><ol id="review-notes"></ol></div><div class="result-review"><span>你的每一段持倉</span><div id="review-episodes" class="review-episodes"></div></div><div class="result-reveal"><span>盤後揭曉</span><p id="result-reveal"></p><ul id="review-reveals" class="review-reveals"></ul></div><div class="result-share"><label for="handle">分享名稱</label><input id="handle" maxlength="18" placeholder="匿名交易者" /><button id="share-button" type="button">複製影子挑戰連結 ↗</button><button id="export-button" type="button" class="export-button">複製本局數據 {}</button><p id="share-status" role="status">連結包含種子與影子分數，可傳給朋友挑戰。本局數據是 JSON，可貼給教練或 AI 逐筆分析。</p></div><div class="result-actions"><button id="retry-button" type="button">重玩此市場</button><button id="next-button" type="button">新隨機市場 ↗</button></div></dialog>
   <footer class="page-footer"><span>METABEAR / FLOW ARENA V5</span><span>虛構市場 · 模擬合約 · 無真實資金</span></footer>
 </body>
 </html>

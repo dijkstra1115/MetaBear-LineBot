@@ -1,4 +1,5 @@
-import { ARENA_CONTRACT_BTC, ARENA_DEFAULT_LEVERAGE, ARENA_LEVERAGES, ARENA_MAX_DRAWDOWN, ARENA_RISK_LIMITS, ARENA_START_BALANCE, ARENA_VERSION, FlowArenaRun, arenaBtc } from "./flow-arena-engine.js";
+import { ARENA_DEFAULT_LEVERAGE, ARENA_LEVERAGES, ARENA_MAX_DRAWDOWN, ARENA_RISK_LIMITS, ARENA_START_BALANCE, ARENA_VERSION, FlowArenaRun } from "./flow-arena-engine.js";
+import { ARENA_BOTS, ARENA_BOT_ROSTER } from "./flow-arena-bots.js";
 import { arenaChartGeometry, arenaChartPriceAtY, drawArenaChart } from "./flow-arena-chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -11,8 +12,8 @@ const compactMoney = (value) => {
   return `$${text}`;
 };
 const price = (cents) => fmt(cents / 100);
-const size = (lots) => fmt(arenaBtc(lots), Number.isInteger(arenaBtc(lots)) ? 0 : 1);
-const btc = (lots) => `${fmt(arenaBtc(lots), arenaBtc(lots) >= 10 ? 0 : 1)} BTC`;
+const size = (lots) => fmt(run.btc(lots), Number.isInteger(run.btc(lots)) || run.btc(lots) >= 100 ? 0 : 1);
+const btc = (lots) => `${fmt(run.btc(lots), run.btc(lots) >= 10 ? 0 : 1)} BTC`;
 const clock = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const numberClass = (value) => value > 0 ? "positive" : value < 0 ? "negative" : "";
 const grade = (score, qualified = true) => !qualified ? "D" : score >= 200 ? "S" : score >= 100 ? "A" : score >= 40 ? "B" : score > 0 ? "C" : "D";
@@ -21,6 +22,42 @@ const LEVERAGE_KEY = "metabear-flow-arena-leverage";
 const GUIDE_KEY = "metabear-flow-arena-guide";
 const PROFILE_KEY = "metabear-flow-arena-handle";
 const SOUND_KEY = "metabear-flow-arena-sound";
+const RIVALS_KEY = "metabear-flow-arena-rivals";
+// Computer opponents: one of each difficulty for "mixed"; the seed picks which bot of a level.
+const RIVAL_SETTINGS = {
+  none: { label: "單人", levels: [] },
+  rookie: { label: "新手", levels: ["rookie"] },
+  skilled: { label: "中階", levels: ["skilled"] },
+  expert: { label: "高手", levels: ["expert"] },
+  mixed: { label: "混合", levels: ["rookie", "skilled", "expert"] },
+};
+function loadRivals() {
+  try {
+    const value = localStorage.getItem(RIVALS_KEY);
+    return RIVAL_SETTINGS[value] ? value : "none";
+  } catch { return "none"; }
+}
+function lineupFor(setting, seed) {
+  return RIVAL_SETTINGS[setting].levels.map((level, index) => {
+    const roster = ARENA_BOT_ROSTER[level];
+    return roster[(seed + index) % roster.length];
+  });
+}
+function createRun(seed, setting) {
+  const lineup = lineupFor(setting, seed);
+  const next = new FlowArenaRun(seed, { traders: ["player", ...lineup.map((rival, index) => ({ id: `rival:${index + 1}`, name: rival.name }))] });
+  lineup.forEach((rival, index) => next.traders[index + 1].setLeverage(rival.leverage));
+  next.rivalSetting = setting;
+  next.lineup = lineup;
+  next.botStates = lineup.map(() => ({}));
+  return next;
+}
+// Computer opponents act on what they see, then the market moves one second.
+function stepRun() {
+  run.lineup.forEach((rival, index) => ARENA_BOTS[rival.bot](run, run.traders[index + 1], run.botStates[index]));
+  run.tick();
+}
+const traderName = (id) => id === run.you.id ? "你" : run.trader(id)?.name ?? "對手";
 function loadLeverage() {
   try {
     const value = Number(localStorage.getItem(LEVERAGE_KEY));
@@ -58,7 +95,7 @@ function decodeChallenge(encoded) {
     const bytes = Uint8Array.from(atob(encoded.replaceAll("-", "+").replaceAll("_", "/")), (character) => character.charCodeAt(0));
     const data = JSON.parse(new TextDecoder().decode(bytes));
     if (data.version !== ARENA_VERSION || !Number.isSafeInteger(data.seed) || data.seed < 1 || data.seed > 0xffffffff || !Number.isFinite(data.score) || data.score < 0 || data.score > 1e7 || !Array.isArray(data.path) || data.path.length > 64) return null;
-    return { seed: data.seed, score: Math.round(data.score), name: String(data.name || "匿名交易者").slice(0, 18), path: data.path.filter(Number.isFinite).slice(0, 64) };
+    return { seed: data.seed, score: Math.round(data.score), name: String(data.name || "匿名交易者").slice(0, 18), path: data.path.filter(Number.isFinite).slice(0, 64), rivals: RIVAL_SETTINGS[data.rivals] ? data.rivals : "none" };
   } catch { return null; }
 }
 
@@ -76,11 +113,15 @@ function loadSoundPreference() {
 let records = loadRecords();
 let ghost = decodeChallenge(new URL(location.href).searchParams.get("challenge"));
 let mode = ghost ? "shadow" : "random";
-let run = new FlowArenaRun(ghost?.seed ?? randomSeed());
+let rivalSetting = loadRivals();
+let run = createRun(ghost?.seed ?? randomSeed(), ghost?.rivals ?? rivalSetting);
 run.setLeverage(loadLeverage());
 let playing = false;
 let unitSize = 25;
-const chartView = { zoom: 1, offset: 0, cursorPrice: null, size: unitSize, layer: "liq", flashes: [], pulse: 0 };
+// Size buttons are BTC amounts written for a solo market; a bigger room uses larger contracts,
+// so the same BTC is fewer contracts (rounded to the nearest hundredth of one).
+const orderLots = () => Math.max(1, Math.round(unitSize * 100 / run.scale));
+const chartView = { zoom: 1, offset: 0, cursorPrice: null, sizeLabel: "", layer: "liq", flashes: [], pulse: 0 };
 let chartDrag = null;
 let combo = 0;
 let soundEnabled = loadSoundPreference();
@@ -97,8 +138,10 @@ let lastTickEquity = ARENA_START_BALANCE;
 let lastEquityTick = 0;
 let seenFeedId = run.feedId;
 let feedRenderedId = null;
+let renderedFeedKeys = [];
 let seenExecution = null;
 let seenPlayerLiquidation = null;
+let seenKnockouts = 0;
 let peakShown = ARENA_START_BALANCE;
 
 function setMessage(message, error = false) {
@@ -317,6 +360,22 @@ function processLiquidations() {
   }
 }
 
+// Another trader blown out of the market: a violet burst, louder when you did it.
+function processKnockouts() {
+  const fresh = run.knockouts.slice(seenKnockouts).filter((item) => item.victim !== run.you.id);
+  seenKnockouts = run.knockouts.length;
+  for (const item of fresh) {
+    const point = chartPoint(item.price);
+    const yours = item.by === run.you.id;
+    floatLabel(`💥 玩家${item.side === "long" ? "多單" : "空單"}被強平`, point.x - 12, point.y, "violet", yours);
+    particles(point.x, point.y, "#c3a6ff", yours ? 40 : 18, yours ? 420 : 240);
+    if (yours) {
+      banner("🎯 你推爆了一名玩家", "violet");
+      chime(3);
+    } else banner("一名玩家被強平", "violet");
+  }
+}
+
 // Your own position blowing up gets the loudest effect in the game.
 function processPlayerLiquidation() {
   const event = run.lastLiquidation;
@@ -420,7 +479,8 @@ function renderBoard() {
     button.className = "board-entry";
     button.dataset.record = String(record.id);
     const rank = document.createElement("span"); rank.className = "rank"; rank.textContent = grade(record.score, record.qualified);
-    const label = document.createElement("span"); label.className = "run-id"; label.textContent = record.mode === "daily" ? `每日 ${record.day ?? ""}` : `市場 #${String(record.seed).slice(-5)}`;
+    const opponents = record.rivals && record.rivals !== "none" ? ` · vs ${RIVAL_SETTINGS[record.rivals]?.label ?? "電腦"}` : "";
+    const label = document.createElement("span"); label.className = "run-id"; label.textContent = `${record.mode === "daily" ? `每日 ${record.day ?? ""}` : `市場 #${String(record.seed).slice(-5)}`}${opponents}`;
     const score = document.createElement("strong"); score.textContent = record.score.toLocaleString("zh-TW");
     const detail = document.createElement("small"); detail.textContent = `${signed(record.roi)}% · 引爆 ${compactMoney(record.ignitedValue ?? 0)} · ${index === 0 ? "最佳" : "挑戰"}`;
     button.append(rank, label, score, detail);
@@ -444,36 +504,44 @@ function renderFuel() {
   chartView.pulse = near.length && Math.min(...near) < 0.004 ? 1 : 0;
 }
 
-// Rebuild only when a new wave arrives, and animate just the rows that are new.
+// Rebuild only when a new wave or a trader liquidation arrives, and animate just the rows that are new.
+// Other traders stay anonymous until the round is over.
 function renderFeed() {
-  const items = run.liquidationFeed.filter((item) => !item.warm).slice(-7).reverse();
-  const latest = items[0]?.id ?? 0;
+  const waves = run.liquidationFeed.filter((item) => !item.warm).slice(-7).map((item) => ({ ...item, kind: "wave", key: `w${item.id}` }));
+  const knocks = run.knockouts.filter((item) => item.victim !== run.you.id).map((item, index) => ({ ...item, kind: "knockout", key: `k${index}` }));
+  const items = [...waves, ...knocks].sort((a, b) => b.time - a.time).slice(0, 7);
+  const latest = `${waves.at(-1)?.id ?? 0}:${knocks.length}`;
   if (latest === feedRenderedId) return;
-  const previous = feedRenderedId ?? latest;
+  const shown = new Set(feedRenderedId == null ? items.map((item) => item.key) : renderedFeedKeys);
   feedRenderedId = latest;
+  renderedFeedKeys = items.map((item) => item.key);
   const container = $("liq-feed");
   if (!items.length) {
     container.innerHTML = `<p class="empty-state">還沒有人被強平</p>`;
     return;
   }
   container.innerHTML = items.map((item) => {
+    const fresh = shown.has(item.key) ? "" : " fresh";
+    if (item.kind === "knockout") {
+      return `<div class="liq-row rival${fresh}"><span>${clock(Math.max(0, item.time))}</span><strong>玩家${item.side === "long" ? "多單" : "空單"} ${btc(item.lots)}</strong><em>被強平</em>${item.by === run.you.id ? "<b>你推爆</b>" : ""}</div>`;
+    }
     const move = (item.to / item.from - 1) * 100;
-    return `<div class="liq-row ${item.side}${item.ignited ? " ignited" : ""}${item.id > previous ? " fresh" : ""}"><span>${clock(Math.max(0, item.time))}</span><strong>${item.side === "short" ? "空單" : "多單"} ${btc(item.lots)}</strong><em>${move >= 0 ? "+" : ""}${fmt(move)}%${item.chain > 1 ? ` ×${item.chain}` : ""}</em>${item.ignited ? "<b>你引爆</b>" : ""}</div>`;
+    return `<div class="liq-row ${item.side}${item.ignited ? " ignited" : ""}${fresh}"><span>${clock(Math.max(0, item.time))}</span><strong>${item.side === "short" ? "空單" : "多單"} ${btc(item.lots)}</strong><em>${move >= 0 ? "+" : ""}${fmt(move)}%${item.chain > 1 ? ` ×${item.chain}` : ""}</em>${item.ignited ? "<b>你引爆</b>" : ""}</div>`;
   }).join("");
 }
 
 function renderPreview() {
   const last = run.market.last;
-  const levels = run.liquidationLevels(Math.max(2000, Math.round(last * 0.001 / 1000) * 1000));
+  const levels = run.estimatedLevels(Math.max(2000, Math.round(last * 0.001 / 1000) * 1000));
   for (const side of ["buy", "sell"]) {
-    const preview = run.previewOrder(side, "market", unitSize * 100);
+    const preview = run.previewOrder(side, "market", orderLots());
     const box = $(side === "buy" ? "preview-buy" : "preview-sell");
     if (!preview?.worstPrice) { box.textContent = `${side === "buy" ? "買入" : "賣出"}：對手盤不足`; continue; }
     const move = (preview.worstPrice / last - 1) * 100;
     const crossed = levels.reduce((sum, row) => side === "buy"
       ? sum + (row.price > last && row.price <= preview.worstPrice ? row.short : 0)
       : sum + (row.price < last && row.price >= preview.worstPrice ? row.long : 0), 0);
-    box.innerHTML = `${side === "buy" ? "▲" : "▼"} ${size(unitSize * 100)} BTC 依可見掛單推到 <b>${price(preview.worstPrice)}</b> (${move >= 0 ? "+" : ""}${fmt(move)}%)${crossed ? ` · <strong>穿過 ${btc(crossed)} ${side === "buy" ? "空單" : "多單"}強平</strong>` : ""}`;
+    box.innerHTML = `${side === "buy" ? "▲" : "▼"} ${size(orderLots())} BTC 依可見掛單推到 <b>${price(preview.worstPrice)}</b> (${move >= 0 ? "+" : ""}${fmt(move)}%)${crossed ? ` · <strong>熱圖估計穿過 ${btc(crossed)} ${side === "buy" ? "空單" : "多單"}強平</strong>` : ""}`;
     box.classList.toggle("hot", crossed >= 800);
   }
 }
@@ -487,8 +555,9 @@ function render() {
   const liveScore = Math.round(Math.max(0, roi) * Math.max(0, 1 - run.maxDrawdown / ARENA_MAX_DRAWDOWN) * 100);
   const priceChange = (market.last / run.startPrice - 1) * 100;
   const mark = run.markPrice();
-  const floating = account.position * (mark - account.entry) * ARENA_CONTRACT_BTC / 10000;
-  $("mode-badge").textContent = mode === "random" ? "未知隨機市場" : mode === "daily" ? `每日市場 ${dailyKey()}` : mode === "shadow" ? `影子挑戰 / ${ghost?.name ?? "玩家"}` : "練習重玩";
+  const floating = account.position * (mark - account.entry) / run.denominator;
+  const rivals = run.lineup.length ? ` · 對戰電腦 ${RIVAL_SETTINGS[run.rivalSetting].label} ${run.lineup.length} 人` : "";
+  $("mode-badge").textContent = `${mode === "random" ? "未知隨機市場" : mode === "daily" ? `每日市場 ${dailyKey()}` : mode === "shadow" ? `影子挑戰 / ${ghost?.name ?? "玩家"}` : "練習重玩"}${rivals}`;
   $("seed-label").textContent = mode === "random" && !run.finished ? "SEED HIDDEN" : `SEED ${run.seed}`;
   const remaining = Math.max(0, run.duration - run.time);
   $("clock").textContent = clock(remaining);
@@ -502,7 +571,7 @@ function render() {
   $("mark-price").textContent = price(mark);
   $("spread").textContent = market.spread() == null ? "—" : price(market.spread());
   $("liq-total").textContent = btc(run.stats.liquidatedLong + run.stats.liquidatedShort);
-  $("cvd-value").textContent = signed(arenaBtc(market.cvd), 0);
+  $("cvd-value").textContent = signed(run.btc(market.cvd), 0);
   $("cvd-value").className = numberClass(market.cvd);
   $("hud-pnl").textContent = `${money(pnl)} · ${signed(roi)}%`;
   $("hud-pnl").className = numberClass(pnl);
@@ -582,6 +651,7 @@ function render() {
   previousRealized = account.realized;
   processExecution();
   processLiquidations();
+  processKnockouts();
   processPlayerLiquidation();
   if (document.querySelector(".market-details").open) { renderBook(); renderTape(); }
   renderFuel();
@@ -618,7 +688,7 @@ function animateEquity(now) {
     lastTickEquity = equity;
     lastEquityTick = now;
   }
-  if (equity > peakShown + 2000 * ARENA_CONTRACT_BTC && equity > ARENA_START_BALANCE + 5000 * ARENA_CONTRACT_BTC && playing) {
+  if (equity > peakShown + 2000 * run.contractBtc && equity > ARENA_START_BALANCE + 5000 * run.contractBtc && playing) {
     peakShown = equity;
     const wallet = document.querySelector(".wallet-panel");
     wallet.classList.remove("new-high");
@@ -630,12 +700,12 @@ function animateEquity(now) {
 function drawChart(now) {
   for (const flash of chartView.flashes) flash.age = (now - flash.born) / 1300;
   chartView.flashes = chartView.flashes.filter((flash) => flash.age < 1);
-  chartView.size = unitSize;
+  chartView.sizeLabel = `${size(orderLots())} BTC`;
   drawArenaChart($("market-chart"), run, { ...chartView, pulse: chartView.pulse * (0.5 + 0.5 * Math.sin(now / 160)) });
 }
 
 function saveResult(result) {
-  const record = { ...result, mode, day: mode === "daily" ? dailyKey() : null, id: Date.now() + Math.floor(Math.random() * 1000) };
+  const record = { ...result, mode, rivals: run.rivalSetting, day: mode === "daily" ? dailyKey() : null, id: Date.now() + Math.floor(Math.random() * 1000) };
   records.unshift(record);
   records = records.sort((a, b) => b.score - a.score).slice(0, 40);
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch { /* Local preview remains playable. */ }
@@ -673,7 +743,7 @@ function renderReview() {
     tags.className = "episode-tags";
     if (episode.ignited) tags.append(listItem("i", `引爆 ${btc(episode.ignited)}`, "tag-gold"));
     if (episode.absorbed >= 100) tags.append(listItem("i", `撞冰山 ${btc(episode.absorbed)}`, "tag-amber"));
-    if (episode.slippage >= 5000 * ARENA_CONTRACT_BTC) tags.append(listItem("i", `滑價 ${compactMoney(episode.slippage)}`, "tag-coral"));
+    if (episode.slippage >= 5000 * run.contractBtc) tags.append(listItem("i", `滑價 ${compactMoney(episode.slippage)}`, "tag-coral"));
     if (episode.bestMove != null) tags.append(listItem("i", `最佳 ${signed(episode.bestMove)}% → 出場 ${signed(episode.exitMove)}%`));
     if (episode.hunted) tags.append(listItem("i", "被獵手盯上", "tag-coral"));
     row.append(tags);
@@ -692,6 +762,39 @@ function renderReview() {
   reveals.append(listItem("li", strikes.length ? `獵手：出手 ${strikes.length} 次${aimed ? `，其中 ${aimed} 次瞄準你的強平價` : ""}，損益 ${money(review.hunter.pnl)}。` : "獵手：這局沒有找到值得出手的目標。"));
 }
 
+// Rank table and who did what to whom, names revealed.
+function renderStandings() {
+  const box = $("result-standings");
+  box.hidden = !run.lineup.length;
+  if (box.hidden) return;
+  const list = $("standings-list");
+  list.replaceChildren();
+  for (const row of run.standings) {
+    const item = document.createElement("li");
+    item.className = row.id === run.you.id ? "you" : "";
+    item.append(
+      listItem("b", `#${row.rank}`),
+      listItem("span", traderName(row.id)),
+      listItem("strong", String(row.score)),
+      listItem("em", `${signed(row.roi)}%`),
+      listItem("small", row.playerLiquidations ? `被強平 ${row.playerLiquidations} 次` : ""),
+    );
+    list.append(item);
+  }
+  const duels = $("duel-list");
+  duels.replaceChildren();
+  const review = run.review();
+  for (const item of review.knockouts) {
+    const victim = traderName(item.victim);
+    const side = item.side === "long" ? "多單" : "空單";
+    duels.append(listItem("li", item.by ? `第 ${item.time} 秒：${traderName(item.by)}推爆了${victim === "你" ? "你" : victim}的${side}（${btc(item.lots)}）。` : `第 ${item.time} 秒：${victim === "你" ? "你" : victim}的${side}被市場強平（${btc(item.lots)}）。`));
+  }
+  for (const duel of review.duels.filter((item) => item.taker === run.you.id || item.maker === run.you.id)) {
+    duels.append(listItem("li", duel.taker === run.you.id ? `你吃了 ${traderName(duel.maker)} 的掛單 ${btc(duel.lots)}，均價 ${price(duel.avgPrice)}。` : `${traderName(duel.taker)} 吃了你的掛單 ${btc(duel.lots)}，均價 ${price(duel.avgPrice)}。`));
+  }
+  if (!duels.children.length) duels.append(listItem("li", "這局沒有玩家之間的交手紀錄。"));
+}
+
 function showResult() {
   const result = run.result ?? run.finish();
   const best = records.filter((row) => row.mode === mode && (mode !== "daily" || row.day === dailyKey())).reduce((top, row) => Math.max(top, row.score), 0);
@@ -704,16 +807,18 @@ function showResult() {
   $("result-grade").className = `grade-${letter}`;
   $("result-pnl").textContent = `${money(result.pnl)} USDT`;
   $("result-pnl").className = numberClass(result.pnl);
-  const comparison = mode === "shadow" && ghost ? result.score > ghost.score ? `超越 ${ghost.name} ${result.score - ghost.score} 分。` : `距離 ${ghost.name} 還差 ${ghost.score - result.score} 分。` : "市場已結算，所有持倉按簿面平倉。";
+  const placing = run.lineup.length ? `第 ${result.rank} 名 / ${run.traders.length} 人。` : "";
+  const comparison = placing + (mode === "shadow" && ghost ? result.score > ghost.score ? `超越 ${ghost.name} ${result.score - ghost.score} 分。` : `距離 ${ghost.name} 還差 ${ghost.score - result.score} 分。` : "市場已結算，所有持倉按簿面平倉。");
   $("result-summary").textContent = `${comparison}${result.settlementFallback ? " 部分倉位因深度不足，按不利標記價結算。" : ""}`;
   $("result-roi").textContent = `${signed(result.roi)}%`;
   $("result-roi").className = numberClass(result.roi);
   $("result-mdd").textContent = `${fmt(result.maxDrawdown)}%`;
   $("result-ignited").textContent = compactMoney(result.ignitedValue);
-  $("result-cascade").textContent = `${fmt(result.biggestCascadeUnits * ARENA_CONTRACT_BTC, 0)} BTC`;
+  $("result-cascade").textContent = `${fmt(result.biggestCascadeUnits * run.contractBtc, 0)} BTC`;
   const blown = result.playerLiquidations ? `你的倉位被強平 ${result.playerLiquidations} 次，共賠掉保證金 ${compactMoney(result.marginLost)}。` : "";
-  $("result-reveal").textContent = `${blown}隱藏大戶分批${result.whaleSide === "buy" ? "買進" : "賣出"}，送出 ${result.whaleOrders} 筆子單。本局共 ${fmt(result.liquidatedUnits * ARENA_CONTRACT_BTC, 0)} BTC 槓桿倉被強平，其中 ${fmt(result.ignitedUnits * ARENA_CONTRACT_BTC, 0)} BTC 由你推價觸發。${result.news.length ? `事件：${result.news.join("、")}。` : "本局沒有突發消息。"}`;
+  $("result-reveal").textContent = `${blown}隱藏大戶分批${result.whaleSide === "buy" ? "買進" : "賣出"}，送出 ${result.whaleOrders} 筆子單。本局共 ${fmt(result.liquidatedUnits * run.contractBtc, 0)} BTC 槓桿倉被強平，其中 ${fmt(result.ignitedUnits * run.contractBtc, 0)} BTC 由你推價觸發。${result.news.length ? `事件：${result.news.join("、")}。` : "本局沒有突發消息。"}`;
   renderReview();
+  renderStandings();
   $("share-status").textContent = "連結包含種子與影子分數，可傳給朋友挑戰。";
   if (!$("result-dialog").open) $("result-dialog").showModal();
   if (result.qualified && result.score > 0) {
@@ -724,11 +829,14 @@ function showResult() {
   render();
 }
 
-function beginNew(seed, nextMode = "random", nextGhost = null) {
+function beginNew(seed, nextMode = "random", nextGhost = null, setting = rivalSetting) {
   playing = false;
   mode = nextMode;
   ghost = nextGhost;
-  run = new FlowArenaRun(seed);
+  run = createRun(seed, setting);
+  $("rivals").value = setting;
+  seenKnockouts = 0;
+  renderedFeedKeys = [];
   run.setLeverage(loadLeverage());
   seenPlayerLiquidation = null;
   accumulated = 0;
@@ -765,7 +873,6 @@ function beginNew(seed, nextMode = "random", nextGhost = null) {
 function setUnit(value) {
   if (!UNIT_SIZES.includes(value)) return;
   unitSize = value;
-  chartView.size = value;
   for (const button of document.querySelectorAll("[data-unit]")) button.classList.toggle("active", Number(button.dataset.unit) === value);
   renderPreview();
 }
@@ -779,7 +886,7 @@ function togglePlay() {
 function submitOrder(side, type, limit = null) {
   if (!playing || document.hidden) { setMessage("先按「開始交易」啟動市場", true); return; }
   const reduceOnly = $("reduce-only").checked;
-  const result = run.submit(side, type, unitSize * 100, limit, { reduceOnly });
+  const result = run.submit(side, type, orderLots(), limit, { reduceOnly });
   if (!result.ok) setMessage(result.error, true);
   else {
     const fill = result.matched ? `成交 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""}` : "尚未成交";
@@ -819,7 +926,7 @@ function frame(now) {
     accumulated += elapsed * Number($("speed").value);
     let steps = 0;
     while (accumulated >= 1000 && steps < 8 && !run.finished) {
-      run.tick();
+      stepRun();
       accumulated -= 1000;
       steps++;
     }
@@ -850,7 +957,7 @@ document.querySelectorAll("[data-leverage]").forEach((button) => button.addEvent
   const error = run.setLeverage(leverage);
   if (error) { setMessage(error, true); return; }
   try { localStorage.setItem(LEVERAGE_KEY, String(leverage)); } catch { /* Optional preference. */ }
-  setMessage(`槓桿改為 ${leverage}×：每開 1 BTC 佔用約 $${fmt(run.market.last / 100 / leverage, 0)} 保證金，強平價在進場價反向約 ${fmt((1 / leverage - 0.004) * 100, 1)}%${leverage === 1 ? "，幾乎不會爆倉" : ""}${Number.isFinite(ARENA_RISK_LIMITS[leverage]) ? `；風險限額最多持有 ${size(ARENA_RISK_LIMITS[leverage])} BTC（含掛單）` : ""}。`);
+  setMessage(`槓桿改為 ${leverage}×：每開 1 BTC 佔用約 $${fmt(run.market.last / 100 / leverage, 0)} 保證金，強平價在進場價反向約 ${fmt((1 / leverage - 0.004) * 100, 1)}%${leverage === 1 ? "，幾乎不會爆倉" : ""}${Number.isFinite(ARENA_RISK_LIMITS[leverage]) ? `；風險限額最多持有 ${fmt(ARENA_RISK_LIMITS[leverage], 0)} BTC（含掛單）` : ""}。`);
   render();
 }));
 function renderSoundToggle() {
@@ -922,10 +1029,15 @@ $("leaderboard-list").addEventListener("click", (event) => {
   const button = event.target.closest("[data-record]");
   const record = records.find((row) => row.id === Number(button?.dataset.record));
   if (!record) return;
-  beginNew(record.seed, "shadow", { seed: record.seed, score: record.score, path: record.path, name: "本機紀錄" });
+  beginNew(record.seed, "shadow", { seed: record.seed, score: record.score, path: record.path, name: "本機紀錄" }, record.rivals ?? "none");
 });
 $("result-close").addEventListener("click", () => $("result-dialog").close());
-$("retry-button").addEventListener("click", () => beginNew(run.seed, "shadow", { seed: run.seed, score: run.result.score, path: run.result.path, name: "你的上一局" }));
+$("retry-button").addEventListener("click", () => beginNew(run.seed, "shadow", { seed: run.seed, score: run.result.score, path: run.result.path, name: "你的上一局" }, run.rivalSetting));
+$("rivals").addEventListener("change", (event) => {
+  rivalSetting = RIVAL_SETTINGS[event.target.value] ? event.target.value : "none";
+  try { localStorage.setItem(RIVALS_KEY, rivalSetting); } catch { /* Optional preference. */ }
+  beginNew(mode === "daily" ? dailySeed() : randomSeed(), mode === "daily" ? "daily" : "random");
+});
 $("next-button").addEventListener("click", () => beginNew(randomSeed()));
 $("export-button").addEventListener("click", async () => {
   const text = JSON.stringify(run.exportData(), null, 1);
@@ -944,7 +1056,7 @@ $("export-button").addEventListener("click", async () => {
 $("share-button").addEventListener("click", async () => {
   const name = $("handle").value.trim().slice(0, 18) || "匿名交易者";
   try { localStorage.setItem(PROFILE_KEY, name); } catch { /* Optional profile. */ }
-  const code = encodeChallenge({ version: ARENA_VERSION, seed: run.seed, score: run.result.score, path: run.result.path, name });
+  const code = encodeChallenge({ version: ARENA_VERSION, seed: run.seed, score: run.result.score, path: run.result.path, name, rivals: run.rivalSetting });
   const url = new URL(location.pathname, location.href);
   url.searchParams.set("challenge", code);
   try { await navigator.clipboard.writeText(url.href); $("share-status").textContent = "影子挑戰連結已複製，可以傳給朋友。"; }
@@ -963,6 +1075,7 @@ document.addEventListener("keydown", (event) => {
   else if (key === " ") { event.preventDefault(); togglePlay(); }
 });
 try { $("handle").value = localStorage.getItem(PROFILE_KEY) || ""; } catch { /* Optional profile. */ }
+$("rivals").value = run.rivalSetting;
 try { if (localStorage.getItem(GUIDE_KEY) === "closed") $("guide-panel").open = false; } catch { /* Optional preference. */ }
 $("guide-panel").addEventListener("toggle", () => {
   try { localStorage.setItem(GUIDE_KEY, $("guide-panel").open ? "open" : "closed"); } catch { /* Optional preference. */ }

@@ -230,3 +230,11 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 .swatch{display:inline-block;width:8px;height:8px;border-radius:2px}.swatch.margin,.funds-bar .margin{background:#c9a45a}.swatch.reserve,.funds-bar .reserve{background:#7b6bd1}.swatch.free,.funds-bar .free{background:#3fbf9c}
 .funds-bar{display:flex;height:8px;margin-top:9px;border-radius:4px;overflow:hidden;background:#243b44}.funds-bar i{display:block;height:100%;transition:width .3s}
 .funds-note{margin:7px 0 0;color:#6f8d93;font-size:9px;line-height:1.55}.funds-note span{display:block;color:#a8cbc4;font:600 10px Consolas,"Noto Sans TC",monospace}
+/* Computer opponents: violet marks other traders, never the NPC market. */
+.fx-label.violet{color:#1c1236;background:linear-gradient(90deg,#b79cff,#e2d6ff);box-shadow:0 0 22px #9d7dffaa}
+.combo-banner.violet{color:#e2d6ff;text-shadow:0 0 22px #9d7dff}
+.liq-row.rival{background:linear-gradient(90deg,#2b2148,#132733);border-left-color:#b79cff}.liq-row.rival b{color:#d6c6ff}
+.standings-list{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:5px}
+.standings-list li{display:grid;grid-template-columns:34px 1fr 56px 64px 90px;gap:8px;align-items:center;padding:7px 10px;border-radius:6px;background:#132733;font-size:12px}
+.standings-list li.you{background:linear-gradient(90deg,#1d3a3a,#132733);outline:1px solid #3f7d72}
+.standings-list b{font:800 12px Consolas,monospace;color:var(--gold)}.standings-list strong{font:700 13px Consolas,monospace;text-align:right}.standings-list em{font-style:normal;text-align:right;color:#b9c9cc}.standings-list small{color:var(--coral);font-size:10px;text-align:right}

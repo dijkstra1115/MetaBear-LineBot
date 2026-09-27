@@ -1,8 +1,6 @@
-import { arenaBtc } from "./flow-arena-engine.js";
-
 const labelPrice = (cents, digits = 0) => (cents / 100).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const units = (lots) => arenaBtc(lots).toLocaleString("en-US", { maximumFractionDigits: arenaBtc(lots) >= 10 ? 0 : 1 });
+const units = (run, lots) => run.btc(lots).toLocaleString("en-US", { maximumFractionDigits: run.btc(lots) >= 10 ? 0 : 1 });
 const HEAT_COLD = [92, 64, 170];
 const HEAT_HOT = [255, 214, 102];
 const heat = (t, alpha) => `rgba(${HEAT_COLD.map((cold, index) => Math.round(cold + (HEAT_HOT[index] - cold) * t)).join(",")},${alpha.toFixed(3)})`;
@@ -29,7 +27,8 @@ export function arenaChartGeometry(canvas, run, view = {}) {
   const priceTop = 26;
   const priceBottom = rect.height * 0.74;
   const left = 70;
-  const plotRight = rect.width - ARENA_PRICE_TAG - ARENA_LIQ_COLUMN - ARENA_FOOTPRINT_COLUMN - 8;
+  // compact: narrow screens drop the footprint column to keep room for the candles.
+  const plotRight = rect.width - ARENA_PRICE_TAG - ARENA_LIQ_COLUMN - (view.compact ? 0 : ARENA_FOOTPRINT_COLUMN) - 8;
   const y = (price) => priceTop + (high - price) / span * (priceBottom - priceTop);
   const slots = Math.max(40, candles.length + 3);
   const xStep = (plotRight - left) / slots;
@@ -109,7 +108,7 @@ export function drawArenaChart(canvas, run, view = {}) {
 
   // Liquidation bands (default) or the resting-order heatmap behind the candles.
   const bin = Math.max(2000, Math.round(last * 0.001 / 1000) * 1000);
-  const levels = run.liquidationLevels(bin).filter((row) => visible(row.price));
+  const levels = run.estimatedLevels(bin).filter((row) => visible(row.price));
   const maxLiq = Math.max(800, ...levels.map((row) => row.long + row.short));
   if ((view.layer ?? "liq") === "liq") {
     for (const row of levels) {
@@ -184,6 +183,22 @@ export function drawArenaChart(canvas, run, view = {}) {
     horizontal(ctx, left, plotRight, y(flash.to), `rgba(${rgb},${(0.9 * fade).toFixed(3)})`, [], 1.5);
   }
 
+  // Other traders' liquidation prices are public, but not whose they are or how big. One outside
+  // the visible range is pinned to the edge with its distance.
+  for (const trader of run.traders ?? []) {
+    if (trader === run.you) continue;
+    const liq = trader.liquidationPrice();
+    if (!liq) continue;
+    if (visible(liq)) {
+      horizontal(ctx, left, plotRight, y(liq), "#b79cffcc", [3, 4], 1.2);
+      tag(ctx, `對手強平 ${labelPrice(liq)}`, plotRight - 4, y(liq) + (trader.account.position > 0 ? 12 : -12), "#2b2148e6", "#d6c6ff", "right");
+    } else {
+      const above = liq > last;
+      const distance = (liq / last - 1) * 100;
+      tag(ctx, `對手強平 ${above ? "↑" : "↓"} ${labelPrice(liq)} (${distance >= 0 ? "+" : ""}${distance.toFixed(1)}%)`, plotRight - 4, above ? priceTop + 10 : priceBottom - 10, "#2b2148e6", "#d6c6ff", "right");
+    }
+  }
+
   // Player reference lines: average entry, liquidation, stop and take.
   const account = run.account;
   if (account.position) {
@@ -203,18 +218,10 @@ export function drawArenaChart(canvas, run, view = {}) {
       tag(ctx, `${label} ${labelPrice(price)}`, plotRight - 4, y(price) - 11, "#12242de6", color, "right");
     }
   }
-  // Suspected icebergs: far more volume traded at one price than was ever shown there.
-  for (const signal of run.icebergSignals()) {
-    if (!visible(signal.price)) continue;
-    const yy = y(signal.price);
-    horizontal(ctx, left, plotRight, yy, "rgba(242,197,117,.9)", [10, 4], 1.8);
-    tag(ctx, `疑似冰山${signal.side === "sell" ? "賣單" : "買單"} · 已成交 ${units(signal.traded)} / 掛出 ${units(signal.shown)}`, left + (plotRight - left) * 0.36, yy + (signal.side === "sell" ? -12 : 12), "#3a2f17f0", "#f7d58e");
-  }
-
   for (const order of run.playerOrders()) {
     if (!visible(order.price)) continue;
     horizontal(ctx, left, plotRight, y(order.price), order.side === "buy" ? "#70e6c9aa" : "#fb7f91aa", [3, 3]);
-    tag(ctx, `掛${order.side === "buy" ? "買" : "賣"} ${units(order.lots)}`, plotRight - 4, y(order.price), "#12242de6", order.side === "buy" ? "#9ff3dc" : "#ffb3bf", "right");
+    tag(ctx, `掛${order.side === "buy" ? "買" : "賣"} ${units(run, order.lots)}`, plotRight - 4, y(order.price), "#12242de6", order.side === "buy" ? "#9ff3dc" : "#ffb3bf", "right");
   }
 
   const lastY = y(last);
@@ -239,7 +246,7 @@ export function drawArenaChart(canvas, run, view = {}) {
     ctx.textAlign = "left";
     ctx.fillStyle = "#e7f6ee";
     ctx.font = "bold 11px Consolas, monospace";
-    ctx.fillText(`${view.cursorPrice < last ? "掛買" : "掛賣"} ${labelPrice(view.cursorPrice)} · ${view.size ?? 1} 單位`, left + 8, clamp(yy - 12, priceTop + 12, priceBottom - 6));
+    ctx.fillText(`${view.cursorPrice < last ? "掛買" : "掛賣"} ${labelPrice(view.cursorPrice)}${view.sizeLabel ? ` · ${view.sizeLabel}` : ""}`, left + 8, clamp(yy - 12, priceTop + 12, priceBottom - 6));
   }
 
   const volumeTop = priceBottom + 10;
@@ -258,6 +265,8 @@ export function drawArenaChart(canvas, run, view = {}) {
   ctx.fillStyle = "#7597a0";
   ctx.fillText("VOL", 10, volumeTop + 8);
   ctx.fillText("CVD", 10, cvdTop + 8);
+  ctx.fillStyle = "#8fd4ff";
+  ctx.fillText("OI", 34, cvdTop + 8);
   const maxVolume = Math.max(1, ...candles.map((candle) => candle.volume));
   candles.forEach((candle, index) => {
     const barHeight = candle.volume / maxVolume * (volumeBottom - volumeTop);
@@ -276,6 +285,23 @@ export function drawArenaChart(canvas, run, view = {}) {
     if (index) ctx.lineTo(x(index), cvdY(value)); else ctx.moveTo(x(index), cvdY(value));
   });
   ctx.stroke();
+  // Open interest on its own scale: rising means new positions, falling means positions closing.
+  const ois = candles.map((candle) => candle.oi).filter(Number.isFinite);
+  if (ois.length > 1) {
+    let oiLow = Math.min(...ois);
+    let oiHigh = Math.max(...ois);
+    if (oiLow === oiHigh) { oiLow--; oiHigh++; }
+    const oiY = (value) => cvdTop + (oiHigh - value) / (oiHigh - oiLow) * (cvdBottom - cvdTop);
+    ctx.strokeStyle = "#8fd4ffcc";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    let started = false;
+    candles.forEach((candle, index) => {
+      if (!Number.isFinite(candle.oi)) return;
+      if (started) ctx.lineTo(x(index), oiY(candle.oi)); else { ctx.moveTo(x(index), oiY(candle.oi)); started = true; }
+    });
+    ctx.stroke();
+  }
 
   // Liquidation map column: forced buys sit above the price, forced sells below.
   const liqX = plotRight + ARENA_PRICE_TAG + 2;
@@ -298,7 +324,7 @@ export function drawArenaChart(canvas, run, view = {}) {
       ctx.fillStyle = "#f7e6b5";
       ctx.font = "9px Consolas, monospace";
       ctx.textAlign = "left";
-      ctx.fillText(`${units(lots)}`, liqX + 2, yy - 7);
+      ctx.fillText(`${units(run, lots)}`, liqX + 2, yy - 7);
     }
   }
   ctx.fillStyle = "#6f9aa0";
@@ -308,6 +334,13 @@ export function drawArenaChart(canvas, run, view = {}) {
 
   const footprintX = liqX + liqWidth + 8;
   const footprintWidth = width - footprintX - 6;
+  if (view.compact) {
+    ctx.font = "9px Consolas, monospace";
+    ctx.fillStyle = "#8aa8aa";
+    ctx.textAlign = "right";
+    ctx.fillText(`${Math.max(0, run.time)} / ${run.duration}s`, plotRight, height - 10);
+    return;
+  }
   ctx.fillStyle = "#122b35";
   ctx.fillRect(footprintX, 0, footprintWidth, height);
   ctx.textAlign = "left";
@@ -331,10 +364,10 @@ export function drawArenaChart(canvas, run, view = {}) {
     ctx.font = "10px Consolas, monospace";
     ctx.fillStyle = "#ff9aa8";
     ctx.textAlign = "left";
-    ctx.fillText(String(Math.round(arenaBtc(row.sell))), footprintX + 5, yy);
+    ctx.fillText(String(Math.round(run.btc(row.sell))), footprintX + 5, yy);
     ctx.fillStyle = "#8feccc";
     ctx.textAlign = "right";
-    ctx.fillText(String(Math.round(arenaBtc(row.buy))), width - 10, yy);
+    ctx.fillText(String(Math.round(run.btc(row.buy))), width - 10, yy);
     ctx.fillStyle = "#a9c1bd";
     ctx.textAlign = "center";
     ctx.font = "9px Consolas, monospace";
