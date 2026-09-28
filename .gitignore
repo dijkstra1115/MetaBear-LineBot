@@ -46,6 +46,7 @@ test-output/
 quant/.data/
 motion/out/
 motion/showreel/out/
+motion/promo/out/
 
 # Logs
 *.log

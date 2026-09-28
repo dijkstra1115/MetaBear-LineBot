@@ -6,6 +6,7 @@
 //   node motion/render.mjs footprint                 → motion/out/footprint.mp4 (captions burned in)
 //   node motion/render.mjs footprint --still 3,12.5  → motion/out/stills/footprint-*.png
 //   node motion/render.mjs showreel                  → motion/out/showreel.mp4
+//   node motion/render.mjs promo | promo-tall        → motion/out/promo.mp4 (16:9) / promo-tall.mp4 (9:16)
 //   node motion/render.mjs --serve                   → http://127.0.0.1:8791/motion/export.html?lesson=<id>
 //   options: --fps 60  --workers 4  --from 0 --to 30  --crf 18  --no-captions
 import { createServer } from "node:http";
@@ -240,16 +241,22 @@ const base = `http://127.0.0.1:${server.address().port}`;
 if (flag("serve")) {
   console.log(`lesson export preview: ${base}/motion/export.html?lesson=<id>`);
   console.log(`showreel preview:      ${base}/motion/showreel/index.html?preview`);
+  console.log(`promo preview:         ${base}/motion/promo/index.html?preview&fmt=wide|tall`);
 } else {
   if (!target) throw new Error("usage: node motion/render.mjs <lesson-id|showreel> [options]");
   await mkdir(outDir, { recursive: true });
   const showreel = target === "showreel";
+  const promo = target === "promo" || target === "promo-tall";
   const url = showreel
     ? `${base}/motion/showreel/index.html`
-    : `${base}/motion/export.html?lesson=${target}&captions=${flag("no-captions") ? 0 : 1}`;
+    : promo
+      ? `${base}/motion/promo/index.html?fmt=${target === "promo" ? "wide" : "tall"}`
+      : `${base}/motion/export.html?lesson=${target}&captions=${flag("no-captions") ? 0 : 1}`;
   const audio = showreel
     ? join(here, "showreel/out/soundtrack.wav")
-    : join(root, "public/orderflow/motion/audio", `${target}.m4a`);
+    : promo
+      ? join(here, "promo/out/promo.wav")
+      : join(root, "public/orderflow/motion/audio", `${target}.m4a`);
   const still = opt("still");
   if (still) await stills(url, target, still.split(",").map(Number));
   else

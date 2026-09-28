@@ -67,8 +67,17 @@ async function showreelAudio() {
   console.log(`showreel → ${wav}`);
 }
 
+async function promoAudio() {
+  const { DURATION, cues, music } = await import(pathToFileURL(join(here, "promo/promo.js")).href);
+  const score = renderScore({ duration: DURATION, cues, music });
+  const wav = join(here, "promo/out/promo.wav");
+  await writeWav(wav, score);
+  console.log(`promo → ${wav}`);
+}
+
 const ids = process.argv.slice(2);
 if (ids.includes("showreel")) await showreelAudio();
-const lessonIds = ids.filter((id) => id !== "showreel");
+if (ids.includes("promo")) await promoAudio();
+const lessonIds = ids.filter((id) => id !== "showreel" && id !== "promo");
 const all = (await readdir(lessonsDir)).filter((f) => f.endsWith(".js")).map((f) => f.slice(0, -3));
 for (const id of lessonIds.length ? lessonIds : ids.length ? [] : all) await lessonAudio(id);
