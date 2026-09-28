@@ -249,7 +249,7 @@ if (params.has("preview")) {
   const scrub = document.getElementById("scrub");
   const label = document.getElementById("time");
   const audio = document.getElementById("audio");
-  audio.src = "/out/soundtrack.wav";
+  audio.src = "./out/soundtrack.wav";
   scrub.max = TOTAL;
   let playing = false;
   let origin = 0;

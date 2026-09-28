@@ -6,20 +6,22 @@
     <meta name="theme-color" content="#0b1218" />
     <meta
       name="description"
-      content="走進一根 K 線，看主動買賣的成交如何逐筆留下足跡。約 30 秒的動態圖解。"
+      content="走進一根 K 線，看左右格子如何逐筆累加。 約 30 秒的動態圖解。"
     />
     <title>足跡圖 · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
     <link rel="stylesheet" href="./wick.css" />
     <link rel="stylesheet" href="./primer-desktop.css" />
+    <link rel="stylesheet" href="./motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="./motion/motion.css" />
     <script type="module" src="./academy-navigation.js"></script>
-    <script type="module" src="./footprint.js"></script>
+    <script type="module" src="./motion/boot.js"></script>
     <link rel="stylesheet" href="./academy-mobile.css" />
     <link rel="stylesheet" href="./academy-navigation.css" />
     <script type="module" src="./academy-mobile.js"></script>
   </head>
-  <body data-chapter="footprint">
-    <a class="skip" href="#story">跳到足跡圖解</a>
+  <body data-chapter="footprint" data-lesson-style="compact" data-format="motion">
+    <a class="skip" href="#story">跳到足跡圖動態課程</a>
     <header class="site-header">
       <a href="/" class="brand"
         ><img src="/favicon-v2.png" width="28" height="28" alt="" /><span
@@ -49,8 +51,7 @@
             <i></i>讀懂一格，回到全景
           </button>
         </nav><a href="./heatmap.html"><span class="course-number">03</span><span><small>掛單的時間軌跡</small><strong>熱力圖</strong></span></a><a href="./order-types.html"><span class="course-number">04</span><span><small>立即成交與指定價格</small><strong>市價單與限價單</strong></span></a><a href="./slippage.html"><span class="course-number">05</span><span><small>一筆單，走過幾個價位</small><strong>滑價</strong></span></a><a href="./leverage.html"><span class="course-number">06</span><span><small>保證金與部位</small><strong>合約槓桿</strong></span></a><a href="./liquidation.html"><span class="course-number">07</span><span><small>虧損如何吃掉保證金</small><strong>合約強平</strong></span></a><a href="./volume.html"><span class="course-number">08</span><span><small>成交量與比較基準</small><strong>成交量</strong></span></a><a href="./delta-concept.html"><span class="course-number">09</span><span><small>當段差額與累計差額</small><strong>Delta 與 CVD</strong></span></a><a href="./stop-orders.html"><span class="course-number">10</span><span><small>市價止損與限價止損</small><strong>停損單</strong></span></a><a href="./open-interest.html"><span class="course-number">11</span><span><small>開倉、平倉與成交量</small><strong>未平倉量（OI）</strong></span></a><a href="./funding.html"><span class="course-number">12</span><span><small>永續合約的定期交換</small><strong>資金費率</strong></span></a><a href="./volume-profile.html"><span class="course-number">13</span><span><small>把量放回價格</small><strong>成交量分布圖</strong></span></a><a href="./imbalance.html"><span class="course-number">14</span><span><small>相鄰價位的主動成交</small><strong>足跡不平衡</strong></span></a><h2 class="course-group">市場故事</h2><a href="./wick.html"><span class="course-number">01</span><span><small>走進一根上影線</small><strong>衝上去，怎麼又回來？</strong></span></a><a href="./absorption-story.html"><span class="course-number">02</span><span><small>測壓、吸收與賣出接手</small><strong>突破誘多，高位吸收，反轉出貨</strong></span></a><a href="./breakout-volume.html"><span class="course-number">03</span><span><small>回踩承接，買盤再推高</small><strong>放量突破，怎樣才算站穩？</strong></span></a><a href="./order-block.html"><span class="course-number">04</span><span><small>大買家如何留下起漲區</small><strong>訂單塊到底長怎樣？</strong></span></a></nav>
-      <div class="lesson-prerequisite"><span>先懂這些，會更好看</span><a href="./matching.html"><strong>K 線 ↗</strong></a></div>
-      <div class="sidebar-note">
+      <div class="lesson-prerequisite"><span>先懂這些，會更好看</span><a href="./matching.html"><strong>K 線 ↗</strong></a></div><div class="sidebar-note">
         <span class="note-orbit">↗</span>
         <p>價格留下形狀，<br />成交留下足跡。</p>
       </div>
@@ -65,99 +66,17 @@
           ><i></i> 動態圖解 <span>30 秒</span></span
         >
       </div>
-      <div class="scene-meta">
-        <span id="scene-label">01 — 先看整段成交足跡</span>
-        <ol class="scene-route" aria-label="課程進度">
-          <li aria-current="step"><span class="sr-only">第一幕</span></li>
-          <li><span class="sr-only">第二幕</span></li>
-          <li><span class="sr-only">第三幕</span></li>
-          <li><span class="sr-only">第四幕</span></li>
-        </ol>
-      </div>
-      <div class="lesson-player">
-        <section class="stage" aria-label="足跡圖">
-          <div class="stage-top">
-            <div class="instrument">
-              <strong>MetaBear 熊 <span>/ 元</span></strong
-              ><small>模擬商品 · 成交圖解</small>
-            </div>
-            <div class="clock">
-              <span id="playback-label">完整足跡 · 行情全景</span
-              ><b id="market-clock">14:28–14:32</b>
-            </div>
-          </div>
-          <div class="canvas">
-            <svg
-              id="market"
-              viewBox="0 0 1000 400"
-              role="img"
-              aria-labelledby="chart-title chart-description"
-            >
-              <title id="chart-title">多根 K 線的足跡圖與逐筆成交回看</title>
-              <desc id="chart-description"></desc>
-              <defs>
-                <clipPath id="stage-clip">
-                  <rect id="clip-rect" width="1000" height="400" />
-                </clipPath>
-              </defs>
-              <g id="world" clip-path="url(#stage-clip)"></g>
-            </svg>
-          </div>
-          <div class="stage-bottom">
-            <span id="lens-label">五根一分鐘 K 線 · 完整成交足跡</span
-            ><span class="last-price"
-              ><span>最新成交</span><b id="last-price">—</b></span
-            >
-          </div>
-          <div class="timeline">
-            <label for="scene-progress">拖曳回看</label>
-            <input
-              type="range"
-              id="scene-progress"
-              min="0"
-              max="30000"
-              step="10"
-              value="0"
-              aria-label="整課播放進度"
-              aria-describedby="seek-hint"
-            />
-            <span id="elapsed-label" class="elapsed">00:00.0 / 00:30.0</span>
-            <span id="seek-hint" class="sr-only"
-              >拖曳或用方向鍵調整整課進度。調整後暫停，按繼續播放。</span
-            >
-          </div>
-        </section>
-        <div class="story-copy" aria-live="polite" aria-atomic="true">
-          <p id="eyebrow">名詞圖解 · FOOTPRINT</p>
-          <h1 id="headline">每根 K 線，都有成交足跡。</h1>
-          <p id="question"></p>
-        </div>
-        <nav class="story-controls" aria-label="課程操作">
-          <button id="back" class="back" type="button" disabled>
-            ← 上一幕
-          </button>
-          <div class="advance">
-            <button id="pause" class="pause" type="button" aria-pressed="false">
-              暫停</button
-            ><button id="next" class="next" type="button" disabled>
-              播放中<span aria-hidden="true">↗</span>
-            </button>
-          </div>
-          <button
-            id="replay"
-            class="replay"
-            type="button"
-            aria-label="從頭重播足跡圖課程"
-          >
-            ↺ 從頭重播
-          </button>
-        </nav>
-      </div>
+      <section
+        class="motion-player"
+        data-lesson="footprint"
+        aria-label="足跡圖 動態課程"
+      ></section>
+      <p class="motion-note">左格＝主動賣出成交量，右格＝主動買入成交量；每筆成交只記一次。</p>
     </main>
     <footer>
-      <span>數字記錄已成交的量，每筆只計一次。</span
+      <span>空白鍵播放／暫停，←→ 快轉回看，F 全螢幕，M 聲音。</span
       ><span>MetaBear 互動學院</span>
     </footer>
-    <noscript>請啟用 JavaScript 觀看動態圖解。</noscript>
+    <noscript>請啟用 JavaScript 觀看動態課程。</noscript>
   </body>
 </html>

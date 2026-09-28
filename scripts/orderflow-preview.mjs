@@ -12,6 +12,9 @@ const types = {
   ".webp": "image/webp",
   ".png": "image/png",
   ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
+  ".m4a": "audio/mp4",
+  ".txt": "text/plain",
 };
 createServer(async (req, res) => {
   try {

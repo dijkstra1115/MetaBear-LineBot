@@ -35,7 +35,7 @@
 
 ### 交易學院動態影片
 
-`npm run motion:render` 產生約 86 秒的學院 showreel（四個故事的動態設計版，含合成配樂）；`npm run motion:preview` 可在瀏覽器逐格預覽。詳見 [motion/showreel](motion/showreel/README.md)。
+學院 18 課皆為動態影片課（canvas 逐格繪製、合成配樂、章節式播放器），架構與製作流程見 [動態影片課程](docs/ACADEMY-MOTION.md)。`npm run motion:audio` 重新合成配樂、`npm run motion:render -- <id>` 輸出單課 MP4。約 86 秒的學院 showreel 見 [motion/showreel](motion/showreel/README.md)。
 
 ### 訂單流量化研究室（獨立服務）
 

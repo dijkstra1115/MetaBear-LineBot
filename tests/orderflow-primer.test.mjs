@@ -530,5 +530,8 @@ test("the old K-line link leads to the unified story and the following story ret
   );
   assert.doesNotMatch(read("primer.js"), /candles.html|data.chapter/);
   assert.match(read("wick.js"), /matching.html#scene-8/);
-  assert.equal([...read("matching.html").matchAll(/<li\b/g)].length, 8);
+  // The K-line lesson is now a motion lesson; its chapters come from the lesson module.
+  const page = read("matching.html");
+  assert.match(page, /class="motion-player"[\s\S]*data-lesson="matching"/);
+  assert.ok([...page.matchAll(/data-story-scene="\d+"/g)].length >= 4);
 });

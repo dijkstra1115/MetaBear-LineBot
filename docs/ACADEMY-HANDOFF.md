@@ -1,5 +1,7 @@
 # 互動學院：新 session 接續指南
 
+> **2026-09-28 格式更新**：18 課已全部改為動態影片課（motion graphic video），由 canvas 逐格繪製並附合成配樂。播放器、檔案結構、時長與製作工具見 [動態影片課程](ACADEMY-MOTION.md)。以下「實作與分工」中的 SVG 五檔架構是舊版來源，課程頁已不再載入；時長以 catalog 為準。設計判斷（一課一問、全景 → 放大 → 回全景、不洩漏未發生的成交、短字幕）仍然適用。
+
 2026-09-24 接續 `e6d7870` 更新。依使用者審核刪除換手課、重製訂單塊與突破故事；本輪使用者已明確授權補手機版、commit 後部署到 Cloudflare，替換正式站舊學院。課程實際狀態以 `public/orderflow/academy-catalog.js` 為準。
 
 ## 任務與範圍
@@ -29,10 +31,10 @@
 
 | ID | 完成課名 | 核心與本地入口 |
 | --- | --- | --- |
-| `wick` | 衝上去，怎麼又回來？ | 九根 K 裡先看 136→103，再回看原十二幕成交。約 144 秒。[觀看](http://127.0.0.1:8790/orderflow/wick.html) |
-| `absorption-story` | 突破誘多，高位吸收，反轉出貨 | 三次放量測壓104 → 掛賣變薄突破到106 → 高位吸收 → 主動賣出跌回102。48秒。[觀看](http://127.0.0.1:8790/orderflow/absorption-story.html) |
-| `breakout-volume` | 放量突破，怎樣才算站穩？ | 十根完整行情 → 放大1.85倍 → 放量突破、回踩吸收 → 再上109 → 同十根結果。40 秒。[觀看](http://127.0.0.1:8790/orderflow/breakout-volume.html) |
-| `order-block` | 訂單塊到底長怎樣？ | 宏觀 → A 先掛買承接 50、期限接近再主動買入 30 → 收盤位移 → 圈區回原全景。[觀看](http://127.0.0.1:8790/orderflow/order-block.html) |
+| `wick` | 衝上去，怎麼又回來？ | 九根 K 裡先看 136→103，再回看上衝與回落成交。動態版 36 秒。[觀看](http://127.0.0.1:8790/orderflow/wick.html) |
+| `absorption-story` | 突破誘多，高位吸收，反轉出貨 | 三次放量測壓104 → 掛賣變薄突破到106 → 高位吸收 → 主動賣出跌回102。動態版 44 秒。[觀看](http://127.0.0.1:8790/orderflow/absorption-story.html) |
+| `breakout-volume` | 放量突破，怎樣才算站穩？ | 十根完整行情 → 放大1.85倍 → 放量突破、回踩吸收 → 再上109 → 同十根結果。動態版 38 秒。[觀看](http://127.0.0.1:8790/orderflow/breakout-volume.html) |
+| `order-block` | 訂單塊到底長怎樣？ | 宏觀 → A 先掛買承接 50、期限接近再主動買入 30 → 收盤位移 → 圈區回原全景。動態版 38 秒。[觀看](http://127.0.0.1:8790/orderflow/order-block.html) |
 
 來源、分鏡、數字與研究界線見 [訂單塊課程卡](ORDER-BLOCK-LESSON-PLAN.md)。核心是「大買家在買，為什麼先留下一根收跌 K？」；A 的目標與期限是已知模擬設定。先用 BIS／CME 研究解釋成本、等待、完成速度，再連回 OB。保留宏觀切入，不能退回只教框選定義。
 
@@ -73,7 +75,9 @@
 
 ## 實作與分工
 
-沿用原生 JavaScript、SVG、`story-player.js` 的 `mountStory`。不要換框架、改做影片或重建整個網站。每課沿用現有五檔架構：
+目前課程以 [動態影片課程](ACADEMY-MOTION.md) 的 `public/orderflow/motion/lessons/<id>.js` 為準；使用者已於 2026-09-28 要求全部課程改為動態影片。下列為舊版 SVG 架構的紀錄，檔案仍在但課程頁不再載入。
+
+舊版沿用原生 JavaScript、SVG、`story-player.js` 的 `mountStory`。每課沿用現有五檔架構：
 
 `public/orderflow/<id>.html`、`<id>.js`、`<id>-model.js`、`<id>-view.js`、`<id>-script.js`。
 
@@ -100,6 +104,7 @@ npm run preview:academy
 這個預覽由 `scripts/orderflow-preview.mjs` 提供，僅監聽 127.0.0.1，關閉靜態快取，不需啟動後端。不要執行 deploy 或遠端服務相關命令。
 
 ```powershell
+node --test tests/orderflow-motion.test.mjs
 $academyTests = @(rg --files tests -g 'orderflow-*.test.mjs')
 node --test --test-reporter=spec $academyTests
 ```

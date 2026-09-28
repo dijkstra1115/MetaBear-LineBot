@@ -44,6 +44,7 @@ test-output/
 *.db
 *.sqlite3
 quant/.data/
+motion/out/
 motion/showreel/out/
 
 # Logs

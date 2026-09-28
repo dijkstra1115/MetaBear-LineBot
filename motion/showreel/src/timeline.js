@@ -36,6 +36,34 @@ export const FLASHES = [
   { t: 76, amt: 0.65, pre: 0.15, decay: 9 },
 ];
 
+/** Score settings for motion/synth.mjs (level 0 pads · 1 light · 2 full · 3 intense). */
+export const MUSIC = {
+  palette: "deep",
+  padLevel: 0.5,
+  arps: [
+    [6.5, 11.8, 0.22],
+    [76.3, 85, 0.2],
+  ],
+  sections: [
+    { t: 0, level: 0 },
+    { t: 12, level: 1 },
+    { t: 14, level: 2 },
+    { t: 29.5, level: 0 },
+    { t: 30, level: 1 },
+    { t: 32, level: 2 },
+    { t: 41, level: 3 },
+    { t: 44, level: 2 },
+    { t: 47.5, level: 0 },
+    { t: 48, level: 1 },
+    { t: 50, level: 2 },
+    { t: 61.5, level: 0 },
+    { t: 62, level: 1 },
+    { t: 64, level: 2 },
+    { t: 75.5, level: 0 },
+  ],
+  fadeOut: 86,
+};
+
 /** Global audio cue sheet derived from the scenes' own event times. */
 export const CUES = SCENES.flatMap((s) =>
   (s.cues ?? []).map((c) => ({ ...c, t: c.t + s.start, scene: s.id })),

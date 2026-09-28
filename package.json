@@ -13,9 +13,9 @@
     "quant:replay": "tsx quant/replay.ts",
     "quant:collect": "tsx quant/collector.ts",
     "quant:raw:replay": "tsx quant/recording-replay.ts",
-    "motion:audio": "node motion/showreel/soundtrack.mjs",
-    "motion:preview": "node motion/showreel/render.mjs --serve",
-    "motion:render": "npm run motion:audio && node motion/showreel/render.mjs",
+    "motion:audio": "node motion/audio.mjs",
+    "motion:render": "node motion/render.mjs",
+    "motion:serve": "node motion/render.mjs --serve",
     "dev": "wrangler dev --local --port 8787",
     "db:migrate": "wrangler d1 migrations apply metabear-crm --local",
     "types": "wrangler types --env production --strict-vars false",
@@ -37,9 +37,6 @@
     "predeploy": "npm run build:site"
   },
   "devDependencies": {
-    "@fontsource-variable/jetbrains-mono": "^5.3.0",
-    "@fontsource-variable/noto-sans-tc": "^5.3.0",
-    "@fontsource/barlow-condensed": "^5.3.0",
     "@types/node": "^24.0.0",
     "esbuild": "0.28.2",
     "miniflare": "5.20260911.0-alpha",

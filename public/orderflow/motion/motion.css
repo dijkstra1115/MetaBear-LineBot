@@ -1,0 +1,536 @@
+/* Motion-lesson player: a video-like stage inside the academy lesson shell. */
+.motion-player {
+  --mp-teal: #78e1d5;
+  --mp-gold: #e8bd7d;
+  --mp-ink: #060b13;
+  --mp-text: #edf2ed;
+  --mp-muted: #94a8b9;
+  position: relative;
+  width: min(100%, calc((100vh - 210px) * 16 / 9));
+  margin: 0 auto;
+  outline: none;
+}
+.motion-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #000;
+  border: 1px solid #1f2c33;
+  box-shadow:
+    0 30px 80px -30px #000c,
+    0 0 0 1px #0006 inset;
+  isolation: isolate;
+}
+.motion-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.motion-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--mp-muted);
+  font-size: 14px;
+  letter-spacing: 2px;
+  background: var(--mp-ink);
+}
+
+/* Big play button (start / paused). */
+.motion-bigplay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 96px;
+  height: 96px;
+  margin: -48px 0 0 -48px;
+  border-radius: 50%;
+  border: 1.5px solid #78e1d5aa;
+  background: #06101499;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease;
+  z-index: 3;
+}
+.motion-bigplay span {
+  position: absolute;
+  left: 38px;
+  top: 30px;
+  width: 30px;
+  height: 36px;
+  background: var(--mp-teal);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.motion-bigplay:hover {
+  transform: scale(1.06);
+  background: #0a1a1ecc;
+}
+.motion-bigplay[hidden],
+.motion-soundhint[hidden],
+.motion-end[hidden] {
+  display: none;
+}
+
+.motion-soundhint {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 3;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #78e1d566;
+  background: #060b13cc;
+  color: var(--mp-text);
+  font: 500 13px/1 inherit;
+  letter-spacing: 1px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.motion-soundhint span {
+  color: var(--mp-teal);
+  margin-right: 4px;
+}
+
+/* Controls overlay. */
+.motion-hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 44px 18px 10px;
+  background: linear-gradient(transparent, #03070cdd 70%);
+  opacity: 1;
+  transition: opacity 0.35s ease;
+}
+.motion-player.is-playing:not(.hud-awake) .motion-hud {
+  opacity: 0;
+}
+.motion-player.is-playing:not(.hud-awake) .motion-canvas {
+  cursor: none;
+}
+.motion-player:focus-within .motion-hud {
+  opacity: 1;
+}
+.motion-scrub {
+  position: relative;
+  height: 22px;
+}
+.motion-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 9px;
+  height: 4px;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+.motion-seg {
+  position: relative;
+  flex-basis: 0;
+  border-radius: 2px;
+  background: #ffffff26;
+  overflow: hidden;
+  transition: transform 0.15s ease;
+}
+.motion-seg i {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  transform: scaleX(var(--fill, 0));
+  background: var(--mp-teal);
+}
+.motion-scrub:hover .motion-seg {
+  transform: scaleY(1.6);
+}
+.motion-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.motion-range:focus-visible + .motion-tip,
+.motion-scrub:hover .motion-tip {
+  opacity: 1;
+}
+.motion-tip {
+  position: absolute;
+  bottom: 22px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #0b161bee;
+  border: 1px solid #2a3d44;
+  color: var(--mp-text);
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.motion-scrub:focus-within::after {
+  content: "";
+  position: absolute;
+  inset: 2px -4px;
+  border: 1px solid #78e1d580;
+  border-radius: 8px;
+  pointer-events: none;
+}
+.motion-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  color: var(--mp-text);
+  font-size: 13px;
+}
+.motion-time {
+  font-variant-numeric: tabular-nums;
+  color: #c9d6d2;
+  letter-spacing: 0.5px;
+}
+.motion-chapter {
+  color: var(--mp-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.motion-spacer {
+  flex: 1;
+}
+.motion-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mp-text);
+  cursor: pointer;
+}
+.motion-btn:hover,
+.motion-btn:focus-visible {
+  background: #ffffff14;
+}
+.motion-btn::before,
+.motion-btn::after {
+  content: "";
+  position: absolute;
+}
+.motion-play::before {
+  left: 13px;
+  top: 10px;
+  width: 13px;
+  height: 16px;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.motion-play[data-state="pause"]::before {
+  left: 12px;
+  width: 4px;
+  clip-path: none;
+  box-shadow: 8px 0 currentColor;
+}
+.motion-play[data-state="replay"]::before {
+  left: 10px;
+  top: 10px;
+  width: 16px;
+  height: 16px;
+  background: none;
+  clip-path: none;
+  border: 2.5px solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  box-sizing: border-box;
+}
+.motion-sound::before {
+  left: 9px;
+  top: 11px;
+  width: 16px;
+  height: 14px;
+  background: currentColor;
+  clip-path: polygon(0 30%, 35% 30%, 75% 0, 75% 100%, 35% 70%, 0 70%);
+}
+.motion-sound::after {
+  right: 7px;
+  top: 12px;
+  width: 6px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+}
+.motion-sound[data-state="off"]::after {
+  right: 6px;
+  top: 17px;
+  width: 11px;
+  height: 0;
+  border: 0;
+  border-top: 2px solid #f09a5a;
+  border-radius: 0;
+  transform: rotate(-45deg);
+}
+.motion-full::before {
+  inset: 10px;
+  border: 2px solid currentColor;
+  border-radius: 2px;
+  clip-path: polygon(
+    0 0,
+    35% 0,
+    35% 100%,
+    65% 100%,
+    65% 0,
+    100% 0,
+    100% 35%,
+    0 35%,
+    0 65%,
+    100% 65%,
+    100% 100%,
+    0 100%
+  );
+}
+
+/* End card. */
+.motion-end {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  background: #03070c99;
+  backdrop-filter: blur(3px);
+  animation: motion-fade 0.5s ease;
+}
+.motion-endbox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.motion-end-kicker {
+  flex-basis: 100%;
+  margin: 0 0 6px;
+  text-align: center;
+  color: var(--mp-teal);
+  letter-spacing: 3px;
+  font-size: 13px;
+}
+.motion-endbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid #2d4148;
+  background: #0b161bee;
+  color: var(--mp-text);
+  font: inherit;
+  font-size: 15px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.motion-endbtn:hover {
+  border-color: var(--mp-teal);
+}
+.motion-next {
+  border-color: #78e1d599;
+}
+.motion-next small {
+  color: var(--mp-muted);
+  font-size: 12px;
+}
+.motion-next strong {
+  font-weight: 600;
+}
+.motion-next span {
+  color: var(--mp-teal);
+}
+
+/* Caption line under the stage. */
+.motion-caption {
+  min-height: 2.9em;
+  margin: 14px auto 0;
+  padding: 0 12px;
+  text-align: center;
+  color: var(--mp-text);
+  font-size: clamp(17px, 1.55vw, 23px);
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: 0.3px;
+}
+.motion-caption.is-in {
+  animation: motion-caption 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes motion-caption {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+}
+@keyframes motion-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Fullscreen: captions overlay the picture. */
+.motion-player.is-fullscreen {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+.motion-player.is-fullscreen .motion-stage {
+  width: min(100vw, calc(100vh * 16 / 9));
+  border: 0;
+  border-radius: 0;
+}
+.motion-player.is-fullscreen .motion-caption,
+.motion-player.is-theater .motion-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 9%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 86%;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 20px;
+  border-radius: 12px;
+  background: #03070ccc;
+  font-size: clamp(16px, 2.2vw, 30px);
+  z-index: 4;
+  pointer-events: none;
+}
+.motion-player.is-fullscreen:is(.hud-awake, :not(.is-playing)) .motion-caption,
+.motion-player.is-theater:is(.hud-awake, :not(.is-playing)) .motion-caption {
+  bottom: max(9%, 130px);
+}
+.motion-player.is-fullscreen .motion-caption:empty,
+.motion-player.is-theater .motion-caption:empty {
+  display: none;
+}
+
+/* CSS theatre fallback (e.g. iPhone): fill the viewport, rotate in portrait. */
+body.motion-theater {
+  overflow: hidden;
+}
+.motion-player.is-theater {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+.motion-player.is-theater .motion-stage {
+  width: min(100vw, calc(100dvh * 16 / 9));
+  border-radius: 0;
+  border: 0;
+}
+@media (orientation: portrait) {
+  .motion-player.is-theater {
+    width: 100dvh;
+    height: 100vw;
+    inset: auto;
+    left: 0;
+    top: 0;
+    transform-origin: top left;
+    transform: rotate(90deg) translateY(-100%);
+  }
+  .motion-player.is-theater .motion-stage {
+    width: min(100dvh, calc(100vw * 16 / 9));
+  }
+}
+
+/* Lesson page layout tweaks around the player. */
+body[data-lesson-style="motion"] main {
+  padding-bottom: 28px;
+}
+body[data-lesson-style="motion"] .motion-note {
+  max-width: 760px;
+  margin: 18px auto 0;
+  color: #7f949a;
+  font-size: 12px;
+  line-height: 1.8;
+  text-align: center;
+}
+
+@media (max-width: 650px) {
+  .motion-player {
+    width: 100%;
+  }
+  .motion-stage {
+    border-radius: 10px;
+  }
+  .motion-hud {
+    padding: 34px 8px 4px;
+  }
+  .motion-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .motion-btn::before {
+    transform: translate(4px, 4px);
+  }
+  .motion-sound::after {
+    transform: translate(4px, 4px);
+  }
+  .motion-sound[data-state="off"]::after {
+    transform: translate(4px, 4px) rotate(-45deg);
+  }
+  .motion-chapter {
+    display: none;
+  }
+  .motion-bigplay {
+    width: 56px;
+    height: 56px;
+    margin: -44px 0 0 -28px;
+  }
+  .motion-bigplay span {
+    left: 22px;
+    top: 17px;
+    width: 17px;
+    height: 22px;
+  }
+  .motion-soundhint {
+    right: 6px;
+    top: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .motion-caption {
+    font-size: 17px;
+    min-height: 3.2em;
+  }
+  .motion-endbtn {
+    min-height: 44px;
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-caption.is-in,
+  .motion-end {
+    animation: none;
+  }
+}
