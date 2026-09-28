@@ -19,7 +19,7 @@ const btc = (lots) => `${fmt(run.btc(lots), run.btc(lots) >= 10 ? 0 : 1)} BTC`;
 const clock = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const numberClass = (value) => value > 0 ? "positive" : value < 0 ? "negative" : "";
 const grade = (score, qualified = true) => !qualified ? "D" : score >= 200 ? "S" : score >= 100 ? "A" : score >= 40 ? "B" : score > 0 ? "C" : "D";
-const STORAGE_KEY = "metabear-flow-arena-v6";
+const STORAGE_KEY = "metabear-flow-arena-v7";
 const LEVERAGE_KEY = "metabear-flow-arena-leverage";
 const GUIDE_KEY = "metabear-flow-arena-guide";
 const PROFILE_KEY = "metabear-flow-arena-handle";
@@ -67,6 +67,7 @@ function loadLeverage() {
   } catch { return ARENA_DEFAULT_LEVERAGE; }
 }
 const UNIT_SIZES = [10, 25, 50, 100];
+const LIMIT_TEXT = { risk: "風險限額", margin: "可用資金", exit: "平倉中" };
 const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
 function randomSeed() {
@@ -122,8 +123,29 @@ let playing = false;
 let unitSize = 25;
 // Size buttons are BTC amounts written for a solo market; a bigger room uses larger contracts,
 // so the same BTC is fewer contracts (rounded to the nearest hundredth of one).
-const orderLots = () => Math.max(1, Math.round(unitSize * 100 / run.scale));
-const chartView = { zoom: 1, offset: 0, cursorPrice: null, sizeLabel: "", layer: "liq", flashes: [], pulse: 0 };
+const unitLots = (unit) => Math.max(1, Math.round(unit * 100 / run.scale));
+const fixedLots = () => unitLots(unitSize === "max" ? UNIT_SIZES[0] : unitSize);
+// Room for one order on this side. A market order is checked at its average fill, so when free
+// margin is what binds, the room is measured again at the price the order would average.
+function sideRoom(side, reference = null) {
+  const room = run.orderRoom(side, reference ?? run.market.last);
+  if (reference != null || room.limit !== "margin" || !room.lots) return room;
+  const average = run.previewOrder(side, "market", room.lots)?.avgPrice;
+  return average ? { ...room, lots: Math.min(room.lots, run.orderRoom(side, average).lots) } : room;
+}
+// Lots one order sends: Max takes all the room (against a position it only closes it, so a flip
+// takes a second press), a fixed size larger than the room is cut down to it so the click opens
+// what fits. With no room left the plain size goes out and the engine says why.
+function orderLots(side, reference = null) {
+  const position = run.account.position;
+  if (unitSize === "max" && position && (position > 0) !== (side === "buy")) return Math.abs(position);
+  if ($("reduce-only").checked) return fixedLots();
+  const room = sideRoom(side, reference).lots;
+  if (!room) return fixedLots();
+  return unitSize === "max" ? room : Math.min(fixedLots(), room);
+}
+// frame keeps the price axis sticky (see arenaChartGeometry); pointerY is where the pointer rests over the plot.
+const chartView = { zoom: 1, offset: 0, cursorPrice: null, pointerY: null, frame: { low: null, high: null, hold: false }, sizeLabel: "", layer: "liq", flashes: [], pulse: 0 };
 let chartDrag = null;
 let combo = 0;
 let soundEnabled = loadSoundPreference();
@@ -535,18 +557,76 @@ function renderFeed() {
   }).join("");
 }
 
+// The largest position one leverage allows from a flat account: its risk limit or what the wallet covers.
+function leverageCap(leverage) {
+  const byMargin = Math.floor(run.account.balance * leverage * run.denominator / run.market.last / 10) * 10;
+  return Math.min(run.riskLimitLots(leverage), byMargin);
+}
+
+// Opening room on the side the account is building (the position's side, or the side its resting
+// orders lean when flat): held, resting and still free, and the rule that caps it.
+function renderCapacity() {
+  const position = run.account.position;
+  let buys = 0;
+  let sells = 0;
+  for (const order of run.playerOrders()) {
+    if (order.reduceOnly) continue;
+    if (order.side === "buy") buys += order.lots;
+    else sells += order.lots;
+  }
+  const side = position > 0 ? "buy" : position < 0 ? "sell" : sells > buys ? "sell" : "buy";
+  const room = run.orderRoom(side);
+  const held = Math.abs(position);
+  const resting = side === "buy" ? buys : sells;
+  const total = Math.max(1, held + resting + room.lots);
+  $("cap-held").style.width = `${held / total * 100}%`;
+  $("cap-resting").style.width = `${resting / total * 100}%`;
+  $("cap-free").style.width = `${room.lots / total * 100}%`;
+  const word = side === "buy" ? "多" : "空";
+  const parts = [held && `${word} ${size(held)}`, resting && `掛單${held ? "" : word} ${size(resting)}`].filter(Boolean).join(" + ");
+  $("capacity-text").innerHTML = parts
+    ? `${parts} · 還能加 <b>${size(room.lots)}</b> / ${size(held + resting + room.lots)} BTC`
+    : `可開 <b>${size(room.lots)}</b> BTC`;
+  const chip = $("capacity-limit");
+  chip.textContent = room.limit === "exit" ? "平倉中，暫不能加倉" : room.limit === "risk" ? `上限 ${run.leverage}× 風險限額` : "上限 可用資金";
+  chip.className = `capacity-limit ${room.limit}${room.lots ? "" : " full"}`;
+  let hint = "";
+  if (room.limit === "risk") {
+    const best = ARENA_LEVERAGES.filter((leverage) => leverage < run.leverage)
+      .map((leverage) => ({ leverage, lots: leverageCap(leverage) }))
+      .sort((a, b) => b.lots - a.lots)[0];
+    if (best && best.lots > run.riskLimitLots(run.leverage)) hint = `改 ${best.leverage}× 最多約 ${size(best.lots)} BTC${held || resting ? "（空倉才能改）" : ""}`;
+  }
+  $("capacity-hint").textContent = hint;
+  $("capacity").classList.toggle("full", !room.lots);
+  for (const button of document.querySelectorAll("[data-unit]")) {
+    if (button.dataset.unit === "max") { button.title = `全部可開額度：${size(room.lots)} BTC`; continue; }
+    const over = unitLots(Number(button.dataset.unit)) > room.lots;
+    button.classList.toggle("over", over);
+    button.title = over ? `超過可開額度，下單會自動調整為 ${size(room.lots)} BTC` : "";
+  }
+  return room;
+}
+
 function renderPreview() {
   const last = run.market.last;
   const levels = run.estimatedLevels(Math.max(2000, Math.round(last * 0.001 / 1000) * 1000));
   for (const side of ["buy", "sell"]) {
-    const preview = run.previewOrder(side, "market", orderLots());
     const box = $(side === "buy" ? "preview-buy" : "preview-sell");
+    const room = $("reduce-only").checked ? null : sideRoom(side);
+    if (room && !room.lots) {
+      box.classList.remove("hot");
+      box.textContent = `${side === "buy" ? "▲ 買入" : "▼ 賣出"}：${room.limit === "exit" ? "平倉進行中，暫不能加倉" : room.limit === "risk" ? `已達 ${run.leverage}× 風險限額` : "可用資金不足"}`;
+      continue;
+    }
+    const lots = orderLots(side);
+    const preview = run.previewOrder(side, "market", lots);
     if (!preview?.worstPrice) { box.textContent = `${side === "buy" ? "買入" : "賣出"}：對手盤不足`; continue; }
     const move = (preview.worstPrice / last - 1) * 100;
     const crossed = levels.reduce((sum, row) => side === "buy"
       ? sum + (row.price > last && row.price <= preview.worstPrice ? row.short : 0)
       : sum + (row.price < last && row.price >= preview.worstPrice ? row.long : 0), 0);
-    box.innerHTML = `${side === "buy" ? "▲" : "▼"} ${size(orderLots())} BTC 依可見掛單推到 <b>${price(preview.worstPrice)}</b> (${move >= 0 ? "+" : ""}${fmt(move)}%)${crossed ? ` · <strong>熱圖估計穿過 ${btc(crossed)} ${side === "buy" ? "空單" : "多單"}強平</strong>` : ""}`;
+    box.innerHTML = `${side === "buy" ? "▲" : "▼"} ${size(lots)} BTC 依可見掛單推到 <b>${price(preview.worstPrice)}</b> (${move >= 0 ? "+" : ""}${fmt(move)}%)${crossed ? ` · <strong>熱圖估計穿過 ${btc(crossed)} ${side === "buy" ? "空單" : "多單"}強平</strong>` : ""}`;
     box.classList.toggle("hot", crossed >= 800);
   }
 }
@@ -603,7 +683,10 @@ function render() {
   $("leverage-value").textContent = `${run.leverage}×`;
   const available = run.availableMargin();
   $("available-margin").textContent = `$${fmt(Math.max(0, available), 0)}`;
-  $("open-room").textContent = `可再開約 ${size(run.maxOpenLots())} BTC（${run.leverage}×）`;
+  const room = renderCapacity();
+  $("open-room").textContent = room.limit === "risk" && available > 0 && !room.lots
+    ? `已達 ${run.leverage}× 風險限額：剩下的資金暫時開不了倉，空倉時降槓桿才能開更大`
+    : `可再開約 ${size(room.lots)} BTC（上限：${room.limit === "risk" ? `${run.leverage}× ` : ""}${LIMIT_TEXT[room.limit]}）`;
   const base = Math.max(1, account.balance);
   const marginShare = Math.min(100, account.margin / base * 100);
   const reserveShare = Math.min(100 - marginShare, reserve / base * 100);
@@ -706,7 +789,9 @@ function animateEquity(now) {
 function drawChart(now) {
   for (const flash of chartView.flashes) flash.age = (now - flash.born) / 1300;
   chartView.flashes = chartView.flashes.filter((flash) => flash.age < 1);
-  chartView.sizeLabel = `${size(orderLots())} BTC`;
+  chartView.sizeLabel = unitSize === "max" ? "MAX" : `${size(fixedLots())} BTC`;
+  // A resting pointer still reads the price under it, even when the axis had to move.
+  if (chartView.pointerY != null) chartView.cursorPrice = arenaChartPriceAtY($("market-chart"), run, chartView, chartView.pointerY);
   drawArenaChart($("market-chart"), run, { ...chartView, pulse: chartView.pulse * (0.5 + 0.5 * Math.sin(now / 160)) });
 }
 
@@ -823,7 +908,7 @@ function showResult() {
   $("result-ignited").textContent = compactMoney(result.ignitedValue);
   $("result-cascade").textContent = `${fmt(result.biggestCascadeUnits * run.contractBtc, 0)} BTC`;
   const blown = result.playerLiquidations ? `你的倉位被強平 ${result.playerLiquidations} 次，共賠掉保證金 ${compactMoney(result.marginLost)}。` : "";
-  $("result-reveal").textContent = `${blown}隱藏大戶分批${result.whaleSide === "buy" ? "買進" : "賣出"}，送出 ${result.whaleOrders} 筆子單。本局共 ${fmt(result.liquidatedUnits * run.contractBtc, 0)} BTC 槓桿倉被強平，其中 ${fmt(result.ignitedUnits * run.contractBtc, 0)} BTC 由你推價觸發。${result.news.length ? `事件：${result.news.join("、")}。` : "本局沒有突發消息。"}`;
+  $("result-reveal").textContent = `${blown}本局共 ${fmt(result.liquidatedUnits * run.contractBtc, 0)} BTC 槓桿倉被強平，其中 ${fmt(result.ignitedUnits * run.contractBtc, 0)} BTC 由你推價觸發。${result.news.length ? `事件：${result.news.join("、")}。` : "本局沒有突發消息。"}`;
   renderReview();
   renderStandings();
   $("share-status").textContent = online ? "好友對戰的成績不存成本機紀錄。" : "連結包含種子與影子分數，可傳給朋友挑戰。";
@@ -869,6 +954,8 @@ function resetView() {
   chartView.zoom = 1;
   chartView.offset = 0;
   chartView.cursorPrice = null;
+  chartView.pointerY = null;
+  chartView.frame = { low: null, high: null, hold: false };
   chartView.flashes = [];
   seenEvent = null;
   clearTimeout(eventTimer);
@@ -886,9 +973,9 @@ function resetView() {
 }
 
 function setUnit(value) {
-  if (!UNIT_SIZES.includes(value)) return;
+  if (value !== "max" && !UNIT_SIZES.includes(value)) return;
   unitSize = value;
-  for (const button of document.querySelectorAll("[data-unit]")) button.classList.toggle("active", Number(button.dataset.unit) === value);
+  for (const button of document.querySelectorAll("[data-unit]")) button.classList.toggle("active", button.dataset.unit === String(value));
   renderPreview();
 }
 
@@ -908,12 +995,13 @@ function sendToRoom(op, args) {
   return true;
 }
 
-function reportSubmit(side, type, limit, result) {
+function reportSubmit(side, type, limit, result, lots) {
   if (!result.ok) { setMessage(result.error, true); return; }
+  const trimmed = unitSize !== "max" && lots < fixedLots() ? `（超過可開額度，已調整為 ${size(lots)} BTC）` : "";
   const fill = result.matched ? `成交 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""}` : "尚未成交";
   const rest = result.resting ? ` · ${size(result.resting)} BTC 掛在 ${price(limit)}` : "";
   const cascade = result.cascade ? ` · 觸發 ${btc(result.cascade.lots)} 強平` : "";
-  setMessage(`${side === "buy" ? "買入" : "賣出"} ${fill}${rest}${cascade}${type === "market" && result.unfilled ? ` · ${size(result.unfilled)} BTC 未成交` : ""}`);
+  setMessage(`${side === "buy" ? "買入" : "賣出"} ${fill}${rest}${cascade}${type === "market" && result.unfilled ? ` · ${size(result.unfilled)} BTC 未成交` : ""}${trimmed}`);
   tone(side === "buy" ? 540 : 320, 0.09, "triangle", 0.045, side === "buy" ? 700 : 240);
 }
 
@@ -932,9 +1020,10 @@ function reportLeverage(leverage) {
 
 function submitOrder(side, type, limit = null) {
   const reduceOnly = $("reduce-only").checked;
-  if (sendToRoom("submit", [side, type, orderLots(), limit, { reduceOnly }])) return;
+  const lots = orderLots(side, type === "limit" ? limit : null);
+  if (sendToRoom("submit", [side, type, lots, limit, { reduceOnly }])) return;
   if (!playing || document.hidden) { setMessage("先按「開始交易」啟動市場", true); return; }
-  reportSubmit(side, type, limit, run.submit(side, type, orderLots(), limit, { reduceOnly }));
+  reportSubmit(side, type, limit, run.submit(side, type, lots, limit, { reduceOnly }), lots);
   render();
 }
 
@@ -955,8 +1044,8 @@ function closeNow() {
 // The room echoed one of this player's actions: report it the way a local action is reported.
 function reportOwn(message, result) {
   if (!result) return;
-  const [first, type, , limit] = message.args;
-  if (message.op === "submit") reportSubmit(first, type, limit, result);
+  const [first, type, lots, limit] = message.args;
+  if (message.op === "submit") reportSubmit(first, type, limit, result, lots);
   else if (message.op === "close") reportClose(result);
   else if (message.op === "closePart") reportClosePart(result);
   else if (message.op === "setLeverage") reportLeverage(first);
@@ -996,7 +1085,7 @@ function frame(now) {
 $("play-button").addEventListener("click", togglePlay);
 $("new-button").addEventListener("click", () => beginNew(randomSeed()));
 $("daily-button").addEventListener("click", () => beginNew(dailySeed(), "daily"));
-document.querySelectorAll("[data-unit]").forEach((button) => button.addEventListener("click", () => setUnit(Number(button.dataset.unit))));
+document.querySelectorAll("[data-unit]").forEach((button) => button.addEventListener("click", () => setUnit(button.dataset.unit === "max" ? "max" : Number(button.dataset.unit))));
 document.querySelectorAll("[data-layer]").forEach((button) => button.addEventListener("click", () => {
   chartView.layer = button.dataset.layer;
   for (const item of document.querySelectorAll("[data-layer]")) item.classList.toggle("active", item === button);
@@ -1049,7 +1138,10 @@ chart.addEventListener("pointermove", (event) => {
     }
     chartDrag.previousY = event.clientY;
   }
-  chartView.cursorPrice = chartInPlot(event) ? arenaChartPriceAtY(chart, run, chartView, event.clientY) : null;
+  const inPlot = chartInPlot(event);
+  chartView.frame.hold = inPlot || Boolean(chartDrag);
+  chartView.pointerY = inPlot ? event.clientY : null;
+  chartView.cursorPrice = inPlot ? arenaChartPriceAtY(chart, run, chartView, event.clientY) : null;
 });
 chart.addEventListener("pointerup", (event) => {
   if (chartDrag?.id !== event.pointerId) return;
@@ -1063,7 +1155,12 @@ chart.addEventListener("pointerup", (event) => {
   submitOrder(limit < run.market.last ? "buy" : "sell", "limit", limit);
 });
 chart.addEventListener("pointercancel", () => { chartDrag = null; });
-chart.addEventListener("pointerleave", () => { if (!chartDrag) chartView.cursorPrice = null; });
+chart.addEventListener("pointerleave", () => {
+  if (chartDrag) return;
+  chartView.cursorPrice = null;
+  chartView.pointerY = null;
+  chartView.frame.hold = false;
+});
 chart.addEventListener("dblclick", () => { chartView.zoom = 1; chartView.offset = 0; });
 $("player-orders").addEventListener("click", (event) => {
   const button = event.target.closest("[data-cancel]");
@@ -1221,6 +1318,7 @@ document.addEventListener("keydown", (event) => {
   else if (key === "f") closeNow();
   else if (key === "h") closePart(0.5);
   else if (["1", "2", "3", "4"].includes(key)) setUnit(UNIT_SIZES[Number(key) - 1]);
+  else if (key === "5") setUnit("max");
   else if (key === " " && !online) { event.preventDefault(); togglePlay(); }
 });
 try { $("handle").value = localStorage.getItem(PROFILE_KEY) || ""; } catch { /* Optional profile. */ }

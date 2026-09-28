@@ -52,9 +52,8 @@
         <section class="panel feed-panel"><div class="panel-title"><span class="eyebrow">LIQUIDATION TAPE</span><span class="mini-indicator">● LIVE</span></div><div id="liq-feed" class="liq-feed"><p class="empty-state">還沒有人被強平</p></div></section>
         <section class="panel rival-panel"><div class="panel-title"><span class="eyebrow">HIDDEN PLAYERS</span><span class="rival-icon">◈</span></div>
           <ul class="actor-list">
-            <li><b>大戶</b><span>分批買或賣，方向結算才揭曉。</span></li>
-            <li><b>護盤者</b><span>有些亮帶前面藏著冰山單，簿上只露一小截。</span></li>
-            <li><b>獵手</b><span>也在獵亮帶；你的部位太重時，會改獵你的強平價。</span></li>
+            <li><b>護盤者</b><span>約三分之一的被套亮帶前面藏著冰山單，簿上只露一小截；被吃過之後，圖上會標出「吸收」。</span></li>
+            <li><b>獵手</b><span>也在獵亮帶；單人時你的部位太重會改獵你的強平價，有對手時改由對手來獵。</span></li>
           </ul>
         </section>
         <details class="panel guide-panel" id="guide-panel" open><summary><span class="eyebrow">READING NOTES</span><span>讀盤筆記</span></summary>
@@ -86,12 +85,13 @@
             <div id="particle-layer" class="particle-layer" aria-hidden="true"></div>
           </div>
           <div class="quick-trade">
-            <div class="quick-size"><span>數量</span><button data-unit="10" type="button">500</button><button class="active" data-unit="25" type="button">1,250</button><button data-unit="50" type="button">2,500</button><button data-unit="100" type="button">5,000</button><span class="unit-suffix">BTC</span></div>
+            <div class="quick-size"><span>數量</span><button data-unit="10" type="button">500</button><button class="active" data-unit="25" type="button">1,250</button><button data-unit="50" type="button">2,500</button><button data-unit="100" type="button">5,000</button><button data-unit="max" class="unit-max" type="button">MAX</button><span class="unit-suffix">BTC</span></div>
             <div class="quick-actions"><button id="quick-buy" class="quick-buy" type="button">▲ 市價買入 <kbd>Q</kbd></button><button id="quick-sell" class="quick-sell" type="button">▼ 市價賣出 <kbd>E</kbd></button><button id="close-position" type="button">平倉 <kbd>F</kbd></button></div>
             <div class="quick-leverage"><span>槓桿</span><div class="leverage-toggle" role="group" aria-label="槓桿倍數"><button data-leverage="1" type="button">1×</button><button data-leverage="3" type="button" class="active">3×</button><button data-leverage="5" type="button">5×</button><button data-leverage="10" type="button">10×</button><button data-leverage="20" type="button">20×</button></div><small id="leverage-hint">空倉時可調整</small></div>
             <div class="quick-reduce"><label class="reduce-toggle"><input id="reduce-only" type="checkbox" /> 只減倉</label><button id="close-quarter" type="button">平 ¼</button><button id="close-half" type="button">平 ½ <kbd>H</kbd></button></div>
+            <div id="capacity" class="capacity"><span class="capacity-label">開倉額度</span><div class="capacity-bar" aria-hidden="true"><i id="cap-held" class="held"></i><i id="cap-resting" class="resting"></i><i id="cap-free" class="free"></i></div><span id="capacity-text" class="capacity-text">可開 — BTC</span><span id="capacity-limit" class="capacity-limit">—</span><small id="capacity-hint" class="capacity-hint"></small></div>
             <div id="order-preview" class="order-preview"><span class="preview-buy" id="preview-buy">買入推動 —</span><span class="preview-sell" id="preview-sell">賣出推動 —</span></div>
-            <p id="order-message" class="order-message" role="status">點擊盤面價格可掛限價單；現價下方掛買，上方掛賣。快捷鍵 1–4 切換數量、H 平一半、空白鍵暫停。</p>
+            <p id="order-message" class="order-message" role="status">點擊盤面價格可掛限價單；現價下方掛買，上方掛賣。快捷鍵 1–4 切換數量、5 全部額度、H 平一半、空白鍵暫停。</p>
           </div>
           <div id="exit-warning" class="exit-warning" role="status" hidden></div>
         </section>

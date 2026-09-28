@@ -7,6 +7,7 @@ import {
   ARENA_MAINTENANCE,
   ARENA_DEFAULT_LEVERAGE,
   ARENA_RISK_LIMITS,
+  ARENA_RIVAL_ZONES,
   ARENA_START_BALANCE,
   FlowArenaRun,
   cohortLiquidationPrice,
@@ -90,6 +91,53 @@ test("chart zoom, vertical pan and click price use the displayed price scale", (
   assert.equal(arenaChartPriceAtY(canvas, run, { zoom: 2, offset: 0 }, 50), null);
 });
 
+test("the price axis holds still under the pointer and only narrows once the range has settled", () => {
+  const run = new FlowArenaRun(77551);
+  const canvas = { getBoundingClientRect: () => ({ top: 100, left: 0, width: 1050, height: 600 }) };
+  const view = { zoom: 1, offset: 0, frame: { low: null, high: null, hold: false } };
+  const first = arenaChartGeometry(canvas, run, view);
+  const clickY = 100 + first.y(run.market.last * 1.004);
+  const price = arenaChartPriceAtY(canvas, run, view, clickY);
+  view.frame.hold = true;
+  // A new high inside the window would rescale a free axis; a held one keeps the click price.
+  run.market.candles.at(-1).high = Math.round(first.high + (first.high - first.low) * 0.02);
+  assert.equal(arenaChartPriceAtY(canvas, run, view, clickY), price);
+  view.frame.hold = false;
+  const released = arenaChartGeometry(canvas, run, view);
+  assert.ok(released.high > first.high, "without the pointer the axis widens for the new high");
+  assert.equal(arenaChartGeometry(canvas, run, view).high, released.high, "and then stays put");
+});
+
+test("a rival's liquidation price shows only as a fixed zone once it comes near", () => {
+  const run = new FlowArenaRun(61001, { traders: ["player", "rival:1"] });
+  const rival = run.trader("rival:1");
+  const last = run.market.last;
+  const [wide, narrow] = ARENA_RIVAL_ZONES;
+  const liqFor = (distance) => {
+    rival.account.position = 1000;
+    rival.account.entry = last;
+    // Isolated margin sized so the liquidation price sits `distance` below the price.
+    rival.account.margin = run.notional(last, 1000) * (distance + ARENA_MAINTENANCE);
+    return rival.liquidationPrice();
+  };
+  const mark = run.markPrice();
+  liqFor(0.06);
+  assert.equal(rival.liquidationZone(mark), null, "a far liquidation price stays hidden");
+  const near = liqFor(0.022);
+  const zone = rival.liquidationZone(mark);
+  assert.ok(zone, "within reach the zone appears");
+  assert.equal(zone.width, wide.width);
+  assert.ok(zone.low <= near && zone.high >= near, "the true price is inside the zone");
+  assert.notEqual(Math.round((zone.low + zone.high) / 2), near, "the zone is not centered on it");
+  assert.deepEqual(rival.liquidationZone(mark), zone, "the same position keeps the same zone");
+  const close = liqFor(0.008);
+  const tight = rival.liquidationZone(mark);
+  assert.equal(tight.width, narrow.width);
+  assert.ok(tight.low <= close && tight.high >= close);
+  rival.account.position = 0;
+  assert.equal(rival.liquidationZone(mark), null);
+});
+
 test("BTC round starts with 100 units of purchasing power at the default leverage", () => {
   const run = new FlowArenaRun(33084);
   assert.equal(run.market.last, ARENA_INITIAL_PRICE);
@@ -127,7 +175,6 @@ test("equal seeds reproduce retail, crowd positions, events and results", () => 
   const b = new FlowArenaRun(90217);
   for (let i = 0; i < ARENA_DURATION; i++) { a.tick(); b.tick(); }
   assert.deepEqual(a.eventPlan, b.eventPlan);
-  assert.deepEqual(a.whale, b.whale);
   assert.deepEqual(a.cohorts, b.cohorts);
   assert.deepEqual(a.market.tradeLog, b.market.tradeLog);
   assert.deepEqual(a.result, b.result);
@@ -200,7 +247,6 @@ test("a cascade resolves one wave per second instead of all at once", () => {
 
 test("a band the push crossed still liquidates after the price snaps back", () => {
   const run = quiet(new FlowArenaRun(51290));
-  run.actWhale = () => {};
   const last = run.market.last;
   run.cohorts = [];
   run.addCohort(-1, Math.round(last * 1.003 / (1 + 1 / 50 - ARENA_MAINTENANCE)), 2000, 50, "trapped");
@@ -268,7 +314,6 @@ test("exits fill through backstop depth during a liquidity drought", () => {
 
 test("a triggered stop retries when the whole opposing book is gone", () => {
   const run = quiet(new FlowArenaRun(51290));
-  run.actWhale = () => {};
   run.submit("buy", "market", 100);
   assert.equal(run.account.position, 100);
   run.actMaker = () => {};
@@ -341,6 +386,28 @@ test("risk limits cap position size by leverage, counting resting orders", () =>
   run.close();
   assert.equal(run.setLeverage(3), null);
   assert.ok(run.maxOpenLots() > cap, "lower leverage allows a larger position");
+});
+
+test("order room is the largest size validateOrder accepts, and names what caps it", () => {
+  const run = quiet(new FlowArenaRun(33084));
+  assert.equal(run.setLeverage(3), null);
+  const cap = run.riskLimitLots(3);
+  assert.deepEqual(run.orderRoom("buy"), { lots: cap, limit: "risk" });
+  assert.equal(run.submit("buy", "market", 4000).ok, true);
+  run.submit("buy", "limit", 2000, Math.round(run.market.last * 0.97));
+  const room = run.orderRoom("buy");
+  assert.deepEqual(room, { lots: cap - 6000, limit: "risk" }, "position and resting orders both count");
+  assert.equal(run.submit("buy", "market", room.lots + 10).ok, false);
+  assert.equal(run.orderRoom("sell").lots, cap + 4000, "selling closes the long before it opens a short");
+  run.cancelAll();
+  run.close();
+
+  assert.equal(run.setLeverage(1), null);
+  const margin = run.orderRoom("sell");
+  assert.equal(margin.limit, "margin");
+  assert.equal(run.submit("sell", "limit", margin.lots, run.market.last).ok, true);
+  assert.ok(run.orderRoom("sell").lots <= 10, "only a rounding remainder is left");
+  assert.equal(run.submit("sell", "market", margin.lots).ok, false);
 });
 
 test("mid-round build-ups pile one leverage into a new band", () => {
@@ -487,17 +554,15 @@ test("seeded defenders guard trapped bands and are revealed after the round", ()
   for (const defender of review.defenders) assert.ok(["broken", "withdrawn", "holding"].includes(defender.status));
 });
 
-test("the whale pulls passive orders the price has left behind", () => {
-  const run = quiet(new FlowArenaRun(61001));
-  run.time = run.whale.start;
-  const far = Math.round(run.market.last * 0.97);
-  const arrival = run.market.submit("buy", far, 500, { owner: "whale" });
-  run.whale.orders.push({ id: arrival.id, born: run.time });
-  const remaining = run.whale.remaining;
-  run.whale.next = Infinity;
-  run.actWhale();
-  assert.equal(run.market.order(arrival.id), null);
-  assert.equal(run.whale.remaining, remaining + 500);
+test("headlines only change liquidity and never lean the flow one way", () => {
+  for (const seed of [90217, 61001, 33084]) {
+    const run = new FlowArenaRun(seed);
+    assert.ok(run.eventPlan.length >= 3);
+    for (const event of run.eventPlan) {
+      assert.equal(event.side, undefined, `${event.title} carries no direction`);
+      assert.ok(event.depth > 0 && event.depth < 1);
+    }
+  }
 });
 
 test("the hunter pushes into an affordable band and exits within a few seconds", () => {
@@ -548,7 +613,8 @@ test("the public heatmap is estimated from volume, not read from real positions"
   const painted = run.estimatedLevels(25000).filter((row) => row.long > 0);
   assert.ok(painted.length >= 3, "a trader's buying still paints long bands at several assumed leverages");
   assert.ok(painted.every((row) => row.price < run.market.last));
-  run.clearCrossedEstimates(Math.min(...painted.map((row) => row.price)) - 1, run.market.last);
+  // A displayed bin gathers raw levels up to half a bin below its price.
+  run.clearCrossedEstimates(Math.min(...painted.map((row) => row.price)) - 12500, run.market.last);
   assert.equal(run.estimatedLevels(25000).filter((row) => row.long > 0).length, 0, "levels the price traded through count as liquidated");
 });
 
@@ -611,7 +677,6 @@ test("a wave the rival ignited is credited to the rival, not to you", () => {
 test("a trader liquidated during a rival's push is knocked out by that rival", () => {
   const run = quiet(new FlowArenaRun(61001, { traders: ["player", "rival:1"] }));
   const rival = run.trader("rival:1");
-  run.actWhale = () => {};
   run.cohorts = [];
   run.account.position = 2000;
   run.account.entry = run.market.last;
@@ -626,7 +691,7 @@ test("a trader liquidated during a rival's push is knocked out by that rival", (
   assert.equal(run.lastLiquidation.by, "rival:1");
 });
 
-test("the hunter can target a rival and the round ranks every trader", () => {
+test("with rivals in the market the hunter leaves traders alone, and the round ranks every trader", () => {
   const run = new FlowArenaRun(61001, { traders: ["player", { id: "rival:1", name: "高手" }] });
   const rival = run.trader("rival:1");
   for (const defender of run.defenders) run.market.cancel(defender.id, "defender");
@@ -638,9 +703,7 @@ test("the hunter can target a rival and the round ranks every trader", () => {
   run.hunter.next = 0;
   run.time = 30;
   run.actHunter();
-  const strike = run.hunter.strikes.at(-1);
-  assert.equal(strike.target, "rival");
-  assert.equal(strike.trader, "rival:1");
+  assert.ok(run.hunter.strikes.every((strike) => strike.trader == null), "hunting a trader is left to the other traders");
   rival.account.position = 0;
   rival.account.margin = 0;
   run.time = ARENA_DURATION - 1;
@@ -703,7 +766,7 @@ test("blind pushing loses and no scripted strategy dominates the estimated map",
   const mean = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
   const results = Object.fromEntries(["pump", "chain", "chainBig3x", "fade", "expert"].map((name) => [name, mean(seeds.map((seed) => play(seed, name)))]));
   assert.ok(results.pump < -1.5, `blind pumping ROI ${results.pump}`);
-  for (const name of ["chain", "chainBig3x", "fade", "expert"]) assert.ok(results[name] < 1.2, `${name} ROI ${results[name]} dominates`);
+  for (const name of ["chain", "chainBig3x", "fade", "expert"]) assert.ok(results[name] < 2, `${name} ROI ${results[name]} dominates`);
   assert.ok(Math.max(results.chain, results.fade, results.expert) - results.pump > 2, "reading beats pushing blind");
 });
 

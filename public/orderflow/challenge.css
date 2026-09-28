@@ -112,6 +112,17 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 .quick-trade button:hover{transform:translateY(-1px);filter:brightness(1.14)}.quick-trade button:active{transform:translateY(1px) scale(.98)}
 .quick-size button{min-width:46px;font:800 13px Consolas,monospace}.quick-size button.active{border-color:#89efd0;background:#25554c;box-shadow:0 0 0 2px #83efd423;color:#f0fff8}
 .quick-actions{justify-content:flex-end}
+.quick-size button.over{opacity:.5;border-style:dashed}.quick-size button.over.active{opacity:.8}
+.quick-size .unit-max{border-color:#c9a45a;color:var(--gold)}.quick-size .unit-max.active{border-color:var(--gold);background:#4a3a1c;box-shadow:0 0 0 2px #f6d78c23;color:#fff3d4}
+.capacity{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(120px,1fr) auto auto;align-items:center;gap:4px 10px;padding:7px 10px;border:1px solid #2d4a52;border-radius:6px;background:#0e232c}
+.capacity-label{color:#87a7a9;font-size:10px;white-space:nowrap}
+.capacity-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:#243b44}.capacity-bar i{display:block;height:100%;transition:width .25s}
+.capacity-bar .held{background:#c9a45a}.capacity-bar .resting{background:#7b6bd1}.capacity-bar .free{background:#3fbf9c}
+.capacity-text{color:#b9d3cf;font:600 12px Consolas,"Noto Sans TC",monospace;white-space:nowrap}.capacity-text b{color:var(--mint);font-size:14px}
+.capacity-limit{padding:2px 8px;border:1px solid #3d5c64;border-radius:10px;color:#9fbcbe;font-size:10px;white-space:nowrap}.capacity-limit.risk{border-color:#7a6a45;color:#e2c98f}
+.capacity-limit.full{border-color:var(--coral);background:#3a1d27;color:#ffc4cd}
+.capacity.full{border-color:#7d3f4c}.capacity.full .capacity-text b{color:var(--coral)}
+.capacity-hint{grid-column:2/-1;color:#7f9ca1;font-size:10px}.capacity-hint:empty{display:none}
 .quick-actions .quick-buy{min-width:150px;background:#206350;border-color:#70e6c9;color:#eafff3;box-shadow:0 0 18px #43d6a233}.quick-actions .quick-sell{min-width:150px;background:#633341;border-color:#fb7f91;color:#ffe7eb;box-shadow:0 0 18px #f46e8b27}
 .quick-actions #close-position{border-color:#ad9568;color:#f4d497}
 .order-preview{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}

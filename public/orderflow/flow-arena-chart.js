@@ -17,8 +17,24 @@ export function arenaChartGeometry(canvas, run, view = {}) {
   const rawLow = Math.min(last * 0.982, ...candles.map((candle) => candle.low));
   const rawHigh = Math.max(last * 1.018, ...candles.map((candle) => candle.high));
   const padding = (rawHigh - rawLow) * 0.06;
-  const baseLow = rawLow - padding;
-  const baseHigh = rawHigh + padding;
+  let baseLow = rawLow - padding;
+  let baseHigh = rawHigh + padding;
+  // With a view.frame the price axis is sticky: it widens as soon as the price needs room, narrows
+  // only once the range has shrunk well inside it, and holds still while the pointer is over the
+  // plot (unless the price leaves it), so a click lands on the price under the cursor.
+  const frame = view.frame;
+  if (frame) {
+    const span = frame.high - frame.low;
+    const onScreen = frame.low != null && last > frame.low + span * 0.03 && last < frame.high - span * 0.03;
+    const fits = frame.low != null && baseLow >= frame.low && baseHigh <= frame.high && baseHigh - baseLow > span * 0.6;
+    if ((frame.hold && onScreen) || fits) {
+      baseLow = frame.low;
+      baseHigh = frame.high;
+    } else {
+      frame.low = baseLow;
+      frame.high = baseHigh;
+    }
+  }
   const baseMid = (baseLow + baseHigh) / 2;
   const span = (baseHigh - baseLow) / clamp(view.zoom ?? 1, 0.4, 5);
   const mid = baseMid + (view.offset ?? 0);
@@ -110,13 +126,20 @@ export function drawArenaChart(canvas, run, view = {}) {
   const bin = Math.max(2000, Math.round(last * 0.001 / 1000) * 1000);
   const levels = run.estimatedLevels(bin).filter((row) => visible(row.price));
   const maxLiq = Math.max(800, ...levels.map((row) => row.long + row.short));
+  // The heat runs on through the price-tag column up to the liquidation map, so bands read as
+  // one strip from the candles to the map; the last-price tag is drawn on top later.
+  const heatRight = plotRight + ARENA_PRICE_TAG;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, priceTop, heatRight - left, priceBottom - priceTop);
+  ctx.clip();
   if ((view.layer ?? "liq") === "liq") {
     for (const row of levels) {
       const t = clamp((row.long + row.short) / maxLiq, 0, 1);
       const top = y(row.price + bin / 2);
       const bandHeight = Math.max(2, y(row.price - bin / 2) - top);
       ctx.fillStyle = heat(t, 0.05 + t * 0.34 + (view.pulse ?? 0) * t * 0.12);
-      ctx.fillRect(left, top, plotRight - left, bandHeight);
+      ctx.fillRect(left, top, heatRight - left, bandHeight);
     }
   } else {
     const snapshots = run.market.heatmap.slice(-candles.length);
@@ -138,7 +161,20 @@ export function drawArenaChart(canvas, run, view = {}) {
         }
       }
     });
+    // The gap before the liquidation map holds the book as it stands this second.
+    const now = snapshots.at(-1);
+    if (now) {
+      for (const [rows, rgb] of [[now.bids.slice(0, 48), "91,225,190"], [now.asks.slice(0, 48), "250,117,142"]]) {
+        for (const level of rows) {
+          if (!visible(level.price)) continue;
+          const strength = Math.log1p(level.lots) / depthScale;
+          ctx.fillStyle = `rgba(${rgb},${(0.06 + strength * .42).toFixed(3)})`;
+          ctx.fillRect(plotRight, y(level.price) - 1.3, ARENA_PRICE_TAG, 2.6);
+        }
+      }
+    }
   }
+  ctx.restore();
 
   candles.forEach((candle, index) => {
     if (!candle.trades) return;
@@ -183,19 +219,27 @@ export function drawArenaChart(canvas, run, view = {}) {
     horizontal(ctx, left, plotRight, y(flash.to), `rgba(${rgb},${(0.9 * fade).toFixed(3)})`, [], 1.5);
   }
 
-  // Other traders' liquidation prices are public, but not whose they are or how big. One outside
-  // the visible range is pinned to the edge with its distance.
+  // Other traders' liquidation prices show only as a blurred zone once they come near, never whose
+  // they are or how big. A zone outside the visible range is pinned to the edge with its distance.
   for (const trader of run.traders ?? []) {
     if (trader === run.you) continue;
-    const liq = trader.liquidationPrice();
-    if (!liq) continue;
-    if (visible(liq)) {
-      horizontal(ctx, left, plotRight, y(liq), "#b79cffcc", [3, 4], 1.2);
-      tag(ctx, `對手強平 ${labelPrice(liq)}`, plotRight - 4, y(liq) + (trader.account.position > 0 ? 12 : -12), "#2b2148e6", "#d6c6ff", "right");
+    const zone = trader.liquidationZone();
+    if (!zone) continue;
+    const label = `對手強平區 ±${zone.width * 100}%`;
+    const top = y(zone.high);
+    const bottom = y(zone.low);
+    if (bottom >= priceTop && top <= priceBottom) {
+      const clippedTop = clamp(top, priceTop, priceBottom);
+      const clippedBottom = clamp(bottom, priceTop, priceBottom);
+      ctx.fillStyle = "rgba(183,156,255,0.13)";
+      ctx.fillRect(left, clippedTop, plotRight - left, Math.max(2, clippedBottom - clippedTop));
+      if (top >= priceTop) horizontal(ctx, left, plotRight, top, "#b79cff88", [3, 4]);
+      if (bottom <= priceBottom) horizontal(ctx, left, plotRight, bottom, "#b79cff88", [3, 4]);
+      tag(ctx, label, plotRight - 4, (clippedTop + clippedBottom) / 2, "#2b2148e6", "#d6c6ff", "right");
     } else {
-      const above = liq > last;
-      const distance = (liq / last - 1) * 100;
-      tag(ctx, `對手強平 ${above ? "↑" : "↓"} ${labelPrice(liq)} (${distance >= 0 ? "+" : ""}${distance.toFixed(1)}%)`, plotRight - 4, above ? priceTop + 10 : priceBottom - 10, "#2b2148e6", "#d6c6ff", "right");
+      const above = zone.low > last;
+      const distance = ((above ? zone.low : zone.high) / last - 1) * 100;
+      tag(ctx, `${label} ${above ? "↑" : "↓"} 約 ${distance >= 0 ? "+" : ""}${distance.toFixed(1)}%`, plotRight - 4, above ? priceTop + 10 : priceBottom - 10, "#2b2148e6", "#d6c6ff", "right");
     }
   }
 
@@ -222,6 +266,13 @@ export function drawArenaChart(canvas, run, view = {}) {
     if (!visible(order.price)) continue;
     horizontal(ctx, left, plotRight, y(order.price), order.side === "buy" ? "#70e6c9aa" : "#fb7f91aa", [3, 3]);
     tag(ctx, `掛${order.side === "buy" ? "買" : "賣"} ${units(run, order.lots)}`, plotRight - 4, y(order.price), "#12242de6", order.side === "buy" ? "#9ff3dc" : "#ffb3bf", "right");
+  }
+
+  // The public iceberg read: a price that traded far more than the book ever showed there.
+  for (const signal of run.icebergSignals()) {
+    if (!visible(signal.price)) continue;
+    horizontal(ctx, left, plotRight, y(signal.price), "#f2c575cc", [1, 3], 2);
+    tag(ctx, `冰山吸收 ${units(run, signal.traded)} BTC`, plotRight - 4, y(signal.price), "#3a2f17ee", "#f6d78c", "right");
   }
 
   const lastY = y(last);

@@ -1,6 +1,6 @@
 // Scripted Flow Arena traders. Each bot is called once per simulated second, before the tick, as
 // bot(run, me, state): `run` is the public market (book, liquidation map, tape, iceberg read,
-// news headline), `me` is the bot's own trader account, `state` is the bot's private memory.
+// headline), `me` is the bot's own trader account, `state` is the bot's private memory.
 // Bots only read what a player can see.
 
 const sideOf = (direction) => direction > 0 ? "buy" : "sell";
@@ -129,16 +129,6 @@ export const ARENA_BOTS = {
       s.exitAt = run.time + 6;
     }
   },
-  // Trade the direction of a news headline for 8 seconds.
-  news: (run, me, s) => {
-    const event = run.activeEvent;
-    if (me.account.position) { if (run.time >= s.exitAt) me.close(); return; }
-    if (event?.side && s.seen !== event.start && run.time < 112) {
-      s.seen = event.start;
-      me.submit(event.side > 0 ? "buy" : "sell", "market", q(run, 1500));
-      s.exitAt = run.time + 8;
-    }
-  },
   // A rookie gambler: goes in with the last 20 seconds' trend and holds for a +2% win with no stop,
   // twice at most. At high leverage its liquidation price stays in reach all round.
   holder: (run, me, s) => {
@@ -198,6 +188,6 @@ export const ARENA_BOTS = {
 // their liquidation prices sit close enough to hunt; experts keep theirs far away.
 export const ARENA_BOT_ROSTER = {
   rookie: [{ bot: "holder", name: "死抱不放", leverage: 20 }, { bot: "pump", name: "莽撞推手", leverage: 10 }],
-  skilled: [{ bot: "news", name: "快訊追手", leverage: 20 }, { bot: "fade", name: "反手客", leverage: 10 }, { bot: "ladderFlip", name: "埋伏者", leverage: 5 }],
+  skilled: [{ bot: "flow", name: "順勢追單", leverage: 20 }, { bot: "fade", name: "反手客", leverage: 10 }, { bot: "ladderFlip", name: "埋伏者", leverage: 5 }],
   expert: [{ bot: "chain", name: "讀盤手", leverage: 3 }, { bot: "chainBig3x", name: "重倉手", leverage: 3 }],
 };

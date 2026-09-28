@@ -1,11 +1,11 @@
 // Flow Arena strategy lab: plays scripted strategies over many seeds and prints how each one scores.
-// Bots only use what a player can see (book, liquidation map, tape, iceberg read, news headline),
+// Bots only use what a player can see (book, liquidation map, tape, iceberg read, headline),
 // so a row that pulls far ahead of the others is a balance problem worth a look.
 //
 //   npm run lab:flow-arena                          all bots, 60 seeds
 //   npm run lab:flow-arena -- chain,fade --seeds 300
 //   npm run lab:flow-arena -- --engine path/to/flow-arena-engine.js
-//   npm run lab:flow-arena -- chain --rivals fade,news     each row shares its market with rivals
+//   npm run lab:flow-arena -- chain --rivals fade,flow     each row shares its market with rivals
 //
 // Around 60 seeds the mean return still moves by roughly ±0.5 percentage points; use 300 before
 // drawing conclusions.

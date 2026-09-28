@@ -4,7 +4,7 @@ import {
   TakerOnlyMarket,
 } from "./taker-only-engine.js";
 
-export const ARENA_VERSION = 6;
+export const ARENA_VERSION = 7;
 export const ARENA_DURATION = 120;
 export const ARENA_START_BALANCE = 500000000;
 export const ARENA_MAX_DRAWDOWN = 20;
@@ -22,6 +22,9 @@ export const ARENA_RISK_LIMITS = { 1: Infinity, 3: 8000, 5: 5000, 10: 2500, 20: 
 // With more traders in one market every contract stands for more BTC: NPC flow, depth and
 // liquidation bands grow with the room while each trader keeps the same starting capital.
 export const ARENA_MARKET_SCALE = [1, 1, 1.5, 2, 2.5];
+// A rival's liquidation price shows as a zone ±width once the zone's center is within `within` of
+// the price; beyond the wider tier it is hidden (see ArenaTrader.liquidationZone).
+export const ARENA_RIVAL_ZONES = [{ within: 0.03, width: 0.01 }, { within: 0.015, width: 0.005 }];
 const ARENA_MAX_PRICE = 100000000;
 const ARENA_HISTORY = 160;
 const MAKER_FEE = 0.0002;
@@ -31,9 +34,8 @@ const RETAIL_QUOTE_RANGE = 0.004;
 const MAKER_REFRESH_STEPS = 4;
 const MAKER_REFILL = 0.3;
 const MAKER_TOLERANCE = 0.35;
-const WHALE_STALE_DISTANCE = 0.012;
-const WHALE_STALE_AGE = 25;
-const DEFEND_CHANCE = 0.65;
+// Most bands are unguarded, so reading the map pays; a guarded one is the risk worth probing for.
+const DEFEND_CHANCE = 0.35;
 const HUNTER_MAX_LOTS = 4000;
 const FAIR_FOLLOW = 0.06;
 const MAKER_LEAN = 0.1;
@@ -56,9 +58,15 @@ const CHURN_ACTIVITY = 1.5;
 const CHURN_DECAY = 2.5;
 const TRAPPED_DECAY = 0.003;
 const CASCADE_BAND = 0.01;
-const NEWS_BIAS = 0.08;
 const MAX_COHORTS = 520;
 const round = (value) => Math.round(value * 10000) / 10000;
+// A fixed offset in [-0.9, 0.9] for a text key (FNV-1a), so every client derives the same one and the
+// true price always stays inside its zone.
+const zoneOffset = (key) => {
+  let hash = 2166136261;
+  for (let i = 0; i < key.length; i++) hash = Math.imul(hash ^ key.charCodeAt(i), 16777619);
+  return ((hash >>> 0) / 0xffffffff * 2 - 1) * 0.9;
+};
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 function insertPrice(prices, price) {
@@ -72,15 +80,13 @@ function insertPrice(prices, price) {
   prices.splice(low, 0, price);
 }
 
+// Headlines only change liquidity. Which way the price goes is left to the traders, so a round is
+// not won by whoever reacts first to a headline's direction.
 const HEADLINES = [
-  { title: "全球關稅談判升溫", detail: "模擬快訊：賣方追價增加，造市商縮減近價掛單。", side: -1, depth: 0.6, activity: 1.35 },
-  { title: "能源供應受阻傳聞", detail: "模擬快訊：避險賣單湧入，近價流動性變薄。", side: -1, depth: 0.5, activity: 1.45 },
-  { title: "AI 企業財報超預期", detail: "模擬快訊：追多散戶進場，買方報價偏向上緣。", side: 1, depth: 0.7, activity: 1.35 },
-  { title: "聯準會措辭轉鷹", detail: "模擬快訊：主動賣出增加，追空散戶開倉。", side: -1, depth: 0.6, activity: 1.3 },
-  { title: "現貨 ETF 資金流入", detail: "模擬快訊：買方追價升溫，槓桿多單增加。", side: 1, depth: 0.7, activity: 1.4 },
-  { title: "全球風險偏好回升", detail: "模擬快訊：追多散戶進場，賣盤被逐檔消化。", side: 1, depth: 0.8, activity: 1.3 },
-  { title: "流動性枯竭", detail: "造市商撤走近價掛單，只留遠處後備深度。", side: 0, depth: 0.15, activity: 1.3, drought: true },
-  { title: "交易所短暫延遲", detail: "模擬快訊：近價報價撤離，成交滑價擴大。", side: 0, depth: 0.25, activity: 1.1, drought: true },
+  { title: "流動性枯竭", detail: "造市商撤走近價掛單，只留遠處後備深度。", depth: 0.15, activity: 1.3, drought: true },
+  { title: "交易所短暫延遲", detail: "模擬快訊：近價報價撤離，成交滑價擴大。", depth: 0.25, activity: 1.1, drought: true },
+  { title: "重要數據公布前觀望", detail: "模擬快訊：造市商縮減近價掛單，散戶成交放緩。", depth: 0.6, activity: 0.8 },
+  { title: "期權大量到期", detail: "模擬快訊：雙向成交放大，近價掛單變薄。", depth: 0.7, activity: 1.35 },
 ];
 // Near levels answer everyday flow; the backstop keeps a price for every exit.
 const MAKER_LADDER = [
@@ -115,10 +121,8 @@ const EST_OPEN_SHARE = 0.3;
 const EST_LEVERAGE = [[10, 0.2], [25, 0.3], [50, 0.35], [100, 0.15]];
 const EST_DECAY = 0.008;
 const EST_BIN = 5000;
-// Crowds trapped before the round show up blurred, and sometimes a band is left over from
-// positions that are already gone.
+// Crowds trapped before the round show up blurred.
 const EST_TRAPPED_BLUR = 0.012;
-const EST_PHANTOM_CHANCE = 0.5;
 
 // Candles follow simulated seconds so maker requotes do not compress the time axis.
 class ArenaMarket extends TakerOnlyMarket {
@@ -338,6 +342,23 @@ export class ArenaTrader {
     return price > 0 ? Math.round(price) : null;
   }
 
+  // What rivals see of this liquidation price: nothing while it is far, a blurred zone once it
+  // comes near, a tighter one closer still. Each position gets its own fixed offsets, so the zone
+  // holds still while the position is unchanged and watching it longer reveals nothing more.
+  liquidationZone(price = this.run.markPrice()) {
+    const liq = this.liquidationPrice();
+    if (!liq) return null;
+    const { position, entry } = this.account;
+    const key = `${this.run.seed}:${this.id}:${position}:${entry}`;
+    const [wide, narrow] = ARENA_RIVAL_ZONES;
+    const center = liq * (1 + wide.width * zoneOffset(`${key}:wide`));
+    const distance = Math.abs(center / price - 1);
+    if (distance > wide.within) return null;
+    const tier = distance <= narrow.within ? narrow : wide;
+    const middle = tier === wide ? center : liq * (1 + narrow.width * zoneOffset(`${key}:narrow`));
+    return { low: Math.round(middle * (1 - tier.width)), high: Math.round(middle * (1 + tier.width)), width: tier.width, side: position > 0 ? "long" : "short" };
+  }
+
   riskLimit() {
     return this.run.riskLimitLots(this.leverage);
   }
@@ -390,6 +411,22 @@ export class ArenaTrader {
     return Math.max(0, Math.min(byMargin, this.riskLimit() - Math.abs(this.account.position)));
   }
 
+  // The largest order on one side that validateOrder accepts at the given average price, and
+  // which rule stops it there: the risk limit (position plus resting orders), free margin, or a
+  // pending exit that blocks adding.
+  orderRoom(side, reference = this.run.market.last) {
+    const direction = side === "buy" ? 1 : -1;
+    const position = this.account.position;
+    const closing = position && Math.sign(position) !== direction ? Math.abs(position) : 0;
+    if (this.exitIntent && position && !closing) return { lots: 0, limit: "exit" };
+    let resting = 0;
+    for (const order of this.orders()) if (!order.reduceOnly && order.side === side) resting += order.lots;
+    const byRisk = Math.max(closing, this.riskLimit() - direction * position - resting);
+    const free = Math.max(0, this.availableMargin());
+    const byMargin = closing + Math.floor(free * this.leverage * this.run.denominator / (reference * (1 + TAKER_FEE * this.leverage)) / 10) * 10;
+    return byRisk <= byMargin ? { lots: Math.max(0, byRisk), limit: "risk" } : { lots: Math.max(0, byMargin), limit: "margin" };
+  }
+
   orders() {
     return this.run.market.restingOrders.filter((order) => order.owner === this.id && order.lots > 0);
   }
@@ -416,7 +453,7 @@ export class ArenaTrader {
     const opening = this.openingLots(side, lots);
     const cap = this.riskLimit();
     if (opening && this.worstExposure(side, lots) > cap) {
-      return `風險限額：${this.leverage}× 最多持有 ${run.btcText(cap)} BTC（含掛單），降低槓桿才能開更大的部位`;
+      return `風險限額：${this.leverage}× 最多持有 ${ARENA_RISK_LIMITS[this.leverage].toLocaleString("en-US")} BTC（含掛單），降低槓桿才能開更大的部位`;
     }
     if (opening) {
       const required = run.notional(reference, opening) / this.leverage;
@@ -887,19 +924,6 @@ export class FlowArenaRun {
     }
     this.activeEvent = null;
     this.maker = { inventory: 0, maxInventory: 60000, fair: ARENA_INITIAL_PRICE, value: ARENA_INITIAL_PRICE, posted: 0, fills: 0, requotes: 0, quotes: new Map() };
-    const whaleSide = this.rng.next() < 0.5 ? "buy" : "sell";
-    const whaleStart = this.rng.int(14, 34);
-    this.whale = {
-      side: whaleSide,
-      start: whaleStart,
-      end: whaleStart + this.rng.int(42, 65),
-      remaining: this.rng.int(5500, 8500),
-      next: whaleStart,
-      childOrders: 0,
-      filled: 0,
-      orders: [],
-      canceled: 0,
-    };
     this.defenders = [];
     this.hunter = { position: 0, entry: 0, realized: 0, next: this.rng.int(18, 32), exitAt: null, strike: null, strikes: [] };
 
@@ -958,11 +982,6 @@ export class FlowArenaRun {
       const cohort = this.addCohort(side, entry, this.rng.int(18, 42) * 100, leverage, "trapped");
       const shown = Math.round(cohort.liq * (1 + (this.rng.next() - 0.5) * EST_TRAPPED_BLUR));
       this.addEstimate(side, shown, cohort.lots * (0.6 + this.rng.next() * 0.8));
-    }
-    if (this.rng.next() < EST_PHANTOM_CHANCE) {
-      const side = this.rng.next() < 0.5 ? 1 : -1;
-      const distance = 0.01 + this.rng.next() * 0.015;
-      this.addEstimate(side, Math.round(this.market.last * (1 - side * distance)), this.rng.int(18, 42) * 100);
     }
   }
 
@@ -1034,9 +1053,11 @@ export class FlowArenaRun {
     return this.btc(lots).toLocaleString("en-US", { maximumFractionDigits: 1 });
   }
 
+  // The limit in whole lots. A 75 BTC contract cannot hit 8,000 BTC exactly, so the cap is the
+  // last lot under it (7,999.5 BTC); rounding to tens of lots would lose a visible 5 BTC.
   riskLimitLots(leverage) {
     const btc = ARENA_RISK_LIMITS[leverage];
-    return Number.isFinite(btc) ? Math.floor(btc * 100 / this.contractBtc / 10) * 10 : Infinity;
+    return Number.isFinite(btc) ? Math.floor(btc * 100 / this.contractBtc + 1e-9) : Infinity;
   }
 
   markPrice() {
@@ -1131,7 +1152,6 @@ export class FlowArenaRun {
         duel.value += trade.price * trade.lots;
         this.duels.set(key, duel);
       }
-      if (trade.makerOwner === "whale" || trade.takerOwner === "whale") this.whale.filled += trade.lots;
       if (trade.makerOwner === "hunter" || trade.takerOwner === "hunter") this.applyHunterFill(trade);
       if (trade.makerOwner === "defender") {
         const defender = this.defenders.find((item) => item.price === trade.price);
@@ -1243,39 +1263,6 @@ export class FlowArenaRun {
     return best;
   }
 
-  // The whale works passive child orders too, and pulls them when the price leaves them
-  // behind; unfilled size goes back into its remaining target.
-  actWhale() {
-    const whale = this.whale;
-    const last = this.market.last;
-    const done = this.time > whale.end;
-    whale.orders = whale.orders.filter((entry) => {
-      const order = this.market.order(entry.id);
-      if (!order) return false;
-      const stale = Math.abs(order.price / last - 1) > WHALE_STALE_DISTANCE || this.time - entry.born > WHALE_STALE_AGE;
-      if (!stale && !done) return true;
-      if (!done) whale.remaining += order.lots;
-      whale.canceled += order.lots;
-      this.market.cancel(order.id, "whale");
-      return false;
-    });
-    if (this.time < whale.start || done || this.time < whale.next || whale.remaining <= 0) return;
-    const lots = Math.min(whale.remaining, this.rng.int(450, 1050));
-    const aggressive = this.rng.next() < 0.62;
-    const reference = whale.side === "buy" ? this.market.bestAsk() : this.market.bestBid();
-    const aggressiveOffset = Math.round(last * this.rng.int(8, 28) / 10000);
-    const passiveOffset = Math.round(last * this.rng.int(8, 38) / 10000);
-    const price = aggressive
-      ? whale.side === "buy" ? Math.min(this.market.maxPrice, (reference ?? last) + aggressiveOffset) : Math.max(100, (reference ?? last) - aggressiveOffset)
-      : whale.side === "buy" ? Math.max(100, last - passiveOffset) : Math.min(this.market.maxPrice, last + passiveOffset);
-    const arrival = this.market.submit(whale.side, price, lots, { owner: "whale", restRemainder: !aggressive });
-    if (arrival.resting) whale.orders.push({ id: arrival.id, born: this.time });
-    whale.remaining -= lots;
-    whale.childOrders++;
-    whale.next = this.time + this.rng.int(3, 7);
-    if (aggressive && lots >= 700) this.announce("大額委託進場", `${this.btcText(lots)} BTC ${whale.side === "buy" ? "主動買入" : "主動賣出"}，觀察是否持續。`, whale.side === "buy" ? "mint" : "coral");
-  }
-
   // Some trapped crowds are protected: a large holder hides an iceberg a little before the
   // band. The book only ever shows a few BTC at that price; the footprint shows the rest.
   seedDefenders() {
@@ -1362,7 +1349,8 @@ export class FlowArenaRun {
       if (row.short >= 1500 && row.price > last && row.price < last * 1.018) targets.push({ direction: 1, price: row.price, lots: row.short, kind: "band" });
       if (row.long >= 1500 && row.price < last && row.price > last * 0.982) targets.push({ direction: -1, price: row.price, lots: row.long, kind: "band" });
     }
-    for (const trader of this.traders) {
+    // With rivals in the market, hunting a trader's liquidation price is left to the other traders.
+    for (const trader of this.traders.length === 1 ? this.traders : []) {
       const liq = trader.liquidationPrice();
       const exposure = Math.abs(trader.account.position);
       const kind = trader === this.you ? "player" : "rival";
@@ -1425,10 +1413,8 @@ export class FlowArenaRun {
       this.activeEvent = starting;
       starting.happened = true;
       this.market.setLifetime(Math.max(7, Math.round(this.baseLifetime * (starting.drought ? 0.3 : 0.7))));
-      this.announce(starting.title, starting.detail, starting.side > 0 ? "mint" : starting.side < 0 ? "coral" : "amber");
-      if (starting.side) this.openCrowd(starting.side, this.rng.int(6, 16) * 100, "news", CHASER_LEVERAGE, null);
+      this.announce(starting.title, starting.detail, "amber");
     }
-    return (this.activeEvent?.side ?? 0) * NEWS_BIAS;
   }
 
   // Crowd positions enter with real market orders, so FOMO itself becomes order flow.
@@ -1509,14 +1495,13 @@ export class FlowArenaRun {
     const window = trail.slice(-30, -2);
     const high = Math.max(...window);
     const low = Math.min(...window);
-    const breadth = this.activeEvent?.side ? 1.3 : 1;
     if (last > high * 1.0008 && this.time >= this.chase.long) {
       const stop = Math.round(high * (1 - 0.002 - this.rng.next() * 0.003));
-      this.openCrowd(1, Math.round(this.rng.int(3, 9) * 100 * breadth), "chaser", CHASER_LEVERAGE, stop);
+      this.openCrowd(1, this.rng.int(3, 9) * 100, "chaser", CHASER_LEVERAGE, stop);
       this.chase.long = this.time + this.rng.int(4, 8);
     } else if (last < low * 0.9992 && this.time >= this.chase.short) {
       const stop = Math.round(low * (1 + 0.002 + this.rng.next() * 0.003));
-      this.openCrowd(-1, Math.round(this.rng.int(3, 9) * 100 * breadth), "chaser", CHASER_LEVERAGE, stop);
+      this.openCrowd(-1, this.rng.int(3, 9) * 100, "chaser", CHASER_LEVERAGE, stop);
       this.chase.short = this.time + this.rng.int(4, 8);
     }
     const stretch = (last - this.maker.fair) / this.maker.fair;
@@ -1613,13 +1598,12 @@ export class FlowArenaRun {
   }
 
   simulateSecond() {
-    const bias = this.actNews();
+    this.actNews();
     this.market.expireRetail();
     this.decayCohorts();
     this.decayEstimate();
     this.actMaker();
     if (!this.warming) {
-      this.actWhale();
       this.actDefenders();
       this.actHunter();
       this.actBuildup();
@@ -1627,7 +1611,7 @@ export class FlowArenaRun {
     const count = Math.round(RETAIL_PER_SECOND * (this.activeEvent?.activity ?? 1) * (this.retailRegime() === "churn" ? CHURN_ACTIVITY : 1));
     for (let i = 0; i < count; i++) {
       if (i && i % MAKER_REFRESH_STEPS === 0) this.actMaker(false);
-      this.market.step({ bias });
+      this.market.step();
     }
     this.collectRetailOpens();
     this.priceTrail.push(this.market.last);
@@ -1687,8 +1671,6 @@ export class FlowArenaRun {
       seed: this.seed,
       version: ARENA_VERSION,
       tradeCount: this.market.tradeLog.filter((trade) => trade.makerOwner === this.you.id || trade.takerOwner === this.you.id).length,
-      whaleSide: this.whale.side,
-      whaleOrders: this.whale.childOrders,
       news: this.eventPlan.filter((event) => event.happened).map((event) => event.title),
       makerInventory: round(this.maker.inventory / 100),
       makerFills: round(this.maker.fills / 100),
@@ -1721,7 +1703,6 @@ export class FlowArenaRun {
       notes: trader.notes(),
       defenders,
       hunter: { strikes: this.hunter.strikes.map((strike) => ({ ...strike })), pnl: round(this.hunter.realized) },
-      whale: { side: this.whale.side, filled: this.whale.filled, orders: this.whale.childOrders },
       knockouts: this.knockouts.map((item) => ({ ...item })),
       duels: [...this.duels.values()].map((duel) => ({ ...duel, avgPrice: Math.round(duel.value / duel.lots) })),
     };
@@ -1851,7 +1832,7 @@ for (const field of ["account", "leverage", "peakEquity", "maxDrawdown", "peakEx
 for (const [name, method] of Object.entries({
   equity: "equity", exposure: "exposure", exposureRatio: "exposureRatio", playerLiquidationPrice: "liquidationPrice",
   setLeverage: "setLeverage", openingLots: "openingLots", reservedMargin: "reservedMargin", availableMargin: "availableMargin",
-  maxOpenLots: "maxOpenLots", playerOrders: "orders", worstExposure: "worstExposure", validateOrder: "validateOrder",
+  maxOpenLots: "maxOpenLots", orderRoom: "orderRoom", playerOrders: "orders", worstExposure: "worstExposure", validateOrder: "validateOrder",
   submit: "submit", close: "close", closePart: "closePart", pruneReduceOnly: "pruneReduceOnly", cancel: "cancel",
   cancelAll: "cancelAll", setProtection: "setProtection", checkPlayerLiquidation: "checkLiquidation",
   checkProtection: "checkProtection", updateRisk: "updateRisk", trackEpisodeExtreme: "trackEpisodeExtreme",
