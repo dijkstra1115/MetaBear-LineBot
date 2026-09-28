@@ -24,6 +24,13 @@ import {
   pairingAt,
 } from "../public/orderflow/primer-scene-view.js";
 import { narrativeAt } from "../public/orderflow/primer-script.js";
+import { priceY } from "../public/orderflow/primer-desktop-view.js";
+import {
+  executionAge,
+  fillFeedback,
+  matchingMotion,
+  ROW_EXIT_MS,
+} from "../public/orderflow/primer-desktop-motion.js";
 const story = createPrimerStory(),
   at = (t) => primerSnapshot(story, t);
 const depth = (s, side, price) =>
@@ -286,7 +293,7 @@ test("later active orders visibly pair with the opposite side before each actual
   }
 });
 
-test("matching units move continuously into their slots and remain reversible", () => {
+test("matching units meet the candle on the executed price level and remain reversible", () => {
   for (const [scene, begin, count, side] of [
     [2, 16000, 2, "sell"],
     [3, 16006, 2, "sell"],
@@ -311,16 +318,112 @@ test("matching units move continuously into their slots and remain reversible", 
         ),
       ].map((m) => [Number(m[1]), Number(m[2])]);
       assert.equal(points.length, count);
+      const maker = pairingAt(at(time), {
+        ...scenePosition(scene, elapsed),
+        time,
+      }).maker;
       assert.ok(
-        points.every(([x, y]) => Number.isFinite(x) && y >= 180 && y <= 389),
+        points.every(
+          ([x, y]) => Number.isFinite(x) && y === priceY(maker.price),
+        ),
       );
       frames.push({ time, elapsed, svg, points });
     }
     for (let i = 1; i < frames.length; i++)
-      assert.ok(frames[i].points[0][1] > frames[i - 1].points[0][1]);
-    assert.ok(Math.abs(frames.at(-1).points[0][1] - 377) < 0.01);
+      assert.ok(
+        Math.abs(frames[i].points[0][0] - 500) <
+          Math.abs(frames[i - 1].points[0][0] - 500),
+      );
+    assert.ok(Math.abs(frames.at(-1).points[0][0] - 500) < 0.01);
     for (const frame of frames.reverse())
       assert.equal(render(scene, frame.time, frame.elapsed), frame.svg);
+  }
+});
+
+test("execution emphasis starts with the actual fill and fades without changing market data", () => {
+  for (const [scene, time] of [
+    [2, 16006],
+    [3, 16012],
+    [3, 16018],
+    [4, 32006],
+    [5, 40006],
+    [5, 40012],
+    [5, 40018],
+    [5, 49006],
+  ]) {
+    const elapsed = sceneElapsedAt(scene, time);
+    const before = render(
+      scene,
+      time - 0.001,
+      sceneElapsedAt(scene, time - 0.001),
+    );
+    assert.doesNotMatch(before, new RegExp(`data-execution-at="${time}"`));
+    const p = { ...scenePosition(scene, elapsed), time };
+    const feedback = fillFeedback(at(time), p);
+    assert.equal(feedback.trade.at, time);
+    assert.equal(feedback.age, 0);
+    assert.equal(feedback.impact, 1);
+    const svg = render(scene, time, elapsed);
+    assert.match(svg, new RegExp(`data-candle-impact="${time}"`));
+    assert.match(svg, new RegExp(`data-close="${at(time).price}"`));
+    const settled = scenePosition(scene, elapsed + 1050);
+    assert.equal(fillFeedback(at(settled.time), settled), null);
+    assert.equal(at(settled.time).price, at(time).price);
+  }
+});
+
+test("chapter boundaries do not reflash historical executions or revive consumed rows", () => {
+  for (const scene of [1, 3, 4, 5, 6, 7]) {
+    const p = scenePosition(scene, 0),
+      state = at(p.time);
+    assert.equal(executionAge(p, state.trades.at(-1).at), Infinity);
+    assert.equal(fillFeedback(state, p), null);
+    assert.doesNotMatch(
+      drawPrimer({ state, ...p }).svg,
+      /data-execution-at|data-consumed-at/,
+    );
+  }
+  const p = scenePosition(3, 0);
+  assert.equal(candleAt(at(p.time), p.time).close, 101);
+});
+
+test("an exhausted row confirms its fill then disappears; a partial fill keeps remaining units", () => {
+  const time = 16012,
+    elapsed = sceneElapsedAt(3, time);
+  const confirmed = render(3, time, elapsed);
+  assert.match(
+    confirmed,
+    /data-book-side="sell" data-price="103" data-book-size="0" data-consumed-at="16012"/,
+  );
+  const after = scenePosition(3, elapsed + ROW_EXIT_MS);
+  assert.doesNotMatch(
+    drawPrimer({ state: at(after.time), ...after }).svg,
+    /data-consumed-at="16012"/,
+  );
+  assert.match(
+    render(4, 32006, sceneElapsedAt(4, 32006)),
+    /data-book-side="buy" data-price="103" data-book-size="3"/,
+  );
+});
+
+test("consecutive fills have a settling beat and seek-safe effects, including reduced motion", () => {
+  assert.equal(matchingMotion({ progress: 0.15 }).travel, 0);
+  assert.ok(matchingMotion({ progress: 0.5 }).travel > 0);
+  assert.equal(matchingMotion({ progress: 1 }).travel, 1);
+  const renders = new Map();
+  const fillTime = sceneElapsedAt(3, 16012);
+  for (const offset of [-100, 0, 100, 350, 800, 1100, 350, 100, 0, -100]) {
+    const p = scenePosition(3, fillTime + offset),
+      state = at(p.time);
+    const svg = drawPrimer({ state, ...p }).svg;
+    if (renders.has(offset)) assert.equal(svg, renders.get(offset));
+    renders.set(offset, svg);
+    const reduced = drawPrimer({ state, ...p, reduced: true }).svg;
+    assert.doesNotMatch(
+      reduced,
+      /data-execution-at|data-consumed-at|NaN|Infinity|undefined/,
+    );
+    assert.match(reduced, new RegExp(`data-close="${state.price}"`));
   }
 });
 

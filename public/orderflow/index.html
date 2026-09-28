@@ -1,116 +1,296 @@
 <!doctype html>
-<html lang="zh-Hant" class="wick-page">
+<html lang="zh-Hant">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1218" />
-    <link rel="canonical" href="https://metabear.io/orderflow/" />
+    <meta name="theme-color" content="#0c1115" />
     <meta
       name="description"
-      content="從買賣撮合到 K 線同步形成，用 MetaBear 熊看懂成交、跳價與影線。"
+      content="從一筆成交開始，自由選看名詞圖解與市場故事。用短篇動態教材，走進每一個術語背後的過程。"
     />
-    <title>一筆成交，怎麼變成 K 線？ · MetaBear</title>
+    <title>互動學院 · 課程地圖 · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
-    <link rel="stylesheet" href="./wick.css" />
+    <link rel="stylesheet" href="./academy-map.css" />
     <script type="module" src="./academy-entry.js"></script>
   </head>
-  <body data-chapter="primer">
-    <a class="skip" href="#story">跳到市場故事</a>
-    <header class="site-header">
-      <a href="/" class="brand"
-        ><img src="/logo.webp" width="28" height="28" alt="" /><span
-          >MetaBear</span
+  <body>
+    <a class="skip" href="#browse">跳到課程</a>
+    <header class="map-header">
+      <a class="brand" href="/"
+        ><img src="/favicon-v2.png" width="30" height="30" alt="" />MetaBear<span
+          >互動學院</span
         ></a
       >
-      <span class="series"
-        >市場故事 <span aria-hidden="true">/</span> 從撮合到 K 線</span
-      >
+      <nav aria-label="學院頁面">
+        <a href="#learning-paths">建議路線</a><a href="#browse">自由選課</a
+        ><span class="preview-indicator"><i></i>自由選看</span>
+      </nav>
     </header>
-    <main id="story">
-      <div class="scene-meta">
-        <span id="scene-label">01 — 買方、賣方、交易所</span>
-        <ol class="scene-route" aria-label="故事進度">
-          <li aria-current="step"><span class="sr-only">第一幕</span></li>
-          <li><span class="sr-only">第二幕</span></li>
-          <li><span class="sr-only">第三幕</span></li>
-          <li><span class="sr-only">第四幕</span></li>
-          <li><span class="sr-only">第五幕</span></li>
-          <li><span class="sr-only">第六幕</span></li>
-          <li><span class="sr-only">第七幕</span></li>
-          <li><span class="sr-only">第八幕</span></li>
-        </ol>
-      </div>
-      <section class="stage" aria-label="一筆成交，怎麼變成 K 線？">
-        <div class="stage-top">
-          <div class="instrument">
-            <strong>MetaBear 熊 <span>/ 元</span></strong
-            ><small>模擬商品 · 情境回放</small>
-          </div>
-          <div class="clock">
-            <span id="playback-label">合成行情 · 逐步回看</span
-            ><b id="market-clock">14:30:00.00</b>
+    <main>
+      <section class="map-hero" aria-labelledby="map-title">
+        <div class="hero-copy">
+          <p class="eyebrow">ORDERFLOW ACADEMY / LEARNING MAP</p>
+          <h1 id="map-title">看見過程，<br /><em>才讀得懂市場。</em></h1>
+          <p class="hero-description">
+            從一筆成交，到一段行情。<br />每次只學一件事，讓陌生的術語變成眼前的畫面。
+          </p>
+          <div class="hero-actions">
+            <button type="button" id="show-new">
+              觀看本次更新 <span aria-hidden="true">↗</span></button
+            ><span>短篇動畫 · 自由選看 · 隨時回拖</span>
           </div>
         </div>
-        <div class="canvas">
-          <svg
-            id="market"
-            viewBox="0 0 1000 430"
-            role="img"
-            aria-labelledby="chart-title chart-description"
-          >
-            <title id="chart-title">一筆成交，怎麼變成 K 線？</title>
-            <desc id="chart-description"></desc>
+        <div class="hero-scene" aria-hidden="true">
+          <svg viewBox="0 0 520 310">
             <defs>
-              <clipPath id="stage-clip">
-                <rect id="clip-rect" width="1000" height="430" />
-              </clipPath>
+              <linearGradient id="map-glow" x1="0" x2="1">
+                <stop stop-color="#8bd7c4" stop-opacity="0" />
+                <stop offset="1" stop-color="#8bd7c4" stop-opacity=".3" />
+              </linearGradient>
             </defs>
-            <g id="world" clip-path="url(#stage-clip)"></g>
+            <path
+              d="M30 95h460M30 150h460M30 205h460M30 260h460"
+              stroke="#314249"
+              stroke-dasharray="2 7"
+            />
+            <path
+              d="M170 38v240M330 38v240"
+              stroke="#2e4146"
+              stroke-dasharray="2 7"
+            />
+            <rect
+              x="31"
+              y="83"
+              width="107"
+              height="25"
+              rx="4"
+              fill="#e0be8d"
+              opacity=".18"
+            />
+            <rect
+              x="31"
+              y="138"
+              width="81"
+              height="25"
+              rx="4"
+              fill="#e0be8d"
+              opacity=".3"
+            />
+            <rect
+              x="31"
+              y="193"
+              width="119"
+              height="25"
+              rx="4"
+              fill="#8bd7c4"
+              opacity=".27"
+            />
+            <path
+              d="M113 151h46c35 0 26 54 61 54h47c32 0 27-55 58-55h142"
+              fill="none"
+              stroke="#afd1c4"
+              stroke-width="1.4"
+            />
+            <circle cx="210" cy="205" r="6" fill="#8bd7c4" />
+            <circle cx="267" cy="205" r="9" fill="#8bd7c4" />
+            <circle cx="326" cy="150" r="7" fill="#8bd7c4" />
+            <path
+              d="M383 205V74M443 161V42"
+              stroke="#98c5b4"
+              stroke-width="2"
+            />
+            <rect
+              x="374"
+              y="124"
+              width="18"
+              height="58"
+              rx="2"
+              fill="#98c5b4"
+              opacity=".8"
+            />
+            <rect
+              x="434"
+              y="74"
+              width="18"
+              height="53"
+              rx="2"
+              fill="#98c5b4"
+              opacity=".8"
+            />
+            <rect
+              x="351"
+              y="111"
+              width="118"
+              height="90"
+              rx="10"
+              stroke="#91baa6"
+              fill="url(#map-glow)"
+              stroke-opacity=".45"
+            />
+            <text x="30" y="30">01 / 掛單</text>
+            <text x="190" y="30">02 / 成交</text>
+            <text x="350" y="30">03 / 留下形狀</text>
+            <text x="34" y="295" class="scene-caption">
+              從全景靠近細節，再帶著理解回來。
+            </text>
           </svg>
         </div>
-        <div class="stage-bottom">
-          <span id="lens-label">委託 = 買或賣 ＋ 價位 ＋ 數量</span
-          ><span class="last-price"
-            ><span>最新成交</span><b id="last-price">100</b></span
-          >
+      </section>
+      <div class="map-summary" aria-label="課程狀態">
+        <div><strong id="available-count">18</strong><span>堂可觀看</span></div>
+        <div><strong id="new-count">6</strong><span>堂本次更新</span></div>
+        <div><strong id="planned-count">0</strong><span>堂後續規劃</span></div>
+        <p>
+          名詞圖解打底，市場故事串起因果。<br />路線只是建議，每堂都能直接進入。
+        </p>
+      </div>
+      <section
+        class="path-section"
+        id="learning-paths"
+        aria-labelledby="path-title"
+      >
+        <div class="path-heading">
+          <h2 id="path-title">不知道從哪裡開始？</h2>
+          <span>選一條路線，也可以直接往下自由選課。</span>
         </div>
-        <div class="timeline">
-          <label for="scene-progress">拖曳回看</label>
-          <input
-            type="range"
-            id="scene-progress"
-            min="0"
-            max="10000"
-            step="10"
-            value="0"
-            aria-label="本幕播放進度"
-            aria-describedby="seek-hint"
-          />
-          <span id="elapsed-label" class="elapsed">00:00.0 / 00:10.0</span>
-          <span id="seek-hint" class="sr-only"
-            >拖曳或用方向鍵調整本幕進度。調整後暫停，按繼續播放。</span
-          >
+        <div class="learning-paths">
+          <!-- paths:start --><button class="learning-path" type="button" data-learning-path="start" aria-pressed="false"><span class="path-index">01</span><span><strong>先看懂市場</strong><small>從成交到下單結果</small></span><span class="path-arrow" aria-hidden="true">↗</span></button><button class="learning-path" type="button" data-learning-path="inside" aria-pressed="false"><span class="path-index">02</span><span><strong>走進行情裡面</strong><small>讀懂成交與等待的掛單</small></span><span class="path-arrow" aria-hidden="true">↗</span></button><button class="learning-path" type="button" data-learning-path="risk" aria-pressed="false"><span class="path-index">03</span><span><strong>理解合約風險</strong><small>先懂部位，再看風險門檻</small></span><span class="path-arrow" aria-hidden="true">↗</span></button><!-- paths:end -->
         </div>
       </section>
-      <div class="story-copy" aria-live="polite" aria-atomic="true">
-        <p id="eyebrow">MetaBear 熊 · 從委託到 K 線</p>
-        <h1 id="headline">一筆成交，怎麼變成 K 線？</h1>
-        <p id="question">買方想用 99 元買 5 隻。賣方想用 101 元賣 2 隻。</p>
-      </div>
-      <nav class="story-controls" aria-label="故事操作">
-        <button id="back" class="back" type="button" disabled>← 上一幕</button>
-        <div class="advance">
-          <button id="pause" class="pause" type="button" aria-pressed="false">
-            暫停</button
-          ><button id="next" class="next" type="button" disabled>
-            播放中<span aria-hidden="true">↗</span>
-          </button>
+      <section class="browse-section" id="browse" aria-label="自由選課">
+        <div class="filter-bar">
+          <div class="view-filters" role="group" aria-label="課程範圍">
+            <button type="button" data-course-view="ready" aria-pressed="true">
+              可觀看</button
+            ><button type="button" data-course-view="new" aria-pressed="false">
+              本次更新</button
+            ><button type="button" data-course-view="all" aria-pressed="false">
+              完整規劃
+            </button>
+          </div>
+          <label class="course-search"
+            ><span aria-hidden="true">⌕</span
+            ><input
+              id="course-search"
+              type="search"
+              placeholder="找一個聽過的名詞…"
+              aria-label="搜尋課程"
+          /></label>
         </div>
-      </nav>
+        <p
+          id="filter-result"
+          class="filter-result"
+          role="status"
+          aria-live="polite"
+        >18 堂可觀看課程</p>
+        <div id="course-sections">
+          <!-- courses:start --><section class="course-section" aria-labelledby="concept-title"><div class="section-heading"><div class="section-emblem"><svg viewBox="0 0 48 32" aria-hidden="true"><path d="M8 7v19M24 2v26M40 6v24"/><path d="M5 12h6v8H5zM21 7h6v14h-6zM37 15h6v8h-6z" class="solid"/></svg></div><div><p>01 / CONCEPTS</p><h2 id="concept-title">名詞圖解<span>14</span></h2></div><p class="section-description">一次看懂一個名詞，隨時回來查。</p></div><div class="course-grid"><a href="./matching.html" class="lesson-card " data-course-id="matching">
+    <div class="card-top"><span class="card-id">C / 01</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>K 線</h3><span aria-hidden="true">↗</span></div>
+    <p>從買賣配對，看見開、高、低、收如何留下形狀。</p>
+    <div class="card-bottom"><span>83 秒</span><span>從這裡開始</span></div>
+  </a><a href="./footprint.html" class="lesson-card " data-course-id="footprint">
+    <div class="card-top"><span class="card-id">C / 02</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>足跡圖</h3><span aria-hidden="true">↗</span></div>
+    <p>走進一根 K 線，看左右格子如何逐筆累加。</p>
+    <div class="card-bottom"><span>30 秒</span><span>先懂：K 線</span></div>
+  </a><a href="./heatmap.html" class="lesson-card " data-course-id="heatmap">
+    <div class="card-top"><span class="card-id">C / 03</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>熱力圖</h3><span aria-hidden="true">↗</span></div>
+    <p>掛單留下色帶，成交留下圓點，看懂亮度的變化。</p>
+    <div class="card-bottom"><span>30 秒</span><span>先懂：K 線</span></div>
+  </a><a href="./order-types.html" class="lesson-card " data-course-id="order-types">
+    <div class="card-top"><span class="card-id">C / 04</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>市價單與限價單</h3><span aria-hidden="true">↗</span></div>
+    <p>同一筆買入需求，用兩種委託方式看不同結果。</p>
+    <div class="card-bottom"><span>30 秒</span><span>先懂：K 線</span></div>
+  </a><a href="./slippage.html" class="lesson-card " data-course-id="slippage">
+    <div class="card-top"><span class="card-id">C / 05</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>滑價</h3><span aria-hidden="true">↗</span></div>
+    <p>把相同數量交給深、淺兩個委託簿，比較實際均價。</p>
+    <div class="card-bottom"><span>30 秒</span><span>先懂：市價單與限價單</span></div>
+  </a><a href="./leverage.html" class="lesson-card " data-course-id="leverage">
+    <div class="card-top"><span class="card-id">C / 06</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>合約槓桿</h3><span aria-hidden="true">↗</span></div>
+    <p>同一個價格變動，看部位大小與保證金如何影響結果。</p>
+    <div class="card-bottom"><span>30 秒</span><span>先懂：K 線</span></div>
+  </a><a href="./liquidation.html" class="lesson-card " data-course-id="liquidation">
+    <div class="card-top"><span class="card-id">C / 07</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>合約強平</h3><span aria-hidden="true">↗</span></div>
+    <p>100 元保證金、5 倍槓桿，看價格跌幅如何變成保證金損失。</p>
+    <div class="card-bottom"><span>32 秒</span><span>先懂：合約槓桿</span></div>
+  </a><a href="./volume.html" class="lesson-card " data-course-id="volume">
+    <div class="card-top"><span class="card-id">C / 08</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>成交量</h3><span aria-hidden="true">↗</span></div>
+    <p>成交落進量柱，再用相同長度的區間比較多與少。</p>
+    <div class="card-bottom"><span>30 秒</span><span>先懂：K 線</span></div>
+  </a><a href="./delta-concept.html" class="lesson-card " data-course-id="delta-concept">
+    <div class="card-top"><span class="card-id">C / 09</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>Delta 與 CVD</h3><span aria-hidden="true">↗</span></div>
+    <p>一次看懂統計方向、區間與累計起點。</p>
+    <div class="card-bottom"><span>30 秒</span><span>先懂：成交量、足跡圖</span></div>
+  </a><a href="./stop-orders.html" class="lesson-card " data-course-id="stop-orders">
+    <div class="card-top"><span class="card-id">C / 10</span><span class="course-status new">本次重修</span></div>
+    <div class="card-title"><h3>停損單</h3><span aria-hidden="true">↗</span></div>
+    <p>先看市價止損逐價成交，再看限價止損只成交一半、餘量等待。</p>
+    <div class="card-bottom"><span>32 秒</span><span>先懂：市價單與限價單、滑價</span></div>
+  </a><a href="./open-interest.html" class="lesson-card " data-course-id="open-interest">
+    <div class="card-top"><span class="card-id">C / 11</span><span class="course-status new">本次重修</span></div>
+    <div class="card-title"><h3>未平倉量（OI）</h3><span aria-hidden="true">↗</span></div>
+    <p>從 K 線與 OI 折線走進四種開平倉組合，看成交量與未平倉量如何變化。</p>
+    <div class="card-bottom"><span>36 秒</span><span>先懂：成交量、合約槓桿</span></div>
+  </a><a href="./funding.html" class="lesson-card " data-course-id="funding">
+    <div class="card-top"><span class="card-id">C / 12</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>資金費率</h3><span aria-hidden="true">↗</span></div>
+    <p>從部位金額算出資金費，看正、負費率如何改變多空支付方向。</p>
+    <div class="card-bottom"><span>32 秒</span><span>先懂：合約槓桿</span></div>
+  </a><a href="./volume-profile.html" class="lesson-card " data-course-id="volume-profile">
+    <div class="card-top"><span class="card-id">C / 13</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>成交量分布圖</h3><span aria-hidden="true">↗</span></div>
+    <p>同一組成交，從每分鐘的量柱搬到每個價格，找出成交最多的位置。</p>
+    <div class="card-bottom"><span>30 秒</span><span>先懂：成交量、足跡圖</span></div>
+  </a><a href="./imbalance.html" class="lesson-card " data-course-id="imbalance">
+    <div class="card-top"><span class="card-id">C / 14</span><span class="course-status ready">可觀看</span></div>
+    <div class="card-title"><h3>足跡不平衡</h3><span aria-hidden="true">↗</span></div>
+    <p>放大相鄰價位的兩格，用三倍門檻看懂對角成交量比較。</p>
+    <div class="card-bottom"><span>30 秒</span><span>先懂：足跡圖、Delta 與 CVD</span></div>
+  </a></div></section><section class="course-section" aria-labelledby="story-title"><div class="section-heading"><div class="section-emblem"><svg viewBox="0 0 48 32" aria-hidden="true"><path d="M2 25h9V15h10V6h11v14h14"/><circle cx="21" cy="15" r="4" class="solid"/></svg></div><div><p>02 / MARKET STORIES</p><h2 id="story-title">市場故事<span>4</span></h2></div><p class="section-description">帶著一個疑問，走進一段行情。</p></div><div class="course-grid"><a href="./wick.html" class="lesson-card " data-course-id="wick">
+    <div class="card-top"><span class="card-id">S / 01</span><span class="course-status new">本次重修</span></div>
+    <div class="card-title"><h3>衝上去，怎麼又回來？</h3><span aria-hidden="true">↗</span></div>
+    <p>先看九根 K 裡的衝高回落，再走進同一分鐘的買賣現場。</p>
+    <div class="card-bottom"><span>約 2.4 分</span><span>先懂：K 線</span></div>
+  </a><a href="./absorption-story.html" class="lesson-card " data-course-id="absorption-story">
+    <div class="card-top"><span class="card-id">S / 02</span><span class="course-status new">本次重修</span></div>
+    <div class="card-title"><h3>突破誘多，高位吸收，反轉出貨</h3><span aria-hidden="true">↗</span></div>
+    <p>三次放量測壓，走進足跡、熱力圖與 CVD，看突破後的高位吸收與賣出。</p>
+    <div class="card-bottom"><span>48 秒</span><span>先懂：足跡圖、熱力圖、Delta 與 CVD</span></div>
+  </a><a href="./breakout-volume.html" class="lesson-card " data-course-id="breakout-volume">
+    <div class="card-top"><span class="card-id">S / 03</span><span class="course-status new">本次重修</span></div>
+    <div class="card-title"><h3>放量突破，怎樣才算站穩？</h3><span aria-hidden="true">↗</span></div>
+    <p>放量突破後持續成交，回踩104時掛買接住賣單，再由新的買單推高。</p>
+    <div class="card-bottom"><span>40 秒</span><span>先懂：成交量、突破誘多，高位吸收，反轉出貨</span></div>
+  </a><a href="./order-block.html" class="lesson-card " data-course-id="order-block">
+    <div class="card-top"><span class="card-id">S / 04</span><span class="course-status new">本次新課</span></div>
+    <div class="card-title"><h3>訂單塊到底長怎樣？</h3><span aria-hidden="true">↗</span></div>
+    <p>大單先掛買承接，再主動逐價成交：看懂成本、成交速度與起漲區的關係。</p>
+    <div class="card-bottom"><span>40 秒</span><span>先懂：市價單與限價單、滑價、突破誘多，高位吸收，反轉出貨</span></div>
+  </a></div></section><!-- courses:end -->
+        </div>
+      </section>
+      <aside class="map-note">
+        <span class="note-orbit">↗</span>
+        <div>
+          <strong>先看懂，再自由試玩。</strong>
+          <p>
+          完整試玩會另做成獨立空間。目前課程皆可自由選看，隨時暫停或回拖。
+          </p>
+        </div>
+      </aside>
     </main>
     <footer>
-      <span>掛單是報價，成交才更新價格。</span><span>MetaBear 交易學院</span>
+      <span>METABEAR / 互動學院</span
+      ><span>每一個數字，都有看得見的來由。</span>
     </footer>
-    <noscript>請啟用 JavaScript 觀看市場故事。</noscript>
+    <noscript>可直接點選課程觀看；搜尋與路線篩選需啟用 JavaScript。</noscript>
   </body>
 </html>

@@ -2,7 +2,7 @@ import { scenePosition } from "./wick-model.js";
 
 export const scenes = [
   {
-    label: "剛才，發生了什麼事？",
+    label: "衝高，又回到原處",
     eyebrow: "先看見發生了什麼",
     headline: "衝上去的價格，怎麼又回來了？",
     question: "先看完這一分鐘，再走進它的成交現場。",

@@ -1,7 +1,7 @@
 # 舊版交易學院
 
 舊版教學集中保存在 `public/orderflow/legacy/`，總覽入口為 `/orderflow/legacy/`。
-正式四段故事仍使用 `/orderflow/`、`matching.html`、`wick.html`、`revisit.html`、`delta.html`。
+目前課程使用 `/orderflow/` 課程地圖，完整清單由 `academy-catalog.js` 維護。「重返同一價位」、「買入又多了，價格怎麼還回不去？」及「標記價格」已移除，`revisit.html`、`delta.html`、`mark-price.html` 僅保留返回學院的相容轉址；相關舊模型與驗證保留，不再作為課程入口。後續分類見 [課程規劃](ACADEMY-CURRICULUM.md)。
 
 | 內容               | 舊版目錄內入口                    |
 | ------------------ | --------------------------------- |
@@ -17,7 +17,7 @@
 
 - 原 `classic.html`、`journey.html`、`absorption.html` 保留輕量轉址頁，轉入 `legacy/` 並保留查詢參數與章節錨點。`classic.html` 沒有參數時仍開啟六段旅程，維持原本行為。
 - `/orderflow/?classic=1`、`?workspace=practice`、`?workspace=live` 轉到舊版工作台頁；其他原本進入 15 課的 lesson 連結也轉入此頁。
-- 正式首頁已對應四段故事的 lesson 連結仍維持原本對應。舊版課程內的上一課、下一課及課程地圖使用 `classic.html?classic=1&lesson=...`，全程留在舊版。
+- 對應現有課程的 lesson 連結進入新版獨立課程；已移除課程的連結回到學院入口。舊版課程內的上一課、下一課及課程地圖使用 `classic.html?classic=1&lesson=...`，全程留在舊版。
 - `candles.html` 是既有的相容轉址，仍導向正式版 `matching.html`；目前 Git 版本中沒有可搬移的獨立舊 K 線教材，不另造一份。
 - 舊版總覽與教材標示 `noindex`。即時行情的 Bybit WebSocket 權限限定在原學院入口與新的 `legacy/classic.html`。
 

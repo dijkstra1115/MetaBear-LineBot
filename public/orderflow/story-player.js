@@ -8,6 +8,9 @@ export function mountStory({
   render,
   previousStory = null,
   nextStory = null,
+  continuousDesktop = false,
+  desktopSceneHold = 0,
+  completionLabel = "故事完成",
 }) {
   const $ = (s) => document.querySelector(s);
   const reduced = matchMedia("(prefers-reduced-motion:reduce)");
@@ -17,15 +20,37 @@ export function mountStory({
     paused = false,
     raf = 0,
     last = 0;
-  const complete = () => elapsed >= durations[scene];
-  const elapsedText = (ms) => `00:${(ms / 1000).toFixed(1).padStart(4, "0")}`;
+  // The historic option name is retained for existing lessons. The same
+  // timeline now runs on phones, so rotating never changes its duration.
+  const continuous = () => continuousDesktop;
+  const offsets = durations.map((_, i) =>
+    durations.slice(0, i).reduce((a, b) => a + b, 0),
+  );
+  const baseTotal = durations.reduce((a, b) => a + b, 0);
+  const hold = () => (continuous() ? desktopSceneHold : 0);
+  const durationAt = (index) => durations[index] + hold();
+  const offsetAt = (index) => offsets[index] + index * hold();
+  const totalDuration = () => baseTotal + durations.length * hold();
+  const complete = () => elapsed >= durationAt(scene);
+  const elapsedText = (ms) =>
+    `${String(Math.floor(ms / 60000)).padStart(2, "0")}:${((ms % 60000) / 1000).toFixed(1).padStart(4, "0")}`;
 
   function draw() {
     const p = {
       ...position(scene, elapsed, reduced.matches),
-      mobile: mobile.matches,
+      // Continuous lessons share one camera and market history across layouts.
+      mobile: mobile.matches && !continuous(),
     };
     const result = render(p);
+    for (const [id, value] of [
+      ["eyebrow", result.eyebrow ?? scenes[scene].eyebrow],
+      [
+        "scene-label",
+        `${String(scene + 1).padStart(2, "0")} — ${result.sceneLabel ?? scenes[scene].label}`,
+      ],
+    ]) {
+      if ($(`#${id}`).textContent !== value) $(`#${id}`).textContent = value;
+    }
     $("#market").setAttribute("viewBox", result.viewBox ?? "0 0 1000 430");
     $("#clip-rect").setAttribute("width", result.width ?? 1000);
     $("#clip-rect").setAttribute("height", result.height ?? 430);
@@ -36,23 +61,39 @@ export function mountStory({
     $("#last-price").textContent = result.price;
     $("#lens-label").textContent = result.mobileLens ?? scenes[scene].lens;
     $("#playback-label").textContent = complete()
-      ? "本幕已播完"
+      ? continuous() && scene === scenes.length - 1
+        ? "本課已播完"
+        : "本幕已播完"
       : paused
         ? "已暫停"
         : result.playback;
     $("#chart-description").textContent = result.description;
-    const current = narrative(scene, elapsed, reduced.matches);
+    const current = narrative(scene, elapsed, reduced.matches, p.mobile);
     for (const key of ["headline", "question"]) {
       if ($(`#${key}`).textContent !== current[key])
         $(`#${key}`).textContent = current[key];
     }
     const scrubber = $("#scene-progress");
-    scrubber.max = durations[scene];
-    scrubber.value = elapsed;
-    scrubber.style.setProperty("--progress", `${p.progress * 100}%`);
-    const label = `${elapsedText(elapsed)} / ${elapsedText(durations[scene])}`;
+    const duration = continuous() ? totalDuration() : durations[scene];
+    const currentTime = continuous() ? offsetAt(scene) + elapsed : elapsed;
+    scrubber.max = duration;
+    scrubber.value = currentTime;
+    scrubber.style.setProperty(
+      "--progress",
+      `${(currentTime / duration) * 100}%`,
+    );
+    const label = `${elapsedText(currentTime)} / ${elapsedText(duration)}`;
     $("#elapsed-label").textContent = label;
-    scrubber.setAttribute("aria-valuetext", `本幕 ${label}`);
+    scrubber.setAttribute(
+      "aria-label",
+      continuous() ? "整課播放進度" : "本幕播放進度",
+    );
+    scrubber.setAttribute(
+      "aria-valuetext",
+      `${continuous() ? "整課" : "本幕"} ${label}`,
+    );
+    $("#seek-hint").textContent =
+      `拖曳或用方向鍵調整${continuous() ? "整課" : "本幕"}進度。調整後暫停，按繼續播放。`;
     document.body.dataset.scene = String(scene + 1);
     document.body.dataset.mode = p.mode;
     document.body.dataset.running = String(!complete());
@@ -62,36 +103,38 @@ export function mountStory({
     $("#back").disabled = scene === 0 && !previousStory;
     $("#back").textContent =
       scene === 0 && previousStory ? "← 上一個故事" : "← 上一幕";
-    $("#pause").disabled = complete();
-    $("#pause").textContent = paused ? "繼續" : "暫停";
+    $("#pause").disabled = complete() && !continuous();
+    $("#pause").textContent =
+      complete() && continuous() ? "重播本課" : paused ? "繼續" : "暫停";
     $("#pause").setAttribute("aria-pressed", String(paused));
     const final = scene === scenes.length - 1;
-    $("#next").disabled = !complete() || (final && !nextStory);
+    $("#next").disabled =
+      (!complete() && (!continuous() || final)) || (final && !nextStory);
     $("#next").innerHTML =
-      (complete()
-        ? final
-          ? nextStory
-            ? "下一個故事"
-            : "故事完成"
-          : "下一幕"
-        : paused
-          ? "本幕未完"
-          : "播放中") +
+      (continuous() && !final
+        ? "下一幕"
+        : complete()
+          ? final
+            ? nextStory
+              ? "下一個故事"
+              : completionLabel
+            : "下一幕"
+          : paused
+            ? "本幕未完"
+            : "播放中") +
       `<span aria-hidden="true">${complete() && final && !nextStory ? "✓" : "↗"}</span>`;
   }
   function tick(now) {
     if (paused || complete()) return;
-    elapsed = Math.min(durations[scene], elapsed + Math.min(100, now - last));
+    elapsed = Math.min(durationAt(scene), elapsed + Math.min(100, now - last));
     last = now;
     draw();
-    if (complete()) controls();
+    if (complete() && continuous() && scene < scenes.length - 1)
+      openScene(scene + 1);
+    else if (complete()) controls();
     else raf = requestAnimationFrame(tick);
   }
-  function openScene(next) {
-    cancelAnimationFrame(raf);
-    scene = next;
-    elapsed = 0;
-    paused = false;
+  function sceneLabels() {
     $("#scene-label").textContent =
       `${String(scene + 1).padStart(2, "0")} — ${scenes[scene].label}`;
     $("#eyebrow").textContent = scenes[scene].eyebrow;
@@ -100,16 +143,30 @@ export function mountStory({
       if (i === scene) item.setAttribute("aria-current", "step");
       else item.removeAttribute("aria-current");
     });
+    document.querySelectorAll("[data-story-scene]").forEach((item) => {
+      const index = Number(item.dataset.storyScene);
+      item.classList.toggle("visited", index < scene);
+      if (index === scene) item.setAttribute("aria-current", "step");
+      else item.removeAttribute("aria-current");
+    });
+  }
+  function openScene(next) {
+    cancelAnimationFrame(raf);
+    scene = next;
+    elapsed = 0;
+    paused = false;
+    sceneLabels();
     draw();
     controls();
-    if (mobile.matches && window.scrollY > 80)
-      $(".scene-meta").scrollIntoView({ block: "start" });
     last = performance.now();
     raf = requestAnimationFrame(tick);
     if (document.hidden) togglePause();
   }
   function togglePause() {
-    if (complete()) return;
+    if (complete()) {
+      if (continuous()) openScene(scene === scenes.length - 1 ? 0 : scene + 1);
+      return;
+    }
     paused = !paused;
     cancelAnimationFrame(raf);
     if (!paused) {
@@ -123,7 +180,12 @@ export function mountStory({
     const next = Number(value);
     if (!Number.isFinite(next)) return;
     cancelAnimationFrame(raf);
-    elapsed = Math.max(0, Math.min(durations[scene], next));
+    if (continuous()) {
+      const time = Math.max(0, Math.min(totalDuration(), next));
+      scene = offsets.findLastIndex((_, index) => time >= offsetAt(index));
+      elapsed = time - offsetAt(scene);
+      sceneLabels();
+    } else elapsed = Math.max(0, Math.min(durations[scene], next));
     paused = !complete();
     draw();
     controls();
@@ -140,11 +202,25 @@ export function mountStory({
     else if (previousStory) location.href = previousStory;
   });
   $("#next").addEventListener("click", () => {
-    if (complete() && scene < scenes.length - 1) openScene(scene + 1);
+    if ((complete() || continuous()) && scene < scenes.length - 1)
+      openScene(scene + 1);
     else if (complete() && nextStory) location.href = nextStory;
   });
+  $("#replay")?.addEventListener("click", () => openScene(0));
+  document.querySelectorAll("[data-story-scene]").forEach((button) => {
+    button.addEventListener("click", () =>
+      openScene(Number(button.dataset.storyScene)),
+    );
+  });
   reduced.addEventListener("change", draw);
-  mobile.addEventListener("change", draw);
+  document.addEventListener("academy:theater", draw);
+  document.addEventListener("academy:pause", () => {
+    if (!complete() && !paused) togglePause();
+  });
+  mobile.addEventListener("change", () => {
+    draw();
+    controls();
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && !complete() && !paused) togglePause();
   });

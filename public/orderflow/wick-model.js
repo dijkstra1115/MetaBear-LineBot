@@ -4,8 +4,7 @@ export const OPEN = 68420;
 export const DURATION = 60000;
 export const FIRST_BUY_AT = 3600;
 export const SCENE_DURATIONS = [
-  10000, 8100, 10000, 14000, 6500, 12500, 12000, 8000, 13000, 11000, 9000,
-  19200,
+  6000, 8100, 10000, 14000, 6500, 12500, 12000, 8000, 13000, 11000, 9000, 19200,
 ];
 export const RECAP_REWIND = 1200;
 export const RECAP_BEATS = [
@@ -84,6 +83,29 @@ export const CONTEXT = contextSamples.map((samples, index) => ({
   low: 68400 + Math.min(...samples),
   close: 68400 + samples.at(-1),
 }));
+
+// Desktop context belongs to the same completed synthetic chart. The central
+// minute is always derived from the matching engine; surrounding bars are tape
+// samples for spatial context and never counted in its transaction statistics.
+export const WICK_AFTER = [
+  [1.5, 5, 1, 4],
+  [4, 8, 3, 7],
+  [7, 8.5, 4.5, 5.5],
+  [5.5, 9, 5, 8],
+].map((samples, index) => ({
+  start: (index + 1) * DURATION,
+  open: OPEN + samples[0],
+  high: OPEN + Math.max(...samples),
+  low: OPEN + Math.min(...samples),
+  close: OPEN + samples.at(-1),
+}));
+
+export function desktopScenePosition(scene, elapsed, reduced = false) {
+  const position = scenePosition(scene, elapsed, reduced);
+  return scene === 0
+    ? { ...position, time: DURATION, mode: "overview" }
+    : position;
+}
 
 const add = (at, side, offset, size) => ({
   at,
@@ -447,7 +469,12 @@ export function scenePosition(scene, elapsed, reduced = false) {
   const duration = SCENE_DURATIONS[scene];
   const at = Math.max(0, Math.min(duration, elapsed));
   if (scene === 0)
-    return { time: at * 6, zoom: 0, mode: "overview", progress: at / duration };
+    return {
+      time: (at * DURATION) / duration,
+      zoom: 0,
+      mode: "overview",
+      progress: at / duration,
+    };
   if (scene === 1) {
     if (at < 1800)
       return {
