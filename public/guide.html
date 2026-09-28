@@ -10,21 +10,28 @@
     <title>學習中心｜MetaBear</title>
     <link rel="canonical" href="https://metabear.io/learn" />
     <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="64x64" />
-    <link rel="stylesheet" href="/site.css" />
+    <link rel="stylesheet" href="/orderflow/motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
     <link rel="stylesheet" href="/learn.css" />
+    <script src="/mb-boot.js"></script>
     <script src="/guide.js" type="module"></script>
+    <script src="/mb-init.js" type="module"></script>
     <script src="/analytics.js" defer></script>
   </head>
-  <body class="learn-page">
-    <header class="site-header">
-      <a class="site-brand" href="/"
-        ><span class="brand-emblem"><img src="/logo.webp" alt="" /></span
-        >MetaBear<span>探索市場的起點</span></a
+  <body class="learn-page mb-grain">
+    <header class="mb-header" data-header>
+      <a class="mb-brand" href="/" aria-label="MetaBear 首頁"
+        ><img src="/logo.webp" alt="" width="34" height="34" /><span
+          >MetaBear<small>THE LEARNING DESK</small></span
+        ></a
       >
-      <nav aria-label="主要導覽">
-        <a class="nav-academy" href="/orderflow/">互動學院</a><a href="/">回到首頁</a
-        ><a class="header-line" href="https://lin.ee/cbyuRJv"
-          >問 LINE 小幫手 ↗</a
+      <button class="mb-menu" type="button" aria-expanded="false" aria-controls="learn-nav" aria-label="開啟選單">
+        <span></span>
+      </button>
+      <nav class="mb-nav" id="learn-nav" aria-label="主要導覽">
+        <a href="/orderflow/">互動學院</a><a href="/learn" aria-current="page">新手教學</a><a href="/">回到首頁</a
+        ><a class="mb-btn small" href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer"
+          >問 LINE 小幫手 <span class="arrow" aria-hidden="true">↗</span></a
         >
       </nav>
     </header>
@@ -35,7 +42,7 @@
         <p>選你遇到的問題，查看操作步驟。</p>
       </div>
       <a class="academy-guide-entry" href="/orderflow/">
-        <span><small>沉浸式交易學院 · 4 個故事</small><strong>從一筆買賣配對，看懂第一根 K 線。</strong></span><span aria-hidden="true">↗</span>
+        <span><small>ORDERFLOW ACADEMY · 19 堂動態課程</small><strong>從一筆買賣配對，看懂第一根 K 線。</strong></span><span aria-hidden="true">↗</span>
       </a>
       <div class="learn-layout">
         <aside class="learn-sidebar">

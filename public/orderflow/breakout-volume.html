@@ -3,34 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1218" />
+    <meta name="theme-color" content="#05090f" />
     <meta
       name="description"
       content="放量突破後持續成交，回踩104時掛買接住賣單，再由新的買單推高。 約 38 秒的動態故事。"
     />
     <title>放量突破，怎樣才算站穩？ · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
-    <link rel="stylesheet" href="./wick.css" />
-    <link rel="stylesheet" href="./primer-desktop.css" />
     <link rel="stylesheet" href="./motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
     <link rel="stylesheet" href="./motion/motion.css" />
+    <link rel="stylesheet" href="./lesson.css" />
+    <script src="/mb-boot.js"></script>
     <script type="module" src="./academy-navigation.js"></script>
     <script type="module" src="./motion/boot.js"></script>
+    <script type="module" src="./lesson-page.js"></script>
     <link rel="stylesheet" href="./academy-mobile.css" />
     <link rel="stylesheet" href="./academy-navigation.css" />
     <script type="module" src="./academy-mobile.js"></script>
   </head>
-  <body data-chapter="breakout-volume" data-lesson-style="compact" data-format="motion">
+  <body data-chapter="breakout-volume" data-lesson-style="compact" data-format="motion" class="mb-grain">
     <a class="skip" href="#story">跳到放量突破，怎樣才算站穩？動態課程</a>
-    <header class="site-header">
-      <a href="/" class="brand"
-        ><img src="/favicon-v2.png" width="28" height="28" alt="" /><span
-          >MetaBear</span
-        ></a
-      >
-      <span class="series"
-        >市場故事 <span aria-hidden="true">/</span> 回踩承接，買盤再推高</span
-      >
+    <header class="site-header mb-header lesson-header" data-header>
+      <a href="/" class="brand mb-brand"><img src="/favicon-v2.png" width="34" height="34" alt="" /><span>MetaBear<small>ORDERFLOW ACADEMY</small></span></a>
+      <p class="series crumbs"><a href="./courses.html">互動學院</a><span aria-hidden="true">/</span>市場故事<span aria-hidden="true">/</span><strong>放量突破，怎樣才算站穩？</strong></p>
+      <a class="mb-btn ghost small header-map" href="./courses.html">課程地圖 <span class="arrow" aria-hidden="true">↗</span></a>
     </header>
     <aside class="lesson-sidebar" aria-label="課程導覽">
       <a class="academy-home" href="./courses.html"
@@ -75,8 +72,12 @@
         aria-label="放量突破，怎樣才算站穩？ 動態課程"
       ></section>
       <p class="motion-note">教學用合成行情：同一份帳本產生 K 線、量柱、CVD 與掛單；這是一個具體結果，不是「放量＋回踩必成功」的條件。</p>
+      <nav class="lesson-pager" aria-label="上一課與下一課">
+        <a class="pager-prev" href="./absorption-story.html"><small>← 上一課 · 市場故事 02</small><strong>突破誘多，高位吸收，反轉出貨</strong><span>測壓、吸收與賣出接手 · 44 秒</span></a>
+        <a class="pager-next" href="./order-block.html"><small>下一課 → · 市場故事 04</small><strong>訂單塊到底長怎樣？</strong><span>大買家如何留下起漲區 · 38 秒</span></a>
+      </nav>
     </main>
-    <footer>
+    <footer class="lesson-foot">
       <span>空白鍵播放／暫停，←→ 快轉回看，F 全螢幕，M 聲音。</span
       ><span>MetaBear 互動學院</span>
     </footer>

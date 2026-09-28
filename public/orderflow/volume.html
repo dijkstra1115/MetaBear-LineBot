@@ -3,34 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1218" />
+    <meta name="theme-color" content="#05090f" />
     <meta
       name="description"
       content="成交落進量柱，再用相同長度的區間比較多與少。 約 30 秒的動態圖解。"
     />
     <title>成交量 · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
-    <link rel="stylesheet" href="./wick.css" />
-    <link rel="stylesheet" href="./primer-desktop.css" />
     <link rel="stylesheet" href="./motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
     <link rel="stylesheet" href="./motion/motion.css" />
+    <link rel="stylesheet" href="./lesson.css" />
+    <script src="/mb-boot.js"></script>
     <script type="module" src="./academy-navigation.js"></script>
     <script type="module" src="./motion/boot.js"></script>
+    <script type="module" src="./lesson-page.js"></script>
     <link rel="stylesheet" href="./academy-mobile.css" />
     <link rel="stylesheet" href="./academy-navigation.css" />
     <script type="module" src="./academy-mobile.js"></script>
   </head>
-  <body data-chapter="volume" data-lesson-style="compact" data-format="motion">
+  <body data-chapter="volume" data-lesson-style="compact" data-format="motion" class="mb-grain">
     <a class="skip" href="#story">跳到成交量動態課程</a>
-    <header class="site-header">
-      <a href="/" class="brand"
-        ><img src="/favicon-v2.png" width="28" height="28" alt="" /><span
-          >MetaBear</span
-        ></a
-      >
-      <span class="series"
-        >名詞圖解 <span aria-hidden="true">/</span> 成交量與比較基準</span
-      >
+    <header class="site-header mb-header lesson-header" data-header>
+      <a href="/" class="brand mb-brand"><img src="/favicon-v2.png" width="34" height="34" alt="" /><span>MetaBear<small>ORDERFLOW ACADEMY</small></span></a>
+      <p class="series crumbs"><a href="./courses.html">互動學院</a><span aria-hidden="true">/</span>名詞圖解<span aria-hidden="true">/</span><strong>成交量</strong></p>
+      <a class="mb-btn ghost small header-map" href="./courses.html">課程地圖 <span class="arrow" aria-hidden="true">↗</span></a>
     </header>
     <aside class="lesson-sidebar" aria-label="課程導覽">
       <a class="academy-home" href="./courses.html"
@@ -72,8 +69,12 @@
         aria-label="成交量 動態課程"
       ></section>
       <p class="motion-note">量柱統計同樣一分鐘內的成交隻數；本課柱色跟隨 K 線開收，不代表主動買賣量。</p>
+      <nav class="lesson-pager" aria-label="上一課與下一課">
+        <a class="pager-prev" href="./liquidation.html"><small>← 上一課 · 名詞圖解 07</small><strong>合約強平</strong><span>虧損如何吃掉保證金 · 32 秒</span></a>
+        <a class="pager-next" href="./delta-concept.html"><small>下一課 → · 名詞圖解 09</small><strong>Delta 與 CVD</strong><span>當段差額與累計差額 · 30 秒</span></a>
+      </nav>
     </main>
-    <footer>
+    <footer class="lesson-foot">
       <span>空白鍵播放／暫停，←→ 快轉回看，F 全螢幕，M 聲音。</span
       ><span>MetaBear 互動學院</span>
     </footer>

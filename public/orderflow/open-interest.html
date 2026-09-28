@@ -3,34 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1218" />
+    <meta name="theme-color" content="#05090f" />
     <meta
       name="description"
       content="從 K 線與 OI 折線走進四種開平倉組合，看成交量與未平倉量如何變化。 約 36 秒的動態圖解。"
     />
     <title>未平倉量（OI） · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
-    <link rel="stylesheet" href="./wick.css" />
-    <link rel="stylesheet" href="./primer-desktop.css" />
     <link rel="stylesheet" href="./motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
     <link rel="stylesheet" href="./motion/motion.css" />
+    <link rel="stylesheet" href="./lesson.css" />
+    <script src="/mb-boot.js"></script>
     <script type="module" src="./academy-navigation.js"></script>
     <script type="module" src="./motion/boot.js"></script>
+    <script type="module" src="./lesson-page.js"></script>
     <link rel="stylesheet" href="./academy-mobile.css" />
     <link rel="stylesheet" href="./academy-navigation.css" />
     <script type="module" src="./academy-mobile.js"></script>
   </head>
-  <body data-chapter="open-interest" data-lesson-style="compact" data-format="motion">
+  <body data-chapter="open-interest" data-lesson-style="compact" data-format="motion" class="mb-grain">
     <a class="skip" href="#story">跳到未平倉量（OI）動態課程</a>
-    <header class="site-header">
-      <a href="/" class="brand"
-        ><img src="/favicon-v2.png" width="28" height="28" alt="" /><span
-          >MetaBear</span
-        ></a
-      >
-      <span class="series"
-        >名詞圖解 <span aria-hidden="true">/</span> 開倉、平倉與成交量</span
-      >
+    <header class="site-header mb-header lesson-header" data-header>
+      <a href="/" class="brand mb-brand"><img src="/favicon-v2.png" width="34" height="34" alt="" /><span>MetaBear<small>ORDERFLOW ACADEMY</small></span></a>
+      <p class="series crumbs"><a href="./courses.html">互動學院</a><span aria-hidden="true">/</span>名詞圖解<span aria-hidden="true">/</span><strong>未平倉量（OI）</strong></p>
+      <a class="mb-btn ghost small header-map" href="./courses.html">課程地圖 <span class="arrow" aria-hidden="true">↗</span></a>
     </header>
     <aside class="lesson-sidebar" aria-label="課程導覽">
       <a class="academy-home" href="./courses.html"
@@ -75,8 +72,12 @@
         aria-label="未平倉量（OI） 動態課程"
       ></section>
       <p class="motion-note">OI 以合約口數計，每份未平倉合約只算一次；教材已知每個帳戶是開倉還是平倉，一般成交資料未必看得到。</p>
+      <nav class="lesson-pager" aria-label="上一課與下一課">
+        <a class="pager-prev" href="./stop-orders.html"><small>← 上一課 · 名詞圖解 10</small><strong>停損單</strong><span>市價止損與限價止損 · 32 秒</span></a>
+        <a class="pager-next" href="./funding.html"><small>下一課 → · 名詞圖解 12</small><strong>資金費率</strong><span>永續合約的定期交換 · 32 秒</span></a>
+      </nav>
     </main>
-    <footer>
+    <footer class="lesson-foot">
       <span>空白鍵播放／暫停，←→ 快轉回看，F 全螢幕，M 聲音。</span
       ><span>MetaBear 互動學院</span>
     </footer>

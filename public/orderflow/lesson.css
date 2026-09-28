@@ -1,0 +1,420 @@
+/* Motion lesson pages: header, course sidebar, heading, player frame and pager.
+   Builds on /mb.css; the mobile drawer mechanics live in academy-navigation.css. */
+body[data-format="motion"] {
+  --side: 312px;
+  min-height: 100vh;
+  background: radial-gradient(60% 40% at 70% 0%, rgba(120, 225, 213, 0.07), transparent 70%), var(--bg);
+}
+
+/* ---------- header ---------- */
+.lesson-header {
+  gap: 20px;
+  background: rgba(5, 9, 15, 0.72);
+  box-shadow: inset 0 -1px 0 var(--line);
+  backdrop-filter: blur(18px) saturate(1.3);
+}
+.lesson-header.is-hidden {
+  transform: none;
+}
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-left: calc(var(--side) - 240px);
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.crumbs a {
+  color: var(--text-2);
+  transition: color 0.3s;
+}
+.crumbs a:hover {
+  color: var(--teal);
+}
+.crumbs span {
+  color: var(--dim);
+}
+.crumbs strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-weight: 800;
+}
+.header-map {
+  margin-left: auto;
+}
+
+/* ---------- sidebar ---------- */
+.lesson-sidebar {
+  position: fixed;
+  top: var(--header-h);
+  bottom: 0;
+  left: 0;
+  width: var(--side);
+  padding: 22px 18px 40px;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(8, 14, 24, 0.92), rgba(5, 9, 15, 0.96));
+  scrollbar-width: thin;
+  scrollbar-color: #26394a transparent;
+}
+.lesson-sidebar .academy-home {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 2px;
+  font-size: 16px;
+  font-weight: 900;
+}
+.lesson-sidebar .academy-home span {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--dim);
+}
+.sidebar-label {
+  margin: 2px 10px 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.course-group {
+  margin: 22px 10px 8px;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: var(--dim);
+}
+.course-menu > a {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 10px 10px;
+  border-radius: 12px;
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+.course-menu > a:hover {
+  background: rgba(237, 242, 237, 0.04);
+}
+.course-number {
+  padding-top: 3px;
+  font-family: var(--f-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--dim);
+}
+.course-menu small {
+  display: block;
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.course-menu strong {
+  display: block;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.course-menu > a.course-current {
+  background: linear-gradient(90deg, rgba(120, 225, 213, 0.14), rgba(120, 225, 213, 0.02));
+  box-shadow: inset 2px 0 0 var(--teal);
+}
+.course-current .course-number,
+.course-current strong {
+  color: var(--teal);
+}
+.chapter-menu {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 10px 38px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line-2);
+}
+.chapter-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: left;
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+.chapter-menu button i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-2);
+  transition:
+    background 0.3s,
+    box-shadow 0.3s;
+}
+.chapter-menu button:hover {
+  color: var(--text);
+  background: rgba(237, 242, 237, 0.04);
+}
+.chapter-menu button[aria-current] {
+  color: var(--text);
+}
+.chapter-menu button[aria-current] i {
+  background: var(--teal);
+  box-shadow: 0 0 10px var(--teal);
+}
+.lesson-prerequisite {
+  display: grid;
+  gap: 6px;
+  margin: 24px 4px 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(232, 189, 125, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(232, 189, 125, 0.22);
+}
+.lesson-prerequisite > span {
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 700;
+}
+.lesson-prerequisite a strong {
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+.lesson-prerequisite a:hover strong {
+  color: var(--teal);
+}
+.sidebar-note {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 12px;
+  margin: 18px 4px 0;
+  padding: 16px;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.note-orbit {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(120, 225, 213, 0.5);
+  color: var(--teal);
+  font-size: 13px;
+}
+.sidebar-note p {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* ---------- main ---------- */
+#story {
+  margin-left: var(--side);
+  padding: calc(var(--header-h) + 28px) clamp(20px, 3.5vw, 56px) 32px;
+}
+.lesson-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  width: min(100%, calc((100vh - 210px) * 16 / 9));
+  margin: 0 auto 18px;
+}
+.lesson-heading p {
+  font-family: var(--f-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--teal);
+}
+.lesson-heading p span {
+  color: var(--dim);
+}
+.lesson-heading h2 {
+  margin-top: 8px;
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.lesson-format {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+.lesson-format i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 10px var(--teal);
+}
+.lesson-format span {
+  color: var(--muted);
+  font-family: var(--f-mono);
+  font-weight: 500;
+}
+body[data-format="motion"] .motion-stage {
+  border: 0;
+  border-radius: var(--r-l);
+  box-shadow:
+    inset 0 0 0 1px var(--line-2),
+    0 40px 100px -40px rgba(0, 0, 0, 0.95),
+    0 0 120px -60px rgba(120, 225, 213, 0.45);
+}
+body[data-format="motion"] .motion-note {
+  width: min(100%, calc((100vh - 210px) * 16 / 9));
+  margin: 18px auto 0;
+  color: var(--dim);
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+.lesson-pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: min(100%, calc((100vh - 210px) * 16 / 9));
+  margin: 36px auto 0;
+}
+.lesson-pager a {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 20px 22px;
+  border-radius: var(--r-m);
+  background: linear-gradient(180deg, rgba(20, 33, 45, 0.6), rgba(10, 17, 26, 0.7));
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition:
+    transform 0.5s var(--ease),
+    box-shadow 0.4s;
+}
+.lesson-pager a:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 0 0 1px rgba(120, 225, 213, 0.4),
+    0 24px 60px -30px rgba(120, 225, 213, 0.5);
+}
+.lesson-pager .pager-next {
+  text-align: right;
+}
+.lesson-pager small {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--teal);
+}
+.lesson-pager strong {
+  font-size: 19px;
+  font-weight: 900;
+}
+.lesson-pager span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.lesson-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-left: var(--side);
+  padding: 22px clamp(20px, 3.5vw, 56px) 32px;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 12.5px;
+}
+
+/* ---------- tablet: collapse the sidebar under the player ---------- */
+@media (max-width: 1100px) and (min-width: 651px) {
+  body[data-format="motion"] {
+    --side: 0px;
+  }
+  .crumbs {
+    margin-left: 24px;
+  }
+  .lesson-sidebar {
+    position: static;
+    width: auto;
+    margin: 0 clamp(20px, 3.5vw, 56px) 40px;
+    border: 0;
+    border-radius: var(--r-l);
+    box-shadow: inset 0 0 0 1px var(--line);
+    order: 2;
+  }
+  body[data-format="motion"] {
+    display: flex;
+    flex-direction: column;
+  }
+  #story {
+    order: 1;
+  }
+  .lesson-foot {
+    order: 3;
+  }
+}
+
+/* ---------- phone: sidebar becomes the drawer (academy-navigation.css) ---------- */
+@media (max-width: 650px), (max-width: 950px) and (max-height: 500px) {
+  body[data-format="motion"] {
+    --side: 0px;
+  }
+  .lesson-header {
+    gap: 10px;
+  }
+  .lesson-header .mb-brand small,
+  .header-map {
+    display: none;
+  }
+  .academy-nav-toggle {
+    margin-left: auto !important;
+    border-radius: 999px !important;
+    border-color: var(--line-2) !important;
+    background: rgba(237, 242, 237, 0.05) !important;
+    color: var(--text) !important;
+  }
+  body[data-format="motion"] .lesson-sidebar {
+    top: 0;
+    width: min(360px, calc(100vw - 36px));
+    background: var(--bg-2);
+    border-right: 1px solid var(--line-2);
+  }
+  body[data-format="motion"] .academy-nav-bar {
+    background: var(--bg-2);
+    border-bottom-color: var(--line);
+  }
+  #story {
+    padding: calc(var(--header-h) + 16px) 14px 24px;
+  }
+  .lesson-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .lesson-pager {
+    grid-template-columns: 1fr;
+  }
+  .lesson-pager .pager-next {
+    text-align: left;
+  }
+  .lesson-foot {
+    flex-direction: column;
+    padding-inline: 14px;
+  }
+}

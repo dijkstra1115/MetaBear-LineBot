@@ -7,8 +7,7 @@ const money = (v) =>
 const ns = "http://www.w3.org/2000/svg";
 function svgNode(tag, attrs, text) {
   const el = document.createElementNS(ns, tag);
-  for (const [key, value] of Object.entries(attrs))
-    el.setAttribute(key, String(value));
+  for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value));
   if (text) el.textContent = text;
   return el;
 }
@@ -18,8 +17,7 @@ export function drawMarket(key) {
   document.querySelector("[data-market-name]").textContent = m.name;
   document.querySelector(".asset-icon").textContent = m.icon;
   document.querySelector("#snapshot-price").textContent = "$" + money(m.price);
-  document.querySelector("#snapshot-date").textContent =
-    `${m.quoteDate} · ${m.quoteLabel}`;
+  document.querySelector("#snapshot-date").textContent = `${m.quoteDate} · ${m.quoteLabel}`;
   document.querySelector("#snapshot-series").textContent = `日 K 線 · 綠漲紅跌`;
   document.querySelector("[data-market-note]").textContent =
     `更新 ${snapshotDate} · 固定快照，非即時行情${key === "nasdaq" ? "。QQQ 為 Nasdaq-100 ETF。" : "。"}`;
@@ -30,10 +28,7 @@ export function drawMarket(key) {
   quoteLink.href = m.url;
   const svg = document.querySelector("#snapshot-chart");
   svg.replaceChildren();
-  svg.setAttribute(
-    "aria-label",
-    `${m.name} ${m.candles[0][0]} 至 ${m.candles.at(-1)[0]} 日 K 線，美元`,
-  );
+  svg.setAttribute("aria-label", `${m.name} ${m.candles[0][0]} 至 ${m.candles.at(-1)[0]} 日 K 線，美元`);
   const values = m.candles,
     low = Math.min(...values.map((p) => p[3])),
     high = Math.max(...values.map((p) => p[2])),
@@ -46,30 +41,18 @@ export function drawMarket(key) {
     const value = min + ((max - min) * i) / 2,
       yy = y(value);
     svg.append(
-      svgNode("line", { x1: 20, x2: 480, y1: yy, y2: yy, stroke: "#263c4d" }),
-      svgNode(
-        "text",
-        { x: 490, y: yy + 4, fill: "#94a8b9", "font-size": 11 },
-        money(value),
-      ),
+      svgNode("line", { x1: 20, x2: 480, y1: yy, y2: yy, stroke: "rgba(120,160,190,0.14)" }),
+      svgNode("text", { x: 490, y: yy + 4, fill: "#94a8b9", "font-size": 11 }, money(value)),
     );
   }
   m.candles.forEach(([date, open, high, low, close], i) => {
-    const color = close >= open ? "#38c99a" : "#ef6b78";
+    const color = close >= open ? "#78e1d5" : "#ef7b76";
     const candle = svgNode("g", { class: "market-candle" });
     candle.append(
       svgNode(
         "title",
         {},
-        date +
-          " · 開 " +
-          money(open) +
-          "／高 " +
-          money(high) +
-          "／低 " +
-          money(low) +
-          "／收 " +
-          money(close),
+        date + " · 開 " + money(open) + "／高 " + money(high) + "／低 " + money(low) + "／收 " + money(close),
       ),
     );
     candle.append(
@@ -93,11 +76,7 @@ export function drawMarket(key) {
     svg.append(candle);
   });
   svg.append(
-    svgNode(
-      "text",
-      { x: 20, y: 197, fill: "#94a8b9", "font-size": 11 },
-      m.candles[0][0].slice(5),
-    ),
+    svgNode("text", { x: 20, y: 197, fill: "#94a8b9", "font-size": 11 }, m.candles[0][0].slice(5)),
     svgNode(
       "text",
       {
@@ -112,7 +91,5 @@ export function drawMarket(key) {
   );
   document
     .querySelectorAll("[data-market]")
-    .forEach((b) =>
-      b.setAttribute("aria-pressed", String(b.dataset.market === key)),
-    );
+    .forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.market === key)));
 }

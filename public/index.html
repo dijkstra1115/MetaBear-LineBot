@@ -3,565 +3,411 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#080e18" />
+    <meta name="theme-color" content="#05090f" />
     <title>MetaBear｜讀懂市場，再進場。</title>
     <meta
       name="description"
-      content="從 BingX 註冊、身分認證與入金，到 K 線、合約與風險觀念。MetaBear 陪你把每一步弄懂，也能在 LINE 直接問。"
+      content="從 BingX 註冊、身分認證與入金，到 K 線、訂單流與合約風險。19 堂動態課程與圖文教學，MetaBear 陪你把每一步弄懂，也能在 LINE 直接問。"
     />
     <meta property="og:title" content="MetaBear｜讀懂市場，再進場。" />
-    <meta
-      property="og:description"
-      content="美股 × 加密貨幣 × 交易學習。開戶、入金與合約基礎，一步步開始。"
-    />
+    <meta property="og:description" content="美股 × 加密貨幣 × 交易學習。開戶、入金、合約基礎與 19 堂動態訂單流課程。" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://metabear.io/" />
     <meta property="og:image" content="https://metabear.io/logo.webp" />
     <link rel="canonical" href="https://metabear.io/" />
     <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="64x64" />
-    <link rel="stylesheet" href="/site.css" />
-    <script src="/site.js" defer></script>
+    <link rel="stylesheet" href="/orderflow/motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
+    <link rel="stylesheet" href="/home.css" />
+    <script src="/mb-boot.js"></script>
+    <script type="module" src="/js/site.js"></script>
     <script src="/analytics.js" defer></script>
   </head>
-  <body class="market-page">
+  <body class="home mb-grain">
     <a class="skip" href="#main">跳至主要內容</a>
-    <div class="reading-meter" aria-hidden="true"><span></span></div>
-    <header class="site-header">
-      <a class="wordmark" href="/" aria-label="MetaBear 首頁"
-        ><span class="brand-emblem"><img src="/logo.webp" alt="" /></span
-        ><span
-          >MetaBear<span class="wordmark-sub"
-            >MAKE SENSE OF THE MARKET</span
-          ></span
+    <header class="mb-header" data-header>
+      <a class="mb-brand" href="/" aria-label="MetaBear 首頁"
+        ><img src="/logo.webp" alt="" width="34" height="34" /><span
+          >MetaBear<small>MAKE SENSE OF THE MARKET</small></span
         ></a
       >
-      <nav aria-label="主導覽">
-        <a class="nav-academy" href="/orderflow/">互動學院</a><a href="/learn">新手教學</a><a class="nav-risk" href="#risk">合約知識</a
-        ><a
-          class="nav-line"
-          href="https://lin.ee/cbyuRJv"
-          target="_blank"
-          rel="noreferrer"
-          >在 LINE 問我 <span>↗</span></a
+      <button class="mb-menu" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="開啟選單">
+        <span></span>
+      </button>
+      <nav class="mb-nav" id="site-nav" aria-label="主導覽">
+        <a href="/orderflow/">互動學院</a><a href="/learn">新手教學</a><a href="#start">開戶入金</a
+        ><a href="#lab">合約實驗室</a
+        ><a class="mb-btn small" href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer"
+          >在 LINE 問我 <span class="arrow" aria-hidden="true">↗</span></a
         >
       </nav>
     </header>
-    <div class="market-world">
-      <div class="ambient-orbit"></div>
-      <div class="world-coordinates">PRICE / TIME / PERSPECTIVE</div>
-      <div class="perspective">
-        <div class="pointer-rig">
-          <div class="market-rig">
-            <div class="market-floor">
-              <div class="floor-grid"></div>
-              <span>EVERY MOVE HAS A CONTEXT.</span>
-            </div>
-            <div class="scene-panel market-panel">
-              <div class="terminal-bar">
-                <div class="terminal-symbol">
-                  <span class="asset-icon">₿</span
-                  ><b data-market-name>BTC / USD</b>
-                </div>
-                <span class="terminal-tag">MARKET STUDY</span
-                ><span class="terminal-dots">•••</span>
-              </div>
-              <div class="snapshot-market">
-                <div class="snapshot-readout">
-                  <div>
-                    <strong id="snapshot-price"></strong
-                    ><span class="snapshot-currency"> USD</span>
-                    <p id="snapshot-date"></p>
-                  </div>
-                  <a id="snapshot-quote-source" target="_blank" rel="noreferrer"
-                    >報價來源 ↗</a
-                  >
-                </div>
-                <p id="snapshot-series"></p>
-                <svg id="snapshot-chart" viewBox="0 0 580 205" role="img"></svg>
-                <div class="snapshot-footer">
-                  <span>固定快照 · 非即時行情</span
-                  ><a id="snapshot-source" target="_blank" rel="noreferrer"></a>
-                </div>
-              </div>
-            </div>
-            <div class="scene-panel access-panel">
-              <div class="terminal-bar">
-                <b>YOUR FIRST STEP</b
-                ><span class="terminal-tag"
-                  ><img
-                    class="exchange-logo bingx-logo"
-                    src="/brands/bingx.svg"
-                    alt="BingX"
-                /></span>
-              </div>
-              <div class="access-inner">
-                <span class="brand-emblem panel-emblem"
-                  ><img src="/logo.webp" alt="MetaBear"
-                /></span>
-                <p>註冊 BingX，填入邀請碼。</p>
-                <div class="sample-field">
-                  <span>Referral Code</span><strong>ZD0CQ0</strong><i>✓</i>
-                </div>
-                <div class="account-checks">
-                  <span><b>01</b> 建立帳戶</span><span><b>02</b> 完成 KYC</span
-                  ><span><b>03</b> 選擇入金方式</span>
-                </div>
-                <div class="sample-button">查看註冊教學 <span>↗</span></div>
-                <small>0 是數字零 · LINE 提交 UID 後自動核實</small>
-              </div>
-            </div>
-            <div class="scene-panel funding-panel">
-              <div class="terminal-bar">
-                <b>FOLLOW YOUR FUNDS</b
-                ><span class="terminal-tag">DEPOSIT ROUTES</span>
-              </div>
-              <div class="funding-inner">
-                <small>資金始終存入你自己的帳戶</small>
-                <div class="fund-route">
-                  <span>台幣 TWD</span><i>↓</i>
-                  <div class="fund-node">
-                    <b
-                      ><img
-                        class="exchange-logo bitopro-logo"
-                        src="/brands/bitopro.svg"
-                        alt="BitoPro" /></b
-                    ><span>銀行綁定 → 購買 USDT</span>
-                  </div>
-                  <i>↓ 同一網路、自己的地址</i>
-                  <div class="fund-node destination">
-                    <b
-                      ><img
-                        class="exchange-logo bingx-logo"
-                        src="/brands/bingx.svg"
-                        alt="BingX" /></b
-                    ><span>確認 USDT 到帳</span>
-                  </div>
-                </div>
-                <div class="card-route">
-                  <span>信用卡／簽帳金融卡</span><i>↗</i><b>快捷買幣</b>
-                </div>
-                <div class="fund-note">
-                  <strong>已入金</strong
-                  ><span>不設最低金額<br />資格通過後安排加入</span>
-                </div>
-              </div>
-            </div>
-            <div class="scene-panel risk-panel">
-              <div class="terminal-bar">
-                <b>KNOW YOUR EXPOSURE</b
-                ><span class="terminal-tag">RISK LAB</span>
-              </div>
-              <div class="risk-inner">
-                <span class="risk-label">同一筆保證金，不同的曝險。</span>
-                <div class="risk-equation">
-                  <span>100<small>保證金 / USDT</small></span
-                  ><i>×</i><span>3<small>槓桿 / 倍</small></span
-                  ><i>=</i
-                  ><span class="teal">300<small>名義倉位 / USDT</small></span>
-                </div>
-                <div class="exposure-chart">
-                  <span class="risk-base">保證金</span>
-                  <div></div>
-                  <div></div>
-                  <div></div>
-                  <span class="risk-total">名義倉位</span>
-                </div>
-                <div class="risk-outcome">
-                  <span>市場反向變動 2%</span
-                  ><strong>−6 <small>USDT</small></strong>
-                </div>
-                <p>槓桿放大曝險，也放大波動對保證金的影響。</p>
-                <small>簡化示意，不含費用、資金費率或強平機制。</small>
-              </div>
-            </div>
-            <div class="scene-panel conversation-panel">
-              <div class="terminal-bar">
-                <b>MetaBear 小幫手</b><span class="terminal-tag">LINE</span>
-              </div>
-              <div class="conversation-inner">
-                <p class="scene-bubble outgoing">我該如何註冊？</p>
-                <p class="scene-bubble">
-                  從專屬連結建立 BingX 帳戶。<br />送出前，確認邀請碼是
-                  <b>ZD0CQ0</b>。
-                </p>
-                <p class="scene-bubble outgoing">我想看入金的圖片。</p>
-                <p class="scene-bubble">
-                  想用哪一種方式？<span class="scene-options"
-                    ><b>BitoPro 台幣入金</b><b>BingX 信用卡</b></span
-                  >
-                </p>
-                <div class="conversation-foot">
-                  文字看不懂，就換一個方式理解。
-                </div>
-              </div>
-            </div>
-            <div class="floating-label">
-              <i></i
-              ><span>LEARN THE PROCESS.<br /><b>OWN YOUR DECISIONS.</b></span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="world-caption">
-        <span data-scene-caption>BTC・ETH・美股行情</span
-        ><small>美元行情快照 · 手動更新</small>
-      </div>
-    </div>
+
     <main id="main">
-      <div class="market-journey">
-        <section class="chapter hero" id="explore" data-scene="0">
-          <div class="chapter-copy">
-            <p class="eyebrow">
-              <span class="small-cross">＋</span> 美股 × 加密貨幣 × 交易學習
-            </p>
-            <h1>
-              讀懂<span class="hollow">市場</span>，<br />再<span class="teal"
-                >進場</span
-              >。
-            </h1>
-            <p class="hero-lead">每一根 K 線，都值得先看懂。</p>
-            <p class="chapter-description">
-              BingX 註冊、台幣入金、信用卡買幣，<br />都有圖文教學。<br />操作有問題，直接問
-              LINE 小幫手。
-            </p>
-            <div class="actions">
-              <a class="button primary" href="https://lin.ee/cbyuRJv" target="_blank" rel="noopener noreferrer"
-                >加入 LINE・開始審核 <span>↗</span></a
-              ><a class="text-link" href="/orderflow/"
-                >從 K 線開始學 <span>↗</span></a
-              >
-            </div>
-            <p class="line-entry-note">已經註冊？加入 LINE 後傳送「UID＋你的帳號數字」，自動確認入群資格。</p>
-            <div class="market-switch" role="group" aria-label="切換美元行情">
-              <span>換個市場，看價格的節奏</span>
-              <div>
-                <button data-market="btc" aria-pressed="true">₿ BTC</button
-                ><button data-market="eth" aria-pressed="false">◇ ETH</button
-                ><button data-market="nasdaq" aria-pressed="false">
-                  QQQ 美股
-                </button>
-              </div>
-              <p class="market-source-note" data-market-note>
-                固定快照 · 非即時行情
-              </p>
-            </div>
-          </div>
-          <a class="scroll-invitation" href="#start"
-            ><span>↓</span> 查看開戶與入金教學</a
-          ><span class="edition">METABEAR / A FIELD GUIDE TO TRADING</span>
-        </section>
-        <section class="chapter" id="start" data-scene="1">
-          <div class="chapter-copy">
-            <p class="eyebrow">
-              <span class="chapter-index">01</span> 從開戶開始
-              <span class="utility">GET STARTED</span>
-            </p>
-            <h2>BingX 開戶，<br />享<span class="teal">返現優惠</span>。</h2>
-            <p class="chapter-description">
-              註冊填入邀請碼 ZD0CQ0，享手續費
-              <strong class="teal">25% 返現</strong>。
-            </p>
-            <ol class="step-list">
-              <li>
-                <span>1</span>
-                <div>
-                  <b>建立 BingX 帳戶</b>
-                  <p>使用專屬註冊連結，送出前確認推薦碼。</p>
-                </div>
-                <a href="/learn?step=register" aria-label="查看註冊教學">↗</a>
-              </li>
-              <li>
-                <span>2</span>
-                <div>
-                  <b>完成身分認證 KYC</b>
-                  <p>資料只交給交易所，依帳戶畫面完成驗證。</p>
-                </div>
-                <a href="/learn?step=kyc" aria-label="查看 KYC 教學">↗</a>
-              </li>
-            </ol>
-            <div class="referral-inline">
-              <span>邀請碼</span><strong>ZD0CQ0</strong
-              ><button
-                type="button"
-                data-copy-code
-                aria-label="複製邀請碼 ZD0CQ0"
-              >
-                複製 <span>⧉</span>
-              </button>
-            </div>
-            <p class="small-note">
-              兩個 0 都是數字零。透過此邀請碼註冊並交易，MetaBear
-              可能獲得推薦佣金。
-            </p>
-            <a class="text-link section-link" href="/learn?step=code"
-              >查看邀請碼填寫位置 <span>↗</span></a
-            >
-          </div>
-        </section>
-        <section class="chapter" id="funding" data-scene="2">
-          <div class="chapter-copy">
-            <p class="eyebrow">
-              <span class="chapter-index">02</span> 選擇入金路線
-              <span class="utility">FUND YOUR ACCOUNT</span>
-            </p>
-            <h2>用台幣<br /><span class="teal">買 USDT</span>。</h2>
-            <p class="chapter-description">
-              BitoPro（幣託）已完成金管會洗錢防制登記。用台幣買 USDT，再轉入
-              BingX。
-            </p>
-            <p class="small-note">
-              核准文號：金管證券字第 1140350594 號 ·
-              <a
-                href="https://www.bitopro.com/ns/about"
-                target="_blank"
-                rel="noreferrer"
-                >查看官方說明 ↗</a
-              >
-            </p>
-            <a class="route-link" href="/learn?step=deposit_bitopro"
-              ><span class="route-icon"
-                ><img
-                  class="exchange-logo bitopro-logo"
-                  src="/brands/bitopro.svg"
-                  alt=""
-              /></span>
-              <div>
-                <b>BitoPro 台幣入金</b
-                ><span>銀行 → BitoPro 買 USDT → BingX</span>
-              </div>
-              <span>↗</span></a
-            ><a class="route-link" href="/learn?step=deposit_card"
-              ><span class="route-icon"
-                ><img
-                  class="exchange-logo bingx-logo"
-                  src="/brands/bingx.svg"
-                  alt=""
-              /></span>
-              <div>
-                <b>BingX 信用卡買幣</b
-                ><span>快捷買幣 → 信用卡／簽帳金融卡</span>
-              </div>
-              <span>↗</span></a
-            >
-            <p class="threshold">
-              <b>已入金</b
-              ><span
-                >MetaBear 社群入群條件<br />邀請關係、KYC 與入金核實後加入</span
-              >
-            </p>
-            <p class="small-note">
-              此為社群條件，不是交易所最低入金額。支援網路、支付方式與費率以你當前帳戶為準。
-            </p>
-          </div>
-        </section>
-        <section class="chapter" id="risk" data-scene="3">
-          <div class="chapter-copy">
-            <p class="eyebrow">
-              <span class="chapter-index">03</span> 理解合約
-              <span class="utility">BEFORE THE FIRST POSITION</span>
-            </p>
-            <h2>第一次接觸<br /><span class="teal">合約交易</span>？</h2>
-            <p class="chapter-description">
-              做多、做空、槓桿怎麼算？先看基本教學，再用計算器試算損益。
-            </p>
-            <div class="concept-tags">
-              <a href="/learn?lesson=合約基礎">做多與做空</a
-              ><a href="/learn?lesson=逐倉與全倉">逐倉與全倉</a
-              ><a href="/learn?lesson=停損與強平">停損與強平</a>
-            </div>
-            <a class="button outline" href="#lab"
-              >打開損益實驗室 <span>↓</span></a
-            >
-            <p class="small-note">教學用的簡化模型，不是下單介面。</p>
-            <p class="small-note">
-              <a href="/learn?lesson=支撐與壓力"
-                >盤面教學：支撐壓力、成交量與常用指標 ↗</a
-              >
-            </p>
-          </div>
-        </section>
-        <section class="chapter" id="ask" data-scene="4">
-          <div class="chapter-copy">
-            <p class="eyebrow">
-              <span class="small-cross">＋</span> 遇到問題，就接著問。
-            </p>
-            <h2>操作卡住了？<br /><span class="teal">LINE 問我</span>。</h2>
-            <p class="chapter-description">
-              「邀請碼要填哪裡？」<br />「BitoPro 怎麼入金？」<br />「如何完成
-              KYC？」<br /><br />MetaBear 小幫手會在 LINE
-              接續你的問題，提供文字與對應的教學圖片。
-            </p>
-            <div class="actions">
-              <a
-                class="button primary"
-                href="https://lin.ee/cbyuRJv"
-                target="_blank"
-                rel="noreferrer"
-                >加入 LINE，開始對話 <span>↗</span></a
-              >
-            </div>
-            <p class="small-note">
-              傳送 UID，自動核對邀請關係、KYC 與入金。資格通過後傳送 VIP 連結；遇到問題也能找人工客服。
-            </p>
-          </div>
-        </section>
-      </div>
-      <section class="academy-entry" id="academy" aria-labelledby="academy-title">
-        <div class="academy-intro">
-          <p class="eyebrow">THE ORDERFLOW ACADEMY / CONCEPTS &amp; STORIES</p>
-          <h2 id="academy-title">每一次成交，<br /><em>都在你眼前發生。</em></h2>
-          <p class="academy-deck">不用先懂 K 線。跟著 MetaBear 熊，從買賣配對開始，看成交如何推動價格，再走進每根 K 線裡的故事。</p>
-          <a class="button primary" href="/orderflow/">打開課程地圖 <span>↗</span></a>
-          <p class="academy-note">免費體驗 · 不需登入 · 手機、電腦都能看</p>
+      <!-- ============ HERO ============ -->
+      <section class="hero" id="explore" aria-labelledby="hero-title">
+        <div class="hero-stage" aria-hidden="true">
+          <div class="hero-fallback"></div>
+          <canvas class="hero-canvas"></canvas>
+          <div class="hero-shade"></div>
         </div>
-        <div class="academy-path" aria-label="自由選看的名詞圖解與市場故事">
-          <a href="/orderflow/matching.html"><span class="academy-number">01</span><div><small>名詞圖解 · K 線如何形成</small><h3>K 線</h3><p>買方、賣方與交易所，從配對到開高低收。</p></div><span aria-hidden="true">↗</span></a>
-          <a href="/orderflow/footprint.html"><span class="academy-number">02</span><div><small>名詞圖解 · 成交的足跡</small><h3>足跡圖</h3><p>約 30 秒，看懂每個價位的左右數字。</p></div><span aria-hidden="true">↗</span></a>
-          <a href="/orderflow/heatmap.html"><span class="academy-number">03</span><div><small>名詞圖解 · 掛單的時間軌跡</small><h3>熱力圖</h3><p>30 秒，看見色帶如何留下掛單的變化。</p></div><span aria-hidden="true">↗</span></a>
-          <a href="/orderflow/wick.html"><span class="academy-number">01</span><div><small>市場故事 · 走進一根上影線</small><h3>衝上去的價格，怎麼又回來了？</h3><p>比較掛單薄弱的上漲，與大量主動賣出的下跌。</p></div><span aria-hidden="true">↗</span></a>
+        <div class="hero-hud" aria-hidden="true">
+          <span class="hud-tl">ORDER BOOK · LIQUIDITY FIELD</span>
+          <span class="hud-tr"><i></i>BIDS <b>／</b> ASKS <b>／</b> TRADES</span>
         </div>
-      </section>
-      <section class="lab-section" id="lab" aria-labelledby="lab-title">
-        <div class="lab-heading">
-          <div>
-            <p class="eyebrow">RISK LAB / 合約概念實驗室</p>
-            <h2 id="lab-title">
-              動一個數字，<br />看懂<span class="teal">損益怎麼變</span>。
-            </h2>
+        <div class="hero-copy mb-wrap">
+          <p class="mb-eyebrow" data-hero-in>METABEAR <b>·</b> 美股 × 加密貨幣 × 交易學習</p>
+          <h1 class="mb-h1 hero-title" id="hero-title">
+            <span class="line"><span data-split>讀懂市場，</span></span
+            ><span class="line"><span data-split>再<em class="t-grad">進場</em>。</span></span>
+          </h1>
+          <p class="mb-lead hero-lead" data-hero-in>
+            每一根 K 線背後，都是一筆筆真實的成交。<br />先看懂過程，再做你的決定。
+          </p>
+          <div class="hero-actions" data-hero-in>
+            <a class="mb-btn" href="https://lin.ee/cbyuRJv" target="_blank" rel="noopener noreferrer"
+              >加入 LINE・開始審核 <span class="arrow" aria-hidden="true">↗</span></a
+            ><a class="mb-btn ghost" href="/orderflow/">從 K 線開始學 <span class="arrow" aria-hidden="true">→</span></a>
           </div>
-          <p>
-            固定投入的保證金，改變槓桿、方向與價格變動，觀察名義倉位及簡化損益。所有計算都只在此頁進行。
+          <p class="hero-note mb-small" data-hero-in>
+            已經註冊？加入 LINE 後傳送「UID＋你的帳號數字」，自動確認入群資格。
           </p>
         </div>
-        <div class="lab-grid">
-          <form id="risk-form" class="lab-controls">
-            <div class="direction-toggle" role="group" aria-label="交易方向">
-              <button type="button" data-direction="long" aria-pressed="true">
-                做多 Long</button
-              ><button
-                type="button"
-                data-direction="short"
-                aria-pressed="false"
-              >
-                做空 Short
-              </button>
-            </div>
-            <label class="lab-field"
-              >投入保證金
-              <span class="input-unit"
-                ><input
-                  name="margin"
-                  type="number"
-                  min="1"
-                  max="1000000"
-                  step="1"
-                  value="100"
-                  required
-                /><span>USDT</span></span
-              ></label
-            ><label class="lab-field" for="leverage"
-              >槓桿倍數 <output id="leverage-value">3×</output></label
-            ><input
-              id="leverage"
-              name="leverage"
-              type="range"
-              min="1"
-              max="20"
-              value="3"
-            />
-            <div class="range-labels"><span>1×</span><span>20×</span></div>
-            <label class="lab-field" for="price-change"
-              >標的價格變動 <output id="change-value">−2%</output></label
-            ><input
-              id="price-change"
-              name="change"
-              type="range"
-              min="-10"
-              max="10"
-              step="0.5"
-              value="-2"
-            />
-            <div class="range-labels"><span>−10%</span><span>+10%</span></div>
-          </form>
-          <div class="lab-result" aria-live="polite" aria-atomic="true">
-            <div class="result-top">
-              <span>SIMULATED RESULT</span
-              ><span id="direction-label">做多 / LONG</span>
-            </div>
-            <small>簡化未實現損益</small
-            ><strong id="pnl" class="negative">−6.00 <span>USDT</span></strong>
-            <div class="result-details">
-              <div><span>名義倉位</span><b id="notional">300 USDT</b></div>
-              <div><span>相對保證金</span><b id="roi">−6.00%</b></div>
-            </div>
-            <p id="calculation">100 USDT × 3 倍 × −2% = −6 USDT</p>
-            <p class="lab-explanation" id="lab-explanation">
-              做多時，價格下跌產生虧損。相同保證金下，提高槓桿會增加名義倉位。
-            </p>
-          </div>
-        </div>
-        <p class="lab-limits">
-          本模型不含手續費、資金費率、滑價或維持保證金，也不計算強平價格。實際倉位可能在達到此損益前已被強平。
-        </p>
-        <div class="lesson-links">
-          <a href="/learn?lesson=槓桿"><span>為什麼槓桿會放大曝險？</span>↗</a
-          ><a href="/learn?lesson=市價與限價"
-            ><span>委託成功，就是成交了嗎？</span>↗</a
-          ><a href="/learn?lesson=停損與強平"
-            ><span>停損與強平，有什麼不同？</span>↗</a
-          >
+        <div class="hero-foot mb-wrap" data-hero-in>
+          <a class="scroll-cue" href="#academy"><span class="cue-line"></span>SCROLL · 往下探索</a>
+          <p class="hero-quote" data-hero-quote>
+            <span class="mb-mono">BTC / USD</span><strong class="mb-num">—</strong><small>固定快照 · 非即時行情</small>
+          </p>
         </div>
       </section>
-      <section class="closing">
-        <p class="eyebrow">YOUR NEXT STEP</p>
-        <h2>還有問題？<br />看看教學，或直接問我。</h2>
-        <div class="actions">
-          <a class="button primary" href="/learn">打開完整教學 <span>↗</span></a
-          ><a
-            class="button outline"
-            href="https://lin.ee/cbyuRJv"
-            target="_blank"
-            rel="noreferrer"
-            >在 LINE 問小幫手 <span>↗</span></a
-          >
+
+      <!-- ============ TICKER ============ -->
+      <div class="ticker" aria-label="行情快照與重點資訊">
+        <div class="ticker-track" data-ticker>
+          <span>邀請碼 <b>ZD0CQ0</b> · 手續費 25% 返現</span><span>19 堂動態課程 · 免費・免登入</span
+          ><span>台幣入金 · 信用卡買幣 · 圖文教學</span><span>LINE 小幫手 · 傳送 UID 自動核實</span>
+        </div>
+      </div>
+
+      <!-- ============ ACADEMY ============ -->
+      <section class="mb-section academy" id="academy" aria-labelledby="academy-title">
+        <div class="mb-aurora"></div>
+        <div class="mb-wrap">
+          <div class="section-head">
+            <p class="mb-eyebrow" data-reveal><b>01</b> THE ORDERFLOW ACADEMY</p>
+            <h2 class="mb-h2" id="academy-title" data-reveal>
+              每一次成交，<br />都在你眼前<span class="t-grad">發生</span>。
+            </h2>
+            <p class="mb-lead" data-reveal>
+              一堂約 30 秒的動態課程，只講一件事。<br />從一筆買賣配對，走到一道賣牆背後的操盤痕跡。
+            </p>
+          </div>
+
+          <div class="showcase" data-showcase>
+            <figure class="screen mb-panel" data-reveal>
+              <div class="screen-bar">
+                <span class="screen-live"><i></i>LIVE PREVIEW</span>
+                <span class="screen-kicker" data-screen-kicker>CONCEPT 01 · 名詞圖解</span>
+                <span class="screen-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              </div>
+              <div class="screen-view">
+                <canvas class="screen-canvas" data-screen-canvas aria-label="課程動態預覽"></canvas>
+                <div class="screen-poster" aria-hidden="true"></div>
+              </div>
+              <figcaption class="screen-foot">
+                <div>
+                  <strong data-screen-title>K 線</strong>
+                  <span data-screen-sub>從買賣配對，看見開、高、低、收如何留下形狀。</span>
+                </div>
+                <a class="mb-btn small" href="/orderflow/matching.html" data-screen-link
+                  >看完整課程 <span class="arrow" aria-hidden="true">↗</span></a
+                >
+                <span class="screen-progress" aria-hidden="true"><i data-screen-progress></i></span>
+              </figcaption>
+            </figure>
+
+            <div class="feature-list" role="list" aria-label="精選課程">
+              <a class="feature mb-spot" role="listitem" href="/orderflow/matching.html" data-feature="matching" data-from="3" data-to="17" data-reveal
+                ><span class="feature-num mb-num">C01</span
+                ><span class="feature-body"><small>名詞圖解 · 28 秒</small><strong>K 線</strong></span
+                ><span class="feature-bar"><i></i></span
+              ></a>
+              <a class="feature mb-spot" role="listitem" href="/orderflow/footprint.html" data-feature="footprint" data-from="5" data-to="19" data-reveal
+                ><span class="feature-num mb-num">C02</span
+                ><span class="feature-body"><small>名詞圖解 · 30 秒</small><strong>足跡圖</strong></span
+                ><span class="feature-bar"><i></i></span
+              ></a>
+              <a class="feature mb-spot" role="listitem" href="/orderflow/wick.html" data-feature="wick" data-from="7" data-to="22" data-reveal
+                ><span class="feature-num mb-num">S01</span
+                ><span class="feature-body"><small>市場故事 · 36 秒</small><strong>衝上去，怎麼又回來？</strong></span
+                ><span class="feature-bar"><i></i></span
+              ></a>
+              <a class="feature mb-spot" role="listitem" href="/orderflow/btc-wall.html" data-feature="btc-wall" data-from="10" data-to="31" data-reveal
+                ><span class="feature-num mb-num">S05</span
+                ><span class="feature-body"><small>真實盤面 · 54 秒</small><strong>一道賣牆，最後倒給了誰？</strong></span
+                ><span class="feature-bar"><i></i></span
+              ></a>
+            </div>
+          </div>
+
+          <dl class="stats" data-reveal>
+            <div><dt>動態課程</dt><dd class="mb-num" data-count="19">19</dd></div>
+            <div><dt>名詞圖解</dt><dd class="mb-num" data-count="14">14</dd></div>
+            <div><dt>市場故事</dt><dd class="mb-num" data-count="5">5</dd></div>
+            <div><dt>學費・登入</dt><dd class="mb-num">0</dd></div>
+          </dl>
+          <div class="center-cta" data-reveal>
+            <a class="mb-btn" href="/orderflow/">打開課程地圖 <span class="arrow" aria-hidden="true">↗</span></a>
+            <span class="mb-small">手機、電腦都能看 · 隨時暫停與回拖</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ START: 3 STEPS ============ -->
+      <section class="start" id="start" aria-labelledby="start-title">
+        <div class="start-pin">
+          <div class="start-head mb-wrap">
+            <p class="mb-eyebrow"><b>02</b> GET STARTED</p>
+            <h2 class="mb-h2" id="start-title">三步，<br />從開戶到<span class="t-grad">入群</span>。</h2>
+            <div class="start-rail" aria-hidden="true"><i data-start-progress></i></div>
+          </div>
+          <div class="start-track" data-start-track>
+            <article class="step-card mb-panel" id="open-account">
+              <header><span class="step-num mb-num">01</span><span class="mb-eyebrow plain">OPEN AN ACCOUNT</span></header>
+              <h3 class="mb-h3">BingX 開戶，<br />享 <span class="t-teal">25% 手續費返現</span>。</h3>
+              <div class="code-box">
+                <span class="code-label mb-mono">REFERRAL CODE</span>
+                <strong class="code-value mb-num">ZD0CQ0</strong>
+                <button class="mb-btn small" type="button" data-copy-code aria-label="複製邀請碼 ZD0CQ0">
+                  複製 <span class="arrow" aria-hidden="true">⧉</span>
+                </button>
+              </div>
+              <ol class="step-links">
+                <li><a href="/learn?step=register"><span>建立 BingX 帳戶</span><small>使用專屬連結，送出前確認邀請碼</small><i>↗</i></a></li>
+                <li><a href="/learn?step=kyc"><span>完成身分認證 KYC</span><small>資料只交給交易所，依畫面完成</small><i>↗</i></a></li>
+                <li><a href="/learn?step=code"><span>邀請碼填在哪裡？</span><small>圖解填寫位置</small><i>↗</i></a></li>
+              </ol>
+              <p class="mb-small">兩個 0 都是數字零。透過此邀請碼註冊並交易，MetaBear 可能獲得推薦佣金。</p>
+            </article>
+
+            <article class="step-card mb-panel" id="funding">
+              <header><span class="step-num mb-num">02</span><span class="mb-eyebrow plain">FUND YOUR ACCOUNT</span></header>
+              <h3 class="mb-h3">用台幣買 USDT，<br />轉進 <span class="t-teal">你自己的帳戶</span>。</h3>
+              <svg class="route-map" viewBox="0 0 520 120" aria-hidden="true">
+                <path class="route-base" d="M40 60 H480" />
+                <path class="route-flow" d="M40 60 H480" />
+                <g class="route-node"><circle cx="40" cy="60" r="7" /><text x="40" y="100">台幣 TWD</text></g>
+                <g class="route-node"><circle cx="190" cy="60" r="7" /><text x="190" y="100">BitoPro</text></g>
+                <g class="route-node"><circle cx="330" cy="60" r="7" /><text x="330" y="100">USDT</text></g>
+                <g class="route-node end"><circle cx="480" cy="60" r="9" /><text x="480" y="100">BingX</text></g>
+                <text class="route-tag" x="115" y="40">銀行綁定</text>
+                <text class="route-tag" x="405" y="40">同一網路・自己的地址</text>
+              </svg>
+              <div class="route-links">
+                <a class="route mb-spot" href="/learn?step=deposit_bitopro"
+                  ><img class="exchange-logo" src="/brands/bitopro.svg" alt="" /><span
+                    ><strong>BitoPro 台幣入金</strong><small>銀行 → BitoPro 買 USDT → BingX</small></span
+                  ><i>↗</i></a
+                ><a class="route mb-spot" href="/learn?step=deposit_card"
+                  ><img class="exchange-logo bingx-logo" src="/brands/bingx.svg" alt="" /><span
+                    ><strong>BingX 信用卡買幣</strong><small>快捷買幣 → 信用卡／簽帳金融卡</small></span
+                  ><i>↗</i></a
+                >
+              </div>
+              <p class="mb-small">
+                BitoPro（幣託）已完成金管會洗錢防制登記 · 核准文號：金管證券字第 1140350594 號 ·
+                <a class="mb-link" href="https://www.bitopro.com/ns/about" target="_blank" rel="noreferrer">查看官方說明 ↗</a>
+              </p>
+            </article>
+
+            <article class="step-card mb-panel" id="verify">
+              <header><span class="step-num mb-num">03</span><span class="mb-eyebrow plain">VERIFY ON LINE</span></header>
+              <h3 class="mb-h3">傳送 UID，<br /><span class="t-teal">自動核實</span>入群資格。</h3>
+              <ul class="checks">
+                <li><i>✓</i><span><strong>邀請關係</strong><small>透過 ZD0CQ0 註冊</small></span></li>
+                <li><i>✓</i><span><strong>身分認證 KYC</strong><small>在 BingX 完成</small></span></li>
+                <li><i>✓</i><span><strong>已入金</strong><small>不設最低金額，允許內部轉帳</small></span></li>
+              </ul>
+              <p class="step-copy">加入 LINE 後傳送「UID＋你的帳號數字」，系統核對邀請關係、KYC 與入金；資格通過後傳送 VIP 連結。</p>
+              <a class="mb-btn" href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer"
+                >加入 LINE，提交 UID <span class="arrow" aria-hidden="true">↗</span></a
+              >
+              <p class="mb-small">「已入金」是 MetaBear 社群入群條件，不是交易所最低入金額。支援網路、支付方式與費率以你當前帳戶為準。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MARKET SNAPSHOT ============ -->
+      <section class="mb-section market" id="market" aria-labelledby="market-title">
+        <div class="mb-wrap market-grid">
+          <div class="market-copy">
+            <p class="mb-eyebrow" data-reveal><b>03</b> MARKET SNAPSHOT</p>
+            <h2 class="mb-h2" id="market-title" data-reveal>換個市場，<br />看價格的<span class="t-grad">節奏</span>。</h2>
+            <p class="mb-lead" data-reveal>BTC、ETH 與美股 QQQ 的十日 K 線。先別急著猜方向，看看每根 K 線的開高低收。</p>
+            <div class="market-switch" role="group" aria-label="切換美元行情" data-reveal>
+              <button type="button" data-market="btc" aria-pressed="true">₿ BTC</button
+              ><button type="button" data-market="eth" aria-pressed="false">◇ ETH</button
+              ><button type="button" data-market="nasdaq" aria-pressed="false">QQQ 美股</button>
+            </div>
+            <p class="mb-small" data-market-note data-reveal>固定快照 · 非即時行情</p>
+          </div>
+          <div class="market-card mb-panel" data-reveal>
+            <div class="market-top">
+              <span class="asset"><span class="asset-icon">₿</span><b data-market-name>BTC / USD</b></span>
+              <a class="mb-link" id="snapshot-quote-source" target="_blank" rel="noreferrer">報價來源 ↗</a>
+            </div>
+            <p class="market-price"><strong id="snapshot-price" class="mb-num"></strong><span>USD</span></p>
+            <p class="mb-small" id="snapshot-date"></p>
+            <p class="market-series mb-mono" id="snapshot-series"></p>
+            <svg id="snapshot-chart" viewBox="0 0 580 205" role="img"></svg>
+            <div class="market-foot"><span>固定快照 · 非即時行情</span><a id="snapshot-source" class="mb-link" target="_blank" rel="noreferrer"></a></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ RISK LAB ============ -->
+      <section class="mb-section lab" id="lab" aria-labelledby="lab-title">
+        <div class="mb-aurora"></div>
+        <div class="mb-wrap">
+          <div class="section-head split">
+            <div>
+              <p class="mb-eyebrow" data-reveal><b>04</b> RISK LAB · 合約概念實驗室</p>
+              <h2 class="mb-h2" id="lab-title" data-reveal>動一個數字，<br />看懂<span class="t-grad">損益怎麼變</span>。</h2>
+            </div>
+            <p class="mb-lead" data-reveal>固定投入的保證金，改變槓桿、方向與價格變動，看名義倉位和簡化損益。所有計算只在這一頁進行。</p>
+          </div>
+          <div class="lab-grid" data-reveal>
+            <form id="risk-form" class="lab-controls mb-panel">
+              <div class="direction-toggle" role="group" aria-label="交易方向">
+                <button type="button" data-direction="long" aria-pressed="true">做多 Long</button
+                ><button type="button" data-direction="short" aria-pressed="false">做空 Short</button>
+              </div>
+              <label class="lab-field"
+                >投入保證金
+                <span class="input-unit"
+                  ><input name="margin" type="number" min="1" max="1000000" step="1" value="100" required /><span
+                    >USDT</span
+                  ></span
+                ></label
+              >
+              <label class="lab-field" for="leverage">槓桿倍數 <output id="leverage-value">3×</output></label>
+              <input id="leverage" name="leverage" type="range" min="1" max="20" value="3" />
+              <div class="range-labels"><span>1×</span><span>20×</span></div>
+              <label class="lab-field" for="price-change">標的價格變動 <output id="change-value">−2%</output></label>
+              <input id="price-change" name="change" type="range" min="-10" max="10" step="0.5" value="-2" />
+              <div class="range-labels"><span>−10%</span><span>+10%</span></div>
+            </form>
+            <div class="lab-result mb-panel" aria-live="polite" aria-atomic="true">
+              <div class="result-top"><span class="mb-mono">SIMULATED RESULT</span><span id="direction-label">做多 / LONG</span></div>
+              <small>簡化未實現損益</small>
+              <strong id="pnl" class="negative">−6.00 <span>USDT</span></strong>
+              <div class="exposure" aria-hidden="true">
+                <div class="exposure-row"><span>保證金</span><i class="bar margin-bar" data-margin-bar></i></div>
+                <div class="exposure-row"><span>名義倉位</span><i class="bar notional-bar" data-notional-bar></i></div>
+              </div>
+              <div class="result-details">
+                <div><span>名義倉位</span><b id="notional">300 USDT</b></div>
+                <div><span>相對保證金</span><b id="roi">−6.00%</b></div>
+              </div>
+              <p id="calculation" class="mb-mono">100 USDT × 3 倍 × −2% = −6 USDT</p>
+              <p class="lab-explanation" id="lab-explanation">做多時，價格下跌產生虧損。相同保證金下，提高槓桿會增加名義倉位。</p>
+            </div>
+          </div>
+          <p class="lab-limits mb-small">
+            本模型不含手續費、資金費率、滑價或維持保證金，也不計算強平價格。實際倉位可能在達到此損益前已被強平。
+          </p>
+          <div class="lesson-links" data-reveal>
+            <a class="mb-spot" href="/learn?lesson=槓桿"><span>為什麼槓桿會放大曝險？</span><i>↗</i></a
+            ><a class="mb-spot" href="/orderflow/liquidation.html"><span>虧損怎麼吃掉保證金？看「合約強平」</span><i>↗</i></a
+            ><a class="mb-spot" href="/learn?lesson=停損與強平"><span>停損與強平，有什麼不同？</span><i>↗</i></a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ASK ============ -->
+      <section class="mb-section ask" id="ask" aria-labelledby="ask-title">
+        <div class="mb-wrap ask-grid">
+          <div class="ask-copy">
+            <p class="mb-eyebrow" data-reveal><b>05</b> ASK METABEAR</p>
+            <h2 class="mb-h2" id="ask-title" data-reveal>操作卡住了？<br /><span class="t-grad">LINE 問我</span>。</h2>
+            <p class="mb-lead" data-reveal>
+              「邀請碼要填哪裡？」「BitoPro 怎麼入金？」<br />MetaBear 小幫手會接著你的問題，給你文字和對應的教學圖片。
+            </p>
+            <div class="hero-actions" data-reveal>
+              <a class="mb-btn" href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer"
+                >加入 LINE，開始對話 <span class="arrow" aria-hidden="true">↗</span></a
+              ><a class="mb-btn ghost" href="/learn">看圖文教學 <span class="arrow" aria-hidden="true">→</span></a>
+            </div>
+            <p class="mb-small" data-reveal>傳送 UID，自動核對邀請關係、KYC 與入金。資格通過後傳送 VIP 連結；遇到問題也能找人工客服。</p>
+          </div>
+          <div class="phone" data-phone aria-label="LINE 對話示意">
+            <div class="phone-top"><img src="/logo.webp" alt="" width="30" height="30" /><span><strong>MetaBear 小幫手</strong><small>LINE 官方帳號</small></span></div>
+            <div class="phone-chat">
+              <p class="bubble out">我該如何註冊？</p>
+              <p class="bubble">從專屬連結建立 BingX 帳戶。送出前，確認邀請碼是 <b>ZD0CQ0</b>。</p>
+              <p class="bubble out">我想看入金的圖片。</p>
+              <p class="bubble">想用哪一種方式？<span class="options"><b>BitoPro 台幣入金</b><b>BingX 信用卡</b></span></p>
+              <p class="bubble out">UID 12345678</p>
+              <p class="bubble ok">已收到 UID，正在核對邀請關係、KYC 與入金…</p>
+            </div>
+            <div class="phone-input"><span>傳訊息給 MetaBear…</span><i>↑</i></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CLOSING ============ -->
+      <section class="closing" aria-labelledby="closing-title">
+        <div class="closing-glow" aria-hidden="true"></div>
+        <div class="mb-wrap">
+          <p class="mb-eyebrow" data-reveal><b>—</b> YOUR NEXT STEP</p>
+          <h2 class="mb-h1 closing-title" id="closing-title" data-reveal>讀懂市場，<br />再<span class="t-grad">進場</span>。</h2>
+          <div class="hero-actions" data-reveal>
+            <a class="mb-btn" href="/orderflow/">開始第一堂課 <span class="arrow" aria-hidden="true">↗</span></a
+            ><a class="mb-btn ghost" href="/learn">打開完整教學 <span class="arrow" aria-hidden="true">→</span></a
+            ><a class="mb-btn ghost" href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer"
+              >在 LINE 問小幫手 <span class="arrow" aria-hidden="true">↗</span></a
+            >
+          </div>
         </div>
       </section>
     </main>
-    <footer class="site-footer">
-      <div class="footer-top">
-        <a href="/" class="footer-brand"
-          ><img
-            class="brand-full"
-            src="/logo.webp"
-            alt="MetaBear 金色白熊 Logo"
-          />MetaBear<span>讀懂市場，再進場。</span></a
-        >
-        <nav aria-label="頁尾導覽">
-          <a href="/orderflow/">互動學院</a><a href="/learn">教學中心</a
-          ><a href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer"
-            >LINE</a
-          ><a href="/admin">管理員登入 ↗</a>
-        </nav>
-      </div>
-      <div class="footer-bottom">
-        <p>
-          本站提供操作教學與交易概念，不提供個人買賣建議或獲利保證。加密資產與合約交易有虧損風險。<br />透過邀請碼
-          ZD0CQ0 註冊並交易，MetaBear 可能獲得推薦佣金。
-        </p>
-        <span>© 2026 METABEAR</span>
+
+    <footer class="mb-footer">
+      <div class="mb-wrap">
+        <div class="mb-footer-grid">
+          <div class="mb-footer-brand">
+            <a class="mb-brand" href="/"><img src="/logo.webp" alt="MetaBear 金色白熊 Logo" width="34" height="34" /><span>MetaBear</span></a>
+            <p>讀懂市場，再進場。操作教學、動態課程與 LINE 小幫手，陪你把每一步弄懂。</p>
+          </div>
+          <div>
+            <h2>LEARN</h2>
+            <nav aria-label="學習">
+              <a href="/orderflow/">互動學院</a><a href="/learn">新手教學</a><a href="#lab">合約實驗室</a>
+            </nav>
+          </div>
+          <div>
+            <h2>CONTACT</h2>
+            <nav aria-label="聯絡與管理">
+              <a href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer">LINE 小幫手 ↗</a><a href="/admin">管理員登入 ↗</a>
+              <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="false">Ⅱ 暫停動態</button>
+            </nav>
+          </div>
+        </div>
+        <div class="mb-footer-legal">
+          <p>
+            本站提供操作教學與交易概念，不提供個人買賣建議或獲利保證。加密資產與合約交易有虧損風險。<br />透過邀請碼 ZD0CQ0
+            註冊並交易，MetaBear 可能獲得推薦佣金。
+          </p>
+          <span>© 2026 METABEAR</span>
+        </div>
+        <p class="mb-wordmark" aria-hidden="true">METABEAR</p>
       </div>
     </footer>
-    <div class="explore-dock">
-      <a href="#explore" data-rail="0" aria-current="location">市場</a
-      ><a href="#start" data-rail="1">開戶</a
-      ><a href="#funding" data-rail="2">入金</a
-      ><a href="#risk" data-rail="3">風險</a
-      ><a href="#ask" data-rail="4">對話</a
-      ><button id="motion-toggle" type="button" aria-pressed="false">
-        Ⅱ 暫停動態
-      </button>
-    </div>
-    <a class="line-floating" href="https://lin.ee/cbyuRJv" target="_blank" rel="noopener noreferrer" aria-label="加入 MetaBear LINE，登記 UID 與查詢入群資格"><span class="line-dot" aria-hidden="true"></span><span>LINE 小幫手<small>登記 UID・查詢進度</small></span><span aria-hidden="true">↗</span></a>
-    <div class="site-toast" role="status" hidden></div>
+
+    <a class="line-float" href="https://lin.ee/cbyuRJv" target="_blank" rel="noopener noreferrer" aria-label="加入 MetaBear LINE，登記 UID 與查詢入群資格"
+      ><span class="line-dot" aria-hidden="true"></span><span>LINE 小幫手<small>登記 UID・查詢進度</small></span></a
+    >
+    <div class="mb-toast" role="status" hidden></div>
   </body>
 </html>

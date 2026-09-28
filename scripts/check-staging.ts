@@ -38,7 +38,7 @@ for (const path of [
     JSON.stringify({ check: "public image", path, bytes: bytes.length }),
   );
 }
-for (const path of ["/", "/learn", "/content.json", "/site.js"])
+for (const path of ["/", "/learn", "/content.json", "/js/site.js", "/mb.css"])
   assert.equal((await request(base + path)).status, 200, path);
 for (const path of ["/admin", "/admin/", "/admin.html"]) {
   const r = await request(base + path, { redirect: "manual", headers: auth });

@@ -83,3 +83,4 @@ document.querySelector("#planned-count").textContent = courses.filter(
   (c) => !isAvailable(c),
 ).length;
 update();
+import "./academy-posters.js";

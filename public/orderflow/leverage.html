@@ -3,34 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1218" />
+    <meta name="theme-color" content="#05090f" />
     <meta
       name="description"
       content="同一個價格變動，看部位大小與保證金如何影響結果。 約 30 秒的動態圖解。"
     />
     <title>合約槓桿 · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
-    <link rel="stylesheet" href="./wick.css" />
-    <link rel="stylesheet" href="./primer-desktop.css" />
     <link rel="stylesheet" href="./motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
     <link rel="stylesheet" href="./motion/motion.css" />
+    <link rel="stylesheet" href="./lesson.css" />
+    <script src="/mb-boot.js"></script>
     <script type="module" src="./academy-navigation.js"></script>
     <script type="module" src="./motion/boot.js"></script>
+    <script type="module" src="./lesson-page.js"></script>
     <link rel="stylesheet" href="./academy-mobile.css" />
     <link rel="stylesheet" href="./academy-navigation.css" />
     <script type="module" src="./academy-mobile.js"></script>
   </head>
-  <body data-chapter="leverage" data-lesson-style="compact" data-format="motion">
+  <body data-chapter="leverage" data-lesson-style="compact" data-format="motion" class="mb-grain">
     <a class="skip" href="#story">跳到合約槓桿動態課程</a>
-    <header class="site-header">
-      <a href="/" class="brand"
-        ><img src="/favicon-v2.png" width="28" height="28" alt="" /><span
-          >MetaBear</span
-        ></a
-      >
-      <span class="series"
-        >名詞圖解 <span aria-hidden="true">/</span> 保證金與部位</span
-      >
+    <header class="site-header mb-header lesson-header" data-header>
+      <a href="/" class="brand mb-brand"><img src="/favicon-v2.png" width="34" height="34" alt="" /><span>MetaBear<small>ORDERFLOW ACADEMY</small></span></a>
+      <p class="series crumbs"><a href="./courses.html">互動學院</a><span aria-hidden="true">/</span>名詞圖解<span aria-hidden="true">/</span><strong>合約槓桿</strong></p>
+      <a class="mb-btn ghost small header-map" href="./courses.html">課程地圖 <span class="arrow" aria-hidden="true">↗</span></a>
     </header>
     <aside class="lesson-sidebar" aria-label="課程導覽">
       <a class="academy-home" href="./courses.html"
@@ -72,8 +69,12 @@
         aria-label="合約槓桿 動態課程"
       ></section>
       <p class="motion-note">教學用線性做多合約：開倉價 100，忽略手續費與資金費；部位價值指開倉時的名目金額。</p>
+      <nav class="lesson-pager" aria-label="上一課與下一課">
+        <a class="pager-prev" href="./slippage.html"><small>← 上一課 · 名詞圖解 05</small><strong>滑價</strong><span>一筆單，走過幾個價位 · 30 秒</span></a>
+        <a class="pager-next" href="./liquidation.html"><small>下一課 → · 名詞圖解 07</small><strong>合約強平</strong><span>虧損如何吃掉保證金 · 32 秒</span></a>
+      </nav>
     </main>
-    <footer>
+    <footer class="lesson-foot">
       <span>空白鍵播放／暫停，←→ 快轉回看，F 全螢幕，M 聲音。</span
       ><span>MetaBear 互動學院</span>
     </footer>

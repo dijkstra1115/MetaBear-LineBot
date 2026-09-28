@@ -22,36 +22,39 @@ export function motionPage(course, lesson) {
     )
     .join("");
   const note = escape(lesson.note ?? course.subtitle).replace(/\n/g, "<br />");
+  const order = courses.filter(isAvailable);
+  const at = order.findIndex((c) => c.id === course.id);
+  const pagerLink = (c, dir) =>
+    c
+      ? `<a class="pager-${dir}" href="${c.href}"><small>${dir === "prev" ? "← 上一課" : "下一課 →"} · ${c.kind === "concept" ? "名詞圖解" : "市場故事"} ${c.number}</small><strong>${escape(c.title)}</strong><span>${escape(c.subtitle)} · ${durationLabel(c.duration)}</span></a>`
+      : `<a class="pager-${dir}" href="./courses.html"><small>${dir === "prev" ? "← 回到" : "看完了 →"}</small><strong>課程地圖</strong><span>自由選看全部課程</span></a>`;
   return `<!doctype html>
 <html lang="zh-Hant" class="wick-page">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1218" />
+    <meta name="theme-color" content="#05090f" />
     <meta
       name="description"
       content="${escape(course.description)} 約 ${Math.round(lesson.duration)} 秒的動態${concept ? "圖解" : "故事"}。"
     />
     <title>${escape(course.title)} · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
-    <link rel="stylesheet" href="./wick.css" />
-    <link rel="stylesheet" href="./primer-desktop.css" />
     <link rel="stylesheet" href="./motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
     <link rel="stylesheet" href="./motion/motion.css" />
+    <link rel="stylesheet" href="./lesson.css" />
+    <script src="/mb-boot.js"></script>
     <script type="module" src="./academy-navigation.js"></script>
     <script type="module" src="./motion/boot.js"></script>
+    <script type="module" src="./lesson-page.js"></script>
   </head>
-  <body data-chapter="${course.id}" data-lesson-style="compact" data-format="motion">
+  <body data-chapter="${course.id}" data-lesson-style="compact" data-format="motion" class="mb-grain">
     <a class="skip" href="#story">跳到${escape(course.title)}動態課程</a>
-    <header class="site-header">
-      <a href="/" class="brand"
-        ><img src="/favicon-v2.png" width="28" height="28" alt="" /><span
-          >MetaBear</span
-        ></a
-      >
-      <span class="series"
-        >${kind} <span aria-hidden="true">/</span> ${escape(course.subtitle)}</span
-      >
+    <header class="site-header mb-header lesson-header" data-header>
+      <a href="/" class="brand mb-brand"><img src="/favicon-v2.png" width="34" height="34" alt="" /><span>MetaBear<small>ORDERFLOW ACADEMY</small></span></a>
+      <p class="series crumbs"><a href="./courses.html">互動學院</a><span aria-hidden="true">/</span>${kind}<span aria-hidden="true">/</span><strong>${escape(course.title)}</strong></p>
+      <a class="mb-btn ghost small header-map" href="./courses.html">課程地圖 <span class="arrow" aria-hidden="true">↗</span></a>
     </header>
     <aside class="lesson-sidebar" aria-label="課程導覽">
       <a class="academy-home" href="./courses.html"
@@ -81,8 +84,12 @@ export function motionPage(course, lesson) {
         aria-label="${escape(course.title)} 動態課程"
       ></section>
       <p class="motion-note">${escape(lesson.footer ?? "教學用合成行情，數字僅供理解機制。")}</p>
+      <nav class="lesson-pager" aria-label="上一課與下一課">
+        ${pagerLink(order[at - 1], "prev")}
+        ${pagerLink(order[at + 1], "next")}
+      </nav>
     </main>
-    <footer>
+    <footer class="lesson-foot">
       <span>空白鍵播放／暫停，←→ 快轉回看，F 全螢幕，M 聲音。</span
       ><span>MetaBear 互動學院</span>
     </footer>

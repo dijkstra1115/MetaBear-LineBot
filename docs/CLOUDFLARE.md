@@ -25,7 +25,7 @@ npm run db:migrate
 npm run dev
 ```
 
-首頁 `http://localhost:8787/`；後台 `/admin` 使用 `.dev.vars` 的本機 ADMIN_TOKEN。development + LINE_DELIVERY_MODE=disabled 才提供示範資料及對話模擬器，並禁止推播。前端來源在 `web/site.js`，`npm run build:site` 產生 public/site.js；dev/build/deploy 都先執行此編譯。
+首頁 `http://localhost:8787/`；後台 `/admin` 使用 `.dev.vars` 的本機 ADMIN_TOKEN。development + LINE_DELIVERY_MODE=disabled 才提供示範資料及對話模擬器，並禁止推播。前端來源在 `web/site.js`（首頁）與 `web/hero-field.js`（Three.js 首頁場景），`npm run build:site` 產生 `public/js/`（ES modules，Three.js 為獨立 chunk）；dev/build/deploy 都先執行此編譯。
 
 ## 推播
 

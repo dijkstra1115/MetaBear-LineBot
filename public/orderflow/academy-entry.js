@@ -1,6 +1,7 @@
 const params = new URLSearchParams(location.search);
 const lesson = params.get("lesson");
 const stories = {
+  "btc-wall": "btc-wall.html",
   matching: "matching.html",
   candles: "matching.html",
   cvd: "courses.html",

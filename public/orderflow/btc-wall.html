@@ -3,34 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1218" />
+    <meta name="theme-color" content="#05090f" />
     <meta
       name="description"
       content="真實 BTC 事件復盤：60,800 賣牆吸收買盤 38 分鐘，擊穿後止損推升到 61,322，再由主動賣出倒回牆下。 約 54 秒的動態故事。"
     />
     <title>一道賣牆，最後倒給了誰？ · MetaBear</title>
     <link rel="icon" href="/favicon-v2.png" />
-    <link rel="stylesheet" href="./wick.css" />
-    <link rel="stylesheet" href="./primer-desktop.css" />
     <link rel="stylesheet" href="./motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
     <link rel="stylesheet" href="./motion/motion.css" />
+    <link rel="stylesheet" href="./lesson.css" />
+    <script src="/mb-boot.js"></script>
     <script type="module" src="./academy-navigation.js"></script>
     <script type="module" src="./motion/boot.js"></script>
+    <script type="module" src="./lesson-page.js"></script>
     <link rel="stylesheet" href="./academy-mobile.css" />
     <link rel="stylesheet" href="./academy-navigation.css" />
     <script type="module" src="./academy-mobile.js"></script>
   </head>
-  <body data-chapter="btc-wall" data-lesson-style="compact" data-format="motion">
+  <body data-chapter="btc-wall" data-lesson-style="compact" data-format="motion" class="mb-grain">
     <a class="skip" href="#story">跳到一道賣牆，最後倒給了誰？動態課程</a>
-    <header class="site-header">
-      <a href="/" class="brand"
-        ><img src="/favicon-v2.png" width="28" height="28" alt="" /><span
-          >MetaBear</span
-        ></a
-      >
-      <span class="series"
-        >市場故事 <span aria-hidden="true">/</span> 真實盤面：牆、擊穿與倒貨</span
-      >
+    <header class="site-header mb-header lesson-header" data-header>
+      <a href="/" class="brand mb-brand"><img src="/favicon-v2.png" width="34" height="34" alt="" /><span>MetaBear<small>ORDERFLOW ACADEMY</small></span></a>
+      <p class="series crumbs"><a href="./courses.html">互動學院</a><span aria-hidden="true">/</span>市場故事<span aria-hidden="true">/</span><strong>一道賣牆，最後倒給了誰？</strong></p>
+      <a class="mb-btn ghost small header-map" href="./courses.html">課程地圖 <span class="arrow" aria-hidden="true">↗</span></a>
     </header>
     <aside class="lesson-sidebar" aria-label="課程導覽">
       <a class="academy-home" href="./courses.html"
@@ -78,8 +75,12 @@
         aria-label="一道賣牆，最後倒給了誰？ 動態課程"
       ></section>
       <p class="motion-note">真實事件復盤：2026-07-02 台北時間清晨，Binance BTC 永續（賣出合計含 OKX）。K 線、每 10 秒成交與 OI 曲線依公開 API 紀錄重繪，標示數字取自紀錄。掛牆者的身分與意圖無法由公開資料證實；「先製造被迫的買盤、再賣給他們」是對這段路徑的解讀，不是對後市的預測。</p>
+      <nav class="lesson-pager" aria-label="上一課與下一課">
+        <a class="pager-prev" href="./order-block.html"><small>← 上一課 · 市場故事 04</small><strong>訂單塊到底長怎樣？</strong><span>大買家如何留下起漲區 · 38 秒</span></a>
+        <a class="pager-next" href="./courses.html"><small>看完了 →</small><strong>課程地圖</strong><span>自由選看全部課程</span></a>
+      </nav>
     </main>
-    <footer>
+    <footer class="lesson-foot">
       <span>空白鍵播放／暫停，←→ 快轉回看，F 全螢幕，M 聲音。</span
       ><span>MetaBear 互動學院</span>
     </footer>
