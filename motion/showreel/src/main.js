@@ -42,6 +42,14 @@ const grains = Array.from({ length: 4 }, (_, k) => {
   return c;
 });
 
+const flashGradient = (() => {
+  const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.62);
+  g.addColorStop(0, "rgba(235,255,250,1)");
+  g.addColorStop(0.25, "rgba(150,235,225,0.55)");
+  g.addColorStop(1, "rgba(120,225,213,0)");
+  return g;
+})();
+
 const vignette = (() => {
   const c = new OffscreenCanvas(W, H);
   const g = c.getContext("2d");
@@ -183,9 +191,10 @@ export function renderFrame(t, frameIndex = Math.round(t * 60)) {
         : pulse(t, f.t, f.decay ?? 5) * amt;
   }
   if (flash > 0.002) {
+    // Radial light burst rather than a flat fill, so cuts glow instead of greying out.
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = clamp(flash);
-    ctx.fillStyle = "#cfeee9";
+    ctx.fillStyle = flashGradient;
     ctx.fillRect(0, 0, W, H);
   }
 

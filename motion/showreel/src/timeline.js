@@ -28,12 +28,12 @@ export const CHAPTERS = [
 
 /** Full-frame light flashes on the big cuts. */
 export const FLASHES = [
-  { t: 6, amt: 0.5, pre: 0.3, decay: 7 },
-  { t: 12, amt: 0.6, pre: 0.25, decay: 5 },
-  { t: 30, amt: 0.7, pre: 0.3, decay: 5 },
-  { t: 48, amt: 0.45, pre: 0.2, decay: 6 },
-  { t: 62, amt: 0.45, pre: 0.2, decay: 6 },
-  { t: 76, amt: 0.5, pre: 0.25, decay: 5 },
+  { t: 6, amt: 0.7, pre: 0.15, decay: 9 },
+  { t: 12, amt: 0.6, pre: 0.12, decay: 10 },
+  { t: 30, amt: 0.75, pre: 0.15, decay: 9 },
+  { t: 48, amt: 0.55, pre: 0.12, decay: 10 },
+  { t: 62, amt: 0.55, pre: 0.12, decay: 10 },
+  { t: 76, amt: 0.65, pre: 0.15, decay: 9 },
 ];
 
 /** Global audio cue sheet derived from the scenes' own event times. */
