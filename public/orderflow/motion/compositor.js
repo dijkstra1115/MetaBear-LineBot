@@ -101,7 +101,7 @@ export function createCompositor(canvas, options = {}) {
     ctx.save();
     lesson.draw(ctx, t);
     ctx.restore();
-    if (extra.watermark !== false) watermark(ctx, tw(t, 0.2, 0.8) * 0.9);
+    if (extra.watermark !== false) watermark(ctx, tw(t, 0.2, 0.8) * 0.9, lesson.dataLabel);
     if (extra.captions) burnCaptions(ctx, t, lesson.captions ?? []);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 

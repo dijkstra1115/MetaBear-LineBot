@@ -394,14 +394,14 @@ export function arrow(ctx, x1, y1, x2, y2, color, p = 1, o = {}) {
 }
 
 /** In-frame brand watermark and data disclaimer (video export look). */
-export function watermark(ctx, alpha = 1) {
+export function watermark(ctx, alpha = 1, label = "SIMULATED MARKET · 教學用模擬行情") {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
   drawMark(ctx, 116, 70, 34, 1, 0.9);
   text(ctx, "METABEAR ACADEMY", 148, 64, { family: F.mono, size: 15, weight: 600, color: C.text, ls: 4 });
   text(ctx, "互動學院 · 動態教材", 148, 88, { family: F.tc, size: 15, weight: 400, color: C.muted, ls: 2 });
-  text(ctx, "SIMULATED MARKET · 教學用模擬行情", W - 110, 64, {
+  text(ctx, label, W - 110, 64, {
     family: F.mono,
     size: 14,
     weight: 500,

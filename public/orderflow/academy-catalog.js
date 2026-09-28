@@ -262,6 +262,21 @@ export const courses = [
     href: "./order-block.html",
     prerequisites: ["order-types", "slippage", "absorption-story"],
   },
+  {
+    id: "btc-wall",
+    number: "05",
+    kind: "story",
+    topic: "reading",
+    status: "new",
+    title: "一道賣牆，最後倒給了誰？",
+    subtitle: "真實盤面：牆、擊穿與倒貨",
+    description:
+      "真實 BTC 事件復盤：60,800 賣牆吸收買盤 38 分鐘，擊穿後止損推升到 61,322，再由主動賣出倒回牆下。",
+    duration: 54,
+    format: "motion",
+    href: "./btc-wall.html",
+    prerequisites: ["order-block", "stop-orders", "open-interest"],
+  },
 ];
 
 export const paths = [
@@ -281,6 +296,7 @@ export const paths = [
       "delta-concept",
       "absorption-story",
       "order-block",
+      "btc-wall",
     ],
   },
   {
