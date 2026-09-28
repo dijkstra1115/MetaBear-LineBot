@@ -309,7 +309,13 @@ export const lesson = {
         tag(ctx, "收跌 K · A 已買 50", X(7), PY(100.2), { align: "center", color: C.sell, alpha: cl, size: 22 });
       const cf = tw(t, CONFIRM, CONFIRM + 0.4) * (1 - tw(t, OUT[0], OUT[0] + 0.4));
       if (cf > 0) {
-        tag(ctx, "收盤 107 > 前高 105", X(8) + 70, PY(107), { color: C.buy, solid: true, alpha: cf, size: 24 });
+        tag(ctx, "收盤 107 > 前高 105", X(8) - 60, PY(107), {
+          align: "right",
+          color: C.buy,
+          solid: true,
+          alpha: cf,
+          size: 24,
+        });
         ring(ctx, X(8), PY(107), t, CONFIRM, { r1: 200, color: C.buy, w: 3 });
       }
     });
