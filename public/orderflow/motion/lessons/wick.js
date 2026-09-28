@@ -493,11 +493,15 @@ export const lesson = {
       }
       const fin = tw(t, 29.0, 29.6);
       if (fin > 0) {
-        tag(ctx, "上衝：被動賣單很薄", OVX(8) - 40, OVY(124), { align: "right", color: C.gold, alpha: fin, size: 26 });
-        tag(ctx, "回落：大量主動賣出", OVX(8) - 40, OVY(111), {
+        const fin2 = tw(t, 29.3, 29.9);
+        // Both notes point at the 14:32 wick; keep them clear of the 14:30 wick (high 110).
+        line(ctx, OVX(8) - 38, OVY(126), OVX(8) - 8, OVY(126), C.gold, 2, fin);
+        tag(ctx, "上衝：被動賣單很薄", OVX(8) - 40, OVY(126), { align: "right", color: C.gold, alpha: fin, size: 26 });
+        line(ctx, OVX(8) - 38, OVY(117), OVX(8) - 8, OVY(117), C.sell, 2, fin2);
+        tag(ctx, "回落：大量主動賣出", OVX(8) - 40, OVY(117), {
           align: "right",
           color: C.sell,
-          alpha: tw(t, 29.3, 29.9),
+          alpha: fin2,
           size: 26,
         });
       }
