@@ -25,6 +25,10 @@
 
 舊版交易學院集中保存在 `public/orderflow/legacy/`，總覽入口 `/orderflow/legacy/`；版本與相容連結見 [舊版教學整理](docs/ACADEMY-LEGACY.md)。
 
+### 交易學院動態影片
+
+`npm run motion:render` 產生約 86 秒的學院 showreel（四個故事的動態設計版，含合成配樂）；`npm run motion:preview` 可在瀏覽器逐格預覽。詳見 [motion/showreel](motion/showreel/README.md)。
+
 ### 訂單流量化研究室（獨立服務）
 
 原始行情收集：`npm run quant:collect`，獨立保存 BTC／ETH 永續 50／1000 檔訂單簿更新與現貨／永續逐筆成交，含斷線紀錄及回放驗證。詳見 [原始訂單流收集器](docs/QUANT-RECORDER.md)。
@@ -83,7 +87,6 @@ npm run build
 - 首頁使用固定美元行情快照，資料集中於 `web/market-data.js`，包含報價、日期、每日開高低收數列與來源。更新時一併查證並替換資料，執行 `npm run build:site`。
 - BTC／ETH 報價來源為 CoinGecko，K 線來源為 CoinLore，美股為 QQQ（Nasdaq-100 ETF），來源為 Stock Analysis。價格為查詢時快照，走勢為有日期的日 K 線（綠漲紅跌），兩者分別標示日期。
 - 不載入外部行情圖表，不自動更新；頁面標示「固定快照 · 非即時行情」。
-
 
 ### 支撐與壓力教學
 
