@@ -1,6 +1,8 @@
 import { ARENA_DEFAULT_LEVERAGE, ARENA_LEVERAGES, ARENA_MAX_DRAWDOWN, ARENA_RISK_LIMITS, ARENA_START_BALANCE, ARENA_VERSION, FlowArenaRun } from "./flow-arena-engine.js";
 import { ARENA_BOTS, ARENA_BOT_ROSTER } from "./flow-arena-bots.js";
 import { arenaChartGeometry, arenaChartPriceAtY, drawArenaChart } from "./flow-arena-chart.js";
+import { ArenaReplica } from "./arena-replica.js";
+import { ArenaRoomClient, readEntry, roomFromUrl, savedName, showRoomEntry, showRoomLobby } from "./arena-online.js";
 
 const $ = (id) => document.getElementById(id);
 const fmt = (value, digits = 2) => Number(value).toLocaleString("zh-TW", { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -143,6 +145,9 @@ let seenExecution = null;
 let seenPlayerLiquidation = null;
 let seenKnockouts = 0;
 let peakShown = ARENA_START_BALANCE;
+// A friend room, when the page is in one: the connection, this player's copy of the room's
+// market, and when the round's countdown ends. The room moves the market; the page only renders.
+let online = null;
 
 function setMessage(message, error = false) {
   $("order-message").textContent = message;
@@ -557,14 +562,15 @@ function render() {
   const mark = run.markPrice();
   const floating = account.position * (mark - account.entry) / run.denominator;
   const rivals = run.lineup.length ? ` · 對戰電腦 ${RIVAL_SETTINGS[run.rivalSetting].label} ${run.lineup.length} 人` : "";
-  $("mode-badge").textContent = `${mode === "random" ? "未知隨機市場" : mode === "daily" ? `每日市場 ${dailyKey()}` : mode === "shadow" ? `影子挑戰 / ${ghost?.name ?? "玩家"}` : "練習重玩"}${rivals}`;
-  $("seed-label").textContent = mode === "random" && !run.finished ? "SEED HIDDEN" : `SEED ${run.seed}`;
+  $("mode-badge").textContent = online ? `好友對戰 · 房號 ${online.room.code}${online.replica ? ` · ${run.traders.length} 人` : ""}` : `${mode === "random" ? "未知隨機市場" : mode === "daily" ? `每日市場 ${dailyKey()}` : mode === "shadow" ? `影子挑戰 / ${ghost?.name ?? "玩家"}` : "練習重玩"}${rivals}`;
+  $("seed-label").textContent = (mode === "random" || online) && !run.finished ? "SEED HIDDEN" : `SEED ${run.seed}`;
   const remaining = Math.max(0, run.duration - run.time);
   $("clock").textContent = clock(remaining);
   $("clock").classList.toggle("urgent", remaining <= 15 && !run.finished);
   $("clock-fill").style.width = `${Math.min(100, run.time / run.duration * 100)}%`;
-  $("run-status").innerHTML = `<i></i> ${run.finished ? "已結算" : playing && !document.hidden ? "市場運行中" : document.hidden ? "分頁暫停" : "已暫停"}`;
-  $("play-button").textContent = run.finished ? "▶ 再開一局" : playing ? "Ⅱ 暫停" : run.time ? "▶ 繼續" : "▶ 開始交易";
+  const counting = online && online.startsAt > performance.now();
+  $("run-status").innerHTML = `<i></i> ${online ? !online.replica ? "等待開局" : run.finished ? "已結算" : counting ? "即將開始" : "連線對戰中" : run.finished ? "已結算" : playing && !document.hidden ? "市場運行中" : document.hidden ? "分頁暫停" : "已暫停"}`;
+  $("play-button").textContent = online ? "👥 房間" : run.finished ? "▶ 再開一局" : playing ? "Ⅱ 暫停" : run.time ? "▶ 繼續" : "▶ 開始交易";
   $("last-price").textContent = price(market.last);
   $("price-change").textContent = `${signed(priceChange)}%`;
   $("price-change").className = numberClass(priceChange);
@@ -765,7 +771,7 @@ function renderReview() {
 // Rank table and who did what to whom, names revealed.
 function renderStandings() {
   const box = $("result-standings");
-  box.hidden = !run.lineup.length;
+  box.hidden = run.traders.length < 2;
   if (box.hidden) return;
   const list = $("standings-list");
   list.replaceChildren();
@@ -798,16 +804,17 @@ function renderStandings() {
 function showResult() {
   const result = run.result ?? run.finish();
   const best = records.filter((row) => row.mode === mode && (mode !== "daily" || row.day === dailyKey())).reduce((top, row) => Math.max(top, row.score), 0);
-  if (!run.saved) { saveResult(result); run.saved = true; }
+  // Room rounds are not local records: the room is the market, and a replay could not include the other players.
+  if (!run.saved && !online) { saveResult(result); run.saved = true; }
   playing = false;
   const letter = grade(result.score, result.qualified);
-  $("result-label").textContent = result.qualified ? (result.score > best && (mode === "random" || mode === "daily") ? "新紀錄！本局成績" : "本局最終成績") : "本局無成績";
+  $("result-label").textContent = online ? `好友對戰 · 第 ${result.rank} 名` : result.qualified ? (result.score > best && (mode === "random" || mode === "daily") ? "新紀錄！本局成績" : "本局最終成績") : "本局無成績";
   $("result-score").textContent = String(result.score).padStart(4, "0");
   $("result-grade").textContent = letter;
   $("result-grade").className = `grade-${letter}`;
   $("result-pnl").textContent = `${money(result.pnl)} USDT`;
   $("result-pnl").className = numberClass(result.pnl);
-  const placing = run.lineup.length ? `第 ${result.rank} 名 / ${run.traders.length} 人。` : "";
+  const placing = run.traders.length > 1 ? `第 ${result.rank} 名 / ${run.traders.length} 人。` : "";
   const comparison = placing + (mode === "shadow" && ghost ? result.score > ghost.score ? `超越 ${ghost.name} ${result.score - ghost.score} 分。` : `距離 ${ghost.name} 還差 ${ghost.score - result.score} 分。` : "市場已結算，所有持倉按簿面平倉。");
   $("result-summary").textContent = `${comparison}${result.settlementFallback ? " 部分倉位因深度不足，按不利標記價結算。" : ""}`;
   $("result-roi").textContent = `${signed(result.roi)}%`;
@@ -819,7 +826,11 @@ function showResult() {
   $("result-reveal").textContent = `${blown}隱藏大戶分批${result.whaleSide === "buy" ? "買進" : "賣出"}，送出 ${result.whaleOrders} 筆子單。本局共 ${fmt(result.liquidatedUnits * run.contractBtc, 0)} BTC 槓桿倉被強平，其中 ${fmt(result.ignitedUnits * run.contractBtc, 0)} BTC 由你推價觸發。${result.news.length ? `事件：${result.news.join("、")}。` : "本局沒有突發消息。"}`;
   renderReview();
   renderStandings();
-  $("share-status").textContent = "連結包含種子與影子分數，可傳給朋友挑戰。";
+  $("share-status").textContent = online ? "好友對戰的成績不存成本機紀錄。" : "連結包含種子與影子分數，可傳給朋友挑戰。";
+  if (online) {
+    $("room-rematch").hidden = !online.room.leads;
+    $("room-rematch-note").textContent = online.room.leads ? "" : "等房主按「再來一局」。";
+  }
   if (!$("result-dialog").open) $("result-dialog").showModal();
   if (result.qualified && result.score > 0) {
     const chart = $("market-chart").getBoundingClientRect();
@@ -835,9 +846,15 @@ function beginNew(seed, nextMode = "random", nextGhost = null, setting = rivalSe
   ghost = nextGhost;
   run = createRun(seed, setting);
   $("rivals").value = setting;
+  run.setLeverage(loadLeverage());
+  resetView();
+  if (nextMode === "random" || nextMode === "daily") history.replaceState(null, "", location.pathname);
+  render();
+}
+
+function resetView() {
   seenKnockouts = 0;
   renderedFeedKeys = [];
-  run.setLeverage(loadLeverage());
   seenPlayerLiquidation = null;
   accumulated = 0;
   lastFrame = performance.now();
@@ -866,8 +883,6 @@ function beginNew(seed, nextMode = "random", nextGhost = null, setting = rivalSe
   $("particle-layer").replaceChildren();
   $("fx-layer").replaceChildren();
   if ($("result-dialog").open) $("result-dialog").close();
-  if (nextMode === "random" || nextMode === "daily") history.replaceState(null, "", location.pathname);
-  render();
 }
 
 function setUnit(value) {
@@ -879,37 +894,75 @@ function setUnit(value) {
 
 function togglePlay() {
   audioContext();
+  if (online) { showRoomLobby(online.room); return; }
   if (run.finished) beginNew(randomSeed());
   else { playing = !playing; lastFrame = performance.now(); accumulated = 0; render(); }
 }
 
+// In a room, trading calls go to the room instead of the local market. Returns true when sent.
+function sendToRoom(op, args) {
+  if (!online) return false;
+  if (!online.replica || run.finished) setMessage("等房主開始對戰", true);
+  else if (online.startsAt > performance.now()) setMessage("倒數結束後才能下單", true);
+  else online.room.send({ type: "action", op, args });
+  return true;
+}
+
+function reportSubmit(side, type, limit, result) {
+  if (!result.ok) { setMessage(result.error, true); return; }
+  const fill = result.matched ? `成交 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""}` : "尚未成交";
+  const rest = result.resting ? ` · ${size(result.resting)} BTC 掛在 ${price(limit)}` : "";
+  const cascade = result.cascade ? ` · 觸發 ${btc(result.cascade.lots)} 強平` : "";
+  setMessage(`${side === "buy" ? "買入" : "賣出"} ${fill}${rest}${cascade}${type === "market" && result.unfilled ? ` · ${size(result.unfilled)} BTC 未成交` : ""}`);
+  tone(side === "buy" ? 540 : 320, 0.09, "triangle", 0.045, side === "buy" ? 700 : 240);
+}
+
+function reportClosePart(result) {
+  setMessage(result.ok ? `已減倉 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""} · 剩 ${size(Math.abs(run.account.position))} BTC` : result.error, !result.ok);
+}
+
+function reportClose(result) {
+  setMessage(result.ok ? `已平倉 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""}${run.account.position ? "；剩餘部位下一秒繼續出場" : ""}` : result.error, !result.ok);
+}
+
+function reportLeverage(leverage) {
+  try { localStorage.setItem(LEVERAGE_KEY, String(leverage)); } catch { /* Optional preference. */ }
+  setMessage(`槓桿改為 ${leverage}×：每開 1 BTC 佔用約 $${fmt(run.market.last / 100 / leverage, 0)} 保證金，強平價在進場價反向約 ${fmt((1 / leverage - 0.004) * 100, 1)}%${leverage === 1 ? "，幾乎不會爆倉" : ""}${Number.isFinite(ARENA_RISK_LIMITS[leverage]) ? `；風險限額最多持有 ${fmt(ARENA_RISK_LIMITS[leverage], 0)} BTC（含掛單）` : ""}。`);
+}
+
 function submitOrder(side, type, limit = null) {
-  if (!playing || document.hidden) { setMessage("先按「開始交易」啟動市場", true); return; }
   const reduceOnly = $("reduce-only").checked;
-  const result = run.submit(side, type, orderLots(), limit, { reduceOnly });
-  if (!result.ok) setMessage(result.error, true);
-  else {
-    const fill = result.matched ? `成交 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""}` : "尚未成交";
-    const rest = result.resting ? ` · ${size(result.resting)} BTC 掛在 ${price(limit)}` : "";
-    const cascade = result.cascade ? ` · 觸發 ${btc(result.cascade.lots)} 強平` : "";
-    setMessage(`${side === "buy" ? "買入" : "賣出"} ${fill}${rest}${cascade}${type === "market" && result.unfilled ? ` · ${size(result.unfilled)} BTC 未成交` : ""}`);
-    tone(side === "buy" ? 540 : 320, 0.09, "triangle", 0.045, side === "buy" ? 700 : 240);
-  }
+  if (sendToRoom("submit", [side, type, orderLots(), limit, { reduceOnly }])) return;
+  if (!playing || document.hidden) { setMessage("先按「開始交易」啟動市場", true); return; }
+  reportSubmit(side, type, limit, run.submit(side, type, orderLots(), limit, { reduceOnly }));
   render();
 }
 
 function closePart(fraction) {
+  if (sendToRoom("closePart", [fraction])) return;
   if (!playing) { setMessage("先按「開始交易」啟動市場", true); return; }
-  const result = run.closePart(fraction);
-  setMessage(result.ok ? `已減倉 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""} · 剩 ${size(Math.abs(run.account.position))} BTC` : result.error, !result.ok);
+  reportClosePart(run.closePart(fraction));
   render();
 }
 
 function closeNow() {
+  if (sendToRoom("close", [])) return;
   if (!playing) { setMessage("先按「開始交易」啟動市場", true); return; }
-  const result = run.close();
-  setMessage(result.ok ? `已平倉 ${size(result.matched)} BTC${result.avgPrice ? ` · 均價 ${price(result.avgPrice)}` : ""}${run.account.position ? "；剩餘部位下一秒繼續出場" : ""}` : result.error, !result.ok);
+  reportClose(run.close());
   render();
+}
+
+// The room echoed one of this player's actions: report it the way a local action is reported.
+function reportOwn(message, result) {
+  if (!result) return;
+  const [first, type, , limit] = message.args;
+  if (message.op === "submit") reportSubmit(first, type, limit, result);
+  else if (message.op === "close") reportClose(result);
+  else if (message.op === "closePart") reportClosePart(result);
+  else if (message.op === "setLeverage") reportLeverage(first);
+  else if (message.op === "cancel") setMessage("掛單已撤銷");
+  else if (message.op === "cancelAll") setMessage(result.count ? `已撤銷 ${result.count} 筆掛單` : "目前沒有掛單");
+  else if (message.op === "setProtection") $("protection-status").textContent = first == null && message.args[1] == null ? "風險指令已清除" : `已設定：止損 ${first ?? "—"} · 止盈 ${message.args[1] ?? "—"}`;
 }
 
 function chartLocalX(event) { return event.clientX - $("market-chart").getBoundingClientRect().left; }
@@ -922,7 +975,8 @@ function chartInPlot(event) {
 function frame(now) {
   const elapsed = Math.min(250, now - lastFrame);
   lastFrame = now;
-  if (playing && !document.hidden && !run.finished) {
+  if (online) accumulated = 0;
+  else if (playing && !document.hidden && !run.finished) {
     accumulated += elapsed * Number($("speed").value);
     let steps = 0;
     while (accumulated >= 1000 && steps < 8 && !run.finished) {
@@ -954,10 +1008,10 @@ $("close-half").addEventListener("click", () => closePart(0.5));
 $("close-quarter").addEventListener("click", () => closePart(0.25));
 document.querySelectorAll("[data-leverage]").forEach((button) => button.addEventListener("click", () => {
   const leverage = Number(button.dataset.leverage);
+  if (sendToRoom("setLeverage", [leverage])) return;
   const error = run.setLeverage(leverage);
   if (error) { setMessage(error, true); return; }
-  try { localStorage.setItem(LEVERAGE_KEY, String(leverage)); } catch { /* Optional preference. */ }
-  setMessage(`槓桿改為 ${leverage}×：每開 1 BTC 佔用約 $${fmt(run.market.last / 100 / leverage, 0)} 保證金，強平價在進場價反向約 ${fmt((1 / leverage - 0.004) * 100, 1)}%${leverage === 1 ? "，幾乎不會爆倉" : ""}${Number.isFinite(ARENA_RISK_LIMITS[leverage]) ? `；風險限額最多持有 ${fmt(ARENA_RISK_LIMITS[leverage], 0)} BTC（含掛單）` : ""}。`);
+  reportLeverage(leverage);
   render();
 }));
 function renderSoundToggle() {
@@ -1013,18 +1067,31 @@ chart.addEventListener("pointerleave", () => { if (!chartDrag) chartView.cursorP
 chart.addEventListener("dblclick", () => { chartView.zoom = 1; chartView.offset = 0; });
 $("player-orders").addEventListener("click", (event) => {
   const button = event.target.closest("[data-cancel]");
-  if (button && run.cancel(Number(button.dataset.cancel))) { setMessage("掛單已撤銷"); render(); }
+  if (!button || sendToRoom("cancel", [Number(button.dataset.cancel)])) return;
+  if (run.cancel(Number(button.dataset.cancel))) { setMessage("掛單已撤銷"); render(); }
 });
-$("cancel-all").addEventListener("click", () => { const count = run.cancelAll(); setMessage(count ? `已撤銷 ${count} 筆掛單` : "目前沒有掛單"); render(); });
+$("cancel-all").addEventListener("click", () => {
+  if (sendToRoom("cancelAll", [])) return;
+  const count = run.cancelAll();
+  setMessage(count ? `已撤銷 ${count} 筆掛單` : "目前沒有掛單");
+  render();
+});
 $("set-protection").addEventListener("click", () => {
   const stopText = $("stop-price").value.trim();
   const takeText = $("take-price").value.trim();
   const stop = stopText ? Number(stopText) : null;
   const take = takeText ? Number(takeText) : null;
+  if (sendToRoom("setProtection", [stop, take])) return;
   const error = run.setProtection(stop, take);
   $("protection-status").textContent = error ?? `已設定：止損 ${stopText || "—"} · 止盈 ${takeText || "—"}`;
 });
-$("clear-protection").addEventListener("click", () => { run.protection = { stop: null, take: null }; $("stop-price").value = ""; $("take-price").value = ""; $("protection-status").textContent = "風險指令已清除"; });
+$("clear-protection").addEventListener("click", () => {
+  $("stop-price").value = "";
+  $("take-price").value = "";
+  if (sendToRoom("setProtection", [null, null])) return;
+  run.protection = { stop: null, take: null };
+  $("protection-status").textContent = "風險指令已清除";
+});
 $("leaderboard-list").addEventListener("click", (event) => {
   const button = event.target.closest("[data-record]");
   const record = records.find((row) => row.id === Number(button?.dataset.record));
@@ -1062,17 +1129,99 @@ $("share-button").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(url.href); $("share-status").textContent = "影子挑戰連結已複製，可以傳給朋友。"; }
   catch { $("share-status").textContent = `請複製：${url.href}`; }
 });
+/* ---------- Friend rooms ---------- */
+
+function enterRoom(code) {
+  if (online) online.room.close();
+  playing = false;
+  document.body.classList.add("online");
+  online = { room: null, replica: null, startsAt: 0 };
+  online.room = new ArenaRoomClient(code, {
+    lobby: roomLobby,
+    start: roomStart,
+    game: roomMessage,
+    rejected: (error) => setMessage(error, true),
+    closed: (reason) => { leaveOnline(); showRoomEntry("", reason); },
+  });
+  showRoomLobby(online.room);
+  render();
+}
+
+function leaveOnline() {
+  if (!online) return;
+  online.room.close();
+  online = null;
+  document.body.classList.remove("online");
+  beginNew(randomSeed());
+}
+
+// Back in the lobby (a rematch, or before the first round): show the room and drop the old round.
+function roomLobby(room) {
+  if (room.status === "lobby" && online.replica?.run.finished !== false) {
+    online.replica = null;
+    if ($("result-dialog").open) $("result-dialog").close();
+    showRoomLobby(room);
+  }
+  render();
+}
+
+// A round starts (or this player rejoins one): the page now renders the room's market.
+function roomStart(message, you) {
+  online.replica = new ArenaReplica(message, you);
+  run = online.replica.run;
+  run.lineup = [];
+  run.rivalSetting = "none";
+  online.startsAt = message.type === "start" ? performance.now() + message.countdown * 1000 : 0;
+  resetView();
+  if ($("room-dialog").open) $("room-dialog").close();
+  playing = true;
+  if (message.type === "start") {
+    for (let left = message.countdown; left > 0; left--) setTimeout(() => { banner(String(left), "gold"); tone(440, 0.1, "square", 0.03); }, (message.countdown - left) * 1000);
+    setTimeout(() => { banner("開始！", "mint"); chime(2); render(); }, message.countdown * 1000);
+  }
+  render();
+}
+
+function roomMessage(message) {
+  if (!online?.replica) return;
+  const result = online.replica.apply(message);
+  if (message.type === "action" && message.trader === online.room.you) reportOwn(message, result);
+  if (online.replica.desync) setMessage("畫面和房間不同步了，請重新整理頁面", true);
+  if (message.type === "end") { playing = false; showResult(); }
+  else render();
+}
+
+$("room-button").addEventListener("click", () => { audioContext(); if (online) showRoomLobby(online.room); else showRoomEntry(); });
+$("room-create").addEventListener("click", () => { const code = readEntry(true); if (code) enterRoom(code); });
+$("room-join").addEventListener("click", () => { const code = readEntry(false); if (code) enterRoom(code); });
+$("room-code-input").addEventListener("keydown", (event) => { if (event.key === "Enter") $("room-join").click(); });
+$("room-close").addEventListener("click", () => $("room-dialog").close());
+$("room-leave").addEventListener("click", () => { online?.room.leave(); $("room-dialog").close(); leaveOnline(); });
+$("room-start").addEventListener("click", () => online?.room.send({ type: "start" }));
+for (const button of document.querySelectorAll("[data-room-bot]")) button.addEventListener("click", () => online?.room.send({ type: "addBot", level: button.dataset.roomBot }));
+$("room-seats").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-seat]");
+  if (button) online?.room.send({ type: "removeSeat", id: button.dataset.removeSeat });
+});
+$("room-copy").addEventListener("click", async () => {
+  if (!online) return;
+  try { await navigator.clipboard.writeText(online.room.link); $("room-share-status").textContent = "邀請連結已複製，貼給朋友就能加入。"; }
+  catch { $("room-share-status").textContent = `請複製這個連結：${online.room.link}`; }
+});
+$("room-rematch").addEventListener("click", () => online?.room.send({ type: "rematch" }));
+$("room-back").addEventListener("click", () => { $("result-dialog").close(); if (online) showRoomLobby(online.room); });
+
 document.addEventListener("visibilitychange", () => { accumulated = 0; lastFrame = performance.now(); render(); });
 document.addEventListener("keydown", (event) => {
   if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName) || event.altKey || event.ctrlKey || event.metaKey) return;
-  if ($("result-dialog").open) return;
+  if ($("result-dialog").open || $("room-dialog").open) return;
   const key = event.key.toLowerCase();
   if (key === "q") submitOrder("buy", "market");
   else if (key === "e") submitOrder("sell", "market");
   else if (key === "f") closeNow();
   else if (key === "h") closePart(0.5);
   else if (["1", "2", "3", "4"].includes(key)) setUnit(UNIT_SIZES[Number(key) - 1]);
-  else if (key === " ") { event.preventDefault(); togglePlay(); }
+  else if (key === " " && !online) { event.preventDefault(); togglePlay(); }
 });
 try { $("handle").value = localStorage.getItem(PROFILE_KEY) || ""; } catch { /* Optional profile. */ }
 $("rivals").value = run.rivalSetting;
@@ -1084,3 +1233,7 @@ renderSoundToggle();
 renderBoard();
 render();
 requestAnimationFrame(frame);
+// An invite link joins the room once this browser has a name; otherwise ask for one first.
+const invited = roomFromUrl();
+if (invited && savedName()) enterRoom(invited);
+else if (invited) showRoomEntry(invited, `你被邀請加入房間 ${invited}，輸入名字後按「加入」。`);

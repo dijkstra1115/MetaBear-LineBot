@@ -238,3 +238,29 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 .standings-list li{display:grid;grid-template-columns:34px 1fr 56px 64px 90px;gap:8px;align-items:center;padding:7px 10px;border-radius:6px;background:#132733;font-size:12px}
 .standings-list li.you{background:linear-gradient(90deg,#1d3a3a,#132733);outline:1px solid #3f7d72}
 .standings-list b{font:800 12px Consolas,monospace;color:var(--gold)}.standings-list strong{font:700 13px Consolas,monospace;text-align:right}.standings-list em{font-style:normal;text-align:right;color:#b9c9cc}.standings-list small{color:var(--coral);font-size:10px;text-align:right}
+/* Friend rooms: the room dialog shares the result dialog's look; body.online swaps solo controls out. */
+.online-only{display:none!important}body.online .online-only{display:grid!important}body.online .solo-only{display:none!important}
+.button-room{border-color:#8f7ae0;color:#e2d6ff;background:#2b2148}.button-room:hover{border-color:#b79cff}
+.room-connection{font:10px Consolas,monospace;color:#ffc0ca}.room-connection:empty{display:none}.room-connection.online{color:#aaf7df}
+.room-section{padding:18px 22px 22px;display:grid;gap:12px}
+.room-section h2{margin:0;font-size:22px;line-height:1.35}.room-section h2 em{display:block;font-style:normal;color:var(--mint)}
+.room-lead{margin:0;color:#b4c9c8;font-size:12px;line-height:1.65}
+.room-field{display:grid;gap:6px;color:#8fa9ad;font-size:11px}
+.room-section input{width:100%;padding:11px 12px;border:1px solid #3f5d66;border-radius:6px;background:#0c1b23;color:var(--ink);font-size:15px}
+.room-primary{height:44px;border:1px solid var(--mint);border-radius:6px;background:var(--mint);color:#092b27;font-size:14px;font-weight:900;box-shadow:0 0 25px #6de6c143}.room-primary:disabled{opacity:.4;cursor:not-allowed}
+.room-join{display:grid;grid-template-columns:1fr auto;gap:8px}.room-join input{text-transform:uppercase;letter-spacing:.2em}
+.room-join button,.room-share button,.room-bots button{height:40px;padding:0 14px;border:1px solid #54706e;border-radius:6px;background:#1b333d;color:#d5e9e3;font-size:12px;font-weight:700}.room-bots button{height:32px}
+.room-join button:hover,.room-share button:hover,.room-bots button:hover{border-color:var(--mint)}
+.room-error{margin:0;min-height:16px;color:var(--coral);font-size:12px}
+.room-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.room-code{display:block;font:800 34px Consolas,monospace;letter-spacing:.18em;color:var(--mint);text-shadow:0 0 22px #3ed9ad66}
+.room-share{display:flex;gap:8px}.room-line{display:inline-flex;align-items:center;height:40px;padding:0 14px;border-radius:6px;background:#06c755;color:#fff;font-size:12px;font-weight:800}
+.room-seats{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.room-seats li{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #29424d;border-radius:7px;background:#0f2530;font-size:13px}
+.room-seats li.empty{color:#69818a;border-style:dashed}.room-seats li.you{border-color:#3f7d72;background:#173a3a}
+.room-seats .dot{width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint)}.room-seats .dot.off{background:#56666c;box-shadow:none}
+.room-seats .tag{font-size:10px;padding:2px 7px;border-radius:99px;background:#223844;color:#b7d0d2}.room-seats .tag.host{background:#3b3222;color:var(--gold)}.room-seats .tag.bot{background:#2b2148;color:#d6c6ff}
+.room-seats .remove{margin-left:auto;border:0;background:none;color:var(--coral);font-size:17px}
+.room-bots{display:flex;align-items:center;gap:7px;flex-wrap:wrap;color:#8fa9ad;font-size:12px}
+.room-text{justify-self:center;border:0;background:none;color:#8fa9ad;font-size:12px;text-decoration:underline}
+#room-rematch-note{grid-column:1/-1;margin:0;color:#8fa9ad;font-size:12px;text-align:center}#room-rematch-note:empty{display:none}

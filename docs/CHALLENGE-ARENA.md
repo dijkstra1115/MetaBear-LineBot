@@ -1,6 +1,6 @@
 # FLOW ARENA：爆倉獵場 V6
 
-執行 `npm run preview:academy`，開啟 `http://127.0.0.1:8790/orderflow/challenge.html`。目前是桌面試玩版（最小寬度 1180px，手機上會顯示提示），市場與帳戶都在瀏覽器本機模擬，沒有真實交易，也沒有公開排行榜。和朋友連線對戰見 `FLOW-ARENA-PVP.md`（頁面 `/orderflow/arena.html`）。
+執行 `npm run preview:academy`，開啟 `http://127.0.0.1:8790/orderflow/challenge.html`。目前是桌面試玩版（最小寬度 1180px，手機上會顯示提示），市場與帳戶都在瀏覽器本機模擬，沒有真實交易，也沒有公開排行榜。標題列的「👥 好友對戰」可以開房間和朋友連線對戰，見 `FLOW-ARENA-PVP.md`。
 
 ## 核心玩法
 

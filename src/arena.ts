@@ -80,6 +80,7 @@ export class ArenaRoom extends DurableObject<Env> {
         core.tick();
         if (core.status !== "playing") this.stopClock();
       }, 1000);
+      void this.save();
     }, ARENA_COUNTDOWN_SECONDS * 1000);
   }
 

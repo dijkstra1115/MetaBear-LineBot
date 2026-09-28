@@ -269,8 +269,10 @@ export class ArenaRoomCore {
     this.broadcast(this.lobbyMessage());
   }
 
+  // Back to the lobby after a round. Accepted whenever no round is running, so a room that slept
+  // and restored its seats as "lobby" still answers the host.
   rematch(seat) {
-    if (!this.canLead(seat) || this.status !== "finished") return false;
+    if (!this.canLead(seat) || this.run) return false;
     this.status = "lobby";
     this.broadcast(this.lobbyMessage());
     return true;
