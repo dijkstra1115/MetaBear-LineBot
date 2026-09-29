@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>首次載入與重整 · MetaBear</title><link rel="stylesheet" href="./test.css"><script type="module" src="./cache.js"></script></head>
+<body><main>
+<h1>首次載入與重整：三輪音訊測試</h1>
+<p>這次只測音訊跳轉，不播放動畫。每輪按一次「開始本輪」，會從第 10 秒播放，5 秒後跳至第 20 秒，8 秒後停止。請保持分頁在前景。</p>
+<p id="source-note"></p>
+<p id="round" role="status"></p>
+<button id="start" disabled>開始本輪</button><button id="next" hidden>重整進入下一輪</button><button id="reset">重新開始三輪</button>
+<p id="status" role="status">正在載入音檔資訊…</p>
+<audio id="audio" preload="auto"></audio>
+<output id="metrics">等待開始</output>
+<p class="hint">三輪依序為「新網址首次載入 → 同一網址重整 → 換新網址重整」。完成後只需複製一次全部數據。數據保存在此分頁的 sessionStorage，不上傳。</p>
+<button id="copy">複製全部數據</button><span id="copy-status" role="status"></span>
+<details><summary>完整數據</summary><textarea id="report" aria-label="三輪測試數據" readonly></textarea></details>
+<p><a href="./cache.html">正式音檔測試</a> <a href="./cache.html?source=controlled">診斷副本測試</a></p>
+</main></body></html>

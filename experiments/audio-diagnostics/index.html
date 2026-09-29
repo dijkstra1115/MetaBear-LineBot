@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>課程聲音 A／B 測試 · MetaBear</title><link rel="stylesheet" href="./test.css"><script type="module" src="./test.js"></script></head>
+<body><main>
+<h1 id="title">課程聲音 A／B 測試</h1>
+<p id="intro">先選 A，在下方課程按「開啟聲音」聽 20 秒；再選 B 重複一次。兩邊都從靜音開始。建議也試 B → A，減少快取順序的影響。</p>
+<nav aria-label="測試模式"><a id="mode-a" href="?mode=A">A · 原版同步</a><a id="mode-b" href="?mode=B">B · 停用自動音軌跳轉</a></nav>
+<p id="mode-description"></p>
+<p><a id="cache-toggle" href="?cache=fresh">首次載入測試：每次使用新音檔網址</a></p><p id="cache-description" class="hint"></p>
+<label>課程 <select id="lesson"><option value="btc-wall">一道賣牆，最後倒給了誰？</option><option value="footprint">足跡圖</option></select></label>
+<p class="hint" id="test-note">B 可能聲畫不同步，僅供找原因。這不是正式修復版。數據只顯示在本頁，不會上傳。</p>
+<p id="probe-instructions" role="status"></p>
+<output id="metrics" aria-live="off">等待課程啟動…</output>
+<button id="copy" type="button">複製測試數據</button><span id="copy-status" role="status"></span>
+<details><summary>如何回報結果</summary><p>請回覆裝置／瀏覽器、A 和 B 是否有雜音或斷續，以及複製的數據。可再重新整理一次比較。數據累計自本次載入；「跳轉事件」也包含開聲音或手動拖曳，「自動跳轉」才是本次比較的項目。</p><textarea id="report" aria-label="可複製的測試數據" readonly></textarea></details>
+<iframe id="lesson-frame" title="聲音測試課程" allow="autoplay; fullscreen" src="about:blank"></iframe>
+</main></body></html>

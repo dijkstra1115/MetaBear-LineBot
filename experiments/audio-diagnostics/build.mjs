@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { transform } from 'esbuild';
+const here = path.dirname(fileURLToPath(import.meta.url));
+const files = {};
+for (const [key, file, type] of [['', 'index.html', 'text/html; charset=utf-8'], ['test.js', 'test.js', 'application/javascript'], ['test.css', 'test.css', 'text/css'], ['cache.html', 'cache.html', 'text/html; charset=utf-8'], ['cache.js', 'cache.js', 'application/javascript']]) files[key] = { body: fs.readFileSync(path.join(here, file), 'utf8'), type };
+const modules = Object.fromEntries(['worker.mjs', 'transform.mjs', 'range.mjs'].map(name => [name, fs.readFileSync(path.join(here, name), 'utf8')]));
+modules['files.mjs'] = `export const files = ${JSON.stringify(files)};`;
+modules['lesson-audio.mjs'] = (await transform(fs.readFileSync('src/lesson-audio.ts','utf8'), {loader:'ts',format:'esm',target:'es2022'})).code;
+modules['fixed-files.mjs'] = `export const baseline = ${JSON.stringify(fs.readFileSync(path.join(here,'player-baseline.js'),'utf8'))};\nexport const fixedFiles = ${JSON.stringify(Object.fromEntries(['player.js','audio-transport.js'].map(name=>['orderflow/motion/'+name,fs.readFileSync('public/orderflow/motion/'+name,'utf8')])))};`;
+fs.mkdirSync('.wrangler/audio-diagnostics', { recursive: true });
+fs.writeFileSync('.wrangler/audio-diagnostics/modules.json', JSON.stringify(modules));
+console.log('Diagnostic modules prepared; original preview.js must be supplied from the live preview Worker.');

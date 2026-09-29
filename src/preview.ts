@@ -2,6 +2,7 @@ import { BUSINESS, STEPS, LESSONS } from "./content";
 import { getRate } from "./rates";
 import { json } from "./http";
 import { siteSecurityHeaders } from "./site-security";
+import { isLessonAudio, serveLessonAudio } from "./lesson-audio";
 
 // The public-site preview has only ASSETS: no CRM database, queues or credentials.
 export default {
@@ -56,7 +57,9 @@ export default {
     if (path === "/orderflow/legacy/") path = "/orderflow/legacy/index.html";
     url.pathname = path;
     return finish(
-      await env.ASSETS.fetch(new Request(url, request)),
+      isLessonAudio(path)
+        ? await serveLessonAudio(new Request(url, request), env.ASSETS)
+        : await env.ASSETS.fetch(new Request(url, request)),
       path,
       url.origin,
     );

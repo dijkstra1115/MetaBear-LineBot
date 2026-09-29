@@ -4,7 +4,6 @@
 import { prefs, fontUsage } from "./core.js";
 import { createCompositor, preloadLessonFonts } from "./compositor.js";
 import { courses, isAvailable } from "../academy-catalog.js";
-import { createAudioTransport } from "./audio-transport.js";
 
 const $ = (root, sel) => root.querySelector(sel);
 const clock = (s) => {
@@ -52,15 +51,9 @@ export async function mountMotionLesson(root, lesson) {
     "aria-label": lesson.description ?? lesson.title,
   });
   const loading = el("div", "motion-loading", { text: "載入動態課程…" });
-  const bigPlay = el("button", "motion-bigplay", {
-    type: "button",
-    "aria-label": "播放課程",
-  });
+  const bigPlay = el("button", "motion-bigplay", { type: "button", "aria-label": "播放課程" });
   bigPlay.innerHTML = '<span aria-hidden="true"></span>';
-  const soundHint = el("button", "motion-soundhint", {
-    type: "button",
-    hidden: "",
-  });
+  const soundHint = el("button", "motion-soundhint", { type: "button", hidden: "" });
   soundHint.innerHTML = '<span aria-hidden="true">♪</span> 開啟聲音';
   const end = el("div", "motion-end", { hidden: "" });
   const hud = el("div", "motion-hud");
@@ -84,21 +77,12 @@ export async function mountMotionLesson(root, lesson) {
   const tip = el("span", "motion-tip", { "aria-hidden": "true" });
   scrub.append(track, range, tip);
   const bar = el("div", "motion-bar");
-  const play = el("button", "motion-btn motion-play", {
-    type: "button",
-    "aria-label": "暫停",
-  });
+  const play = el("button", "motion-btn motion-play", { type: "button", "aria-label": "暫停" });
   const time = el("span", "motion-time", { text: `0:00 / ${clock(D)}` });
   const chapLabel = el("span", "motion-chapter");
   const spacer = el("span", "motion-spacer");
-  const sound = el("button", "motion-btn motion-sound", {
-    type: "button",
-    "aria-label": "開啟聲音",
-  });
-  const full = el("button", "motion-btn motion-full", {
-    type: "button",
-    "aria-label": "全螢幕播放",
-  });
+  const sound = el("button", "motion-btn motion-sound", { type: "button", "aria-label": "開啟聲音" });
+  const full = el("button", "motion-btn motion-full", { type: "button", "aria-label": "全螢幕播放" });
   bar.append(play, time, chapLabel, spacer, sound, full);
   hud.append(scrub, bar);
   stage.append(canvas, loading, bigPlay, soundHint, end, hud);
@@ -113,10 +97,7 @@ export async function mountMotionLesson(root, lesson) {
   end.innerHTML = "";
   const endBox = el("div", "motion-endbox");
   endBox.append(el("p", "motion-end-kicker", { text: "本課完成 ✓" }));
-  const replay = el("button", "motion-endbtn", {
-    type: "button",
-    text: "↺ 從頭重播",
-  });
+  const replay = el("button", "motion-endbtn", { type: "button", text: "↺ 從頭重播" });
   endBox.append(replay);
   if (next) {
     const a = el("a", "motion-endbtn motion-next", { href: next.href });
@@ -124,12 +105,7 @@ export async function mountMotionLesson(root, lesson) {
     a.querySelector("strong").textContent = next.title;
     endBox.append(a);
   } else {
-    endBox.append(
-      el("a", "motion-endbtn motion-next", {
-        href: "./courses.html",
-        text: "回到課程地圖 →",
-      }),
-    );
+    endBox.append(el("a", "motion-endbtn motion-next", { href: "./courses.html", text: "回到課程地圖 →" }));
   }
   end.append(endBox);
 
@@ -177,10 +153,7 @@ export async function mountMotionLesson(root, lesson) {
     const segs = track.children;
     chapters.forEach((c, i) => {
       const e = chapters[i + 1]?.t ?? D;
-      segs[i].style.setProperty(
-        "--fill",
-        String(Math.max(0, Math.min(1, (t - c.t) / (e - c.t)))),
-      );
+      segs[i].style.setProperty("--fill", String(Math.max(0, Math.min(1, (t - c.t) / (e - c.t)))));
     });
     time.textContent = `${clock(t)} / ${clock(D)}`;
     const ci = chapterAt(t);
@@ -194,8 +167,7 @@ export async function mountMotionLesson(root, lesson) {
         else b.removeAttribute("aria-current");
       });
     }
-    const cap =
-      (lesson.captions ?? []).find((c) => t >= c.a && t < c.b + 0.35) ?? null;
+    const cap = (lesson.captions ?? []).find((c) => t >= c.a && t < c.b + 0.35) ?? null;
     if (cap !== lastCaption) {
       lastCaption = cap;
       caption.classList.remove("is-in");
@@ -215,34 +187,27 @@ export async function mountMotionLesson(root, lesson) {
   }
 
   // ---------- audio ----------
-  const audioUrl = lesson.audio ? new URL(lesson.audio, location.href) : null;
-  if (audioUrl) audioUrl.searchParams.set("audio_v", "2");
-  const audio = audioUrl ? new Audio(audioUrl.href) : null;
-  if (audio) {
-    audio.preload = "auto";
-    audio.hidden = true;
-    stage.append(audio);
-  }
+  const audio = lesson.audio ? new Audio(lesson.audio) : null;
+  if (audio) audio.preload = "auto";
   let muted = store.get("metabear-motion-sound") !== "on";
-  const transport = audio
-    ? createAudioTransport(audio, () => {
-        muted = true;
-        syncSound();
-        soundHint.textContent = "聲音暫時無法播放，點此重試";
-      })
-    : null;
   function syncSound() {
     sound.dataset.state = muted ? "off" : "on";
     sound.setAttribute("aria-label", muted ? "開啟聲音" : "關閉聲音");
     soundHint.hidden = !muted || !audio;
     if (!audio) sound.hidden = true;
   }
-  function audioPlay() {
+  async function audioPlay() {
     if (!audio || muted || !playing) return;
-    transport.start(t);
+    try {
+      if (Math.abs(audio.currentTime - t) > 0.05) audio.currentTime = t;
+      await audio.play();
+    } catch {
+      muted = true;
+      syncSound();
+    }
   }
   function audioPause() {
-    transport?.pause();
+    audio?.pause();
   }
   function setMuted(next) {
     muted = next;
@@ -258,7 +223,8 @@ export async function mountMotionLesson(root, lesson) {
     // rAF timestamps can predate performance.now() taken in start(): clamp.
     const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));
     last = now;
-    t = audio && !muted ? transport.time(t, dt, D) : Math.min(D, t + dt);
+    t = Math.min(D, t + dt);
+    if (audio && !muted && !audio.paused && Math.abs(audio.currentTime - t) > 0.12) audio.currentTime = t;
     if (t >= D) {
       playing = false;
       audioPause();
@@ -285,7 +251,7 @@ export async function mountMotionLesson(root, lesson) {
   const toggle = () => (playing ? pause() : start());
   function seek(s, keepPlaying = playing) {
     t = Math.max(0, Math.min(D, s));
-    if (audio && !muted) transport.seek(t);
+    if (audio) audio.currentTime = Math.min(t, audio.duration || t);
     if (!keepPlaying && playing) pause();
     paint();
   }
@@ -320,9 +286,7 @@ export async function mountMotionLesson(root, lesson) {
     wasPlaying = playing;
     if (playing) pause();
   });
-  range.addEventListener("input", () =>
-    seek(Number(range.value) / 1000, false),
-  );
+  range.addEventListener("input", () => seek(Number(range.value) / 1000, false));
   range.addEventListener("change", () => {
     if (wasPlaying && t < D) start();
     wasPlaying = false;
@@ -367,9 +331,7 @@ export async function mountMotionLesson(root, lesson) {
     if (touch || !root.requestFullscreen) {
       setTheater(true);
       try {
-        await document.documentElement.requestFullscreen?.({
-          navigationUI: "hide",
-        });
+        await document.documentElement.requestFullscreen?.({ navigationUI: "hide" });
         theaterFs = Boolean(document.fullscreenElement);
         await screen.orientation?.lock?.("landscape");
       } catch {
@@ -387,20 +349,12 @@ export async function mountMotionLesson(root, lesson) {
     if (theaterFs && !document.fullscreenElement) return setTheater(false);
     root.classList.toggle("is-fullscreen", document.fullscreenElement === root);
     if (!root.classList.contains("is-theater"))
-      full.setAttribute(
-        "aria-label",
-        document.fullscreenElement ? "離開全螢幕" : "全螢幕播放",
-      );
+      full.setAttribute("aria-label", document.fullscreenElement ? "離開全螢幕" : "全螢幕播放");
   });
 
   root.tabIndex = -1;
   document.addEventListener("keydown", (e) => {
-    if (
-      e.target.closest?.(
-        "input:not(.motion-range), textarea, select, [contenteditable]",
-      )
-    )
-      return;
+    if (e.target.closest?.("input:not(.motion-range), textarea, select, [contenteditable]")) return;
     const ci = chapterAt(t);
     switch (e.key) {
       case " ":
@@ -421,9 +375,7 @@ export async function mountMotionLesson(root, lesson) {
         seek(chapters[ci + 1]?.t ?? D);
         break;
       case "PageUp":
-        seek(
-          t - chapters[ci].t > 1 ? chapters[ci].t : (chapters[ci - 1]?.t ?? 0),
-        );
+        seek(t - chapters[ci].t > 1 ? chapters[ci].t : (chapters[ci - 1]?.t ?? 0));
         break;
       case "m":
         setMuted(!muted);
@@ -462,13 +414,11 @@ export async function mountMotionLesson(root, lesson) {
   await preloadLessonFonts(lesson, fontUsage);
   loading.remove();
   const hash = /^#scene-(\d+)$/.exec(location.hash);
-  if (hash && chapters[Number(hash[1]) - 1])
-    t = chapters[Number(hash[1]) - 1].t;
+  if (hash && chapters[Number(hash[1]) - 1]) t = chapters[Number(hash[1]) - 1].t;
   paint();
   window.addEventListener("hashchange", () => {
     const m = /^#scene-(\d+)$/.exec(location.hash);
-    if (m && chapters[Number(m[1]) - 1])
-      seek(chapters[Number(m[1]) - 1].t, true);
+    if (m && chapters[Number(m[1]) - 1]) seek(chapters[Number(m[1]) - 1].t, true);
   });
   // Autoplay like the rest of the academy; sound only if the viewer opted in.
   if (!document.hidden) start();

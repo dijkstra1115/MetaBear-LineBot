@@ -1,5 +1,6 @@
 import { admin } from "./admin";
 import { siteRedirect } from "./site-routing";
+import { isLessonAudio, serveLessonAudio } from "./lesson-audio";
 import { siteSecurityHeaders } from "./site-security";
 import { getRate } from "./rates";
 import { webhook, processLineEvent } from "./webhook";
@@ -198,7 +199,10 @@ export default {
         target.pathname = "/orderflow/index.html";
       if (target.pathname === "/orderflow/legacy/")
         target.pathname = "/orderflow/legacy/index.html";
-      const response = await env.ASSETS.fetch(new Request(target, request));
+      const assetRequest = new Request(target, request);
+      const response = isLessonAudio(target.pathname)
+        ? await serveLessonAudio(assetRequest, env.ASSETS)
+        : await env.ASSETS.fetch(assetRequest);
       const headers = new Headers(response.headers);
       if (privatePage || target.pathname === "/login.html")
         headers.set("Cache-Control", "no-store");
