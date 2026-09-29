@@ -1,7 +1,8 @@
 import { audit } from "./db";
 
 export type MenuInstallMessage = { kind: "line-menu-install"; id: string };
-const menuName = "MetaBear service menu 2026-09-29-v3";
+// Bump the name whenever the menu or its image changes; the cron installs it once.
+export const menuName = "MetaBear service menu 2026-09-29-v3";
 export const communityUrl =
   "https://line.me/ti/g2/c962LJ6bbEZ8X63UX9UhWWdw3bwmHJUv9mVM5g?utm_source=invitation&utm_medium=link_copy&utm_campaign=default";
 export function richMenuDefinition(_base: string) {
@@ -78,6 +79,24 @@ async function lineJson(
   }
   return (await response.json()) as any;
 }
+// Called from the cron: queues an install once per menu name, retrying after 30 minutes.
+export async function ensureRichMenu(env: Env) {
+  if (env.LINE_DELIVERY_MODE !== "live" || !env.LINE_CHANNEL_ACCESS_TOKEN)
+    return;
+  const recent = await env.DB.prepare(
+    `SELECT id FROM audit_log
+     WHERE json_extract(detail,'$.menuName')=?
+       AND (action='line.menu.installed'
+         OR (action='line.menu.queued' AND created_at>strftime('%Y-%m-%dT%H:%M:%fZ','now','-30 minutes')))
+     LIMIT 1`,
+  )
+    .bind(menuName)
+    .first();
+  if (recent) return;
+  const id = crypto.randomUUID();
+  await audit(env.DB, null, "line.menu.queued", { operationId: id, menuName });
+  await env.CAMPAIGN_EVENTS.send({ kind: "line-menu-install", id });
+}
 // Invoked only through the account's trusted Cloudflare queue; never by chat input.
 export async function installRichMenu(message: MenuInstallMessage, env: Env) {
   try { await install(message,env); }
@@ -153,6 +172,7 @@ async function install(message: MenuInstallMessage, env: Env) {
   const bot = await lineJson(env, "info");
   await audit(env.DB, null, "line.menu.installed", {
     operationId: message.id,
+    menuName,
     menuId,
     previous: current?.richMenuId ?? null,
     overrides,

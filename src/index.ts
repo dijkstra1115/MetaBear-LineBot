@@ -17,7 +17,11 @@ import {
   type CrmMessage,
 } from "./automation";
 import { getTeam, personalize } from "./team";
-import { installRichMenu, type MenuInstallMessage } from "./line-rich-menu";
+import {
+  ensureRichMenu,
+  installRichMenu,
+  type MenuInstallMessage,
+} from "./line-rich-menu";
 import {
   processCampaign,
   dispatchCampaigns,
@@ -44,6 +48,7 @@ export default {
     await dispatchSupportNotifications(env);
     await cleanupAuth(env);
     await cleanupConversations(env);
+    await ensureRichMenu(env);
   },
   async queue(
     batch: MessageBatch<

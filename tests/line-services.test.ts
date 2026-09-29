@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
-import { communityUrl, richMenuDefinition } from "../src/line-rich-menu";
+import {
+  communityUrl,
+  ensureRichMenu,
+  menuName,
+  richMenuDefinition,
+} from "../src/line-rich-menu";
 import { startLoading } from "../src/line-loading";
 import { webhook } from "../src/webhook";
 import { isImmediateCommand } from "../src/assistant";
@@ -259,4 +264,37 @@ test("rich menu covers exactly six tiles and has no AI toggles or public VIP lin
   assert.equal(text(4), "人工協助");
   for (const command of ["提交 UID", "開始註冊", "合約基礎", "人工協助"])
     assert.equal(isImmediateCommand(command), true);
+});
+
+test("cron queues the rich menu install once per menu name", async () => {
+  let pending: unknown = null;
+  const audits: unknown[][] = [];
+  const sent: unknown[] = [];
+  const env = {
+    LINE_DELIVERY_MODE: "live",
+    LINE_CHANNEL_ACCESS_TOKEN: "token",
+    DB: {
+      prepare: (sql: string) => ({
+        bind: (...args: unknown[]) => ({
+          first: async () => {
+            assert.match(sql, /line\.menu\.installed/);
+            assert.deepEqual(args, [menuName]);
+            return pending;
+          },
+          run: async () => void audits.push(args),
+        }),
+      }),
+    },
+    CAMPAIGN_EVENTS: { send: async (body: unknown) => void sent.push(body) },
+  } as unknown as Env;
+  await ensureRichMenu(env);
+  assert.equal(sent.length, 1);
+  assert.equal((sent[0] as { kind: string }).kind, "line-menu-install");
+  assert.equal(audits[0][1], "line.menu.queued");
+  assert.equal(JSON.parse(audits[0][2] as string).menuName, menuName);
+  pending = { id: 1 };
+  await ensureRichMenu(env);
+  assert.equal(sent.length, 1);
+  await ensureRichMenu({ ...env, LINE_DELIVERY_MODE: "disabled" } as Env);
+  assert.equal(sent.length, 1);
 });

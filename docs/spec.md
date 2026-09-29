@@ -2,7 +2,7 @@
 
 適用範圍：現行 TypeScript Worker（`src/`）。回覆仍使用固定教材與已發布知識庫原文；模型只負責選教材 ID，不撰寫答案、不改邀請碼、不核實資格。
 
-上線方式：`npm run deploy` 發佈 staging。`git push` 不會讓 LINE 生效。圖文選單（rich menu）變更後，須再觸發安裝（後台 `POST /api/line/rich-menu` 或 Queue `line-menu-install`）。
+上線方式：`npm run deploy` 發佈 staging。`git push` 不會讓 LINE 生效。圖文選單（rich menu）變更後，須再觸發安裝（後台 `POST /api/line/rich-menu` 或 Queue `line-menu-install`）。2026-09-30 起改為自動：每 5 分鐘的 cron 呼叫 `ensureRichMenu`，若目前 `menuName` 尚未安裝就排入佇列；改選單時只要把 `src/line-rich-menu.ts` 的 `menuName` 升版再部署。
 
 ---
 
