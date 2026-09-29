@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(circle at 30% 50%, #13424b77, #08121b00 55%), #08121b;
+          color: #e8f3ef;
+          font-family: "Noto Sans TC", sans-serif;
+        }
+        #s8-ghost {
+          position: absolute;
+          left: -40px;
+          top: 560px;
+          font-size: 420px;
+          font-weight: 900;
+          letter-spacing: -0.04em;
+          color: #70e6c912;
+          white-space: nowrap;
+        }
+        #s8-bg {
+          position: absolute;
+          left: 700px;
+          top: 120px;
+          width: 1400px;
+          height: 788px;
+          border-radius: 16px;
+          overflow: hidden;
+          opacity: 0.22;
+          filter: blur(3px);
+        }
+        #s8-bg img {
+          width: 100%;
+          height: 100%;
+        }
+        #s8-stage {
+          position: absolute;
+          inset: 0;
+          perspective: 1600px;
+          perspective-origin: 40% 45%;
+        }
+        #s8-dlg {
+          position: absolute;
+          left: 140px;
+          top: 190px;
+          width: 520px;
+          height: 767px;
+          border-radius: 14px;
+          box-shadow: 0 40px 120px #000c, 0 0 0 3px #3a5862;
+          transform-origin: 0% 50%;
+        }
+        .s8-piece {
+          position: absolute;
+          left: 0;
+          top: 0;
+          border-radius: 12px;
+          transform-origin: 0 0;
+          box-shadow: 0 30px 80px #000b, 0 0 0 2px #3a5862;
+          opacity: 0;
+        }
+        #s8-head {
+          position: absolute;
+          left: 140px;
+          top: 70px;
+          font-size: 64px;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          white-space: nowrap;
+        }
+        #s8-head em {
+          font-style: normal;
+          color: #70e6c9;
+        }
+        #s8-tag {
+          position: absolute;
+          right: 110px;
+          top: 86px;
+          font: 700 24px "JetBrains Mono", monospace;
+          letter-spacing: 0.16em;
+          color: #70e6c9;
+        }
+        #s8-flash {
+          position: absolute;
+          inset: 0;
+          background: #eafff8;
+          opacity: 0;
+        }
+      </style>
+
+      <div id="root" data-composition-id="s8-result" data-width="1920" data-height="1080">
+        <div id="s8-cues" hidden data-cues='{"flip":[0.05],"pop":[0.9,1.4,1.9,2.4],"grade":[1.05],"whoosh":[5.15]}'></div>
+        <div id="s8-ghost">結算複盤</div>
+        <div id="s8-bg"><img src="assets/img/real/last-frame.png" alt="" /></div>
+        <div id="s8-head">結算後，<em>教練逐筆複盤。</em></div>
+        <div id="s8-tag">● REAL RESULT · 實機結算</div>
+        <div id="s8-stage">
+          <img id="s8-dlg" src="assets/img/real/result-dialog.png" alt="RUN COMPLETE 結算視窗" />
+          <img class="s8-piece" id="s8-hero" src="assets/img/real/rd-hero.png" alt="0125 A +$8,515,041" />
+          <img class="s8-piece" id="s8-metrics" src="assets/img/real/rd-metrics.png" alt="淨報酬 最大回撤 引爆爆倉 最大連環" />
+          <img class="s8-piece" id="s8-episode" src="assets/img/real/rd-episode.png" alt="持倉紀錄" />
+          <img class="s8-piece" id="s8-coach" src="assets/img/real/rd-coach.png" alt="教練筆記" />
+        </div>
+        <div id="s8-flash"></div>
+      </div>
+
+      <script>
+        (() => {
+          const DUR = 5.5;
+          const cues = JSON.parse(document.getElementById("s8-cues").dataset.cues);
+          const ez = {
+            out3: (x) => 1 - Math.pow(1 - x, 3),
+            out5: (x) => 1 - Math.pow(1 - x, 5),
+            in3: (x) => x * x * x,
+            inout: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+          };
+          const clamp = (v) => Math.min(1, Math.max(0, v));
+          const $ = (id) => document.getElementById(id);
+          const D = 520 / 1160, DX = 140, DY = 190;
+          // [id, src x, src y, src w (dialog image px), target x, target y, target w, start]
+          const PIECES = [
+            ["s8-hero", 0, 150, 1160, 860, 170, 820, cues.pop[0]],
+            ["s8-metrics", 36, 494, 1088, 800, 400, 1000, cues.pop[1]],
+            ["s8-episode", 36, 900, 1088, 800, 545, 1000, cues.pop[2]],
+            ["s8-coach", 36, 655, 1088, 800, 725, 1000, cues.pop[3]],
+          ];
+          PIECES.forEach(([id, , , , tx, ty, tw]) => {
+            $(id).style.left = tx + "px";
+            $(id).style.top = ty + "px";
+            $(id).style.width = tw + "px";
+          });
+          const render = (t) => {
+            // dialog flips in like a door, then steps back
+            const f = ez.out5(clamp(t / 0.6));
+            const back = ez.inout(clamp((t - 2.9) / 0.8));
+            $("s8-dlg").style.opacity = clamp(t / 0.15) * (1 - 0.45 * back);
+            $("s8-dlg").style.transform = `translateX(${(1 - f) * -120}px) rotateY(${95 * (1 - f) + 14 * back}deg)`;
+            PIECES.forEach(([id, sx, sy, sw, tx, ty, tw, t0], i) => {
+              const el = $(id);
+              const u = t - t0;
+              if (u < 0) {
+                el.style.opacity = 0;
+                return;
+              }
+              const x0 = DX + sx * D - tx, y0 = DY + sy * D - ty, s0 = (sw * D) / tw;
+              const a = ez.out3(clamp(u / 0.22));
+              const b = ez.out5(clamp((u - 0.22) / 0.55));
+              const x = (x0 + 140 * a) * (1 - b);
+              const y = (y0 - 50 * a) * (1 - b);
+              const s = (s0 * (1 + 0.25 * a)) * (1 - b) + b;
+              const z = 460 * a * (1 - b);
+              const sway = u > 0.8 ? Math.sin((t - t0) * 1.3 + i) * 2 : 0;
+              el.style.opacity = 1;
+              el.style.transform = `translate3d(${x}px, ${y}px, ${z}px) scale(${s}) rotateY(${-18 * a * (1 - b) - 5 * b + sway}deg) rotateX(${8 * a * (1 - b) + 2 * b}deg)`;
+              el.style.boxShadow = id === "s8-hero" && t > 3.2 ? `0 30px 80px #000b, 0 0 ${40 + 30 * Math.sin(t * 5)}px #70e6c9aa` : "0 30px 80px #000b, 0 0 0 2px #3a5862";
+            });
+            const h = ez.out5(clamp((t - 0.25) / 0.4));
+            $("s8-head").style.opacity = h;
+            $("s8-head").style.transform = `translateY(${(1 - h) * -40}px)`;
+            $("s8-tag").style.opacity = clamp((t - 0.5) / 0.3);
+            $("s8-ghost").style.transform = `translateX(${-t * 60}px)`;
+            $("s8-bg").style.transform = `perspective(1600px) rotateY(-24deg) translateZ(${-200 - t * 40}px)`;
+            // zoom-through exit
+            const ex = ez.in3(clamp((t - 5.1) / 0.4));
+            $("s8-stage").style.transform = `scale(${1 + 0.8 * ex})`;
+            $("s8-stage").style.opacity = 1 - ex;
+            $("s8-flash").style.opacity = 0.8 * ex;
+          };
+          const drive = { t: 0 };
+          render(0);
+          const tl = gsap.timeline({ paused: true });
+          tl.to(drive, { t: DUR, duration: DUR, ease: "none", onUpdate: () => render(drive.t) }, 0);
+          window.__timelines["s8-result"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

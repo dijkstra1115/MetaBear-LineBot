@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="g1-landscape-template">
+      <style>
+        #g1-landscape-root { position: absolute; inset: 0; overflow: hidden; background: #08121b; }
+        #g1-canvas { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; }
+        #g1-copy { position: absolute; left: 120px; top: 120px; width: 1400px; }
+        #g1-kicker { font: 700 22px var(--mono); letter-spacing: 0.3em; color: var(--mint); margin-bottom: 26px; }
+        .g1-line { overflow: hidden; padding-bottom: 8px; }
+        .g1-line span { display: inline-block; font: 400 92px/1.05 var(--display); letter-spacing: -0.03em; color: var(--ink); margin-right: 24px; text-shadow: 0 6px 40px rgba(0, 0, 0, 0.8); }
+        .g1-line span.hot { color: var(--gold); }
+        #g1-title { position: absolute; left: 0; right: 0; top: 380px; text-align: center; }
+        #g1-glitch { display: inline-grid; }
+        #g1-glitch span { grid-area: 1 / 1; font: 400 230px/1 var(--display); letter-spacing: -0.04em; white-space: nowrap; }
+        #g1-glitch .base { z-index: 2; color: var(--ink); text-shadow: 0 0 80px rgba(8, 18, 27, 0.9), 0 0 50px rgba(112, 230, 201, 0.35); }
+        #g1-glitch .copy { z-index: 1; opacity: 0; mix-blend-mode: screen; }
+        #g1-glitch .warm { color: #ff5d78; }
+        #g1-glitch .cool { color: #41f0d0; }
+        #g1-sub { margin-top: 18px; font: 900 76px var(--tc); color: var(--gold); letter-spacing: 0.3em; text-shadow: 0 0 40px rgba(8, 18, 27, 0.9); }
+        #g1-sub span { font: 700 34px var(--mono); letter-spacing: 0.16em; color: var(--ink); vertical-align: 14px; margin-left: 10px; }
+        #g1-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, rgba(8, 18, 27, 0.2), rgba(8, 18, 27, 0.75)); opacity: 0; }
+      </style>
+
+      <div data-hf-id="hf-jr24" id="g1-landscape-root" data-composition-id="g1-landscape" data-width="1920" data-height="1080" data-duration="8.8">
+        <canvas data-hf-id="hf-746j" id="g1-canvas" width="1920" height="1080"></canvas>
+        <div data-hf-id="hf-h2c9" id="g1-shade"></div>
+        <div data-hf-id="hf-1lx9" id="g1-copy">
+          <div data-hf-id="hf-4mmo" id="g1-kicker">// BTC-PERP · LIQUIDATION MAP · 3D</div>
+          <div data-hf-id="hf-2sdn" class="g1-line" id="g1-l1"><span data-hf-id="hf-uhsw">Every</span><span data-hf-id="hf-jyg6">tower</span><span data-hf-id="hf-k6nl">is</span><span data-hf-id="hf-sorx" class="hot">leverage</span></div>
+          <div data-hf-id="hf-u4hs" class="g1-line" id="g1-l2"><span data-hf-id="hf-aq5o">waiting</span><span data-hf-id="hf-1jhc">to</span><span data-hf-id="hf-pdwe">break.</span></div>
+        </div>
+        <div data-hf-id="hf-1wbw" id="g1-title">
+          <div data-hf-id="hf-waj1" id="g1-glitch">
+            <span data-hf-id="hf-giva" class="copy warm" aria-hidden="true" data-layout-ignore="">FLOW ARENA</span>
+            <span data-hf-id="hf-7rxm" class="copy cool" aria-hidden="true" data-layout-ignore="">FLOW ARENA</span>
+            <span data-hf-id="hf-vnbr" class="base" data-layout-allow-overlap="">FLOW ARENA</span>
+          </div>
+          <div data-hf-id="hf-yun8" id="g1-sub" data-layout-allow-overlap="">爆倉獵場<span data-hf-id="hf-q89d">YOU MOVE THIS MARKET</span></div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 0.5;
+          const prand = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const root = document.getElementById("g1-landscape-root");
+          const q = (s) => root.querySelector(s);
+          const T3 = window.THREE;
+
+          // ---------- build the 3D world (synchronous, seeded) ----------
+          const canvas = q("#g1-canvas");
+          const renderer = new T3.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+          renderer.setPixelRatio(1);
+          renderer.setSize(1920, 1080, false);
+          renderer.setClearColor(0x08121b, 1);
+          const scene = new T3.Scene();
+          scene.fog = new T3.FogExp2(0x08121b, 0.05);
+          const camera = new T3.PerspectiveCamera(45, 1920 / 1080, 0.1, 200);
+
+          const COLS = 110, ROWS = 70, DX = 0.2, DZ = 0.2;
+          const X0 = -((COLS - 1) * DX) / 2, Z0 = -((ROWS - 1) * DZ) / 2;
+          const PRICE_ROW = 35;
+          // liquidation clusters: [row, strength, width]; rows > PRICE_ROW sit above price (short liqs)
+          const CL = [[40, 1.6, 0.9], [45, 0.9, 0.8], [49, 2.1, 1.0], [56, 1.2, 0.9], [63, 1.8, 1.1], [30, 1.3, 0.9], [25, 1.9, 1.0], [19, 0.9, 0.8], [11, 1.5, 1.1]];
+          const heights = [];
+          let hmax = 0;
+          for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+            const ramp = 0.25 + 0.75 * (c / (COLS - 1));
+            let h = 0.02 + Math.pow(prand(r * 131 + c * 7), 4) * 0.28;
+            CL.forEach(([rc, s, w], k) => { h += s * Math.exp(-(((r - rc) / w) ** 2)) * ramp * (0.8 + 0.4 * prand(k * 17 + c * 0.13)); });
+            if (Math.abs(r - PRICE_ROW) < 2) h *= 0.25;
+            heights.push(h); hmax = Math.max(hmax, h);
+          }
+          const geo = new T3.BoxGeometry(DX * 0.82, 1, DZ * 0.82);
+          geo.translate(0, 0.5, 0);
+          // dark tower bodies that heat up toward a glowing cap; manual exp2 fog
+          const mat = new T3.ShaderMaterial({
+            uniforms: { fogColor: { value: new T3.Color(0x08121b) }, fogDensity: { value: 0.05 }, heat: { value: 1 } },
+            vertexShader: `
+              varying vec3 vC; varying float vY; varying vec3 vN; varying float vDepth;
+              void main() {
+                vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
+                vY = position.y; vN = normal; vC = instanceColor;
+                vec4 mv = viewMatrix * wp; vDepth = -mv.z;
+                gl_Position = projectionMatrix * mv;
+              }`,
+            fragmentShader: `
+              uniform vec3 fogColor; uniform float fogDensity; uniform float heat;
+              varying vec3 vC; varying float vY; varying vec3 vN; varying float vDepth;
+              void main() {
+                float body = 0.3 + 0.7 * pow(vY, 1.8);
+                float face = 0.62 + 0.38 * abs(vN.z) + 0.55 * max(vN.y, 0.0);
+                vec3 col = vC * body * face * heat;
+                col += vC * step(0.5, vN.y) * 0.35;
+                float f = 1.0 - exp(-fogDensity * fogDensity * vDepth * vDepth);
+                gl_FragColor = vec4(mix(col, fogColor, clamp(f, 0.0, 1.0)), 1.0);
+              }`,
+          });
+          const inst = new T3.InstancedMesh(geo, mat, ROWS * COLS);
+          const cDeep = new T3.Color(0x0a111c), cViolet = new T3.Color(0x3d2c7c), cGold = new T3.Color(0xf2c575), cCoral = new T3.Color(0xfb7f91), cHot = new T3.Color(0xfff4d6);
+          const tmpC = new T3.Color(), m4 = new T3.Matrix4();
+          heights.forEach((h, i) => {
+            const r = Math.floor(i / COLS), c = i % COLS;
+            const k = Math.min(1, h / (hmax * 0.85));
+            if (k < 0.3) tmpC.copy(cDeep).lerp(cViolet, k / 0.3);
+            else if (k < 0.75) tmpC.copy(cViolet).lerp(r > PRICE_ROW ? cGold : cCoral, (k - 0.3) / 0.45);
+            else tmpC.copy(r > PRICE_ROW ? cGold : cCoral).lerp(cHot, (k - 0.75) / 0.25);
+            inst.setColorAt(i, tmpC);
+          });
+          scene.add(inst);
+          const setHeights = (mul) => {
+            heights.forEach((h, i) => {
+              const r = Math.floor(i / COLS), c = i % COLS;
+              m4.makeScale(1, Math.max(0.01, h * mul), 1);
+              m4.setPosition(X0 + c * DX, 0, Z0 + r * DZ);
+              inst.setMatrixAt(i, m4);
+            });
+            inst.instanceMatrix.needsUpdate = true;
+          };
+
+          // glow sprites on the tallest towers
+          const gc = document.createElement("canvas"); gc.width = gc.height = 64;
+          const g2 = gc.getContext("2d"); const grd = g2.createRadialGradient(32, 32, 0, 32, 32, 32);
+          grd.addColorStop(0, "rgba(255,244,214,1)"); grd.addColorStop(0.3, "rgba(246,215,140,.6)"); grd.addColorStop(1, "rgba(246,215,140,0)");
+          g2.fillStyle = grd; g2.fillRect(0, 0, 64, 64);
+          const glowTex = new T3.CanvasTexture(gc);
+          const tops = [];
+          heights.forEach((h, i) => { if (h > hmax * 0.72 && prand(i) > 0.55) tops.push(i); });
+          const pg = new T3.BufferGeometry();
+          const ppos = new Float32Array(tops.length * 3);
+          pg.setAttribute("position", new T3.BufferAttribute(ppos, 3));
+          const pts = new T3.Points(pg, new T3.PointsMaterial({ size: 0.9, map: glowTex, transparent: true, depthWrite: false, blending: T3.AdditiveBlending, sizeAttenuation: true }));
+          scene.add(pts);
+          const setTops = (mul) => {
+            tops.forEach((i, k) => {
+              const r = Math.floor(i / COLS), c = i % COLS;
+              ppos[k * 3] = X0 + c * DX; ppos[k * 3 + 1] = heights[i] * mul + 0.05; ppos[k * 3 + 2] = Z0 + r * DZ;
+            });
+            pg.attributes.position.needsUpdate = true;
+          };
+
+          // floor grid
+          const grid = new T3.GridHelper(40, 80, 0x1f3a44, 0x13242d);
+          grid.position.y = -0.01; scene.add(grid);
+
+          // the price path: a mint tube that draws itself along the time axis
+          const pPts = [];
+          let pz = 0;
+          for (let c = 0; c <= COLS; c += 2) {
+            pz += (prand(c * 3.3) - 0.5) * 0.35 + (0 - pz) * 0.12;
+            pPts.push(new T3.Vector3(X0 + c * DX, 0.12, Z0 + PRICE_ROW * DZ + pz));
+          }
+          const curve = new T3.CatmullRomCurve3(pPts);
+          const TSEG = 400, RSEG = 8;
+          const tube = new T3.Mesh(new T3.TubeGeometry(curve, TSEG, 0.06, RSEG, false), new T3.MeshBasicMaterial({ color: 0xbffff0 }));
+          const tubeGlow = new T3.Mesh(new T3.TubeGeometry(curve, TSEG, 0.22, RSEG, false),
+            new T3.MeshBasicMaterial({ color: 0x70e6c9, transparent: true, opacity: 0.28, blending: T3.AdditiveBlending, depthWrite: false }));
+          scene.add(tube, tubeGlow);
+          const head = new T3.Sprite(new T3.SpriteMaterial({ map: glowTex, color: 0xbffff0, blending: T3.AdditiveBlending, depthWrite: false }));
+          head.scale.set(1.4, 1.4, 1); scene.add(head);
+          const setPath = (p) => {
+            const n = Math.floor(TSEG * p) * RSEG * 6;
+            tube.geometry.setDrawRange(0, n); tubeGlow.geometry.setDrawRange(0, n);
+            head.position.copy(curve.getPointAt(Math.max(0.001, Math.min(1, p))));
+          };
+
+          // ---------- camera path (pure function of t) ----------
+          const ss = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+          const V = (x, y, z) => new T3.Vector3(x, y, z);
+          const P0 = V(-13, 1.9, 5.2), L0 = V(-6, 0.3, 0.4);
+          const P1 = V(4.5, 3.1, 6.6), L1 = V(9.5, 0.2, -0.8);
+          const P2 = V(0.4, 17.5, 0.0), L2 = V(0.4, 0, 0);
+          const pos = new T3.Vector3(), look = new T3.Vector3(), up = new T3.Vector3();
+          const renderAt = (t) => {
+            const a = ss(0, 5.6, t), b = ss(5.2, 7.1, t);
+            pos.copy(P0).lerp(P1, a).lerp(P2, b);
+            look.copy(L0).lerp(L1, a).lerp(L2, b);
+            up.set(0, 1, 0).lerp(V(0, 0, -1), ss(5.6, 6.9, t)).normalize();
+            camera.up.copy(up); camera.position.copy(pos); camera.lookAt(look);
+            camera.rotateZ(Math.sin(t * 0.7) * 0.02 * (1 - b));
+            const flat = 1 - 0.95 * ss(5.9, 7.1, t);
+            setHeights(flat); setTops(flat);
+            pts.material.opacity = 1 - 0.6 * ss(5.9, 7.1, t);
+            scene.fog.density = 0.05 - 0.035 * b;
+            mat.uniforms.fogDensity.value = 0.075 - 0.06 * b;
+            mat.uniforms.heat.value = 1 + 0.5 * ss(5.9, 7.1, t);
+            setPath(ss(0.3, 6.2, t));
+            renderer.render(scene, camera);
+          };
+          renderAt(0);
+
+          // ---------- timeline ----------
+          const tl = gsap.timeline({ paused: true });
+          const drv = { t: 0 };
+          tl.fromTo(drv, { t: 0 }, { t: 8.8, duration: 8.8, ease: "none", onUpdate: () => renderAt(drv.t) }, 0);
+
+          tl.fromTo("#g1-kicker", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, 0.4);
+          tl.fromTo("#g1-l1 span", { yPercent: 110 }, { yPercent: 0, duration: 0.5, ease: "power4.out", stagger: 0.08 }, B * 3);
+          tl.fromTo("#g1-l2 span", { yPercent: 110 }, { yPercent: 0, duration: 0.5, ease: "expo.out", stagger: 0.1 }, B * 6);
+          tl.to("#g1-copy", { opacity: 0, y: -40, duration: 0.35, ease: "power2.in" }, 5.5);
+
+          // title slam on the crane-down, with RGB-split glitch
+          const T = 6.0;
+          tl.fromTo("#g1-shade", { opacity: 0 }, { opacity: 1, duration: 0.3 }, T - 0.1);
+          tl.fromTo("#g1-glitch", { scaleX: 1.7, scaleY: 0.7, opacity: 0 }, { scaleX: 1, scaleY: 1, opacity: 1, duration: 0.42, ease: "power4.out" }, T);
+          tl.fromTo("#g1-sub", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out" }, T + 0.3);
+          tl.fromTo("#g1-title", { scale: 1 }, { scale: 1.05, duration: 2.8, ease: "none" }, T);
+          const copies = gsap.utils.toArray(root.querySelectorAll("#g1-glitch .copy"));
+          const amp = { a: 0 };
+          tl.fromTo(amp, { a: 1 }, {
+            a: 0, duration: 0.5, ease: "power3.in", immediateRender: false,
+            onUpdate: () => {
+              const s = Math.floor(tl.time() / 0.04);
+              copies.forEach((el, l) => gsap.set(el, { opacity: amp.a > 0.01 ? 0.9 : 0, x: (prand(s * 13 + l * 7) * 2 - 1) * 60 * amp.a, y: (prand(s * 29 + l * 11) * 2 - 1) * 18 * amp.a }));
+            },
+          }, T);
+
+          window.__timelines["g1-landscape"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="g2-whale-template">
+      <style>
+        #g2-whale-root { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(ellipse at 30% 55%, #13303c 0%, #08121b 62%); }
+        #g2-head { position: absolute; left: 120px; top: 96px; }
+        #g2-head div { font: 400 70px/1.12 var(--display); letter-spacing: -0.03em; color: var(--ink); white-space: nowrap; }
+        #g2-head div.m { color: var(--mint); }
+        #g2-stage { position: absolute; left: 90px; top: 240px; width: 860px; height: 760px; perspective: 1500px; }
+        #g2-book {
+          position: absolute;
+          left: 80px;
+          top: 20px;
+          width: 660px;
+          padding: 22px 26px;
+          border-radius: 18px;
+          border: 3px solid #2f4955;
+          background: rgba(14, 28, 38, 0.92);
+          box-shadow: 0 50px 100px rgba(0, 0, 0, 0.55);
+          transform-style: preserve-3d;
+        }
+        #g2-book .hd { display: flex; justify-content: space-between; font: 700 20px var(--mono); letter-spacing: 0.2em; color: var(--mint); margin-bottom: 10px; }
+        .g2-row { position: relative; height: 31px; display: flex; align-items: center; justify-content: space-between; font: 700 22px var(--mono); font-variant-numeric: tabular-nums; transform-style: preserve-3d; }
+        .g2-row .bar { position: absolute; right: 0; top: 4px; bottom: 4px; border-radius: 3px; }
+        .g2-row.ask .bar { background: rgba(251, 127, 145, 0.32); }
+        .g2-row.bid .bar { background: rgba(112, 230, 201, 0.26); }
+        .g2-row .p { position: relative; }
+        .g2-row.ask .p { color: var(--coral); }
+        .g2-row.bid .p { color: var(--mint); }
+        .g2-row .s { position: relative; color: #cfe3df; }
+        .g2-row.liq .p::after { content: " ⚡23 BTC LIQ"; color: var(--gold); font-size: 18px; }
+        #g2-mid { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; padding: 8px 0; border-top: 2px solid #2f4955; border-bottom: 2px solid #2f4955; font: 700 34px var(--mono); }
+        #g2-mid span:last-child { font-size: 20px; color: var(--muted); letter-spacing: 0.2em; }
+        #g2-px { position: absolute; left: 1040px; top: 270px; }
+        #g2-px .lbl { font: 700 22px var(--mono); letter-spacing: 0.24em; color: var(--muted); margin-bottom: 14px; }
+        #g2-px .v { font: 700 118px/1.05 var(--mono); letter-spacing: -0.05em; font-variant-numeric: tabular-nums; color: var(--ink); }
+        #g2-chg { display: inline-block; margin-top: 6px; padding: 6px 16px; border-radius: 8px; background: rgba(112, 230, 201, 0.14); color: var(--mint); font: 700 32px var(--mono); }
+        #g2-chart { position: absolute; left: 1040px; top: 470px; width: 760px; height: 220px; overflow: visible; }
+        #g2-hud {
+          position: absolute;
+          left: 1040px;
+          top: 830px;
+          width: 760px;
+          padding: 22px 26px;
+          border-radius: 18px;
+          border: 3px solid #2f4955;
+          background: rgba(14, 28, 38, 0.92);
+        }
+        #g2-sizes { display: flex; align-items: center; gap: 12px; font: 700 22px var(--mono); color: var(--muted); }
+        #g2-sizes b {
+          display: inline-grid;
+          place-items: center;
+          width: 88px;
+          height: 52px;
+          border-radius: 10px;
+          border: 3px solid #3a5862;
+          color: #cfe3df;
+          font: 700 26px var(--mono);
+        }
+        #g2-sizes b.on { border-color: var(--mint); color: var(--mint); box-shadow: 0 0 24px rgba(112, 230, 201, 0.5); }
+        #g2-preview { margin-top: 16px; padding: 10px 16px; border-radius: 10px; border: 2px solid rgba(246, 215, 140, 0.6); background: rgba(246, 215, 140, 0.08); font: 700 22px var(--mono); color: var(--gold); white-space: nowrap; }
+        #g2-keys { position: absolute; left: 1040px; top: 706px; display: flex; gap: 22px; }
+        #g2-k4, #g2-kq { opacity: 0; }
+        #g2-shock { position: absolute; left: 470px; top: 560px; width: 400px; height: 400px; margin: -200px 0 0 -200px; border-radius: 50%; border: 6px solid var(--mint); box-shadow: 0 0 60px rgba(112, 230, 201, 0.7); opacity: 0; }
+      </style>
+
+      <div data-hf-id="hf-wtam" id="g2-whale-root" data-composition-id="g2-whale" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-ati5" id="g2-head"><div data-hf-id="hf-l9jg" id="g2-h1" data-layout-allow-overlap="">ONE ORDER.</div><div data-hf-id="hf-u552" class="m" id="g2-h2" data-layout-allow-overlap="">THE WHOLE BOOK MOVES.</div></div>
+        <div data-hf-id="hf-s577" id="g2-stage">
+          <div data-hf-id="hf-jmbg" id="g2-book">
+            <div data-hf-id="hf-0hws" class="hd"><span data-hf-id="hf-c0fg">ORDER BOOK</span><span data-hf-id="hf-rfa7">SIZE BTC</span></div>
+            <div data-hf-id="hf-tu31" id="g2-asks"></div>
+            <div data-hf-id="hf-ku0b" id="g2-mid"><span data-hf-id="hf-gjhy">100,000.00</span><span data-hf-id="hf-6p6x">MID</span></div>
+            <div data-hf-id="hf-s3i7" id="g2-bids"></div>
+          </div>
+        </div>
+        <div data-hf-id="hf-qwiv" id="g2-shock"></div>
+        <div data-hf-id="hf-zfmj" id="g2-px">
+          <div data-hf-id="hf-aufo" class="lbl">BTC-PERP · LAST</div>
+          <div data-hf-id="hf-r6s9" class="v" id="g2-pv">100,000.00</div>
+          <div data-hf-id="hf-1xj3" id="g2-chg">+0.00%</div>
+        </div>
+        <svg data-hf-id="hf-3hdb" id="g2-chart" viewBox="0 0 760 250">
+          <line data-hf-id="hf-46ww" x1="0" y1="200" x2="760" y2="200" stroke="rgba(151,175,181,.18)" stroke-width="2" />
+          <path data-hf-id="hf-72eg" id="g2-line" fill="none" stroke="#70e6c9" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+          <circle data-hf-id="hf-lqoa" id="g2-dot" r="9" fill="#eafff8" />
+        </svg>
+        <div data-hf-id="hf-n0lv" id="g2-keys">
+          <div data-hf-id="hf-dlbo" class="kc-row" id="g2-k4"><div data-hf-id="hf-e23e" class="kc">4</div></div>
+          <div data-hf-id="hf-yuzd" class="kc-row" id="g2-kq"><div data-hf-id="hf-ihw1" class="kc mint">Q</div><div data-hf-id="hf-aez1" class="kc-lbl"><small data-hf-id="hf-q3t8">MARKET BUY</small>100 BTC</div></div>
+        </div>
+        <div data-hf-id="hf-f96m" id="g2-hud">
+          <div data-hf-id="hf-vlvh" id="g2-sizes">SIZE <b data-hf-id="hf-nk1z" data-u="10">10</b><b data-hf-id="hf-5rs1" data-u="25" class="on">25</b><b data-hf-id="hf-5glz" data-u="50">50</b><b data-hf-id="hf-x661" data-u="100">100</b> BTC</div>
+          <div data-hf-id="hf-48nb" id="g2-preview">▲ 100 BTC → 102,480 (+2.48%) · 穿過 23 BTC 空單強平</div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 0.5;
+          const prand = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const root = document.getElementById("g2-whale-root");
+          const q = (s) => root.querySelector(s);
+          const fmt = (v, d = 2) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+          const asks = [], bids = [];
+          for (let i = 0; i < 10; i++) {
+            const r = document.createElement("div");
+            const lvl = 10 - i;
+            r.className = "g2-row ask" + (lvl === 7 ? " liq" : "");
+            const s = 2 + prand(i * 5 + 1) * 24;
+            r.innerHTML = `<div class="bar" style="width:${Math.round(40 + s * 13)}px"></div><span class="p" data-layout-allow-overlap>${fmt(100000 + lvl * 226)}</span><span class="s" data-layout-allow-overlap>${s.toFixed(1)}</span>`;
+            q("#g2-asks").appendChild(r); asks.push(r);
+          }
+          for (let i = 0; i < 7; i++) {
+            const r = document.createElement("div");
+            r.className = "g2-row bid";
+            const s = 2 + prand(i * 5 + 2) * 24;
+            r.innerHTML = `<div class="bar" style="width:${Math.round(40 + s * 13)}px"></div><span class="p" data-layout-allow-overlap>${fmt(100000 - (i + 1) * 226)}</span><span class="s" data-layout-allow-overlap>${s.toFixed(1)}</span>`;
+            q("#g2-bids").appendChild(r); bids.push(r);
+          }
+
+          // price path: calm, then the spike
+          const pts = [];
+          for (let i = 0; i <= 40; i++) pts.push([i * 13, 200 + (prand(i * 2.7) - 0.5) * 14]);
+          const spike = [[540, 196], [585, 150], [615, 80], [640, 30], [665, 44], [700, 36], [735, 40], [760, 38]];
+          const allPts = pts.concat(spike);
+          const path = q("#g2-line"), dot = q("#g2-dot");
+          const drawTo = (k) => {
+            const n = Math.max(2, Math.floor(k));
+            const f = k - Math.floor(k);
+            const seg = allPts.slice(0, n);
+            const a = allPts[n - 1], b = allPts[Math.min(allPts.length - 1, n)];
+            const hx = a[0] + (b[0] - a[0]) * f, hy = a[1] + (b[1] - a[1]) * f;
+            path.setAttribute("d", seg.map((p, i) => (i ? "L" : "M") + p[0] + " " + p[1]).join(" ") + ` L${hx} ${hy}`);
+            dot.setAttribute("cx", hx); dot.setAttribute("cy", hy);
+          };
+
+          const tl = gsap.timeline({ paused: true });
+          gsap.set("#g2-book", { rotationX: 26, rotationY: 24 });
+          tl.fromTo("#g2-book", { rotationX: 26, rotationY: 30 }, { rotationX: 20, rotationY: 14, duration: 6.8, ease: "sine.inOut" }, 0);
+
+          const HIT = 2.5;
+          const prog = { k: 2 };
+          tl.fromTo(prog, { k: 2 }, { k: pts.length, duration: HIT, ease: "none", onUpdate: () => drawTo(prog.k) }, 0);
+          tl.fromTo(prog, { k: pts.length }, { k: allPts.length - 0.001, duration: 1.4, ease: "power3.out", immediateRender: false, onUpdate: () => drawTo(prog.k) }, HIT);
+
+          // controls: key 4 selects 100 BTC, preview appears, Q fires
+          const press = (sel, t) => {
+            tl.fromTo(sel, { opacity: 0, y: 30, scale: 0.8 }, { opacity: 1, y: 0, scale: 1, duration: 0.25, ease: "back.out(2.5)" }, t - 0.3);
+            tl.fromTo(sel + " .kc", { y: 0, boxShadow: "0 10px 0 #0c1820, 0 16px 30px rgba(0,0,0,.5)" },
+              { y: 9, boxShadow: "0 1px 0 #0c1820, 0 0 40px rgba(112,230,201,.8)", duration: 0.06, ease: "power2.in", yoyo: true, repeat: 1 }, t);
+          };
+          press("#g2-k4", 0.9);
+          tl.fromTo('#g2-sizes b[data-u="25"]', { borderColor: "#70e6c9", color: "#70e6c9" }, { borderColor: "#3a5862", color: "#cfe3df", boxShadow: "0 0 0 rgba(0,0,0,0)", duration: 0.05 }, 0.9);
+          tl.fromTo('#g2-sizes b[data-u="100"]', { borderColor: "#3a5862", color: "#cfe3df", boxShadow: "0 0 0 rgba(0,0,0,0)" }, { borderColor: "#70e6c9", color: "#70e6c9", boxShadow: "0 0 24px rgba(112,230,201,.6)", duration: 0.05 }, 0.9);
+          tl.fromTo('#g2-sizes b[data-u="100"]', { scale: 1.3 }, { scale: 1, duration: 0.3, ease: "back.out(3)", immediateRender: false }, 0.9);
+          tl.fromTo("#g2-preview", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 1.5);
+          tl.to("#g2-k4", { opacity: 0.25, duration: 0.3 }, 2.0);
+          press("#g2-kq", HIT);
+
+          // entrance of the stage
+          tl.fromTo("#g2-hud", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 0.3);
+          tl.fromTo("#g2-px", { x: 60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 0.4);
+
+          // impact: asks nearest mid get eaten first and fly out at the lens
+          tl.fromTo("#g2-shock", { scale: 0.2, opacity: 1 }, { scale: 2.6, opacity: 0, duration: 0.7, ease: "expo.out", immediateRender: false }, HIT);
+          const eaten = asks.slice().reverse().slice(0, 8);
+          eaten.forEach((r, i) => {
+            const t = HIT + 0.04 + i * 0.07;
+            tl.fromTo(r.querySelector(".bar"), { scaleX: 1, transformOrigin: "100% 50%" }, { scaleX: 0, duration: 0.1, ease: "power2.in" }, t);
+            tl.fromTo(r, { z: 0, y: 0, rotationX: 0, rotationZ: 0, opacity: 1 },
+              { z: 900 + prand(i * 3) * 500, y: -120 - prand(i * 7) * 200, x: (prand(i * 11) - 0.5) * 300, rotationX: -40 + prand(i * 13) * 80, rotationZ: (prand(i * 17) - 0.5) * 50, opacity: 0, duration: 0.7, ease: "power2.in" }, t + 0.08);
+          });
+          const px = { v: 100000 };
+          tl.fromTo(px, { v: 100000 }, {
+            v: 102480, duration: 1.1, ease: "power3.out",
+            onUpdate: () => { q("#g2-pv").textContent = fmt(px.v); q("#g2-chg").textContent = "+" + (((px.v - 100000) / 1000)).toFixed(2) + "%"; },
+          }, HIT + 0.05);
+          tl.fromTo("#g2-pv", { color: "#e8f3ef", scale: 1 }, { color: "#70e6c9", scale: 1.06, duration: 0.15, transformOrigin: "0 50%" }, HIT + 0.05);
+          tl.to("#g2-pv", { scale: 1, duration: 0.4, ease: "back.out(3)" }, HIT + 0.25);
+          tl.fromTo("#g2-stage", { x: 0 }, { x: 14, duration: 0.04, yoyo: true, repeat: 7, ease: "none", immediateRender: false }, HIT);
+
+          // headline lands after the hit
+          tl.fromTo("#g2-h1", { x: -120, opacity: 0, skewX: -14 }, { x: 0, opacity: 1, skewX: 0, duration: 0.35, ease: "expo.out" }, 3.0);
+          tl.fromTo("#g2-h2", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power4.out" }, 3.5);
+          tl.fromTo("#g2-chg", { scale: 1 }, { scale: 1.25, duration: 0.12, yoyo: true, repeat: 1, transformOrigin: "0 50%", immediateRender: false }, 4.0);
+
+          window.__timelines["g2-whale"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

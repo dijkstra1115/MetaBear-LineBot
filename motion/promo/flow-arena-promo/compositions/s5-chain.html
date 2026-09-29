@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: #08121b;
+          color: #e8f3ef;
+          font-family: "Noto Sans TC", sans-serif;
+        }
+        #s5-stage {
+          position: absolute;
+          inset: 0;
+          perspective: 1700px;
+          perspective-origin: 60% 40%;
+        }
+        #s5-cam {
+          position: absolute;
+          inset: 0;
+          transform-origin: 1220px 520px;
+          transform-style: preserve-3d;
+        }
+        #s5-canvas {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+        }
+        .s5-hud {
+          position: absolute;
+          left: 80px;
+          top: 30px;
+          width: 1400px;
+          height: 112px;
+          display: grid;
+          grid-template-columns: 1.25fr 1.25fr 0.8fr 1.3fr;
+          gap: 2px;
+          border: 2px solid #31545b;
+          border-radius: 14px;
+          overflow: hidden;
+          background: #31545b;
+          box-shadow: 0 18px 50px #0006;
+        }
+        .s5-hud > div {
+          display: grid;
+          align-content: center;
+          gap: 4px;
+          padding: 0 22px;
+          background: linear-gradient(160deg, #142c36, #0f1f29);
+        }
+        .s5-hud small {
+          font: 700 18px "JetBrains Mono", monospace;
+          letter-spacing: 0.14em;
+          color: #819ca3;
+        }
+        .s5-hud strong {
+          font: 700 40px "JetBrains Mono", monospace;
+          letter-spacing: -0.03em;
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+        }
+        .s5-hud .ttl strong {
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          font-size: 40px;
+          letter-spacing: -0.02em;
+        }
+        .s5-hud .ttl strong em {
+          font-style: normal;
+          color: #70e6c9;
+        }
+        #s5-ign {
+          color: #f6d78c;
+          text-shadow: 0 0 18px #e3b96c55;
+        }
+        #s5-chainv {
+          color: #fb7f91;
+        }
+        #s5-chainv,
+        #s5-ign {
+          transform-origin: 0 50%;
+        }
+        .s5-hud em.sub {
+          font: 700 18px "JetBrains Mono", monospace;
+          font-style: normal;
+          color: #9fb8bb;
+          white-space: nowrap;
+        }
+        .s5-axis {
+          position: absolute;
+          left: 1310px;
+          top: 0;
+          width: 170px;
+          height: 1080px;
+        }
+        .s5-lab {
+          position: absolute;
+          right: 0;
+          width: 160px;
+          height: 36px;
+          margin-top: -18px;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          padding-right: 10px;
+          font: 700 22px "JetBrains Mono", monospace;
+          color: #97afb5;
+        }
+        .s5-map {
+          position: absolute;
+          left: 1500px;
+          top: 160px;
+          width: 360px;
+          height: 850px;
+          border-left: 2px solid #29404b;
+        }
+        .s5-map-title {
+          position: absolute;
+          left: 16px;
+          top: 6px;
+          font: 700 18px "JetBrains Mono", monospace;
+          letter-spacing: 0.12em;
+          color: #69818a;
+        }
+        .s5-bar {
+          position: absolute;
+          left: 0;
+          height: 24px;
+          margin-top: -12px;
+          border-radius: 0 5px 5px 0;
+          transform-origin: 0 50%;
+        }
+        .s5-bar .hl {
+          position: absolute;
+          inset: -4px -4px -4px 0;
+          border: 3px solid #70e6c9;
+          border-radius: 0 7px 7px 0;
+          opacity: 0;
+        }
+        .s5-barlab {
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 30px;
+          margin-top: -44px;
+          font: 700 22px "JetBrains Mono", monospace;
+          color: #f6d78c;
+          white-space: nowrap;
+          opacity: 0;
+        }
+        .s5-pricetag {
+          position: absolute;
+          left: 1316px;
+          top: 0;
+          width: 168px;
+          height: 42px;
+          margin-top: -21px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          background: #70e6c9;
+          color: #08231f;
+          font: 700 23px "JetBrains Mono", monospace;
+          box-shadow: 0 0 30px #70e6c988;
+        }
+        #s5-toasts {
+          position: absolute;
+          left: 100px;
+          top: 170px;
+          width: 760px;
+        }
+        .s5-toast {
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 0 22px;
+          border-radius: 10px;
+          background: #3a1822f2;
+          border: 2px solid #fb7f91;
+          font-size: 28px;
+          font-weight: 900;
+          color: #ffd0d7;
+          white-space: nowrap;
+          box-shadow: 0 10px 30px #0008;
+          opacity: 0;
+        }
+        .s5-toast b {
+          font: 700 26px "JetBrains Mono", monospace;
+          color: #f6d78c;
+        }
+        .s5-toast i {
+          font-style: normal;
+          font-size: 22px;
+          padding: 2px 10px;
+          border-radius: 5px;
+          background: #f2c575;
+          color: #1d1606;
+        }
+        #s5-mult {
+          position: absolute;
+          left: 880px;
+          top: 360px;
+          width: 300px;
+          text-align: right;
+          font: 700 150px "JetBrains Mono", monospace;
+          color: #f6d78c;
+          text-shadow: 0 0 40px #f2c575aa;
+          opacity: 0;
+        }
+        #s5-mega {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+        }
+        #s5-mega small {
+          font: 700 34px "JetBrains Mono", monospace;
+          letter-spacing: 0.4em;
+          color: #fff3d6;
+        }
+        #s5-mega strong {
+          font-size: 240px;
+          font-weight: 900;
+          line-height: 1;
+          letter-spacing: -0.03em;
+          color: #f6d78c;
+          text-shadow: 0 0 80px #f2c575, 0 0 20px #fff3d6;
+        }
+        .s5-order {
+          position: absolute;
+          left: 1540px;
+          top: 950px;
+          width: 320px;
+          height: 80px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          border-radius: 10px;
+          font-size: 32px;
+          font-weight: 900;
+        }
+        #s5-buy {
+          background: #1f6a58;
+          border: 2px solid #70e6c9;
+          color: #e7fff7;
+        }
+        #s5-close {
+          background: #4a1d2a;
+          border: 2px solid #fb7f91;
+          color: #ffe3e8;
+          opacity: 0;
+        }
+        .s5-order .hl {
+          position: absolute;
+          inset: -2px;
+          border-radius: 10px;
+          background: #ffffff;
+          opacity: 0;
+        }
+        .s5-order span,
+        .s5-order kbd {
+          position: relative;
+        }
+        .s5-order kbd {
+          font: 700 18px "JetBrains Mono", monospace;
+          border: 2px solid #ffffff55;
+          border-radius: 4px;
+          padding: 0 6px;
+        }
+        #s5-intro {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: radial-gradient(ellipse at center, #08121bee 30%, #08121bb0 80%);
+        }
+        #s5-intro .n {
+          font: 700 160px "JetBrains Mono", monospace;
+          line-height: 1;
+          color: #08121b;
+          -webkit-text-stroke: 3px #f6d78c;
+        }
+        #s5-intro .t {
+          font-size: 170px;
+          font-weight: 900;
+          letter-spacing: -0.03em;
+          line-height: 1.1;
+          color: #fff3d6;
+          text-shadow: 0 0 60px #f2c57566;
+        }
+        #s5-intro .s {
+          margin-top: 10px;
+          font-size: 40px;
+          font-weight: 700;
+          color: #a9c1bd;
+        }
+        #s5-result {
+          position: absolute;
+          left: 100px;
+          top: 330px;
+          width: 1080px;
+          padding: 34px 40px;
+          border-radius: 18px;
+          border: 3px solid #70e6c9;
+          background: #0b1d22f2;
+          box-shadow: 0 0 80px #70e6c955, 0 30px 80px #000a;
+          opacity: 0;
+        }
+        #s5-result small {
+          font: 700 22px "JetBrains Mono", monospace;
+          letter-spacing: 0.16em;
+          color: #97afb5;
+        }
+        #s5-pnl {
+          display: block;
+          margin-top: 6px;
+          font: 700 110px "JetBrains Mono", monospace;
+          letter-spacing: -0.04em;
+          color: #70e6c9;
+          text-shadow: 0 0 40px #70e6c988;
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+        }
+        #s5-pct {
+          display: block;
+          font: 700 44px "JetBrains Mono", monospace;
+          color: #b6ffe6;
+        }
+        #s5-grade {
+          position: absolute;
+          right: 40px;
+          top: 40px;
+          width: 170px;
+          height: 170px;
+          display: grid;
+          place-items: center;
+          border-radius: 50%;
+          border: 6px solid #f6d78c;
+          background: #1d1606;
+          box-shadow: 0 0 60px #f2c575aa;
+          text-align: center;
+          opacity: 0;
+        }
+        #s5-grade b {
+          display: block;
+          font: 700 96px "Archivo Black", sans-serif;
+          line-height: 0.9;
+          color: #f6d78c;
+        }
+        #s5-grade i {
+          display: block;
+          font: 700 26px "JetBrains Mono", monospace;
+          font-style: normal;
+          color: #fff3d6;
+        }
+        #s5-slam {
+          position: absolute;
+          left: 100px;
+          top: 760px;
+          width: 1300px;
+          font-size: 104px;
+          font-weight: 900;
+          letter-spacing: -0.03em;
+          line-height: 1.1;
+          white-space: nowrap;
+          opacity: 0;
+        }
+        #s5-slam em {
+          font-style: normal;
+          color: #f6d78c;
+        }
+        .curpos {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 46px;
+          height: 60px;
+        }
+        #s5-cursor {
+          display: block;
+          transform-origin: 4px 4px;
+          width: 46px;
+          height: 60px;
+          filter: drop-shadow(0 0 14px #70e6c9aa) drop-shadow(0 6px 10px #000c);
+        }
+        .s5-ripple {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 120px;
+          height: 120px;
+          margin: -60px 0 0 -60px;
+          border-radius: 50%;
+          border: 4px solid #70e6c9;
+          opacity: 0;
+        }
+        #s5-flash {
+          position: absolute;
+          inset: 0;
+          background: #fff3d6;
+          opacity: 0;
+        }
+      </style>
+
+      <div id="root" data-composition-id="s5-chain" data-width="1920" data-height="1080">
+        <div
+          id="s5-cues"
+          hidden
+          data-cues='{"hit":[0],"hover":[1.4,1.55,1.7,1.85,2.15,7.0],"click":[2.35,7.2],"riser":[[2.35,3.65]],"boom":[[3.0,1],[4.0,2],[5.0,3],[6.0,4]],"mega":[6.0],"cash":[7.35],"grade":[7.9],"slam":[8.6],"glitch":[10.5]}'
+        ></div>
+        <div id="s5-stage">
+        <div id="s5-cam">
+          <canvas id="s5-canvas" width="1920" height="1080"></canvas>
+          <div class="s5-axis" id="s5-axis"></div>
+          <div class="s5-map" id="s5-map"><div class="s5-map-title">LIQUIDATION MAP · 估算</div></div>
+          <div class="s5-pricetag" id="s5-pricetag" data-layout-allow-overlap>100,860.00</div>
+          <div class="s5-hud" id="s5-hud">
+            <div class="ttl"><small>PLAY 03 / 03</small><strong>獵取<em>流動性</em></strong></div>
+            <div><small>引爆爆倉</small><strong id="s5-ign">$0</strong><em class="sub" id="s5-ignbtc">0 BTC</em></div>
+            <div><small>最大連環</small><strong id="s5-chainv">×0</strong></div>
+            <div><small>權益 USDT</small><strong id="s5-eq">500,000,000</strong><em class="sub" id="s5-eqp">+$0 · +0.00%</em></div>
+          </div>
+          <div id="s5-toasts"></div>
+          <div id="s5-mult">×1</div>
+          <div class="s5-order" id="s5-buy"><span class="hl"></span><span>▲ 市價買入</span><kbd>5,000</kbd></div>
+          <div class="s5-order" id="s5-close"><span class="hl"></span><span>平倉</span><kbd>F</kbd></div>
+        </div>
+        </div>
+        <div id="s5-mega" data-layout-allow-overlap><small data-layout-allow-overlap>CHAIN LIQUIDATION</small><strong data-layout-allow-overlap>連環 ×4</strong></div>
+        <div id="s5-result">
+          <small>平倉 · 本局報酬</small>
+          <span id="s5-pnl">+$0</span>
+          <span id="s5-pct">+0.00%</span>
+          <div id="s5-grade"><div><b>S</b><i>338</i></div></div>
+        </div>
+        <div id="s5-slam">燃料，來自<em>別人的槓桿。</em></div>
+        <div id="s5-intro">
+          <span class="n" data-layout-allow-overlap>03</span>
+          <span class="t" data-layout-allow-overlap>獵取流動性</span>
+          <span class="s" data-layout-allow-overlap>推穿亮帶，引爆連環強平。</span>
+        </div>
+        <div class="s5-ripple" id="s5-ripple"></div>
+        <div id="s5-curpos" class="curpos">
+          <svg id="s5-cursor" viewBox="0 0 46 60" aria-hidden="true">
+            <path d="M3 3 L3 49 L15 38 L23 57 L32 53 L24 35 L41 35 Z" fill="#f4fffb" stroke="#08121b" stroke-width="3" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div id="s5-flash"></div>
+      </div>
+
+      <script>
+        (() => {
+          const DUR = 11;
+          const cues = JSON.parse(document.getElementById("s5-cues").dataset.cues);
+          const ez = {
+            lin: (x) => x,
+            out3: (x) => 1 - Math.pow(1 - x, 3),
+            out5: (x) => 1 - Math.pow(1 - x, 5),
+            in3: (x) => x * x * x,
+            inout: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+          };
+          const keys = (t, ks) => {
+            if (t <= ks[0][0]) return ks[0][1];
+            for (let i = 1; i < ks.length; i++) {
+              if (t <= ks[i][0]) {
+                const [t0, v0] = ks[i - 1];
+                const [t1, v1, e] = ks[i];
+                return v0 + (v1 - v0) * ez[e || "inout"]((t - t0) / (t1 - t0));
+              }
+            }
+            return ks[ks.length - 1][1];
+          };
+          const pk = (t, t0, d) => (t < t0 ? 0 : Math.max(0, 1 - (t - t0) / d) ** 2);
+          const win = (t, a, b, fi = 0.2, fo = 0.2) => (t < a || t > b ? 0 : Math.min(1, (t - a) / fi, (b - t) / fo));
+          const hash = (n) => {
+            const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+            return x - Math.floor(x);
+          };
+          const fmt = (n, d = 0) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+          const $ = (id) => document.getElementById(id);
+
+          const P0 = 100650, P1 = 102550, Y0 = 1000, Y1 = 170;
+          const yOf = (p) => Y0 - ((p - P0) * (Y0 - Y1)) / (P1 - P0);
+          const heat = (t, a) => {
+            const c = [92 + (255 - 92) * t, 64 + (214 - 64) * t, 170 + (102 - 170) * t].map(Math.round);
+            return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
+          };
+          const BANDS = [
+            { p: 101050, s: 0.5, btc: 1240 },
+            { p: 101380, s: 0.62, btc: 2100 },
+            { p: 101760, s: 0.8, btc: 3400 },
+            { p: 102300, s: 1.0, btc: 5800 },
+          ];
+          const DECOYS = [
+            { p: 100760, s: 0.22 },
+            { p: 101210, s: 0.18 },
+            { p: 101580, s: 0.26 },
+            { p: 102050, s: 0.2 },
+            { p: 102460, s: 0.3 },
+          ];
+          const BOOM = cues.boom.map((b) => b[0]);
+          BANDS.forEach((b, i) => (b.t = BOOM[i]));
+
+          // axis labels
+          const axis = $("s5-axis");
+          for (let p = 100800; p <= 102400; p += 200) {
+            const d = document.createElement("div");
+            d.className = "s5-lab";
+            d.style.top = yOf(p) + "px";
+            d.textContent = fmt(p);
+            axis.appendChild(d);
+          }
+          // liquidation map bars
+          const map = $("s5-map");
+          const bars = BANDS.map((b) => {
+            const d = document.createElement("div");
+            d.className = "s5-bar";
+            d.style.top = yOf(b.p) - 160 + "px";
+            d.style.width = 60 + b.s * 260 + "px";
+            d.style.background = heat(b.s, 0.95);
+            d.innerHTML = `<span class="hl"></span><span class="s5-barlab">${fmt(b.btc)} BTC</span>`;
+            map.appendChild(d);
+            return d;
+          });
+          DECOYS.forEach((b) => {
+            const d = document.createElement("div");
+            d.className = "s5-bar";
+            d.style.top = yOf(b.p) - 160 + "px";
+            d.style.width = 30 + b.s * 200 + "px";
+            d.style.background = heat(b.s, 0.7);
+            map.appendChild(d);
+          });
+          // toasts
+          const th = $("s5-toasts");
+          const toasts = BANDS.map((b, i) => {
+            const d = document.createElement("div");
+            d.className = "s5-toast";
+            d.innerHTML = `💥 空單強平 <b>${fmt(b.btc)} BTC</b> @ ${fmt(b.p)} <i>${i === 0 ? "你引爆" : "連環 ×" + (i + 1)}</i>`;
+            th.appendChild(d);
+            return d;
+          });
+
+          // candles: history
+          const candles = [];
+          {
+            const raw = [];
+            let v = 100760;
+            for (let i = 0; i < 42; i++) {
+              v += 2 + (hash(i * 2.3 + 8) - 0.5) * 50;
+              raw.push(v);
+            }
+            let prev = 100760;
+            raw.forEach((r, i) => {
+              const close = r + ((100860 - raw[41]) * (i + 1)) / 42;
+              const open = prev;
+              candles.push({ open, close, hi: Math.max(open, close) + hash(i * 5.7 + 2) * 22, lo: Math.min(open, close) - hash(i * 9.3 + 2) * 22 });
+              prev = close;
+            });
+          }
+          const LX = 80 + 42 * 27;
+          const price = (t) =>
+            keys(t, [
+              [0, 100860],
+              [2.4, 100860],
+              [3.0, 101050, "in3"],
+              [4.0, 101380, "out3"],
+              [5.0, 101760, "out3"],
+              [6.0, 102300, "out3"],
+              [6.5, 102420, "out3"],
+              [7.2, 102330, "inout"],
+              [7.6, 102280, "out3"],
+              [11, 102300, "inout"],
+            ]) + (t < 2.4 ? Math.sin(t * 6.3) * 8 : 0);
+
+          const ctx = $("s5-canvas").getContext("2d");
+          const draw = (t) => {
+            ctx.clearRect(0, 0, 1920, 1080);
+            ctx.strokeStyle = "rgba(151,175,181,0.08)";
+            ctx.lineWidth = 2;
+            for (let p = 100800; p <= 102400; p += 200) {
+              ctx.beginPath();
+              ctx.moveTo(80, yOf(p));
+              ctx.lineTo(1310, yOf(p));
+              ctx.stroke();
+            }
+            const all = [...DECOYS.map((d) => ({ ...d, t: 99 })), ...BANDS];
+            all.forEach((b) => {
+              const bt = t - b.t;
+              let a = 0.1 + b.s * 0.45 + (b.btc ? 0.08 * Math.sin(t * 7 + b.p) : 0);
+              let h = 14 + b.s * 20;
+              if (bt > 0) {
+                a = Math.max(0, 1 - bt * 1.8);
+                h += bt * 200;
+              }
+              if (a <= 0) return;
+              ctx.save();
+              if (b.btc) {
+                ctx.shadowColor = heat(b.s, 0.9);
+                ctx.shadowBlur = 36;
+              }
+              ctx.fillStyle = bt > 0 ? `rgba(255,243,214,${a.toFixed(3)})` : heat(b.s, a);
+              ctx.fillRect(80, yOf(b.p) - h / 2, 1780, h);
+              ctx.restore();
+            });
+            const cw = 16;
+            candles.forEach((c, i) => {
+              const x = 80 + i * 27;
+              ctx.strokeStyle = ctx.fillStyle = c.close >= c.open ? "#70e6c9" : "#fb7f91";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(x + cw / 2, yOf(c.hi));
+              ctx.lineTo(x + cw / 2, yOf(c.lo));
+              ctx.stroke();
+              const y1 = yOf(Math.max(c.open, c.close));
+              ctx.fillRect(x, y1, cw, Math.max(3, yOf(Math.min(c.open, c.close)) - y1));
+            });
+            const p = price(t);
+            const hi = Math.max(100860, keys(t, [[0, 100866], [6.5, 102430, "lin"]]), p);
+            ctx.save();
+            ctx.strokeStyle = ctx.fillStyle = "#70e6c9";
+            if (t > 2.4) {
+              ctx.shadowColor = "#70e6c9";
+              ctx.shadowBlur = 40;
+            }
+            ctx.beginPath();
+            ctx.moveTo(LX + cw / 2, yOf(hi));
+            ctx.lineTo(LX + cw / 2, yOf(100850));
+            ctx.stroke();
+            const top = yOf(Math.max(100860, p));
+            ctx.fillRect(LX - 4, top, cw + 8, Math.max(3, yOf(100860) - top));
+            ctx.restore();
+            ctx.setLineDash([10, 8]);
+            ctx.strokeStyle = "rgba(112,230,201,0.7)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(80, yOf(p));
+            ctx.lineTo(1312, yOf(p));
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // shockwaves + debris per boom
+            BANDS.forEach((b, i) => {
+              const bt = t - b.t;
+              if (bt < 0 || bt > 1.2) return;
+              const cy = yOf(b.p);
+              const power = 1 + i * 0.5;
+              ctx.save();
+              ctx.strokeStyle = `rgba(255,243,214,${Math.max(0, 1 - bt / 0.7).toFixed(3)})`;
+              ctx.lineWidth = 6 * power * (1 - bt);
+              ctx.beginPath();
+              ctx.ellipse(LX + 8, cy, 40 + bt * 900 * power, 20 + bt * 380 * power, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              for (let k = 0; k < 60 + i * 30; k++) {
+                const ang = hash(k * 1.7 + i * 31) * Math.PI * 2;
+                const sp = (260 + hash(k * 2.9 + i) * 900) * power;
+                const r = sp * Math.min(bt, 0.7) * (1 - bt * 0.3);
+                const px = LX + 8 + Math.cos(ang) * r;
+                const py = cy + Math.sin(ang) * r * 0.55 + bt * bt * 300;
+                const al = Math.max(0, 1 - bt / 1.1);
+                ctx.fillStyle = `rgba(255,${170 + Math.round(hash(k + i) * 80)},${80 + Math.round(hash(k * 3) * 60)},${al.toFixed(3)})`;
+                const sz = 3 + hash(k * 7 + i) * 6;
+                ctx.fillRect(px, py, sz, sz);
+              }
+              ctx.restore();
+            });
+          };
+
+          const qBuy = [1700, 990];
+          const curKeys = {
+            x: [[0, 1980], [1.1, 1980], [1.4, 1700, "out3"], [1.85, 1700], [2.15, qBuy[0], "out3"], [6.8, qBuy[0]], [7.0, 1700, "out3"], [11, 1720]],
+            y: [[0, 1100], [1.1, 1100], [1.4, yOf(BANDS[0].p), "out3"], [1.55, yOf(BANDS[1].p)], [1.7, yOf(BANDS[2].p)], [1.85, yOf(BANDS[3].p)], [2.15, qBuy[1], "inout"], [6.8, qBuy[1]], [7.0, 990, "out3"], [11, 1000]],
+          };
+          const shakeAt = (t) => {
+            let s = 0;
+            BANDS.forEach((b, i) => (s = Math.max(s, pk(t, b.t, 0.45 + i * 0.1) * (14 + i * 12 + (i === 3 ? 26 : 0)))));
+            return s;
+          };
+          const ignAt = (t) => {
+            let usd = 0, btc = 0;
+            BANDS.forEach((b) => {
+              const k = t < b.t ? 0 : ez.out3(Math.min(1, (t - b.t) / 0.6));
+              usd += b.btc * b.p * k;
+              btc += b.btc * k;
+            });
+            return { usd, btc };
+          };
+          const render = (t) => {
+            draw(t);
+            const p = price(t);
+            $("s5-pricetag").style.transform = `translateY(${yOf(p)}px)`;
+            $("s5-pricetag").textContent = fmt(p, 2);
+            // camera
+            const s = shakeAt(t);
+            const step = Math.floor(t * 30);
+            const punch = BANDS.reduce((m, b, i) => Math.max(m, pk(t, b.t, 0.5) * (0.02 + i * 0.015)), 0);
+            const zoom = keys(t, [[0, 1.0], [1.3, 1.0], [2.4, 1.04, "inout"], [6.0, 1.1, "in3"], [6.6, 1.0, "out3"]]);
+            const rx = keys(t, [[0, 0], [1.2, 0], [2.4, 18, "inout"], [6.0, 9, "inout"], [6.6, 5, "out3"], [7.4, 0, "inout"]]);
+            const ry = keys(t, [[0, 0], [1.2, 0], [2.4, -16, "inout"], [6.0, 12, "inout"], [6.6, 6, "out3"], [7.4, 0, "inout"]]);
+            $("s5-cam").style.transform = `translate(${(hash(step) - 0.5) * s}px, ${(hash(step + 99) - 0.5) * s}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${zoom + punch})`;
+            // cursor
+            $("s5-curpos").style.transform = `translate(${keys(t, curKeys.x) - 4}px, ${keys(t, curKeys.y) - 4}px)`;
+            let press = 0;
+            cues.click.forEach((c) => (press = Math.max(press, pk(t, c, 0.22))));
+            $("s5-cursor").style.transform = `scale(${1 - 0.2 * press})`;
+            const lc = cues.click.filter((c) => t >= c).pop();
+            const rp = lc === undefined ? 1 : Math.min(1, (t - lc) / 0.5);
+            const rpos = lc === cues.click[0] ? qBuy : [1700, 990];
+            $("s5-ripple").style.opacity = 1 - rp;
+            $("s5-ripple").style.borderColor = lc === cues.click[1] ? "#fb7f91" : "#70e6c9";
+            $("s5-ripple").style.transform = `translate(${rpos[0]}px, ${rpos[1]}px) scale(${0.2 + 2.2 * ez.out3(rp)})`;
+            // map bars: hover highlight, label reveal, burn-down on boom
+            bars.forEach((d, i) => {
+              const h = pk(t, cues.hover[i], 0.5);
+              const b = BANDS[i];
+              const gone = t < b.t ? 1 : Math.max(0, 1 - (t - b.t) / 0.4);
+              d.querySelector(".hl").style.opacity = h;
+              d.querySelector(".s5-barlab").style.opacity = t >= cues.hover[i] && t < b.t + 0.3 ? 1 : 0;
+              d.style.transform = `scaleX(${gone * (1 + 0.15 * h)}) scaleY(${1 + 0.6 * h + 1.5 * pk(t, b.t, 0.3)})`;
+              d.style.filter = `brightness(${1 + 1.5 * pk(t, b.t, 0.4)})`;
+            });
+            // order buttons
+            const bh = t >= cues.hover[4] && t < cues.click[0] ? 0.3 : 0.8 * pk(t, cues.click[0], 0.6);
+            document.querySelector("#s5-buy .hl").style.opacity = bh;
+            $("s5-buy").style.transform = `scale(${1 - 0.07 * pk(t, cues.click[0], 0.3)})`;
+            $("s5-buy").style.opacity = t < 6.6 ? 1 : Math.max(0, 1 - (t - 6.6) / 0.2);
+            $("s5-close").style.opacity = t < 6.6 ? 0 : Math.min(1, (t - 6.6) / 0.2);
+            const ch = t >= cues.hover[5] && t < cues.click[1] ? 0.3 : 0.8 * pk(t, cues.click[1], 0.6);
+            document.querySelector("#s5-close .hl").style.opacity = ch;
+            $("s5-close").style.transform = `scale(${1 - 0.07 * pk(t, cues.click[1], 0.3)})`;
+            // HUD numbers
+            const ig = ignAt(t);
+            $("s5-ign").textContent = "$" + fmt(Math.round(ig.usd / 10000) * 10000);
+            $("s5-ignbtc").textContent = `${fmt(Math.round(ig.btc))} BTC 引爆`;
+            const nChain = BANDS.filter((b) => t >= b.t).length;
+            $("s5-chainv").textContent = "×" + nChain;
+            $("s5-chainv").style.transform = `scale(${1 + 0.5 * BANDS.reduce((m, b) => Math.max(m, pk(t, b.t, 0.4)), 0)})`;
+            $("s5-ign").style.transform = `scale(${1 + 0.12 * BANDS.reduce((m, b) => Math.max(m, pk(t, b.t, 0.4)), 0)})`;
+            const eq = keys(t, [[0, 0], [2.4, 0], [6.5, 19200000, "lin"], [7.2, 17500000, "inout"]]);
+            $("s5-eq").textContent = fmt(Math.round(500000000 + eq));
+            $("s5-eqp").textContent = `+$${fmt(Math.round(eq))} · +${((eq / 500000000) * 100).toFixed(2)}%`;
+            $("s5-eq").style.color = eq > 0 ? "#70e6c9" : "#e8f3ef";
+            // toasts stack: newest on top
+            toasts.forEach((d, i) => {
+              const b = BANDS[i];
+              if (t < b.t) {
+                d.style.opacity = 0;
+                return;
+              }
+              const newer = BANDS.filter((bb) => t >= bb.t).length - 1 - i;
+              const inK = ez.out3(Math.min(1, (t - b.t) / 0.25));
+              const fade = t > 6.7 ? Math.max(0, 1 - (t - 6.7) / 0.3) : 1;
+              d.style.opacity = inK * fade * (1 - newer * 0.18);
+              d.style.transform = `perspective(1200px) translate3d(${(1 - inK) * -80}px, ${newer * 76}px, ${(1 - inK) * -700}px) rotateY(${(1 - inK) * -35}deg) scale(${1 - newer * 0.04})`;
+              d.style.transformOrigin = "0 50%";
+            });
+            // multiplier beside the candle
+            const mi = BANDS.filter((b) => t >= b.t).length;
+            const lastB = mi ? BANDS[mi - 1] : null;
+            if (lastB && mi < 4) {
+              const k = Math.min(1, (t - lastB.t) / 0.2);
+              $("s5-mult").textContent = "×" + mi;
+              const fly = ez.in3(Math.min(1, Math.max(0, (t - lastB.t - 0.35) / 0.5)));
+              $("s5-mult").style.opacity = k * (1 - fly);
+              $("s5-mult").style.transform = `translateY(${yOf(lastB.p) - 460 - fly * 120}px) translateX(${-fly * 260}px) scale(${1 + 0.8 * (1 - ez.out3(k)) + 3.2 * fly})`;
+              $("s5-mult").style.filter = `blur(${fly * 10}px)`;
+            } else $("s5-mult").style.opacity = 0;
+            // mega
+            const mg = cues.mega[0];
+            const mk = win(t, mg, 6.95, 0.08, 0.4);
+            $("s5-mega").style.opacity = mk;
+            const mIn = ez.out5(Math.min(1, Math.max(0, (t - mg) / 0.3)));
+            const mOut = ez.in3(Math.min(1, Math.max(0, (t - 6.55) / 0.4)));
+            $("s5-mega").style.transform = `scale(${0.25 + 0.95 * mIn + 4 * mOut}) translateX(${(hash(Math.floor(t * 20)) - 0.5) * 30 * pk(t, mg, 0.4)}px)`;
+            $("s5-mega").style.filter = `blur(${mOut * 14}px)`;
+            $("s5-flash").style.opacity = Math.max(0.9 * pk(t, mg, 0.35), ...BANDS.slice(0, 3).map((b) => 0.35 * pk(t, b.t, 0.2)), keys(t, [[10.6, 0], [11, 0.9, "in3"]]));
+            // result
+            const r = win(t, 7.25, 10.4, 0.25, 0.3);
+            $("s5-result").style.opacity = r;
+            $("s5-result").style.transform = `translateY(${(1 - ez.out3(Math.min(1, Math.max(0, (t - 7.25) / 0.3)))) * 60}px)`;
+            const pn = t < 7.3 ? 0 : ez.out3(Math.min(1, (t - 7.3) / 0.7)) * 17500000;
+            $("s5-pnl").textContent = "+$" + fmt(Math.round(pn / 1000) * 1000);
+            $("s5-pct").textContent = `+${((pn / 500000000) * 100).toFixed(2)}% · 最大連環 ×4`;
+            const g = t < cues.grade[0] ? 0 : Math.min(1, (t - cues.grade[0]) / 0.22);
+            $("s5-grade").style.opacity = g;
+            $("s5-grade").style.transform = `scale(${1 + 1.4 * (1 - ez.out3(g))}) rotate(${(1 - g) * -30}deg)`;
+            // slam
+            const sl = win(t, cues.slam[0], 10.45, 0.2, 0.2);
+            $("s5-slam").style.opacity = sl;
+            $("s5-slam").style.transform = `translateX(${(1 - ez.out5(Math.min(1, Math.max(0, (t - cues.slam[0]) / 0.35)))) * -300}px)`;
+            // intro card
+            const it = t < 1.0 ? 1 : Math.max(0, 1 - (t - 1.0) / 0.3);
+            $("s5-intro").style.opacity = it;
+            $("s5-intro").style.transform = `scale(${t < 1.0 ? 1 + 0.25 * (1 - ez.out5(Math.min(1, t / 0.4))) : 1 + (t - 1.0) * 0.6})`;
+          };
+          const drive = { t: 0 };
+          render(0);
+          const tl = gsap.timeline({ paused: true });
+          tl.to(drive, { t: DUR, duration: DUR, ease: "none", onUpdate: () => render(drive.t) }, 0);
+          window.__timelines["s5-chain"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

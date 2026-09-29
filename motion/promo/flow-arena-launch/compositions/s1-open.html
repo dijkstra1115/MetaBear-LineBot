@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="s1-open-template">
+      <style>
+        #s1-open-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(ellipse at 70% 60%, #10283a 0%, #08121b 60%);
+        }
+        #s1-world { position: absolute; inset: 0; transform-origin: 1500px 560px; }
+        .s1-grid {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: rgba(151, 175, 181, 0.14);
+        }
+        .s1-axis {
+          position: absolute;
+          right: 70px;
+          font: 400 20px var(--mono);
+          color: rgba(151, 175, 181, 0.55);
+          font-variant-numeric: tabular-nums;
+        }
+        .s1-band {
+          position: absolute;
+          left: 0;
+          width: 1920px;
+          transform-origin: 100% 50%;
+        }
+        .s1-band .core {
+          position: absolute;
+          inset: 0;
+          border-radius: 3px;
+          background: linear-gradient(90deg, rgba(92, 64, 170, 0) 0%, rgba(92, 64, 170, 0.55) 30%, rgba(242, 197, 117, 0.95) 78%, #fff4d6 100%);
+        }
+        .s1-band .glow {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: -18px;
+          bottom: -18px;
+          filter: blur(16px);
+          background: linear-gradient(90deg, rgba(92, 64, 170, 0) 10%, rgba(242, 197, 117, 0.45) 80%, rgba(255, 240, 200, 0.7) 100%);
+        }
+        .s1-band .lbl {
+          position: absolute;
+          right: 240px;
+          top: -38px;
+          font: 700 21px var(--mono);
+          letter-spacing: 0.06em;
+          color: var(--gold);
+          white-space: nowrap;
+        }
+        .s1-band.long .core { background: linear-gradient(90deg, rgba(92, 64, 170, 0) 0%, rgba(92, 64, 170, 0.5) 30%, rgba(251, 127, 145, 0.9) 80%, #ffe2e7 100%); }
+        .s1-band.long .glow { background: linear-gradient(90deg, rgba(92, 64, 170, 0) 10%, rgba(251, 127, 145, 0.4) 80%, rgba(255, 220, 226, 0.6) 100%); }
+        .s1-band.long .lbl { color: var(--coral); top: auto; bottom: -38px; }
+        #s1-svg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; }
+        #s1-head {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 22px;
+          height: 22px;
+          margin: -11px 0 0 -11px;
+          border-radius: 50%;
+          background: #eafff8;
+          box-shadow: 0 0 20px 6px rgba(112, 230, 201, 0.8), 0 0 60px 20px rgba(112, 230, 201, 0.25);
+        }
+        #s1-tag {
+          position: absolute;
+          left: 0;
+          top: 0;
+          margin-top: -24px;
+          padding: 6px 14px;
+          border-radius: 6px;
+          background: var(--mint);
+          color: #06231d;
+          font: 700 26px var(--mono);
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        #s1-copy {
+          position: absolute;
+          left: 120px;
+          top: 130px;
+          width: 1500px;
+        }
+        .s1-line {
+          overflow: hidden;
+          padding-bottom: 10px;
+        }
+        .s1-line span {
+          display: inline-block;
+          font: 400 96px/1.05 var(--display);
+          letter-spacing: -0.03em;
+          color: var(--ink);
+          margin-right: 26px;
+        }
+        .s1-line span.hot { color: var(--gold); text-shadow: 0 0 40px rgba(246, 215, 140, 0.45); }
+        #s1-kicker {
+          font: 700 22px var(--mono);
+          letter-spacing: 0.3em;
+          color: var(--mint);
+          margin-bottom: 28px;
+        }
+      </style>
+
+      <div data-hf-id="hf-2x6k" id="s1-open-root" data-composition-id="s1-open" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-h37y" id="s1-world">
+          <div data-hf-id="hf-ipja" id="s1-grid-layer"></div>
+          <div data-hf-id="hf-kyym" id="s1-bands"></div>
+          <svg data-hf-id="hf-dn21" id="s1-svg" viewBox="0 0 1920 1080">
+            <defs data-hf-id="hf-mh0t">
+              <filter data-hf-id="hf-lvm7" id="s1-blur" x="-10%" y="-50%" width="120%" height="200%"><fegaussianblur data-hf-id="hf-4y1c" stdDeviation="6" /></filter>
+            </defs>
+            <path data-hf-id="hf-ler9" id="s1-path-glow" fill="none" stroke="#70e6c9" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.45" filter="url(#s1-blur)" />
+            <path data-hf-id="hf-zuon" id="s1-path" fill="none" stroke="#70e6c9" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <div data-hf-id="hf-ihdk" id="s1-head"></div>
+          <div data-hf-id="hf-elpl" id="s1-tag">100,000.00</div>
+        </div>
+        <div data-hf-id="hf-5js1" id="s1-copy">
+          <div data-hf-id="hf-02l0" id="s1-kicker">// BTC-PERP · LIQUIDATION MAP</div>
+          <div data-hf-id="hf-q92z" class="s1-line" id="s1-l1"><span data-hf-id="hf-uhsw">Every</span><span data-hf-id="hf-n6o1">bright</span><span data-hf-id="hf-e1nf">line</span></div>
+          <div data-hf-id="hf-fdlc" class="s1-line" id="s1-l2"><span data-hf-id="hf-k6nl">is</span><span data-hf-id="hf-7xrl">someone's</span></div>
+          <div data-hf-id="hf-g595" class="s1-line" id="s1-l3"><span data-hf-id="hf-a28j" class="hot">liquidation</span><span data-hf-id="hf-w1rj" class="hot">price.</span></div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 60 / 128;
+          const prand = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const root = document.getElementById("s1-open-root");
+          const q = (s) => root.querySelector(s);
+
+          // price grid + axis
+          const grid = q("#s1-grid-layer");
+          for (let i = 0; i < 9; i++) {
+            const y = 420 + i * 80;
+            const g = document.createElement("div");
+            g.className = "s1-grid"; g.setAttribute("data-layout-ignore", ""); g.style.top = y + "px"; grid.appendChild(g);
+            const a = document.createElement("div");
+            a.className = "s1-axis"; a.setAttribute("data-layout-ignore", ""); a.style.top = y - 30 + "px";
+            a.textContent = (101600 - i * 400).toLocaleString("en-US");
+            grid.appendChild(a);
+          }
+
+          // heat bands (y, thickness, label, side)
+          const bands = [
+            { y: 470, h: 10, l: "23 BTC · 25× SHORTS", s: "short" },
+            { y: 548, h: 5, l: "4.9 BTC · 10× SHORTS", s: "short" },
+            { y: 606, h: 14, l: "58 BTC · 20× SHORTS", s: "short" },
+            { y: 790, h: 8, l: "14 BTC · 50× LONGS", s: "long" },
+            { y: 858, h: 12, l: "31 BTC · 20× LONGS", s: "long" },
+            { y: 918, h: 6, l: "5.3 BTC · 10× LONGS", s: "long" },
+          ];
+          const bandWrap = q("#s1-bands");
+          const bandEls = bands.map((b) => {
+            const el = document.createElement("div");
+            el.className = "s1-band " + b.s;
+            el.style.top = b.y - b.h / 2 + "px";
+            el.style.height = b.h + "px";
+            el.innerHTML = `<div class="glow"></div><div class="core"></div><div class="lbl">${b.l}</div>`;
+            bandWrap.appendChild(el);
+            return el;
+          });
+
+          // price walk (seeded) — hovers between the long and short bands
+          const pts = [];
+          let y = 720;
+          for (let i = 0; i <= 120; i++) {
+            const x = 60 + i * 11.5;
+            y += (prand(i * 3.1) - 0.5) * 26 + (720 - y) * 0.08;
+            pts.push([x, y]);
+          }
+          const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+          const path = q("#s1-path"), glowP = q("#s1-path-glow");
+          path.setAttribute("d", d); glowP.setAttribute("d", d);
+          const LEN = path.getTotalLength();
+          [path, glowP].forEach((p) => { p.style.strokeDasharray = LEN; p.style.strokeDashoffset = LEN; });
+
+          const head = q("#s1-head"), tag = q("#s1-tag");
+          const prog = { p: 0 };
+          const place = () => {
+            const k = Math.min(pts.length - 1, prog.p * (pts.length - 1));
+            const i = Math.floor(k), f = k - i;
+            const a = pts[i], b = pts[Math.min(pts.length - 1, i + 1)];
+            const hx = a[0] + (b[0] - a[0]) * f, hy = a[1] + (b[1] - a[1]) * f;
+            gsap.set(head, { x: hx, y: hy });
+            gsap.set(tag, { x: hx + 26, y: hy });
+            const off = LEN * (1 - prog.p);
+            path.style.strokeDashoffset = off; glowP.style.strokeDashoffset = off;
+            const price = 101600 - ((hy - 420) / 80) * 400;
+            tag.textContent = price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          };
+
+          const tl = gsap.timeline({ paused: true });
+          tl.fromTo(prog, { p: 0 }, { p: 1, duration: 5.5, ease: "none", onUpdate: place }, 0);
+          tl.fromTo([head, tag], { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, 0.05);
+          tl.fromTo("#s1-grid-layer", { opacity: 0 }, { opacity: 1, duration: 1.2, ease: "power1.out" }, 0);
+
+          // bands bloom on the beat, right-to-left like fuses being laid
+          bandEls.forEach((el, i) => {
+            const t = B * (1 + i * 0.75);
+            tl.fromTo(el, { scaleX: 0, opacity: 0 }, { scaleX: 1, opacity: 1, duration: 0.55, ease: "expo.out" }, t);
+            tl.fromTo(el.querySelector(".lbl"), { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, t + 0.18);
+            // breathing shimmer
+            tl.fromTo(el.querySelector(".glow"), { opacity: 1 }, { opacity: 0.45, duration: B, ease: "sine.inOut", yoyo: true, repeat: 5 }, t + 0.55);
+          });
+
+          // copy: masked rise, word by word, three different attacks
+          tl.fromTo("#s1-kicker", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, 0.25);
+          tl.fromTo("#s1-l1 span", { yPercent: 110 }, { yPercent: 0, duration: 0.5, ease: "power4.out", stagger: 0.09 }, B * 2);
+          tl.fromTo("#s1-l2 span", { yPercent: 110 }, { yPercent: 0, duration: 0.5, ease: "circ.out", stagger: 0.09 }, B * 4);
+          tl.fromTo("#s1-l3 span", { yPercent: 110, scale: 1.15 }, { yPercent: 0, scale: 1, duration: 0.55, ease: "expo.out", stagger: 0.12 }, B * 6);
+
+          // last bar: camera leans into the hottest band; bands overheat before the drop
+          tl.fromTo("#s1-world", { scale: 1 }, { scale: 1.22, duration: B * 4, ease: "power2.in" }, B * 8);
+          tl.to(bandEls.map((e) => e.querySelector(".core")), { filter: "brightness(2.2)", duration: B * 4, ease: "power2.in" }, B * 8);
+          tl.to("#s1-copy", { x: -30, duration: B * 4, ease: "power1.in" }, B * 8);
+
+          window.__timelines["s1-open"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

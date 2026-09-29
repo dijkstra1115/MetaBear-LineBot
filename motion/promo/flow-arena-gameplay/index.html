@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>FLOW ARENA — gameplay reel</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Noto Sans TC Sub";
+        src: url("assets/fonts/noto-tc-900.woff2") format("woff2");
+        font-weight: 900;
+      }
+      @font-face {
+        font-family: "Noto Sans TC Sub";
+        src: url("assets/fonts/noto-tc-500.woff2") format("woff2");
+        font-weight: 500;
+      }
+      :root {
+        --bg: #08121b;
+        --panel: #101f2a;
+        --edge: #29404b;
+        --ink: #e8f3ef;
+        --muted: #97afb5;
+        --mint: #70e6c9;
+        --coral: #fb7f91;
+        --gold: #f6d78c;
+        --amber: #f2c575;
+        --violet: #5c40aa;
+        --display: "Archivo Black", "Arial Black", sans-serif;
+        --mono: "JetBrains Mono", "Courier New", monospace;
+        --tc: "Noto Sans TC Sub", "Microsoft JhengHei", sans-serif;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #08121b; }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--mono);
+      }
+      .scene-wrap { position: absolute; inset: 0; will-change: transform, opacity, filter; }
+      .scene-wrap > div { position: absolute; inset: 0; }
+      #w2, #w3, #w4, #w5, #w6, #w7, #w8 { opacity: 0; }
+
+      /* ---------- shared gameplay UI (used inside scenes) ---------- */
+      .kc-row { display: flex; align-items: center; gap: 22px; }
+      .kc {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 96px;
+        height: 96px;
+        border-radius: 16px;
+        border: 3px solid #4d6b75;
+        background: linear-gradient(180deg, #2c4552, #192a35);
+        box-shadow: 0 10px 0 #0c1820, 0 16px 30px rgba(0, 0, 0, 0.5);
+        font: 700 46px var(--mono);
+        color: var(--ink);
+      }
+      .kc.mint { border-color: var(--mint); color: var(--mint); }
+      .kc.coral { border-color: var(--coral); color: var(--coral); }
+      .kc.gold { border-color: var(--gold); color: var(--gold); }
+      .kc-lbl { font: 700 30px var(--mono); letter-spacing: 0.08em; color: var(--ink); white-space: nowrap; }
+      .kc-lbl small { display: block; font-size: 20px; letter-spacing: 0.2em; color: var(--muted); margin-bottom: 6px; }
+      .heat {
+        border-radius: 4px;
+        background: linear-gradient(90deg, rgba(92, 64, 170, 0) 0%, rgba(92, 64, 170, 0.6) 28%, rgba(242, 197, 117, 1) 75%, #fff4d6 100%);
+        box-shadow: 0 0 30px rgba(242, 197, 117, 0.45);
+      }
+      .heat.long {
+        background: linear-gradient(90deg, rgba(92, 64, 170, 0) 0%, rgba(92, 64, 170, 0.6) 28%, rgba(251, 127, 145, 1) 75%, #ffe2e7 100%);
+        box-shadow: 0 0 30px rgba(251, 127, 145, 0.45);
+      }
+
+      /* ---------- MOVE cards ---------- */
+      #cards { position: absolute; inset: 0; z-index: 55; perspective: 1300px; pointer-events: none; }
+      #card-dim { position: absolute; inset: 0; background: rgba(4, 9, 14, 0.78); opacity: 0; }
+      .mcard {
+        position: absolute;
+        left: 410px;
+        top: 290px;
+        width: 1100px;
+        height: 500px;
+        padding: 56px 70px;
+        border-radius: 28px;
+        border: 4px solid rgba(112, 230, 201, 0.75);
+        background: radial-gradient(ellipse at 20% 0%, #1d3f4a 0%, #0d1c26 65%);
+        box-shadow: 0 40px 120px rgba(0, 0, 0, 0.6), 0 0 80px rgba(112, 230, 201, 0.25), inset 0 0 60px rgba(112, 230, 201, 0.08);
+        opacity: 0;
+        transform-style: preserve-3d;
+      }
+      .mcard .no { display: flex; justify-content: space-between; font: 700 26px var(--mono); letter-spacing: 0.3em; color: var(--mint); }
+      .mcard .no b { color: var(--muted); font-weight: 700; }
+      .mcard .tc { margin-top: 28px; font: 900 132px/1 var(--tc); color: var(--ink); letter-spacing: 0.04em; white-space: nowrap; }
+      .mcard .en { margin-top: 20px; font: 400 58px var(--display); letter-spacing: -0.02em; color: var(--gold); white-space: nowrap; }
+      .mcard .how { margin-top: 26px; font: 700 28px var(--mono); color: #cfe3df; white-space: nowrap; }
+      .mcard .bar { position: absolute; left: 70px; right: 70px; bottom: 44px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--violet), var(--gold), #fff4d6); transform-origin: 0 50%; }
+
+      /* ---------- chrome & finishing ---------- */
+      #chrome { position: absolute; inset: 0; pointer-events: none; z-index: 62; }
+      .corner { position: absolute; width: 34px; height: 34px; border: 0 solid rgba(232, 243, 239, 0.55); }
+      .corner.tl { left: 36px; top: 36px; border-left-width: 3px; border-top-width: 3px; }
+      .corner.tr { right: 36px; top: 36px; border-right-width: 3px; border-top-width: 3px; }
+      .corner.bl { left: 36px; bottom: 36px; border-left-width: 3px; border-bottom-width: 3px; }
+      .corner.br { right: 36px; bottom: 36px; border-right-width: 3px; border-bottom-width: 3px; }
+      .chrome-label { position: absolute; bottom: 44px; font: 700 20px var(--mono); letter-spacing: 0.14em; color: rgba(232, 243, 239, 0.72); white-space: nowrap; }
+      #chrome-left { left: 90px; }
+      #chrome-left i { display: inline-block; width: 10px; height: 10px; margin-right: 12px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 14px var(--mint); vertical-align: 2px; }
+      #chrome-right { right: 90px; font-variant-numeric: tabular-nums; }
+      #vignette { position: absolute; inset: 0; z-index: 60; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, rgba(8, 18, 27, 0) 60%, rgba(3, 8, 12, 0.5) 100%); }
+      #scan { position: absolute; inset: 0; z-index: 61; pointer-events: none; opacity: 0.14; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.55) 0 1px, rgba(0, 0, 0, 0) 1px 4px); }
+      #flash { position: absolute; inset: 0; z-index: 70; pointer-events: none; opacity: 0; mix-blend-mode: screen; background: radial-gradient(ellipse at 50% 50%, #fffbea 0%, #f6d78c 45%, rgba(246, 215, 140, 0.4) 100%); }
+      @keyframes hf-grain-noise {
+        0%, 100% { transform: translate(0, 0); }
+        10% { transform: translate(-5%, -5%); }
+        20% { transform: translate(-10%, 5%); }
+        30% { transform: translate(5%, -10%); }
+        40% { transform: translate(-5%, 15%); }
+        50% { transform: translate(-10%, 5%); }
+        60% { transform: translate(15%, 0); }
+        70% { transform: translate(0, 10%); }
+        80% { transform: translate(-15%, 0); }
+        90% { transform: translate(10%, 5%); }
+      }
+      #grain-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 65; overflow: hidden; }
+      #grain-overlay .grain-texture {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.09;
+        animation: hf-grain-noise 0.5s steps(1) 120;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-qbnw" id="root" data-composition-id="main" data-start="0" data-duration="60" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-caon" class="scene-wrap" id="w1">
+        <div data-hf-id="hf-g6i2" id="g1-landscape" data-composition-id="g1-landscape" data-composition-src="compositions/g1-landscape.html" data-start="0" data-duration="8.8" data-track-index="1" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-1f70" class="scene-wrap" id="w2">
+        <div data-hf-id="hf-5z4y" id="g2-whale" data-composition-id="g2-whale" data-composition-src="compositions/g2-whale.html" data-start="8" data-duration="6.8" data-track-index="2" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-26ut" class="scene-wrap" id="w3">
+        <div data-hf-id="hf-k5sq" id="g3-fake" data-composition-id="g3-fake" data-composition-src="compositions/g3-fake.html" data-start="14" data-duration="10.8" data-track-index="1" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-kyki" class="scene-wrap" id="w4">
+        <div data-hf-id="hf-fkzg" id="g4-cascade" data-composition-id="g4-cascade" data-composition-src="compositions/g4-cascade.html" data-start="24" data-duration="10.8" data-track-index="2" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-owoj" class="scene-wrap" id="w5">
+        <div data-hf-id="hf-mvl9" id="g5-iceberg" data-composition-id="g5-iceberg" data-composition-src="compositions/g5-iceberg.html" data-start="34" data-duration="6.8" data-track-index="1" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-g8so" class="scene-wrap" id="w6">
+        <div data-hf-id="hf-xy85" id="g6-flip" data-composition-id="g6-flip" data-composition-src="compositions/g6-flip.html" data-start="40" data-duration="6.3" data-track-index="2" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-h0gh" class="scene-wrap" id="w7">
+        <div data-hf-id="hf-j829" id="g7-result" data-composition-id="g7-result" data-composition-src="compositions/g7-result.html" data-start="46" data-duration="8.3" data-track-index="1" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-epda" class="scene-wrap" id="w8">
+        <div data-hf-id="hf-mvdp" id="g8-end" data-composition-id="g8-end" data-composition-src="compositions/g8-end.html" data-start="54" data-duration="6" data-track-index="2" data-width="1920" data-height="1080"></div>
+      </div>
+
+      <div data-hf-id="hf-nia2" id="cards">
+        <div data-hf-id="hf-ukcv" id="card-dim" data-layout-ignore=""></div>
+      </div>
+
+      <div data-hf-id="hf-rwb7" id="chrome">
+        <div data-hf-id="hf-9co5" class="corner tl"></div><div data-hf-id="hf-lrp7" class="corner tr"></div><div data-hf-id="hf-2cxv" class="corner bl"></div><div data-hf-id="hf-34pp" class="corner br"></div>
+        <div data-hf-id="hf-vwwd" class="chrome-label" id="chrome-left"><i data-hf-id="hf-wt6k"></i>FLOW ARENA / <span data-hf-id="hf-mzgz" id="chrome-move">THE MAP</span></div>
+        <div data-hf-id="hf-yldg" class="chrome-label" id="chrome-right">BTC-PERP SIM · T+00:00.00</div>
+      </div>
+      <div data-hf-id="hf-zaba" id="grain-overlay" data-layout-ignore=""><div data-hf-id="hf-0qtj" class="grain-texture"></div></div>
+      <div data-hf-id="hf-3obq" id="vignette" data-layout-ignore=""></div>
+      <div data-hf-id="hf-6f4b" id="scan" data-layout-ignore=""></div>
+      <div data-hf-id="hf-nb4u" id="flash" data-layout-ignore=""></div>
+
+      <audio data-hf-id="hf-x337" id="score" src="assets/score.wav" data-start="0" data-duration="60" data-track-index="10" data-volume="1"></audio>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const B = 0.5;
+
+      // ---------- MOVE cards: fly in from depth, hold, then pass through the lens ----------
+      const MOVES = [
+        { t: 8, no: "01", tc: "下大單", en: "SHAKE THE BOOK", how: "4 → Q · 100 BTC MARKET BUY", tag: "SHAKE THE BOOK" },
+        { t: 14, no: "02", tc: "假突破", en: "FAKE THE BREAKOUT", how: "LURE THE CHASERS · THEN FLIP WITH E", tag: "FAKE BREAKOUT" },
+        { t: 24, no: "03", tc: "連環爆倉", en: "CHAIN THE LIQUIDATIONS", how: "ONE BAND DETONATES THE NEXT", tag: "CHAIN REACTION" },
+        { t: 34, no: "04", tc: "先試探", en: "PROBE THE ICEBERG", how: "10 BTC FIRST · IF IT WON'T MOVE, WALK", tag: "PROBE FIRST" },
+        { t: 40, no: "05", tc: "反手收割", en: "FLIP & CASH OUT", how: "CHAIN STALLS → F → Q INTO THE PULLBACK", tag: "FLIP & CASH OUT" },
+      ];
+      const cardsEl = document.getElementById("cards");
+      MOVES.forEach((m, i) => {
+        const c = document.createElement("div");
+        c.className = "mcard";
+        c.id = "mcard-" + m.no;
+        c.innerHTML = `<div class="no"><span>MOVE ${m.no}</span><b>${m.no} / 05</b></div><div class="tc">${m.tc}</div><div class="en">${m.en}</div><div class="how">${m.how}</div><div class="bar"></div>`;
+        c.querySelectorAll("span, b, div").forEach((el) => el.setAttribute("data-layout-allow-overlap", ""));
+        cardsEl.appendChild(c);
+        const T = m.t;
+        const dir = i % 2 ? 1 : -1;
+        tl.fromTo("#card-dim", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: false }, T - 0.7);
+        tl.fromTo(c, { z: -2600, rotationY: 75 * dir, rotationX: 22, opacity: 0 },
+          { z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.5, ease: "expo.out", immediateRender: false }, T - 0.75);
+        tl.fromTo(c.querySelector(".bar"), { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "power2.inOut" }, T - 0.4);
+        tl.fromTo(c, { z: 0 }, { z: 140, duration: 0.6, ease: "none", immediateRender: false }, T - 0.25);
+        tl.fromTo(c, { z: 140, opacity: 1, filter: "blur(0px)" },
+          { z: 1150, opacity: 0, filter: "blur(16px)", duration: 0.38, ease: "power3.in", immediateRender: false }, T + 0.35);
+        tl.fromTo("#card-dim", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "power2.in", immediateRender: false }, T + 0.4);
+        tl.fromTo("#flash", { opacity: 0.35 }, { opacity: 0, duration: 0.35, immediateRender: false }, T + 0.62);
+      });
+
+      // ---------- scene swaps under the cards (hard) and two zoom-through cuts ----------
+      const swap = [["#w1", "#w2", 8], ["#w2", "#w3", 14], ["#w3", "#w4", 24], ["#w4", "#w5", 34], ["#w5", "#w6", 40]];
+      swap.forEach(([a, b, t]) => {
+        tl.fromTo(b, { opacity: 0 }, { opacity: 1, duration: 0.02, immediateRender: false }, t);
+        tl.fromTo(a, { opacity: 1 }, { opacity: 0, duration: 0.02, immediateRender: false }, t + 0.02);
+      });
+      [["#w6", "#w7", 46, 1.35], ["#w7", "#w8", 54, 1.4]].forEach(([a, b, t, from]) => {
+        tl.fromTo(b, { scale: from, opacity: 0, filter: "blur(18px) brightness(2.2)" },
+          { scale: 1, opacity: 1, filter: "blur(0px) brightness(1)", duration: 0.34, ease: "expo.out", immediateRender: false }, t);
+        tl.fromTo(a, { scale: 1, opacity: 1, filter: "blur(0px) brightness(1)" },
+          { scale: 1.6, opacity: 0, filter: "blur(14px) brightness(2)", duration: 0.22, ease: "power3.in", immediateRender: false }, t);
+        tl.fromTo("#flash", { opacity: 0.9 }, { opacity: 0, duration: 0.45, ease: "power2.out", immediateRender: false }, t);
+      });
+
+      // ---------- chrome ----------
+      tl.fromTo("#chrome", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out" }, 1.0);
+      tl.to("#chrome", { opacity: 0, duration: 0.2 }, 54);
+      tl.fromTo(".corner", { scale: 1.6 }, { scale: 1, duration: 0.5, ease: "back.out(2)", stagger: 0.06 }, 1.0);
+      const tc = document.getElementById("chrome-right"), mv = document.getElementById("chrome-move");
+      const clock = { t: 0 };
+      tl.fromTo(clock, { t: 0 }, {
+        t: 60, duration: 60, ease: "none",
+        onUpdate: () => {
+          const s = clock.t;
+          tc.textContent = `BTC-PERP SIM · T+00:${String(Math.floor(s)).padStart(2, "0")}.${String(Math.floor((s % 1) * 100)).padStart(2, "0")}`;
+          let label = "THE MAP";
+          MOVES.forEach((m) => { if (s >= m.t) label = `MOVE ${m.no} · ${m.tag}`; });
+          if (s >= 46) label = "AFTER ACTION";
+          mv.textContent = label;
+        },
+      }, 0);
+      tl.fromTo("#chrome-left i", { scale: 1.8, opacity: 1 }, { scale: 1, opacity: 0.7, duration: B * 0.9, ease: "power2.out", repeat: Math.max(0, Math.floor(60 / B) - 1), repeatDelay: B * 0.1 }, 0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

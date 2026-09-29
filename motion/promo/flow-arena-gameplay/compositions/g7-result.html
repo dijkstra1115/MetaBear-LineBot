@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="g7-result-template">
+      <style>
+        #g7-result-root { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(ellipse at 50% 55%, #14353f 0%, #08121b 62%); }
+        #g7-ghost { position: absolute; left: 0; top: 600px; font: 900 440px/1 var(--tc); color: rgba(246, 215, 140, 0.05); white-space: nowrap; }
+        #g7-head { position: absolute; left: 120px; top: 92px; width: 1700px; height: 80px; }
+        .g7-h { position: absolute; left: 0; top: 0; font: 400 58px var(--display); letter-spacing: -0.03em; color: var(--ink); white-space: nowrap; opacity: 0; }
+        .g7-h span { color: var(--mint); }
+        #g7-stage { position: absolute; inset: 0; perspective: 2000px; }
+        #g7-win { position: absolute; left: 330px; top: 220px; width: 1260px; height: 709px; border-radius: 18px; overflow: hidden; border: 3px solid #3a5862; box-shadow: 0 50px 120px rgba(0, 0, 0, 0.6), 0 0 80px rgba(112, 230, 201, 0.18); transform-origin: 50% 50%; }
+        #g7-win img { display: block; width: 100%; height: 100%; object-fit: cover; }
+        #g7-sheen { position: absolute; top: 0; left: 0; width: 400px; height: 100%; background: linear-gradient(100deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0)); }
+        #g7-dlg { position: absolute; left: 150px; top: 190px; width: 498px; height: 800px; border-radius: 16px; overflow: hidden; border: 3px solid var(--mint); box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6), 0 0 60px rgba(112, 230, 201, 0.25); opacity: 0; transform-origin: 50% 50%; }
+        #g7-dlg img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+        .g7-pc { position: absolute; border-radius: 14px; overflow: hidden; border: 3px solid rgba(112, 230, 201, 0.7); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55); opacity: 0; transform-origin: 0 0; background: #122530; }
+        .g7-pc img { display: block; width: 100%; height: auto; }
+        .g7-pc.gold { border-color: var(--gold); }
+      </style>
+
+      <div data-hf-id="hf-2mns" id="g7-result-root" data-composition-id="g7-result" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-gm1o" id="g7-ghost" data-layout-ignore="">爆倉獵場 爆倉獵場</div>
+        <div data-hf-id="hf-bj26" id="g7-head">
+          <div data-hf-id="hf-bayd" class="g7-h" id="g7-ha">120 seconds. <span data-hf-id="hf-3al2">Every order counts.</span></div>
+          <div data-hf-id="hf-i232" class="g7-h" id="g7-hb">Then the coach <span data-hf-id="hf-cxaq">grades every trade.</span></div>
+        </div>
+        <div data-hf-id="hf-3m16" id="g7-stage">
+          <div data-hf-id="hf-fog2" id="g7-win"><img data-hf-id="hf-qj7n" src="assets/game-hero.png" alt="FLOW ARENA gameplay"><div data-hf-id="hf-1zez" id="g7-sheen"></div></div>
+          <div data-hf-id="hf-ygkf" id="g7-dlg"><img data-hf-id="hf-51fx" src="assets/result-dialog.png" alt="Run complete dialog"></div>
+          <div data-hf-id="hf-2iy9" class="g7-pc gold" id="g7-p1" style="left: 930px; top: 190px; width: 760px"><img data-hf-id="hf-1c60" src="assets/rd-score.png" alt=""></div>
+          <div data-hf-id="hf-tcye" class="g7-pc" id="g7-p2" style="left: 900px; top: 430px; width: 830px"><img data-hf-id="hf-8gw5" src="assets/rd-metrics.png" alt=""></div>
+          <div data-hf-id="hf-7rwt" class="g7-pc" id="g7-p3" style="left: 900px; top: 560px; width: 830px"><img data-hf-id="hf-ofo4" src="assets/rd-coach.png" alt=""></div>
+          <div data-hf-id="hf-1qn4" class="g7-pc gold" id="g7-p4" style="left: 900px; top: 810px; width: 830px"><img data-hf-id="hf-cosx" src="assets/rd-episode.png" alt=""></div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const tl = gsap.timeline({ paused: true });
+
+          // live game window flips in flat (the move from v1), then steps back
+          tl.fromTo("#g7-win", { rotationX: 34, rotationY: -26, y: 300, z: -600, opacity: 0 }, { rotationX: 0, rotationY: 0, y: 0, z: 0, opacity: 1, duration: 1.3, ease: "expo.out" }, 0);
+          tl.fromTo("#g7-sheen", { x: -500 }, { x: 1500, duration: 1.1, ease: "power2.inOut" }, 0.4);
+          tl.to("#g7-win", { x: 520, z: -900, rotationY: -38, opacity: 0.35, duration: 0.6, ease: "power3.inOut" }, 1.75);
+          tl.fromTo("#g7-ha", { opacity: 0, y: -24 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 0.3);
+          tl.to("#g7-ha", { opacity: 0, y: -20, duration: 0.15 }, 1.9);
+          tl.fromTo("#g7-hb", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.4, ease: "expo.out" }, 2.05);
+          tl.fromTo("#g7-ghost", { x: 0 }, { x: -380, duration: 8.3, ease: "none" }, 0);
+
+          // RUN COMPLETE dialog flips in
+          tl.fromTo("#g7-dlg", { rotationY: 95, x: -120, opacity: 0 }, { rotationY: 0, x: 0, opacity: 1, duration: 0.6, ease: "expo.out" }, 2.0);
+
+          // its panels peel off toward the lens and land as floating cards
+          const s = 800 / 1397, DX = 150, DY = 190;
+          const PIECES = [
+            ["#g7-p1", 10, 110, 850, 930, 190, 760, 2.5],
+            ["#g7-p2", 20, 365, 830, 900, 430, 830, 3.0],
+            ["#g7-p3", 20, 490, 830, 900, 560, 830, 3.5],
+            ["#g7-p4", 20, 740, 830, 900, 810, 830, 4.0],
+          ];
+          PIECES.forEach(([id, sx, sy, sw, fx, fy, fw, t], i) => {
+            const x0 = DX + sx * s - fx, y0 = DY + sy * s - fy, sc0 = (sw * s) / fw;
+            tl.fromTo(id, { x: x0, y: y0, scale: sc0, z: 0, rotationY: 0, rotationX: 0, opacity: 1 },
+              { x: x0 + 120, y: y0 - 40, scale: sc0 * 1.25, z: 420, rotationY: -18, rotationX: 8, opacity: 1, duration: 0.22, ease: "power2.out", immediateRender: false }, t);
+            tl.fromTo(id, { x: x0 + 120, y: y0 - 40, scale: sc0 * 1.25, z: 420, rotationY: -18, rotationX: 8 },
+              { x: 0, y: 0, scale: 1, z: 0, rotationY: -6, rotationX: 2, duration: 0.55, ease: "expo.out", immediateRender: false }, t + 0.22);
+            tl.fromTo(id, { rotationY: -6 }, { rotationY: -2 + i, duration: 3.5, ease: "sine.inOut", immediateRender: false }, t + 0.8);
+          });
+          tl.to("#g7-dlg", { opacity: 0.55, rotationY: 14, duration: 0.8, ease: "power2.inOut" }, 4.3);
+          tl.fromTo("#g7-p3", { boxShadow: "0 30px 80px rgba(0,0,0,.55)" }, { boxShadow: "0 30px 80px rgba(0,0,0,.55), 0 0 60px rgba(112,230,201,.7)", duration: 0.5, yoyo: true, repeat: 3, ease: "sine.inOut", immediateRender: false }, 5.0);
+
+          window.__timelines["g7-result"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

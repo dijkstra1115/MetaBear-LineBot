@@ -9,7 +9,7 @@
 | 持續維護 | 網站、圖文教學、19 堂動態課程 | public/、web/ |
 | 持續維護 | LINE Bot、CRM、自動核實、VIP 邀請、行銷與分析師報單 | src/、migrations/ |
 | 繼續開發，同等優先 | FLOW ARENA 單機、電腦與好友對戰 | origin/flow-arena |
-| 繼續開發，同等優先 | Showreel、單課輸出、橫／直式宣傳片 | motion/；promo 在獨立分支 |
+| 繼續開發，同等優先 | Showreel、單課輸出、橫／直式宣傳片 | motion/；FLOW ARENA 宣傳片在 motion/promo/（46 秒版仍在獨立分支） |
 | 暫停 | 流動性、隨機掛單與方向對照實驗 | experiments/liquidity/ |
 | 封存 | 現貨交易沙盒 | archive/2026-09-29/flow-arena/ |
 | 封存 | Bybit 規則模擬交易、原始錄製／回放、Jev 輸入草稿 | archive/2026-09-29/main/quant/ |

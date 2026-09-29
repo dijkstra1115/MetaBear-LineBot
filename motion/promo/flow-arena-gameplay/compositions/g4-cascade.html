@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="g4-cascade-template">
+      <style>
+        #g4-cascade-root { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(ellipse at 45% 55%, #1c1c33 0%, #0a121c 60%, #060b11 100%); }
+        #g4-stage { position: absolute; inset: 0; perspective: 1700px; perspective-origin: 50% 40%; }
+        #g4-plane { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-style: preserve-3d; }
+        #g4-shake { position: absolute; inset: 0; }
+        #g4-cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+        .g4-grid { position: absolute; left: -200px; width: 2320px; height: 2px; background: rgba(151, 175, 181, 0.13); }
+        .g4-ax { position: absolute; left: 1300px; font: 400 20px var(--mono); color: rgba(151, 175, 181, 0.5); font-variant-numeric: tabular-nums; }
+        .g4-c { position: absolute; width: 22px; border-radius: 2px; }
+        .g4-c.up { background: #5fcfb3; }
+        .g4-c.dn { background: #e0707f; }
+        #g4-candle {
+          position: absolute;
+          left: 860px;
+          top: 240px;
+          width: 74px;
+          height: 2000px;
+          transform-origin: 50% 0%;
+          border-radius: 4px;
+          background: linear-gradient(180deg, #b5475a 0%, #fb7f91 70%, #ffe2e7 100%);
+          box-shadow: 0 0 44px rgba(251, 127, 145, 0.75), 0 0 140px rgba(251, 127, 145, 0.3);
+        }
+        .g4-band { position: absolute; left: -200px; width: 2320px; transform-origin: 50% 50%; }
+        .g4-band .lbl { position: absolute; left: 530px; top: -46px; font: 700 26px var(--mono); color: var(--coral); white-space: nowrap; }
+        .g4-ring { position: absolute; width: 300px; height: 300px; margin: -150px 0 0 -150px; border-radius: 50%; border: 6px solid #ffe2e7; box-shadow: 0 0 50px rgba(251, 127, 145, 0.85); opacity: 0; }
+        .g4-pop { position: absolute; left: 1000px; padding: 10px 20px; border-radius: 10px; border: 3px solid var(--coral); background: rgba(251, 127, 145, 0.18); color: #ffe2e7; font: 900 42px var(--tc); white-space: nowrap; opacity: 0; transform-origin: 0% 50%; }
+        #g4-tag { position: absolute; left: 950px; top: 0; margin-top: -22px; padding: 5px 14px; border-radius: 6px; background: var(--coral); color: #2a0710; font: 700 28px var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        #g4-sparks { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+        #g4-flash { position: absolute; inset: 0; background: radial-gradient(ellipse at 46% 52%, rgba(255, 226, 231, 0.95), rgba(251, 127, 145, 0.25) 60%, rgba(0, 0, 0, 0)); opacity: 0; mix-blend-mode: screen; }
+        #g4-hud {
+          position: absolute;
+          left: 100px;
+          top: 110px;
+          width: 560px;
+          padding: 28px 34px 30px;
+          border-radius: 18px;
+          border: 3px solid rgba(251, 127, 145, 0.5);
+          background: rgba(8, 14, 22, 0.84);
+        }
+        #g4-hud .lbl { font: 700 22px var(--mono); letter-spacing: 0.24em; color: var(--muted); }
+        #g4-ign { font: 700 96px/1.05 var(--mono); letter-spacing: -0.04em; color: var(--gold); text-shadow: 0 0 40px rgba(246, 215, 140, 0.5); font-variant-numeric: tabular-nums; }
+        #g4-crow { display: flex; align-items: baseline; gap: 22px; margin-top: 14px; opacity: 0; }
+        #g4-crow .tc { font: 900 46px var(--tc); color: var(--ink); }
+        #g4-combo { display: inline-block; font: 400 150px/0.9 var(--display); color: var(--coral); text-shadow: 0 0 50px rgba(251, 127, 145, 0.6); transform-origin: 0 80%; }
+        #g4-mega { position: absolute; left: 960px; top: 540px; margin: -170px 0 0 -210px; width: 420px; text-align: center; font: 400 340px/1 var(--display); color: #ffe2e7; text-shadow: 0 0 80px rgba(251, 127, 145, 0.9); opacity: 0; }
+        #g4-tapewrap { position: absolute; right: 100px; top: 110px; width: 500px; height: 820px; perspective: 1200px; }
+        #g4-tape { position: absolute; inset: 0; padding: 24px 26px; border-radius: 18px; border: 3px solid #33404f; background: rgba(12, 20, 30, 0.9); overflow: hidden; transform-style: preserve-3d; }
+        #g4-tape .head { display: flex; justify-content: space-between; font: 700 22px var(--mono); letter-spacing: 0.2em; color: var(--coral); margin-bottom: 18px; }
+        #g4-tape .head b { color: var(--mint); font-weight: 700; }
+        #g4-rows { position: relative; height: 720px; transform-style: preserve-3d; }
+        .g4-row {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 0;
+          height: 58px;
+          display: grid;
+          grid-template-columns: 96px 1fr auto;
+          align-items: center;
+          padding: 0 16px;
+          border-radius: 8px;
+          border-left: 6px solid var(--coral);
+          background: linear-gradient(90deg, #4a1d27, #141d29);
+          font: 700 24px var(--mono);
+          white-space: nowrap;
+          opacity: 0;
+        }
+        .g4-row span { color: #9fb8bb; }
+        .g4-row strong { color: var(--ink); }
+        .g4-row em { font-style: normal; color: var(--gold); }
+        #g4-dim { position: absolute; inset: 0; background: rgba(5, 9, 15, 0.84); opacity: 0; }
+        #g4-final { position: absolute; left: 120px; top: 300px; width: 1680px; }
+        .g4-fw { display: block; width: fit-content; font: 400 180px/0.94 var(--display); letter-spacing: -0.04em; color: var(--ink); }
+        .g4-fw.c { color: var(--coral); text-shadow: 0 0 80px rgba(251, 127, 145, 0.5); }
+        #g4-fp { margin-top: 40px; font: 700 34px/1.4 var(--mono); color: #cfe3df; max-width: 1150px; }
+      </style>
+
+      <div data-hf-id="hf-2ku8" id="g4-cascade-root" data-composition-id="g4-cascade" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-gx11" id="g4-stage">
+          <div data-hf-id="hf-msbl" id="g4-plane">
+            <div data-hf-id="hf-ieth" id="g4-shake">
+              <div data-hf-id="hf-fqum" id="g4-cam">
+                <div data-hf-id="hf-swct" id="g4-gridwrap"></div>
+                <div data-hf-id="hf-jo8l" id="g4-candles"></div>
+                <div data-hf-id="hf-gu4f" id="g4-bands"></div>
+                <div data-hf-id="hf-sgky" id="g4-candle"></div>
+                <div data-hf-id="hf-9u7z" id="g4-fx"></div>
+                <div data-hf-id="hf-d5rj" id="g4-tag" data-layout-allow-overlap="">100,120.00</div>
+              </div>
+              <canvas data-hf-id="hf-60p0" id="g4-sparks" width="1920" height="1080"></canvas>
+            </div>
+          </div>
+        </div>
+        <div data-hf-id="hf-wtxl" id="g4-flash"></div>
+        <div data-hf-id="hf-n3u8" id="g4-hud">
+          <div data-hf-id="hf-s25n" class="lbl" data-layout-allow-overlap="">LIQUIDATIONS YOU IGNITED</div>
+          <div data-hf-id="hf-g0yl" id="g4-ign" data-layout-allow-overlap="">$0</div>
+          <div data-hf-id="hf-8xxg" id="g4-crow"><span data-hf-id="hf-udn0" class="tc">連環爆倉</span><span data-hf-id="hf-wf72" id="g4-combo">×1</span></div>
+        </div>
+        <div data-hf-id="hf-lqsh" id="g4-tapewrap">
+          <div data-hf-id="hf-m7mh" id="g4-tape">
+            <div data-hf-id="hf-z992" class="head"><span data-hf-id="hf-5nty">LIQUIDATION TAPE</span><b data-hf-id="hf-rsps">● LIVE</b></div>
+            <div data-hf-id="hf-zwdu" id="g4-rows"></div>
+          </div>
+        </div>
+        <div data-hf-id="hf-urwi" id="g4-mega">×6</div>
+        <div data-hf-id="hf-8nbd" id="g4-dim"></div>
+        <div data-hf-id="hf-b72z" id="g4-final">
+          <span data-hf-id="hf-o603" class="g4-fw" id="g4-f1" data-layout-allow-overlap="">SIX BANDS.</span>
+          <span data-hf-id="hf-66ut" class="g4-fw c" id="g4-f2" data-layout-allow-overlap="">ONE PUSH.</span>
+          <p data-hf-id="hf-ol1c" id="g4-fp" data-layout-allow-overlap="">Every liquidation is a market order — it shoves price straight into the next band.</p>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const prand = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const root = document.getElementById("g4-cascade-root");
+          const q = (s) => root.querySelector(s);
+          const fmt = (v, d = 2) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+          const D = 10.8, TOP = 240;
+          const priceAt = (y) => 100120 - (y - TOP) * 3.2;
+
+          // world: grid, axis, history
+          const gw = q("#g4-gridwrap");
+          for (let y = 100; y <= 2300; y += 140) {
+            const g = document.createElement("div"); g.className = "g4-grid"; g.style.top = y + "px"; g.setAttribute("data-layout-ignore", ""); gw.appendChild(g);
+            const a = document.createElement("div"); a.className = "g4-ax"; a.style.top = y - 30 + "px"; a.setAttribute("data-layout-ignore", ""); a.textContent = fmt(priceAt(y)); gw.appendChild(a);
+          }
+          const cw = q("#g4-candles");
+          let c = 250;
+          for (let i = 0; i < 30; i++) {
+            const o = c; c = o + (prand(i * 3.7) - 0.48) * 30 + (250 - o) * 0.15;
+            const el = document.createElement("div");
+            el.className = "g4-c " + (c < o ? "up" : "dn");
+            el.style.left = 110 + i * 25 + "px"; el.style.top = Math.min(o, c) + "px"; el.style.height = Math.max(6, Math.abs(o - c)) + "px";
+            cw.appendChild(el);
+          }
+
+          // bands (long liquidations below price)
+          const P = [1.5, 2.75, 3.75, 4.5, 5.0, 5.5];
+          const BY = [560, 880, 1150, 1370, 1560, 1730];
+          const BH = [10, 14, 16, 20, 24, 30];
+          const SZ = [14, 31, 58, 96, 140, 212];
+          const LEV = ["50×", "25×", "20×", "25×", "50×", "20×"];
+          const bw = q("#g4-bands"), fx = q("#g4-fx");
+          const bands = BY.map((y, i) => {
+            const el = document.createElement("div");
+            el.className = "g4-band heat long"; el.style.top = y - BH[i] / 2 + "px"; el.style.height = BH[i] + "px";
+            el.innerHTML = `<div class="lbl" data-layout-allow-overlap>⚡ ${SZ[i]} BTC · ${LEV[i]} LONGS</div>`;
+            bw.appendChild(el); return el;
+          });
+
+          const tl = gsap.timeline({ paused: true });
+
+          // 3D orbit of the whole chart plane
+          tl.fromTo("#g4-plane", { rotationX: 24, rotationY: -20, z: -120 }, { rotationX: 12, rotationY: 12, z: 60, duration: 6.2, ease: "sine.inOut" }, 0);
+          tl.to("#g4-plane", { rotationX: 6, rotationY: 4, z: 0, duration: 1.2, ease: "power2.out" }, 6.2);
+
+          // head driver: candle, camera, tag
+          const head = { y: TOP + 10 };
+          const cand = q("#g4-candle"), cam = q("#g4-cam"), tag = q("#g4-tag");
+          const CAMY = 560;
+          const drawHead = () => {
+            const y = head.y;
+            gsap.set(cand, { scaleY: Math.max(0.001, (y - TOP) / 2000) });
+            gsap.set(cam, { y: -Math.max(0, y - CAMY) });
+            gsap.set(tag, { y });
+            tag.textContent = fmt(priceAt(y));
+          };
+          drawHead();
+          const legs = [[0.3, P[0], BY[0], "power2.in"], [P[0], P[1], BY[1], "power1.in"], [P[1], P[2], BY[2], "power1.in"], [P[2], P[3], BY[3], "none"], [P[3], P[4], BY[4], "none"], [P[4], P[5], BY[5], "none"], [P[5], 6.2, BY[5] + 170, "power3.out"]];
+          let prevY = TOP + 10;
+          legs.forEach(([a, b, y, ease]) => { tl.fromTo(head, { y: prevY }, { y, duration: b - a, ease, onUpdate: drawHead, immediateRender: false }, a); prevY = y; });
+
+          // shake (hash jitter, envelope)
+          const hash = (n) => { const x = Math.sin(n * 91.7 + 17.3) * 43758.5453; return x - Math.floor(x); };
+          const shk = q("#g4-shake");
+          const shake = (t, amp, dur) => {
+            const env = { a: 0 };
+            tl.fromTo(env, { a: amp }, { a: 0, duration: dur, ease: "power2.out", immediateRender: false, onUpdate: () => { const s = Math.floor(tl.time() / 0.033); gsap.set(shk, { x: (hash(s) * 2 - 1) * env.a, y: (hash(s + 50) * 2 - 1) * env.a }); } }, t);
+            tl.set(shk, { x: 0, y: 0 }, t + dur);
+          };
+
+          // Canvas 2D sparks: every burst is a pure function of time since its pierce
+          const cv = q("#g4-sparks"), ctx = cv.getContext("2d");
+          const SP = 70;
+          const COLS = ["#fff4d6", "#ffe2e7", "#fb7f91", "#f6d78c", "#ffffff"];
+          const camAt = (t) => { // mirrors head legs to know camera offset at any t
+            let y = TOP + 10;
+            for (const [a, b, yy, ease] of legs) {
+              const y0 = y;
+              if (t <= a) break;
+              const k = Math.min(1, (t - a) / (b - a));
+              const e = ease === "power2.in" ? k * k * k : ease === "power1.in" ? k * k : ease === "power3.out" ? 1 - Math.pow(1 - k, 4) : k; // GSAP powerN = degree N+1
+              y = y0 + (yy - y0) * e;
+              if (k < 1) break;
+              y = yy;
+            }
+            return Math.max(0, y - CAMY);
+          };
+          const drawSparks = (t) => {
+            ctx.clearRect(0, 0, 1920, 1080);
+            ctx.globalCompositeOperation = "lighter";
+            const camY = camAt(t);
+            P.forEach((pt, i) => {
+              const dt = t - pt;
+              if (dt < 0 || dt > 1.4) return;
+              const ox = 897, oy = BY[i] - camY;
+              for (let k = 0; k < SP; k++) {
+                const a = prand(i * 1000 + k) * Math.PI * 2;
+                const sp = (380 + prand(i * 1000 + k + 7) * (700 + i * 140)) * (k % 5 === 0 ? 1.4 : 1);
+                const life = 0.7 + prand(i * 1000 + k + 13) * 0.7;
+                if (dt > life) continue;
+                const e = 1 - Math.exp(-dt * 3.2);
+                const x = ox + (Math.cos(a) * sp * e) / 3.2;
+                const y = oy + (Math.sin(a) * sp * 0.55 * e) / 3.2 + 420 * dt * dt;
+                const vx = Math.cos(a) * sp * Math.exp(-dt * 3.2), vy = Math.sin(a) * sp * 0.55 * Math.exp(-dt * 3.2) + 840 * dt;
+                const al = 1 - dt / life;
+                ctx.strokeStyle = COLS[(k + i) % COLS.length];
+                ctx.globalAlpha = al;
+                ctx.lineWidth = 2 + (k % 3);
+                ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - vx * 0.03, y - vy * 0.03); ctx.stroke();
+              }
+            });
+            ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+          };
+
+          // tape rows arrive from depth; older rows slide down (absolute targets)
+          const rowsWrap = q("#g4-rows");
+          const TAPE = [];
+          P.forEach((t, i) => {
+            TAPE.push({ t, txt: `<span>00:${String(21 + i).padStart(2, "0")}</span><strong>LONG ${SZ[i]} BTC</strong><em>×${i + 1}</em>` });
+            TAPE.push({ t: t + 0.1, txt: `<span>00:${String(21 + i).padStart(2, "0")}</span><strong>LONG ${(1.5 + prand(i * 4) * 8).toFixed(1)} BTC</strong><em>×${i + 1}</em>` });
+          });
+          const rowEls = TAPE.map((r) => { const el = document.createElement("div"); el.className = "g4-row"; el.innerHTML = r.txt; el.querySelectorAll("span,strong,em").forEach((x) => x.setAttribute("data-layout-allow-overlap", "")); rowsWrap.appendChild(el); return el; });
+          TAPE.forEach((r, e) => {
+            tl.fromTo(rowEls[e], { opacity: 0, z: -700, rotationY: -35, y: 0 }, { opacity: 1, z: 0, rotationY: 0, y: 0, duration: 0.35, ease: "expo.out", immediateRender: false }, r.t);
+            for (let k = 0; k < e; k++) tl.to(rowEls[k], { y: (e - k) * 66, duration: 0.2, ease: "power3.out" }, r.t);
+          });
+
+          // counters (pure functions of time)
+          const IGN = [420000, 970000, 1610000, 2180000, 2660000, 3120000];
+          const ignEl = q("#g4-ign"), comboEl = q("#g4-combo");
+          const drv = { t: 0 };
+          tl.fromTo(drv, { t: 0 }, {
+            t: D, duration: D, ease: "none",
+            onUpdate: () => {
+              const t = drv.t;
+              let n = 0; P.forEach((p) => { if (t >= p) n++; });
+              let v = 0;
+              if (n) { const a = n > 1 ? IGN[n - 2] : 0, b = IGN[n - 1], k = Math.min(1, (t - P[n - 1]) / 0.3); v = a + (b - a) * (1 - Math.pow(1 - k, 3)); }
+              ignEl.textContent = "$" + (v >= 1e6 ? (v / 1e6).toFixed(2) + "M" : v < 1000 ? "0" : Math.round(v / 1000) + "K");
+              comboEl.textContent = "×" + Math.max(1, n);
+              const dt = n ? t - P[n - 1] : 9;
+              gsap.set(comboEl, { scale: 1 + Math.max(0, n - 1) * 0.04 + Math.max(-0.12, (0.9 + n * 0.25) * Math.exp(-dt * 11) * Math.cos(dt * 14)) });
+              drawSparks(t);
+            },
+          }, 0);
+          tl.fromTo("#g4-crow", { opacity: 0 }, { opacity: 1, duration: 0.15 }, P[0]);
+          tl.fromTo("#g4-hud", { x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 0.3);
+          tl.fromTo("#g4-tapewrap", { x: 120, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 0.4);
+
+          // detonations
+          P.forEach((t, i) => {
+            const band = bands[i];
+            tl.to(band, { filter: "brightness(3)", duration: 0.06 }, t - 0.06);
+            tl.to(band, { scaleY: 6, opacity: 0, duration: 0.45, ease: "expo.out" }, t);
+            const ring = document.createElement("div"); ring.className = "g4-ring"; ring.style.left = "897px"; ring.style.top = BY[i] + "px"; fx.appendChild(ring);
+            tl.fromTo(ring, { scale: 0.1, opacity: 1 }, { scale: 2.6 + i * 0.45, opacity: 0, duration: 0.7, ease: "expo.out", immediateRender: false }, t);
+            const pop = document.createElement("div"); pop.className = "g4-pop"; pop.style.top = BY[i] - 120 + "px"; pop.textContent = `多單爆倉 ${SZ[i]} BTC`; fx.appendChild(pop);
+            tl.fromTo(pop, { scale: 0.4, opacity: 0, x: -30 }, { scale: 1, opacity: 1, x: 0, duration: 0.3, ease: "back.out(2.4)", immediateRender: false }, t + 0.03);
+            tl.to(pop, { opacity: 0, y: -40, duration: 0.3, ease: "power2.in" }, t + Math.min(0.9, (P[i + 1] || t + 1.2) - t - 0.1));
+            tl.fromTo("#g4-flash", { opacity: 0.3 + i * 0.08 }, { opacity: 0, duration: 0.38, ease: "power2.out", immediateRender: false }, t);
+            shake(t, 8 + i * 4, 0.32 + i * 0.03);
+          });
+
+          // ×6 flies at the camera, then the payoff line
+          const MEGA = 6.0;
+          tl.fromTo("#g4-mega", { opacity: 0, scale: 0.5, z: 0 }, { opacity: 1, scale: 1.2, duration: 0.12, ease: "power2.out" }, MEGA - 0.12);
+          tl.to("#g4-mega", { scale: 7, opacity: 0, filter: "blur(18px)", duration: 0.5, ease: "power3.in" }, MEGA);
+          tl.fromTo("#g4-flash", { opacity: 0.95 }, { opacity: 0, duration: 0.6, immediateRender: false }, MEGA + 0.25);
+          shake(MEGA, 22, 0.5);
+          tl.fromTo("#g4-dim", { opacity: 0 }, { opacity: 1, duration: 0.3 }, MEGA + 0.2);
+          tl.to(["#g4-hud", "#g4-tapewrap"], { opacity: 0, scale: 0.94, duration: 0.25 }, MEGA + 0.15);
+          tl.fromTo("#g4-f1", { x: -260, opacity: 0, skewX: -16 }, { x: 0, opacity: 1, skewX: 0, duration: 0.35, ease: "expo.out" }, 6.5);
+          tl.fromTo("#g4-f2", { scale: 1.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "power4.out", transformOrigin: "0 70%" }, 7.0);
+          tl.fromTo("#g4-fp", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 7.6);
+          tl.fromTo("#g4-final", { scale: 1 }, { scale: 1.04, duration: 3.2, ease: "none" }, 6.5);
+
+          window.__timelines["g4-cascade"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+        }
+        #fx-grain {
+          position: absolute;
+          inset: -64px;
+          background: url("assets/img/grain.png");
+          opacity: 0.12;
+          mix-blend-mode: overlay;
+        }
+        #fx-vignette {
+          position: absolute;
+          inset: 0;
+          box-shadow: inset 0 0 260px 60px #030a10b3;
+        }
+        #fx-clock {
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          width: 1920px;
+          height: 6px;
+          background: linear-gradient(90deg, #70e6c9, #f2c575);
+          transform-origin: 0 50%;
+          box-shadow: 0 0 18px #70e6c988;
+        }
+        #fx-cut {
+          position: absolute;
+          inset: 0;
+          background: #eafff8;
+          opacity: 0;
+          mix-blend-mode: screen;
+        }
+      </style>
+      <div id="root" data-composition-id="fx-overlay" data-width="1920" data-height="1080">
+        <div id="fx-grain" data-layout-ignore></div>
+        <div id="fx-vignette" data-layout-ignore></div>
+        <div id="fx-clock" data-layout-ignore></div>
+        <div id="fx-cut" data-layout-ignore></div>
+      </div>
+      <script>
+        (() => {
+          const DUR = 67.5; // @build
+          const CUTS = [5, 8, 20, 29, 38, 49, 56, 61.5]; // @build
+          const tl = gsap.timeline({ paused: true });
+          tl.fromTo("#fx-clock", { scaleX: 0 }, { scaleX: 1, duration: DUR, ease: "none" }, 0);
+          const grain = document.getElementById("fx-grain");
+          const cut = document.getElementById("fx-cut");
+          const drive = { t: 0 };
+          const render = (t) => {
+            const i = Math.floor(t * 12);
+            const a = Math.sin(i * 12.9898) * 43758.5453;
+            const b = Math.sin(i * 78.233) * 12543.113;
+            grain.style.transform = `translate(${Math.round((a - Math.floor(a)) * 64 - 32)}px, ${Math.round((b - Math.floor(b)) * 64 - 32)}px)`;
+            let f = 0;
+            CUTS.forEach((c) => {
+              if (t >= c && t < c + 0.25) f = Math.max(f, 0.5 * (1 - (t - c) / 0.25) ** 2);
+            });
+            cut.style.opacity = f;
+          };
+          render(0);
+          tl.to(drive, { t: DUR, duration: DUR, ease: "none", onUpdate: () => render(drive.t) }, 0);
+          window.__timelines["fx-overlay"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

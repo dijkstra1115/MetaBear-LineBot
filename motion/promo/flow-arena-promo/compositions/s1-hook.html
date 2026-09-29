@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: #08121b;
+          color: #e8f3ef;
+          font-family: "Noto Sans TC", sans-serif;
+        }
+        #s1-cam {
+          position: absolute;
+          inset: 0;
+          transform-origin: 1300px 380px;
+        }
+        #s1-canvas {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+        }
+        .s1-shade {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse 900px 620px at 18% 30%, #08121bf2 0%, #08121bb0 45%, #08121b00 80%);
+        }
+        .s1-axis {
+          position: absolute;
+          left: 1452px;
+          top: 0;
+          width: 170px;
+          height: 1080px;
+        }
+        .s1-lab {
+          position: absolute;
+          right: 0;
+          width: 160px;
+          height: 40px;
+          margin-top: -20px;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          padding-right: 12px;
+          font: 700 24px "JetBrains Mono", monospace;
+          color: #97afb5;
+          border-radius: 6px;
+          background: #08121bd9;
+        }
+        .s1-lab .hl {
+          position: absolute;
+          inset: 0;
+          border-radius: 6px;
+          background: #70e6c9;
+          box-shadow: 0 0 30px #70e6c9aa;
+          opacity: 0;
+        }
+        .s1-lab b {
+          position: relative;
+          font-weight: 700;
+        }
+        .s1-map {
+          position: absolute;
+          left: 1650px;
+          top: 0;
+          width: 220px;
+          height: 1080px;
+          border-left: 2px solid #29404b;
+        }
+        .s1-map-title {
+          position: absolute;
+          left: 14px;
+          top: 110px;
+          font: 700 18px "JetBrains Mono", monospace;
+          letter-spacing: 0.12em;
+          color: #69818a;
+        }
+        .s1-bar {
+          position: absolute;
+          left: 0;
+          height: 18px;
+          margin-top: -9px;
+          border-radius: 0 4px 4px 0;
+        }
+        .s1-pricetag {
+          position: absolute;
+          left: 1456px;
+          top: 0;
+          width: 168px;
+          height: 44px;
+          margin-top: -22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          background: #f2c575;
+          color: #1d1606;
+          font: 700 25px "JetBrains Mono", monospace;
+          box-shadow: 0 0 34px #f2c57588;
+        }
+        .s1-cross {
+          position: absolute;
+          left: 90px;
+          top: 0;
+          width: 1360px;
+          height: 2px;
+          background: repeating-linear-gradient(90deg, #70e6c9cc 0 10px, transparent 10px 18px);
+          opacity: 0;
+        }
+        .s1-crosstag {
+          position: absolute;
+          left: 1270px;
+          top: 0;
+          height: 44px;
+          width: 176px;
+          margin-top: -22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #12352f;
+          border: 2px solid #70e6c9;
+          border-radius: 6px;
+          color: #b6ffe6;
+          font: 700 24px "JetBrains Mono", monospace;
+          opacity: 0;
+        }
+        .s1-tip {
+          position: absolute;
+          left: 1040px;
+          top: 160px;
+          width: 380px;
+          padding: 22px 26px;
+          border-radius: 14px;
+          border: 2px solid #f6d78c;
+          background: #1b1a1ee8;
+          box-shadow: 0 0 60px #f2c57555, 0 24px 60px #0008;
+          opacity: 0;
+        }
+        .s1-tip small {
+          display: block;
+          font: 700 18px "JetBrains Mono", monospace;
+          letter-spacing: 0.14em;
+          color: #f2c575;
+        }
+        .s1-tip strong {
+          display: block;
+          margin-top: 6px;
+          font: 700 44px "JetBrains Mono", monospace;
+          color: #fff3d6;
+        }
+        .s1-tip span {
+          display: block;
+          margin-top: 6px;
+          font-size: 26px;
+          font-weight: 700;
+          color: #ffd0d7;
+        }
+        .s1-fuel {
+          position: relative;
+          display: block;
+          margin-top: 14px;
+          width: 100%;
+          height: 12px;
+          border-radius: 6px;
+          background: #ffffff14;
+          overflow: hidden;
+        }
+        .s1-fuel i {
+          position: absolute;
+          left: 0;
+          top: 0;
+          display: block;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, #5c40aa, #ffd666);
+          transform-origin: 0 50%;
+        }
+        .s1-slam {
+          position: absolute;
+          left: 110px;
+          top: 150px;
+          width: 1000px;
+        }
+        .s1-eyebrow {
+          font: 700 22px "JetBrains Mono", monospace;
+          letter-spacing: 0.22em;
+          color: #70e6c9;
+          margin-bottom: 24px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+        .s1-eyebrow i {
+          display: block;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #70e6c9;
+          box-shadow: 0 0 18px #70e6c9;
+        }
+        .s1-line {
+          display: block;
+          font-size: 150px;
+          font-weight: 900;
+          line-height: 1.2;
+          letter-spacing: -0.04em;
+          white-space: nowrap;
+        }
+        .s1-line.mint {
+          color: #70e6c9;
+          text-shadow: 0 0 50px #70e6c966;
+        }
+        .s1-order {
+          position: absolute;
+          left: 960px;
+          top: 930px;
+          width: 480px;
+          height: 96px;
+          display: flex;
+          gap: 14px;
+          align-items: center;
+          padding: 14px;
+          border-radius: 14px;
+          border: 2px solid #31545b;
+          background: #0f1f29f0;
+          box-shadow: 0 20px 60px #000a;
+        }
+        .s1-qty {
+          position: relative;
+          flex: 0 0 150px;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          border: 2px solid #70e6c9;
+          background: #1c323e;
+          font: 700 26px "JetBrains Mono", monospace;
+          color: #e8f3ef;
+        }
+        .s1-buy {
+          position: relative;
+          flex: 1;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          border-radius: 8px;
+          background: #1f6a58;
+          border: 2px solid #70e6c9;
+          font-size: 30px;
+          font-weight: 900;
+          color: #e7fff7;
+        }
+        .s1-buy .hl,
+        .s1-qty .hl {
+          position: absolute;
+          inset: -2px;
+          border-radius: 8px;
+          background: #70e6c9;
+          opacity: 0;
+        }
+        .s1-buy span,
+        .s1-buy kbd {
+          position: relative;
+        }
+        .s1-buy kbd {
+          font: 700 18px "JetBrains Mono", monospace;
+          border: 2px solid #ffffff55;
+          border-radius: 4px;
+          padding: 0 6px;
+        }
+        .s1-ticker {
+          position: absolute;
+          left: 110px;
+          top: 820px;
+          height: 70px;
+          padding: 0 28px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          border-radius: 10px;
+          background: #3a1822ee;
+          border: 2px solid #fb7f91;
+          font-size: 34px;
+          font-weight: 900;
+          color: #ffd0d7;
+          box-shadow: 0 0 50px #fb7f9166;
+          opacity: 0;
+        }
+        .s1-ticker b {
+          font: 700 30px "JetBrains Mono", monospace;
+          color: #f6d78c;
+        }
+        .curpos {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 46px;
+          height: 60px;
+        }
+        #s1-cursor {
+          display: block;
+          transform-origin: 4px 4px;
+          width: 46px;
+          height: 60px;
+          filter: drop-shadow(0 0 14px #70e6c9aa) drop-shadow(0 6px 10px #000c);
+        }
+        .s1-ripple {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 120px;
+          height: 120px;
+          margin: -60px 0 0 -60px;
+          transform-origin: 60px 60px;
+          border-radius: 50%;
+          border: 4px solid #70e6c9;
+          opacity: 0;
+        }
+        .s1-flash {
+          position: absolute;
+          inset: 0;
+          background: #fff6dd;
+          opacity: 0;
+        }
+      </style>
+
+      <div data-hf-id="hf-hv3x" id="root" data-composition-id="s1-hook" data-width="1920" data-height="1080">
+        <div id="s1-cues" hidden data-cues='{"hover":[0.643,0.774,0.905,1.036,1.167,1.298,1.43,1.56],"lock":[1.85],"slam":[2.2,2.7],"hoverBtn":[3.12],"click":[3.3],"riser":[[3.3,1.7]],"boom":[[4.4,0.8]],"glitch":[4.62]}'></div>
+        <div data-hf-id="hf-d2kf" id="s1-cam">
+          <canvas data-hf-id="hf-nq0f" id="s1-canvas" width="1920" height="1080"></canvas>
+          <div data-hf-id="hf-88gk" class="s1-shade"></div>
+          <div data-hf-id="hf-fawe" class="s1-map" id="s1-map"><div data-hf-id="hf-z008" class="s1-map-title">LIQ MAP</div></div>
+          <div data-hf-id="hf-ol5u" class="s1-axis" id="s1-axis"></div>
+          <div data-hf-id="hf-huri" class="s1-cross" id="s1-cross"></div>
+          <div data-hf-id="hf-qimf" class="s1-crosstag" id="s1-crosstag">100,000</div>
+          <div data-hf-id="hf-fs89" class="s1-pricetag" id="s1-pricetag" data-layout-allow-overlap>100,080.00</div>
+          <div data-hf-id="hf-epia" class="s1-tip" id="s1-tip">
+            <small data-hf-id="hf-43hc">爆倉熱圖 · 估算</small>
+            <strong data-hf-id="hf-up78">100,450</strong>
+            <span data-hf-id="hf-2bfg">空單強平 ≈ 3,120 BTC</span>
+            <em data-hf-id="hf-eevk" class="s1-fuel"><i data-hf-id="hf-7dji" id="s1-fuel"></i></em>
+          </div>
+        </div>
+        <div data-hf-id="hf-frt2" class="s1-slam">
+          <div data-hf-id="hf-k14h" class="s1-eyebrow" id="s1-eyebrow"><i data-hf-id="hf-wt6k"></i>BTC 永續合約 · 120 秒</div>
+          <span data-hf-id="hf-l9n5" class="s1-line" id="s1-l1">推動市場，</span>
+          <span data-hf-id="hf-m91i" class="s1-line mint" id="s1-l2">引爆槓桿。</span>
+        </div>
+        <div data-hf-id="hf-ex4g" class="s1-ticker" id="s1-ticker">💥 空單強平 <b data-hf-id="hf-tusc">3,120 BTC</b> 連環引爆</div>
+        <div data-hf-id="hf-6iqq" class="s1-order" id="s1-order">
+          <div data-hf-id="hf-pn0b" class="s1-qty"><span data-hf-id="hf-l9hl" class="hl"></span><span data-hf-id="hf-dr70" style="position: relative">2,500</span></div>
+          <div data-hf-id="hf-oyby" class="s1-buy" id="s1-buy"><span data-hf-id="hf-skl9" class="hl"></span><span data-hf-id="hf-329u">▲ 市價買入</span><kbd data-hf-id="hf-d5jb">Q</kbd></div>
+        </div>
+        <div data-hf-id="hf-m2qg" class="s1-ripple" id="s1-ripple"></div>
+        <div data-hf-id="hf-5obj" id="s1-curpos" class="curpos">
+          <svg data-hf-id="hf-hk7j" id="s1-cursor" viewBox="0 0 46 60" aria-hidden="true">
+            <path data-hf-id="hf-b8bx" d="M3 3 L3 49 L15 38 L23 57 L32 53 L24 35 L41 35 Z" fill="#f4fffb" stroke="#08121b" stroke-width="3" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div data-hf-id="hf-3uii" class="s1-flash" id="s1-flash"></div>
+      </div>
+
+      <script>
+        (() => {
+          const DUR = 5;
+          const cues = JSON.parse(document.getElementById("s1-cues").dataset.cues);
+          const ez = {
+            lin: (x) => x,
+            out3: (x) => 1 - Math.pow(1 - x, 3),
+            in3: (x) => x * x * x,
+            inout: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+          };
+          const keys = (t, ks) => {
+            if (t <= ks[0][0]) return ks[0][1];
+            for (let i = 1; i < ks.length; i++) {
+              if (t <= ks[i][0]) {
+                const [t0, v0] = ks[i - 1];
+                const [t1, v1, e] = ks[i];
+                return v0 + (v1 - v0) * ez[e || "inout"]((t - t0) / (t1 - t0));
+              }
+            }
+            return ks[ks.length - 1][1];
+          };
+          const pk = (t, t0, d) => (t < t0 ? 0 : Math.max(0, 1 - (t - t0) / d) ** 2);
+          const hash = (n) => {
+            const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+            return x - Math.floor(x);
+          };
+          const fmt = (n, d = 0) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+          // Price space
+          const P0 = 99700, P1 = 100600, Y0 = 940, Y1 = 140;
+          const yOf = (p) => Y0 - ((p - P0) * (Y0 - Y1)) / (P1 - P0);
+          const pOf = (y) => P0 + ((Y0 - y) * (P1 - P0)) / (Y0 - Y1);
+
+          const BANDS = [
+            { p: 99770, s: 0.32 },
+            { p: 99880, s: 0.18 },
+            { p: 100170, s: 0.46 },
+            { p: 100300, s: 0.28 },
+            { p: 100450, s: 1.0, hot: true },
+            { p: 100545, s: 0.55 },
+          ];
+          const heat = (t, a) => {
+            const c = [92 + (255 - 92) * t, 64 + (214 - 64) * t, 170 + (102 - 170) * t].map(Math.round);
+            return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
+          };
+
+          // Candle history (seeded)
+          const candles = [];
+          {
+            const raw = [];
+            let v = 99900;
+            for (let i = 0; i < 47; i++) {
+              v += 4 + (hash(i * 3.1) - 0.5) * 60;
+              raw.push(v);
+            }
+            let prev = 99900;
+            raw.forEach((r, i) => {
+              const close = r + ((100080 - raw[46]) * (i + 1)) / 47;
+              const open = prev;
+              const hi = Math.max(open, close) + hash(i * 5.7) * 24;
+              const lo = Math.min(open, close) - hash(i * 9.3) * 24;
+              candles.push({ open, close, hi, lo });
+              prev = close;
+            });
+          }
+
+          // DOM: axis labels + liquidation map bars
+          const axis = document.getElementById("s1-axis");
+          const labels = [];
+          for (let p = 99800; p <= 100500; p += 100) {
+            const d = document.createElement("div");
+            d.className = "s1-lab";
+            d.style.top = yOf(p) + "px";
+            d.innerHTML = `<span class="hl"></span><b>${fmt(p)}</b>`;
+            axis.appendChild(d);
+            labels.push(d);
+          }
+          const map = document.getElementById("s1-map");
+          const bars = BANDS.map((b) => {
+            const d = document.createElement("div");
+            d.className = "s1-bar";
+            d.style.top = yOf(b.p) + "px";
+            d.style.width = 30 + b.s * 180 + "px";
+            d.style.background = heat(b.s, 0.9);
+            if (b.hot) d.style.boxShadow = "0 0 30px rgba(255,214,102,.8)";
+            map.appendChild(d);
+            return d;
+          });
+
+          const price = (t) => {
+            const base = keys(t, [
+              [0, 100080],
+              [3.3, 100080],
+              [4.4, 100450, "in3"],
+              [5, 100470, "out3"],
+            ]);
+            const wob = t < 3.3 ? Math.sin(t * 7.1) * 9 + Math.sin(t * 13.7) * 5 : 0;
+            return base + wob;
+          };
+
+          const ctx = document.getElementById("s1-canvas").getContext("2d");
+          const pricetag = document.getElementById("s1-pricetag");
+          const draw = (t) => {
+            ctx.clearRect(0, 0, 1920, 1080);
+            // grid
+            ctx.strokeStyle = "rgba(151,175,181,0.08)";
+            ctx.lineWidth = 2;
+            for (let p = 99800; p <= 100500; p += 100) {
+              ctx.beginPath();
+              ctx.moveTo(90, yOf(p));
+              ctx.lineTo(1450, yOf(p));
+              ctx.stroke();
+            }
+            for (let x = 110; x < 1450; x += 216) {
+              ctx.beginPath();
+              ctx.moveTo(x, 120);
+              ctx.lineTo(x, 960);
+              ctx.stroke();
+            }
+            // heat bands
+            const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+            const boomT = t - 4.4;
+            BANDS.forEach((b) => {
+              let a = 0.1 + b.s * 0.42;
+              let h = 14 + b.s * 16;
+              if (b.hot) {
+                a += pulse * 0.12 + (t > 1.85 && t < 4.4 ? 0.15 : 0);
+                if (boomT > 0) {
+                  a = Math.max(0, 1 - boomT * 1.4);
+                  h += boomT * 160;
+                }
+              }
+              ctx.save();
+              if (b.hot) {
+                ctx.shadowColor = "rgba(255,214,102,0.9)";
+                ctx.shadowBlur = 40;
+              }
+              ctx.fillStyle = boomT > 0 && b.hot ? `rgba(255,240,200,${a.toFixed(3)})` : heat(b.s, a);
+              ctx.fillRect(90, yOf(b.p) - h / 2, 1540, h);
+              ctx.restore();
+            });
+            // candles
+            const cw = 16;
+            candles.forEach((c, i) => {
+              const x = 110 + i * 27;
+              const up = c.close >= c.open;
+              ctx.strokeStyle = ctx.fillStyle = up ? "#70e6c9" : "#fb7f91";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(x + cw / 2, yOf(c.hi));
+              ctx.lineTo(x + cw / 2, yOf(c.lo));
+              ctx.stroke();
+              const y1 = yOf(Math.max(c.open, c.close));
+              const y2 = yOf(Math.min(c.open, c.close));
+              ctx.fillRect(x, y1, cw, Math.max(3, y2 - y1));
+            });
+            // live candle
+            const p = price(t);
+            const lx = 110 + 47 * 27;
+            const open = 100080;
+            const hi = Math.max(open, p) + 6;
+            ctx.strokeStyle = ctx.fillStyle = p >= open ? "#70e6c9" : "#fb7f91";
+            ctx.save();
+            if (t > 3.3) {
+              ctx.shadowColor = "#70e6c9";
+              ctx.shadowBlur = 30;
+            }
+            ctx.beginPath();
+            ctx.moveTo(lx + cw / 2, yOf(hi));
+            ctx.lineTo(lx + cw / 2, yOf(Math.min(open, p) - 10));
+            ctx.stroke();
+            ctx.fillRect(lx, yOf(Math.max(open, p)), cw, Math.max(3, yOf(Math.min(open, p)) - yOf(Math.max(open, p))));
+            ctx.restore();
+            // last-price line
+            ctx.setLineDash([10, 8]);
+            ctx.strokeStyle = "rgba(242,197,117,0.8)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(90, yOf(p));
+            ctx.lineTo(1452, yOf(p));
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // blast particles
+            if (boomT > 0) {
+              for (let k = 0; k < 70; k++) {
+                const ang = hash(k * 1.7) * Math.PI * 2;
+                const sp = 300 + hash(k * 2.9) * 900;
+                const r = sp * Math.min(boomT, 0.6) * (1 - boomT * 0.4);
+                const px = lx + cw / 2 + Math.cos(ang) * r;
+                const py = yOf(100450) + Math.sin(ang) * r * 0.55;
+                ctx.fillStyle = `rgba(255,${180 + Math.round(hash(k) * 60)},90,${Math.max(0, 1 - boomT * 1.6).toFixed(3)})`;
+                ctx.fillRect(px, py, 5, 5);
+              }
+            }
+            pricetag.style.transform = `translateY(${yOf(p)}px)`;
+            pricetag.textContent = fmt(p, 2);
+          };
+
+          // cursor path (x,y) keyed; also drives crosshair readout
+          const curKeys = {
+            x: [[0, 1760], [0.35, 1760], [0.6, 1530, "out3"], [1.85, 1530], [2.9, 1530], [3.12, 1280, "inout"], [5, 1280]],
+            y: [[0, 1150], [0.35, 1150], [0.6, 880, "out3"], [1.56, 228, "lin"], [1.85, 273, "out3"], [2.9, 273], [3.12, 975, "inout"], [5, 975]],
+          };
+          const cursor = document.getElementById("s1-curpos");
+          const cross = document.getElementById("s1-cross");
+          const crosstag = document.getElementById("s1-crosstag");
+          const fuel = document.getElementById("s1-fuel");
+          const render = (t) => {
+            draw(t);
+            const cx = keys(t, curKeys.x);
+            const cy = keys(t, curKeys.y);
+            cursor.style.transform = `translate(${cx - 4}px, ${cy - 4}px)`;
+            const onAxis = t > 0.55 && t < 2.95;
+            cross.style.opacity = onAxis ? 1 : 0;
+            crosstag.style.opacity = onAxis ? 1 : 0;
+            cross.style.transform = `translateY(${cy}px)`;
+            crosstag.style.transform = `translateY(${cy}px)`;
+            crosstag.textContent = fmt(Math.round(pOf(cy) / 10) * 10);
+            fuel.style.transform = `scaleX(${keys(t, [[1.9, 0], [2.6, 0.92, "out3"]])})`;
+            // transient pulses are pure functions of t (seek-safe in both directions)
+            cues.hover.forEach((h, i) => {
+              const k = pk(t, h, 0.45);
+              labels[i].querySelector(".hl").style.opacity = k;
+              labels[i].querySelector("b").style.color = k > 0.5 ? "#08231f" : "#97afb5";
+              labels[i].style.transform = `scale(${1 + 0.16 * k})`;
+              labels[i].style.opacity = Math.abs(99800 + i * 100 - price(t)) < 40 ? 0 : 1;
+            });
+            bars[4].style.transform = `scaleY(${1 + 1.6 * pk(t, cues.lock[0], 0.5)})`;
+            const hb = document.querySelector("#s1-buy .hl");
+            hb.style.opacity = t < cues.hoverBtn[0] ? 0 : t < cues.click[0] ? 0.35 : 0.9 * pk(t, cues.click[0], 0.6);
+            document.getElementById("s1-buy").style.transform = `scale(${1 - 0.07 * pk(t, cues.click[0], 0.3)})`;
+            document.getElementById("s1-cursor").style.transform = `scale(${1 - 0.2 * pk(t, cues.click[0], 0.2)})`;
+            const rp = t >= cues.click[0] ? Math.min(1, (t - cues.click[0]) / 0.5) : 1;
+            const ripple = document.getElementById("s1-ripple");
+            ripple.style.opacity = 1 - rp;
+            ripple.style.transform = `translate(1280px, 975px) scale(${0.2 + 1.6 * ez.out3(rp)})`;
+            document.getElementById("s1-flash").style.opacity = Math.max(0.85 * pk(t, 4.4, 0.3), keys(t, [[4.7, 0], [5.0, 1, "in3"]]));
+          };
+          const drive = { t: 0 };
+          render(0);
+
+          const tl = gsap.timeline({ paused: true });
+          tl.to(drive, { t: DUR, duration: DUR, ease: "none", onUpdate: () => render(drive.t) }, 0);
+
+          // camera: focus pull, slow drift, punch on the blast
+          tl.fromTo("#s1-cam", { scale: 1.22, filter: "blur(14px) brightness(0.3)" }, { scale: 1.05, filter: "blur(0px) brightness(1)", duration: 0.8, ease: "power3.out" }, 0);
+          tl.to("#s1-cam", { scale: 1.0, duration: 3.5, ease: "sine.inOut" }, 0.8);
+          tl.to("#s1-cam", { scale: 1.1, duration: 0.5, ease: "power4.out" }, 4.4);
+          [0, 1, 2, 3, 4, 5].forEach((k) => {
+            tl.to("#s1-cam", { x: (hash(k + 1) - 0.5) * 40, y: (hash(k + 9) - 0.5) * 30, duration: 0.04, ease: "none" }, 4.4 + k * 0.04);
+          });
+          tl.to("#s1-cam", { x: 0, y: 0, duration: 0.08 }, 4.64);
+
+          // label hover blips
+          // lock onto the hottest band
+          const hot = bars[4];
+          tl.fromTo("#s1-tip", { opacity: 0, x: 40, scale: 0.9 }, { opacity: 1, x: 0, scale: 1, duration: 0.35, ease: "back.out(2)" }, 1.9);
+          tl.to("#s1-tip", { opacity: 0, x: -30, duration: 0.25, ease: "power2.in" }, 3.0);
+
+          // slam copy
+          tl.fromTo("#s1-eyebrow", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.4, ease: "expo.out" }, 2.0);
+          tl.fromTo("#s1-l1", { opacity: 0, scale: 1.6, filter: "blur(18px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.4, ease: "power4.out" }, cues.slam[0]);
+          tl.fromTo("#s1-l2", { opacity: 0, x: -260 }, { opacity: 1, x: 0, duration: 0.4, ease: "expo.out" }, cues.slam[1]);
+          gsap.set(["#s1-l1", "#s1-l2", "#s1-eyebrow"], { transformOrigin: "0% 50%" });
+
+          // order bar, hover, click
+          tl.fromTo("#s1-order", { opacity: 0, y: 80 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, 2.8);
+          tl.to("#s1-order", { opacity: 0, y: 60, duration: 0.3, ease: "power2.in" }, 4.1);
+
+          // blast
+          tl.fromTo("#s1-ticker", { opacity: 0, scale: 1.4 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2.5)" }, 4.45);
+
+          window.__timelines["s1-hook"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="s7-product-template">
+      <style>
+        #s7-product-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(ellipse at 50% 60%, #14353f 0%, #08121b 62%);
+        }
+        #s7-ghost {
+          position: absolute;
+          left: 0;
+          top: 560px;
+          font: 900 460px/1 var(--tc);
+          color: rgba(246, 215, 140, 0.06);
+          white-space: nowrap;
+        }
+        #s7-glow {
+          position: absolute;
+          left: 960px;
+          top: 620px;
+          width: 1500px;
+          height: 800px;
+          margin: -400px 0 0 -750px;
+          border-radius: 50%;
+          background: radial-gradient(ellipse, rgba(112, 230, 201, 0.28), rgba(112, 230, 201, 0) 70%);
+        }
+        #s7-head {
+          position: absolute;
+          left: 120px;
+          top: 92px;
+          font: 400 58px var(--display);
+          letter-spacing: -0.03em;
+          color: var(--ink);
+          white-space: nowrap;
+        }
+        #s7-head span { color: var(--mint); }
+        #s7-stage { position: absolute; inset: 0; perspective: 2200px; }
+        #s7-win {
+          position: absolute;
+          left: 310px;
+          top: 250px;
+          width: 1300px;
+          height: 731px;
+          transform-origin: 598px 412px;
+        }
+        #s7-shot {
+          position: absolute;
+          inset: 0;
+          border-radius: 18px;
+          overflow: hidden;
+          border: 3px solid #3a5862;
+          box-shadow: 0 50px 120px rgba(0, 0, 0, 0.6), 0 0 80px rgba(112, 230, 201, 0.18);
+        }
+        #s7-shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+        #s7-sheen {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 400px;
+          height: 100%;
+          background: linear-gradient(100deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0));
+        }
+        .s7-ring {
+          position: absolute;
+          width: 120px;
+          height: 120px;
+          margin: -60px 0 0 -60px;
+          border-radius: 50%;
+          border: 5px solid var(--mint);
+          box-shadow: 0 0 30px rgba(112, 230, 201, 0.8);
+          opacity: 0;
+        }
+        .s7-pill {
+          position: absolute;
+          padding: 12px 22px;
+          border-radius: 12px;
+          background: rgba(8, 18, 27, 0.94);
+          border: 3px solid var(--mint);
+          font: 700 30px var(--mono);
+          color: var(--ink);
+          white-space: nowrap;
+          opacity: 0;
+        }
+        .s7-pill b { color: var(--mint); font-weight: 700; }
+        .s7-pill.gold { border-color: var(--gold); }
+        .s7-pill.gold b { color: var(--gold); }
+      </style>
+
+      <div data-hf-id="hf-sdlk" id="s7-product-root" data-composition-id="s7-product" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-swgv" id="s7-glow"></div>
+        <div data-hf-id="hf-0g4g" id="s7-ghost" data-layout-ignore="">爆倉獵場 爆倉獵場</div>
+        <div data-hf-id="hf-jwuq" id="s7-head">Every tick simulated. <span data-hf-id="hf-5dwy">Every lesson real.</span></div>
+        <div data-hf-id="hf-k2vi" id="s7-stage">
+          <div data-hf-id="hf-w63i" id="s7-win">
+            <div data-hf-id="hf-76bw" id="s7-shot">
+              <img data-hf-id="hf-qj7n" src="assets/game-hero.png" alt="FLOW ARENA gameplay">
+              <div data-hf-id="hf-lg9r" id="s7-sheen"></div>
+            </div>
+            <div data-hf-id="hf-5nbq" class="s7-ring" id="s7-r1" style="left: 598px; top: 412px; width: 520px; height: 110px; margin: -55px 0 0 -260px; border-radius: 60px"></div>
+            <div data-hf-id="hf-956v" class="s7-pill gold" id="s7-p1" style="left: 380px; top: 480px"><b data-hf-id="hf-g92t">▲</b> LIQUIDATIONS YOU IGNITED</div>
+            <div data-hf-id="hf-o84s" class="s7-ring" id="s7-r2" style="left: 816px; top: 75px"></div>
+            <div data-hf-id="hf-e2th" class="s7-pill" id="s7-p2" style="left: 690px; top: 150px">LIVE SCORE <b data-hf-id="hf-lsvg">1596 · RANK S</b></div>
+            <div data-hf-id="hf-um28" class="s7-ring" id="s7-r3" style="left: 435px; top: 91px; width: 250px; margin-left: -125px"></div>
+            <div data-hf-id="hf-6iqu" class="s7-pill" id="s7-p3" style="left: 250px; top: 150px"><b data-hf-id="hf-2edx">+16.63%</b> IN 11 SECONDS</div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 60 / 128;
+          const tl = gsap.timeline({ paused: true });
+
+          tl.fromTo("#s7-win", { rotationX: 34, rotationY: -24, y: 320, z: -500, opacity: 0 }, { rotationX: 0, rotationY: 0, y: 0, z: 0, opacity: 1, duration: 1.5, ease: "expo.out" }, 0);
+          tl.fromTo("#s7-win", { scale: 1 }, { scale: 1.09, duration: 4.3, ease: "sine.inOut", immediateRender: false }, 1.5);
+          tl.fromTo("#s7-sheen", { x: -500 }, { x: 1500, duration: 1.2, ease: "power2.inOut" }, 0.6);
+          tl.fromTo("#s7-head", { opacity: 0, y: -30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.25);
+          tl.fromTo("#s7-head span", { opacity: 0 }, { opacity: 1, duration: 0.3 }, B * 2);
+          tl.fromTo("#s7-ghost", { x: 0 }, { x: -420, duration: 5.85, ease: "none" }, 0);
+          tl.fromTo("#s7-glow", { scale: 0.9, opacity: 0.7 }, { scale: 1.1, opacity: 1, duration: B * 2, yoyo: true, repeat: 5, ease: "sine.inOut" }, 0);
+
+          // callouts land on the beat grid (35.625 / 36.5625 / 37.5 global)
+          [[B * 4, "#s7-r1", "#s7-p1"], [B * 6, "#s7-r2", "#s7-p2"], [B * 8, "#s7-r3", "#s7-p3"]].forEach(([t, r, p], i) => {
+            tl.fromTo(r, { scale: 1.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "expo.out" }, t);
+            tl.fromTo(p, { y: i ? -20 : 20, opacity: 0, scale: 0.85 }, { y: 0, opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, t + 0.06);
+            tl.fromTo(r, { boxShadow: "0 0 30px rgba(112,230,201,.8)" }, { boxShadow: "0 0 60px rgba(112,230,201,1)", duration: B / 2, yoyo: true, repeat: 3, ease: "sine.inOut" }, t + 0.35);
+          });
+
+          window.__timelines["s7-product"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

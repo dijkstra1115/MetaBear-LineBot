@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(circle at 75% 40%, #13424b66, #08121b00 55%), #08121b;
+          color: #e8f3ef;
+          font-family: "Noto Sans TC", sans-serif;
+        }
+        .s3-col {
+          position: absolute;
+          left: 110px;
+          top: 120px;
+          width: 720px;
+        }
+        .s3-chip {
+          font: 700 22px "JetBrains Mono", monospace;
+          letter-spacing: 0.2em;
+          color: #70e6c9;
+        }
+        .s3-num {
+          display: block;
+          margin-top: 10px;
+          font: 700 190px "JetBrains Mono", monospace;
+          line-height: 1;
+          color: #08121b;
+          -webkit-text-stroke: 3px #70e6c9;
+        }
+        .s3-title {
+          display: block;
+          margin-top: 6px;
+          font-size: 150px;
+          font-weight: 900;
+          letter-spacing: -0.03em;
+          line-height: 1.08;
+          white-space: nowrap;
+        }
+        .s3-sub {
+          margin-top: 18px;
+          font-size: 36px;
+          font-weight: 500;
+          line-height: 1.5;
+          color: #a9c1bd;
+        }
+        .s3-stats {
+          position: absolute;
+          left: 110px;
+          top: 790px;
+          display: flex;
+          gap: 48px;
+        }
+        .s3-stat small {
+          display: block;
+          font: 700 22px "JetBrains Mono", monospace;
+          letter-spacing: 0.14em;
+          color: #97afb5;
+        }
+        .s3-stat strong {
+          display: block;
+          margin-top: 6px;
+          font: 700 62px "JetBrains Mono", monospace;
+          letter-spacing: -0.03em;
+          color: #70e6c9;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        .s3-stat.gold strong {
+          color: #f6d78c;
+        }
+        #s3-floor {
+          position: absolute;
+          left: 0;
+          top: 746px;
+          width: 1920px;
+          height: 4px;
+          background: linear-gradient(90deg, #70e6c900, #70e6c9 40%, #70e6c9);
+          box-shadow: 0 0 24px #70e6c9;
+          transform-origin: 100% 50%;
+        }
+        #s3-floorlab {
+          position: absolute;
+          left: 110px;
+          top: 700px;
+          font: 700 24px "JetBrains Mono", monospace;
+          letter-spacing: 0.12em;
+          color: #70e6c9;
+        }
+        #s3-panel {
+          position: absolute;
+          left: 880px;
+          top: 90px;
+          width: 920px;
+          height: 900px;
+          border-radius: 18px;
+          border: 3px solid #31545b;
+          background: linear-gradient(160deg, #142c36, #0f1f29);
+          box-shadow: 0 40px 100px #000a, 0 0 0 1px #70e6c922;
+          transform-origin: 0% 50%;
+        }
+        .s3-head {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 72px;
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding: 0 26px;
+          border-bottom: 2px solid #29404b;
+          font-size: 28px;
+          font-weight: 700;
+        }
+        .s3-head span {
+          font: 700 20px "JetBrains Mono", monospace;
+          letter-spacing: 0.12em;
+          color: #69818a;
+        }
+        .s3-head em {
+          margin-left: auto;
+          font: 700 20px "JetBrains Mono", monospace;
+          font-style: normal;
+          letter-spacing: 0.12em;
+          color: #70e6c9;
+          border: 2px solid #70e6c955;
+          border-radius: 6px;
+          padding: 4px 10px;
+        }
+        .s3-row {
+          position: absolute;
+          left: 14px;
+          width: 886px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 18px;
+          font: 700 28px "JetBrains Mono", monospace;
+          border-radius: 6px;
+          overflow: hidden;
+        }
+        .s3-row .bar {
+          position: absolute;
+          right: 0;
+          top: 4px;
+          height: 40px;
+          width: 100%;
+          border-radius: 4px;
+          transform-origin: 100% 50%;
+        }
+        .s3-row .hl {
+          position: absolute;
+          inset: 0;
+          background: #70e6c9;
+          opacity: 0;
+        }
+        .s3-row b,
+        .s3-row i {
+          position: relative;
+          font-style: normal;
+        }
+        .s3-row.ask b {
+          color: #fb7f91;
+        }
+        .s3-row.ask .bar {
+          background: #fb7f9126;
+        }
+        .s3-row.bid b {
+          color: #70e6c9;
+        }
+        .s3-row.bid .bar {
+          background: #70e6c926;
+        }
+        .s3-row i {
+          color: #cfe3df;
+        }
+        .s3-mid {
+          position: absolute;
+          left: 14px;
+          top: 392px;
+          width: 886px;
+          height: 80px;
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          padding: 0 18px;
+          border-top: 2px solid #29404b;
+          border-bottom: 2px solid #29404b;
+        }
+        #s3-last {
+          font: 700 52px "JetBrains Mono", monospace;
+          color: #f2c575;
+          font-variant-numeric: tabular-nums;
+        }
+        #s3-arrow {
+          font-size: 40px;
+          font-weight: 900;
+        }
+        .s3-mid small {
+          margin-left: auto;
+          font: 700 20px "JetBrains Mono", monospace;
+          letter-spacing: 0.12em;
+          color: #69818a;
+        }
+        #s3-wall {
+          position: absolute;
+          left: 14px;
+          top: 634px;
+          width: 886px;
+          height: 48px;
+          border-radius: 6px;
+          background: linear-gradient(90deg, #1f6a58, #70e6c9);
+          box-shadow: 0 0 40px #70e6c9aa, inset 0 0 0 2px #b6ffe6;
+          transform-origin: 100% 50%;
+          opacity: 0;
+        }
+        #s3-walllab {
+          position: absolute;
+          left: 32px;
+          top: 640px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 0 14px;
+          border-radius: 6px;
+          background: #08231f;
+          color: #b6ffe6;
+          font-size: 24px;
+          font-weight: 900;
+          opacity: 0;
+        }
+        #s3-walllab b {
+          font: 700 24px "JetBrains Mono", monospace;
+        }
+        .s3-orderbar {
+          position: absolute;
+          left: 14px;
+          top: 800px;
+          width: 886px;
+          height: 84px;
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          padding: 0 10px;
+          border-top: 2px solid #29404b;
+        }
+        .s3-qty {
+          position: relative;
+          flex: 0 0 150px;
+          height: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          border: 2px solid #42616a;
+          background: #1c323e;
+          font: 700 26px "JetBrains Mono", monospace;
+        }
+        .s3-qty .hl {
+          position: absolute;
+          inset: -2px;
+          border-radius: 8px;
+          background: #70e6c9;
+          opacity: 0;
+        }
+        .s3-qty span {
+          position: relative;
+        }
+        .s3-orderbar small {
+          margin-left: 10px;
+          font-size: 22px;
+          font-weight: 700;
+          color: #97afb5;
+        }
+        .s3-tag {
+          position: absolute;
+          left: 1150px;
+          top: 0;
+          height: 40px;
+          margin-top: -20px;
+          padding: 0 14px;
+          display: flex;
+          align-items: center;
+          border-radius: 6px;
+          background: #12352f;
+          border: 2px solid #70e6c9;
+          color: #b6ffe6;
+          font: 700 22px "JetBrains Mono", monospace;
+          opacity: 0;
+        }
+        .s3-pill {
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 40px;
+          margin-top: -20px;
+          padding: 0 16px;
+          display: flex;
+          align-items: center;
+          border-radius: 20px;
+          background: #5a1c2b;
+          border: 2px solid #fb7f91;
+          color: #ffd0d7;
+          font: 700 24px "JetBrains Mono", monospace;
+          box-shadow: 0 0 24px #fb7f9188;
+          opacity: 0;
+        }
+        .s3-spark {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: #fff3d6;
+          opacity: 0;
+        }
+        .s3-badge {
+          position: absolute;
+          left: 1230px;
+          top: 560px;
+          padding: 10px 20px;
+          border-radius: 10px;
+          background: #08231f;
+          border: 3px solid #70e6c9;
+          font-size: 36px;
+          font-weight: 900;
+          color: #b6ffe6;
+          box-shadow: 0 0 40px #70e6c988;
+          opacity: 0;
+        }
+        .curpos {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 46px;
+          height: 60px;
+        }
+        #s3-cursor {
+          display: block;
+          transform-origin: 4px 4px;
+          width: 46px;
+          height: 60px;
+          filter: drop-shadow(0 0 14px #70e6c9aa) drop-shadow(0 6px 10px #000c);
+        }
+        .s3-ripple {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 120px;
+          height: 120px;
+          margin: -60px 0 0 -60px;
+          border-radius: 50%;
+          border: 4px solid #70e6c9;
+          opacity: 0;
+        }
+      </style>
+
+      <div id="root" data-composition-id="s3-absorb" data-width="1920" data-height="1080">
+        <div
+          id="s3-cues"
+          hidden
+          data-cues='{"hover":[1.0,1.15,1.3,1.45,1.95,2.1,2.25,2.4],"click":[1.6,2.6],"place":[2.6],"eat":[3.25,3.45,3.6],"absorb":[3.8,4.1,4.4,4.65,4.9,5.15,5.4,5.6],"absorbSizes":[420,380,300,360,410,330,290,370],"rise":[6.3],"cash":[7.2],"whoosh":[8.5]}'
+        ></div>
+        <div id="s3-floor"></div>
+        <div id="s3-floorlab">價格地板 · 99,800</div>
+        <div class="s3-col">
+          <div class="s3-chip" id="s3-chip">PLAY 01 / 03</div>
+          <span class="s3-num" id="s3-num">01</span>
+          <span class="s3-title" id="s3-title">限價吸收</span>
+          <div class="s3-sub" id="s3-sub"><span style="display: block">用大額掛單接住賣壓，</span><span style="display: block">把價格釘在你要的位置。</span></div>
+        </div>
+        <div class="s3-stats" id="s3-stats">
+          <div class="s3-stat"><small>已吸收賣壓</small><strong id="s3-absorbed">0 BTC</strong></div>
+          <div class="s3-stat gold"><small>浮動盈虧</small><strong id="s3-pnl">+$0</strong></div>
+        </div>
+        <div id="s3-panel">
+          <div class="s3-head">委託簿 <span>BTC/USDT 永續</span><em>FOOTPRINT</em></div>
+          <div id="s3-rows"></div>
+          <div class="s3-mid"><span id="s3-last">100,000.0</span><span id="s3-arrow"></span><small>LAST PRICE</small></div>
+          <div id="s3-wall"></div>
+          <div id="s3-walllab">99,800 · 你的掛單 <b id="s3-wallsize">5,000 BTC</b></div>
+          <div class="s3-orderbar">
+            <div class="s3-qty"><span class="hl"></span><span>500</span></div>
+            <div class="s3-qty"><span class="hl"></span><span>1,250</span></div>
+            <div class="s3-qty"><span class="hl"></span><span>2,500</span></div>
+            <div class="s3-qty"><span class="hl"></span><span>5,000</span></div>
+            <small>BTC · 點價格掛限價單</small>
+          </div>
+        </div>
+        <div class="s3-tag" id="s3-tag">限價買入 @ 99,950</div>
+        <div id="s3-fx"></div>
+        <div class="s3-badge" id="s3-badge">賣壓被吸收</div>
+        <div class="s3-ripple" id="s3-ripple"></div>
+        <div id="s3-curpos" class="curpos">
+          <svg id="s3-cursor" viewBox="0 0 46 60" aria-hidden="true">
+            <path d="M3 3 L3 49 L15 38 L23 57 L32 53 L24 35 L41 35 Z" fill="#f4fffb" stroke="#08121b" stroke-width="3" stroke-linejoin="round" />
+          </svg>
+        </div>
+      </div>
+
+      <script>
+        (() => {
+          const DUR = 9;
+          const cues = JSON.parse(document.getElementById("s3-cues").dataset.cues);
+          const ez = {
+            lin: (x) => x,
+            out3: (x) => 1 - Math.pow(1 - x, 3),
+            in3: (x) => x * x * x,
+            inout: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+          };
+          const keys = (t, ks) => {
+            if (t <= ks[0][0]) return ks[0][1];
+            for (let i = 1; i < ks.length; i++) {
+              if (t <= ks[i][0]) {
+                const [t0, v0] = ks[i - 1];
+                const [t1, v1, e] = ks[i];
+                return v0 + (v1 - v0) * ez[e || "inout"]((t - t0) / (t1 - t0));
+              }
+            }
+            return ks[ks.length - 1][1];
+          };
+          const pk = (t, t0, d) => (t < t0 ? 0 : Math.max(0, 1 - (t - t0) / d) ** 2);
+          const hash = (n) => {
+            const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+            return x - Math.floor(x);
+          };
+          const fmt = (n, d = 0) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+          // Book rows. Panel-local y; panel sits at top 90, left 880.
+          const PX = 880, PY = 90;
+          const rowsHost = document.getElementById("s3-rows");
+          const asks = [100300, 100250, 100200, 100150, 100100, 100050];
+          const bids = [99950, 99900, 99850, 99800, 99750, 99700];
+          const askSz = [880, 620, 540, 460, 390, 310];
+          const bidSz = [340, 420, 380, 510, 640, 820];
+          const mk = (price, size, side, top) => {
+            const d = document.createElement("div");
+            d.className = "s3-row " + side;
+            d.style.top = top + "px";
+            d.innerHTML = `<span class="bar"></span><span class="hl"></span><b>${fmt(price)}.0</b><i>${fmt(size)}</i>`;
+            d.querySelector(".bar").style.transform = `scaleX(${size / 1000})`;
+            rowsHost.appendChild(d);
+            return { d, price, size };
+          };
+          asks.forEach((p, i) => mk(p, askSz[i], "ask", 84 + i * 50));
+          const bidRows = bids.map((p, i) => mk(p, bidSz[i], "bid", 484 + i * 50));
+          // centre y (frame space) of each bid row
+          const bidY = bids.map((_, i) => PY + 484 + i * 50 + 24);
+          const WALL_Y = bidY[3];
+
+          // pills: eaters then absorb hits
+          const fx = document.getElementById("s3-fx");
+          const pillSpecs = [];
+          cues.eat.forEach((t, i) => pillSpecs.push({ t, y: bidY[i], size: bidSz[i] }));
+          cues.absorb.forEach((t, i) => pillSpecs.push({ t, y: WALL_Y, size: cues.absorbSizes[i], wall: true }));
+          const pills = pillSpecs.map((s) => {
+            const d = document.createElement("div");
+            d.className = "s3-pill";
+            d.textContent = `賣 ${s.size}`;
+            fx.appendChild(d);
+            const sparks = [];
+            for (let k = 0; k < 8; k++) {
+              const sp = document.createElement("div");
+              sp.className = "s3-spark";
+              fx.appendChild(sp);
+              sparks.push(sp);
+            }
+            return { ...s, d, sparks };
+          });
+
+          const qtys = [...document.querySelectorAll(".s3-qty")];
+          const qtyX = [979, 1141, 1303, 1465];
+          const curKeys = {
+            x: [[0, 1980], [0.8, 1980], [1.0, qtyX[0], "out3"], [1.15, qtyX[1]], [1.3, qtyX[2]], [1.45, qtyX[3]], [1.7, qtyX[3]], [1.95, 1100, "out3"], [2.4, 1100], [3.0, 1100], [3.8, 1330, "inout"], [9, 1360]],
+            y: [[0, 1100], [0.8, 1100], [1.0, 935, "out3"], [1.7, 935], [1.95, bidY[0], "out3"], [2.1, bidY[1]], [2.25, bidY[2]], [2.4, bidY[3]], [3.0, bidY[3]], [3.8, 930, "inout"], [9, 945]],
+          };
+          const absorbedAt = (t) => {
+            let a = 0;
+            cues.absorb.forEach((h, i) => {
+              if (t >= h) a += cues.absorbSizes[i];
+            });
+            return a;
+          };
+          const lastPrice = (t) => {
+            if (t < 3.25) return 100000 - Math.max(0, t - 2.8) * 80;
+            if (t < 3.45) return 99950;
+            if (t < 3.6) return 99900;
+            if (t < 3.8) return 99850;
+            if (t < 6.3) return 99800 + (t > 3.8 ? Math.sin(t * 40) * 1.5 : 0);
+            return keys(t, [[6.3, 99800], [7.2, 100120, "out3"]]);
+          };
+
+          const $ = (id) => document.getElementById(id);
+          const render = (t) => {
+            // cursor
+            const cx = keys(t, curKeys.x);
+            const cy = keys(t, curKeys.y);
+            $("s3-curpos").style.transform = `translate(${cx - 4}px, ${cy - 4}px)`;
+            let press = 0;
+            cues.click.forEach((c) => (press = Math.max(press, pk(t, c, 0.22))));
+            $("s3-cursor").style.transform = `scale(${1 - 0.2 * press})`;
+            // ripple on the last click that has fired
+            const lc = cues.click.filter((c) => t >= c).pop();
+            const rp = lc === undefined ? 1 : Math.min(1, (t - lc) / 0.5);
+            const rpos = lc === cues.click[0] ? [qtyX[3], 935] : [1100, WALL_Y];
+            $("s3-ripple").style.opacity = 1 - rp;
+            $("s3-ripple").style.transform = `translate(${rpos[0]}px, ${rpos[1]}px) scale(${0.2 + 1.6 * ez.out3(rp)})`;
+
+            // qty hovers (first four hovers) and the 5,000 selection
+            qtys.forEach((q, i) => {
+              const h = pk(t, cues.hover[i], 0.4);
+              const sel = i === 3 && t >= cues.click[0];
+              q.querySelector(".hl").style.opacity = sel ? 0.9 : h * 0.85;
+              q.style.color = sel || h > 0.5 ? "#08231f" : "#e8f3ef";
+              q.style.transform = `scale(${1 + 0.1 * h - 0.06 * (i === 3 ? pk(t, cues.click[0], 0.25) : 0)})`;
+            });
+            // bid-row hovers + limit tag
+            bidRows.forEach((r, i) => {
+              const h = pk(t, cues.hover[4 + i], 0.45);
+              r.d.querySelector(".hl").style.opacity = h * 0.3;
+              r.d.style.transform = `scale(${1 + 0.02 * h})`;
+            });
+            const hi = cues.hover.slice(4).filter((h) => t >= h).length - 1;
+            const tagOn = t >= cues.hover[4] && t < cues.place[0];
+            $("s3-tag").style.opacity = tagOn ? 1 : 0;
+            if (hi >= 0) {
+              $("s3-tag").style.transform = `translateY(${bidY[hi]}px)`;
+              $("s3-tag").textContent = `限價買入 5,000 @ ${fmt(bids[hi])}`;
+            }
+
+            // eaten rows fade out
+            cues.eat.forEach((e, i) => {
+              const k = t < e ? 1 : Math.max(0, 1 - (t - e) / 0.18);
+              bidRows[i].d.style.opacity = 0.15 + 0.85 * k;
+              bidRows[i].d.querySelector(".bar").style.transform = `scaleX(${(bidSz[i] / 1000) * k})`;
+            });
+            // the wall
+            const placed = t >= cues.place[0];
+            const absorbed = absorbedAt(t);
+            const wallLeft = 5000 - absorbed;
+            let shake = 0;
+            cues.absorb.forEach((h) => (shake = Math.max(shake, pk(t, h, 0.2))));
+            const grow = placed ? ez.out3(Math.min(1, (t - cues.place[0]) / 0.35)) : 0;
+            $("s3-wall").style.opacity = placed ? 1 : 0;
+            $("s3-wall").style.transform = `scaleX(${grow * (0.12 + (0.88 * wallLeft) / 5000)}) translateX(${(hash(Math.floor(t * 30)) - 0.5) * 16 * shake}px)`;
+            $("s3-wall").style.filter = `brightness(${1 + 0.8 * shake})`;
+            $("s3-walllab").style.opacity = placed ? 1 : 0;
+            bidRows[3].d.style.opacity = placed ? 0 : 1;
+            $("s3-wallsize").textContent = `${fmt(wallLeft)} BTC`;
+            $("s3-floor").style.transform = `scaleX(${placed ? ez.out3(Math.min(1, (t - 2.7) / 0.6)) : 0})`;
+            $("s3-floorlab").style.opacity = t > 3.0 ? Math.min(1, (t - 3.0) / 0.3) : 0;
+
+            // pills travel and burst
+            pills.forEach((p, i) => {
+              const tt = t - (p.t - 0.28);
+              const on = tt >= 0 && t < p.t;
+              const x = 1960 - (1960 - (p.wall ? 1640 : 1700)) * ez.in3(Math.min(1, Math.max(0, tt / 0.28)));
+              p.d.style.opacity = on ? 1 : 0;
+              p.d.style.transform = `translate(${x}px, ${p.y}px)`;
+              const bt = t - p.t;
+              p.sparks.forEach((sp, k) => {
+                const a = hash(i * 17 + k * 3.3) * Math.PI * 2;
+                const r = bt * (260 + hash(k * 7 + i) * 380);
+                sp.style.opacity = bt >= 0 && bt < 0.35 ? 1 - bt / 0.35 : 0;
+                sp.style.transform = `translate(${1650 + Math.cos(a) * r}px, ${p.y + Math.sin(a) * r * 0.6}px)`;
+              });
+            });
+
+            // last price + arrow
+            const lp = lastPrice(t);
+            $("s3-last").textContent = fmt(lp, 1);
+            const up = t >= 6.3;
+            $("s3-last").style.color = up ? "#70e6c9" : t > 3.2 ? "#fb7f91" : "#f2c575";
+            $("s3-arrow").textContent = up ? "▲" : t > 3.2 ? "▼" : "";
+            $("s3-arrow").style.color = up ? "#70e6c9" : "#fb7f91";
+
+            // counters
+            $("s3-absorbed").textContent = `${fmt(absorbed)} BTC`;
+            $("s3-absorbed").style.transform = `scale(${1 + 0.08 * shake})`;
+            const pnl = t < 6.3 ? 0 : Math.round(((lp - 99800) * 2860) / 100) * 100;
+            $("s3-pnl").textContent = `+$${fmt(Math.max(0, pnl))}`;
+            $("s3-pnl").style.transform = `scale(${1 + 0.12 * pk(t, cues.cash[0], 0.5)})`;
+            // badge
+            const bIn = t >= 4.4 ? Math.min(1, (t - 4.4) / 0.25) : 0;
+            const bOut = t >= 6.2 ? Math.max(0, 1 - (t - 6.2) / 0.25) : 1;
+            $("s3-badge").style.opacity = bIn * bOut;
+            $("s3-badge").style.transform = `scale(${1 + 0.4 * (1 - ez.out3(bIn))}) rotate(-4deg)`;
+          };
+          const drive = { t: 0 };
+          render(0);
+          const tl = gsap.timeline({ paused: true });
+          tl.to(drive, { t: DUR, duration: DUR, ease: "none", onUpdate: () => render(drive.t) }, 0);
+          tl.fromTo("#s3-panel", { opacity: 0, x: 260, rotationY: -38, transformPerspective: 1800 }, { opacity: 1, x: 0, rotationY: 0, duration: 0.75, ease: "expo.out" }, 0);
+          tl.fromTo("#s3-chip", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 0.05);
+          tl.fromTo("#s3-num", { opacity: 0, y: 70 }, { opacity: 1, y: 0, duration: 0.45, ease: "circ.out" }, 0.1);
+          tl.fromTo("#s3-title", { opacity: 0, scale: 1.4, filter: "blur(16px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.45, ease: "power4.out" }, 0.25);
+          tl.fromTo("#s3-sub", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, 0.55);
+          tl.fromTo("#s3-stats", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.45, ease: "back.out(1.6)" }, 3.6);
+          gsap.set(["#s3-title", "#s3-num"], { transformOrigin: "0% 50%" });
+          // exit: everything slides left, panel tilts away
+          tl.to(".s3-col, #s3-stats, #s3-floorlab", { x: -200, opacity: 0, duration: 0.4, ease: "power3.in" }, 8.55);
+          tl.to("#s3-panel", { x: -500, rotationY: 30, opacity: 0, duration: 0.45, ease: "power3.in" }, 8.5);
+          tl.to("#s3-floor, #s3-curpos", { opacity: 0, duration: 0.3 }, 8.55);
+          window.__timelines["s3-absorb"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

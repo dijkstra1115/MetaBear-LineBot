@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>FLOW ARENA — launch</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Noto Sans TC Sub";
+        src: url("assets/fonts/noto-tc-900.woff2") format("woff2");
+        font-weight: 900;
+      }
+      @font-face {
+        font-family: "Noto Sans TC Sub";
+        src: url("assets/fonts/noto-tc-500.woff2") format("woff2");
+        font-weight: 500;
+      }
+      :root {
+        --bg: #08121b;
+        --bg2: #0c1b26;
+        --panel: #101f2a;
+        --edge: #29404b;
+        --ink: #e8f3ef;
+        --muted: #97afb5;
+        --dim: #69818a;
+        --mint: #70e6c9;
+        --coral: #fb7f91;
+        --gold: #f6d78c;
+        --amber: #f2c575;
+        --violet: #5c40aa;
+        --display: "Archivo Black", "Arial Black", sans-serif;
+        --mono: "JetBrains Mono", "Courier New", monospace;
+        --tc: "Noto Sans TC Sub", "Microsoft JhengHei", sans-serif;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #08121b;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--mono);
+      }
+      .scene-wrap {
+        position: absolute;
+        inset: 0;
+        will-change: transform, opacity, filter;
+      }
+      #w2, #w3, #w4, #w5, #w6, #w7, #w8 { opacity: 0; }
+      .scene-wrap > div {
+        position: absolute;
+        inset: 0;
+      }
+      /* ---------- persistent chrome ---------- */
+      #chrome {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 62;
+      }
+      .corner {
+        position: absolute;
+        width: 34px;
+        height: 34px;
+        border-color: rgba(232, 243, 239, 0.55);
+        border-style: solid;
+        border-width: 0;
+      }
+      .corner.tl { left: 36px; top: 36px; border-left-width: 3px; border-top-width: 3px; }
+      .corner.tr { right: 36px; top: 36px; border-right-width: 3px; border-top-width: 3px; }
+      .corner.bl { left: 36px; bottom: 36px; border-left-width: 3px; border-bottom-width: 3px; }
+      .corner.br { right: 36px; bottom: 36px; border-right-width: 3px; border-bottom-width: 3px; }
+      .chrome-label {
+        position: absolute;
+        bottom: 44px;
+        font: 700 20px var(--mono);
+        letter-spacing: 0.14em;
+        color: rgba(232, 243, 239, 0.72);
+        white-space: nowrap;
+      }
+      #chrome-left { left: 90px; }
+      #chrome-left i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 12px;
+        border-radius: 50%;
+        background: var(--mint);
+        box-shadow: 0 0 14px var(--mint);
+        vertical-align: 2px;
+      }
+      #chrome-right { right: 90px; font-variant-numeric: tabular-nums; }
+      /* ---------- finishing layers ---------- */
+      #vignette {
+        position: absolute;
+        inset: 0;
+        z-index: 60;
+        pointer-events: none;
+        background: radial-gradient(ellipse at 50% 50%, rgba(8, 18, 27, 0) 55%, rgba(3, 8, 12, 0.72) 100%);
+      }
+      #scan {
+        position: absolute;
+        inset: 0;
+        z-index: 61;
+        pointer-events: none;
+        opacity: 0.16;
+        background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.55) 0 1px, rgba(0, 0, 0, 0) 1px 4px);
+      }
+      #flash {
+        position: absolute;
+        inset: 0;
+        z-index: 70;
+        pointer-events: none;
+        background: radial-gradient(ellipse at 50% 50%, #fffbea 0%, #f6d78c 45%, rgba(246, 215, 140, 0.4) 100%);
+        opacity: 0;
+        mix-blend-mode: screen;
+      }
+      /* grain-overlay (registry component) */
+      @keyframes hf-grain-noise {
+        0%, 100% { transform: translate(0, 0); }
+        10% { transform: translate(-5%, -5%); }
+        20% { transform: translate(-10%, 5%); }
+        30% { transform: translate(5%, -10%); }
+        40% { transform: translate(-5%, 15%); }
+        50% { transform: translate(-10%, 5%); }
+        60% { transform: translate(15%, 0); }
+        70% { transform: translate(0, 10%); }
+        80% { transform: translate(-15%, 0); }
+        90% { transform: translate(10%, 5%); }
+      }
+      #grain-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 65;
+        overflow: hidden;
+      }
+      #grain-overlay .grain-texture {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.09;
+        animation: hf-grain-noise 0.5s steps(1) 90;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-i657" id="root" data-composition-id="main" data-start="0" data-duration="45" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-caon" class="scene-wrap" id="w1">
+        <div data-hf-id="hf-vshx" id="s1-open" data-composition-id="s1-open" data-composition-src="compositions/s1-open.html" data-start="0" data-duration="5.85" data-track-index="1" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-1f70" class="scene-wrap" id="w2">
+        <div data-hf-id="hf-7447" id="s2-title" data-composition-id="s2-title" data-composition-src="compositions/s2-title.html" data-start="5.625" data-duration="3.975" data-track-index="2" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-26ut" class="scene-wrap" id="w3">
+        <div data-hf-id="hf-tb2e" id="s3-whale" data-composition-id="s3-whale" data-composition-src="compositions/s3-whale.html" data-start="9.375" data-duration="3.975" data-track-index="1" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-kyki" class="scene-wrap" id="w4">
+        <div data-hf-id="hf-egow" id="s4-cascade" data-composition-id="s4-cascade" data-composition-src="compositions/s4-cascade.html" data-start="13.125" data-duration="9.6" data-track-index="2" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-owoj" class="scene-wrap" id="w5">
+        <div data-hf-id="hf-07qq" id="s5-threats" data-composition-id="s5-threats" data-composition-src="compositions/s5-threats.html" data-start="22.5" data-duration="7.725" data-track-index="1" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-g8so" class="scene-wrap" id="w6">
+        <div data-hf-id="hf-ow4l" id="s6-stats" data-composition-id="s6-stats" data-composition-src="compositions/s6-stats.html" data-start="30" data-duration="3.975" data-track-index="2" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-h0gh" class="scene-wrap" id="w7">
+        <div data-hf-id="hf-6u8a" id="s7-product" data-composition-id="s7-product" data-composition-src="compositions/s7-product.html" data-start="33.75" data-duration="5.85" data-track-index="1" data-width="1920" data-height="1080"></div>
+      </div>
+      <div data-hf-id="hf-epda" class="scene-wrap" id="w8">
+        <div data-hf-id="hf-us2r" id="s8-end" data-composition-id="s8-end" data-composition-src="compositions/s8-end.html" data-start="39.375" data-duration="5.625" data-track-index="2" data-width="1920" data-height="1080"></div>
+      </div>
+
+      <div data-hf-id="hf-rwb7" id="chrome">
+        <div data-hf-id="hf-9co5" class="corner tl"></div>
+        <div data-hf-id="hf-lrp7" class="corner tr"></div>
+        <div data-hf-id="hf-2cxv" class="corner bl"></div>
+        <div data-hf-id="hf-34pp" class="corner br"></div>
+        <div data-hf-id="hf-byeh" class="chrome-label" id="chrome-left"><i data-hf-id="hf-wt6k"></i>FLOW ARENA / LIQUIDATION HUNT</div>
+        <div data-hf-id="hf-yldg" class="chrome-label" id="chrome-right">BTC-PERP SIM · T+00:00.00</div>
+      </div>
+      <div data-hf-id="hf-mkrp" id="grain-overlay"><div data-hf-id="hf-0qtj" class="grain-texture"></div></div>
+      <div data-hf-id="hf-h7i3" id="vignette"></div>
+      <div data-hf-id="hf-vz0a" id="scan"></div>
+      <div data-hf-id="hf-hmg5" id="flash"></div>
+
+      <audio data-hf-id="hf-isjq" id="score" src="assets/score.wav" data-start="0" data-duration="45" data-track-index="10" data-volume="1"></audio>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const B = 60 / 128;
+
+      // Zoom-through cut: incoming punches in from oversize + blur while the outgoing
+      // blows past camera underneath; an overexposure flash sits exactly on the downbeat.
+      const cuts = [
+        { t: 5.625, out: "#w1", inn: "#w2", flash: 1, from: 1.35 },
+        { t: 9.375, out: "#w2", inn: "#w3", flash: 0.55, from: 0.82 },
+        { t: 13.125, out: "#w3", inn: "#w4", flash: 0.8, from: 1.3 },
+        { t: 22.5, out: "#w4", inn: "#w5", flash: 0.6, from: 1.25 },
+        { t: 30.0, out: "#w5", inn: "#w6", flash: 0.7, from: 0.85 },
+        { t: 33.75, out: "#w6", inn: "#w7", flash: 0.6, from: 1.3 },
+        { t: 39.375, out: "#w7", inn: "#w8", flash: 1, from: 1.4 },
+      ];
+      cuts.forEach((c) => {
+        tl.fromTo(c.inn, { scale: c.from, opacity: 0, filter: "blur(18px) brightness(2.2)" },
+          { scale: 1, opacity: 1, filter: "blur(0px) brightness(1)", duration: 0.34, ease: "expo.out", immediateRender: false }, c.t);
+        tl.fromTo(c.out, { scale: 1, opacity: 1, filter: "blur(0px) brightness(1)" },
+          { scale: c.from > 1 ? 1.6 : 0.7, opacity: 0, filter: "blur(14px) brightness(2)", duration: 0.22, ease: "power3.in", immediateRender: false }, c.t);
+        tl.fromTo("#flash", { opacity: c.flash }, { opacity: 0, duration: 0.45, ease: "power2.out", immediateRender: false }, c.t);
+      });
+
+      // chrome: enters after the cold-open hook, steps aside for the title and end card
+      tl.fromTo("#chrome", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out" }, 0.9);
+      tl.to("#chrome", { opacity: 0, duration: 0.12 }, 5.625);
+      tl.to("#chrome", { opacity: 1, duration: 0.3 }, 9.375);
+      tl.to("#chrome", { opacity: 0, duration: 0.2 }, 39.375);
+      tl.fromTo(".corner", { scale: 1.6 }, { scale: 1, duration: 0.5, ease: "back.out(2)", stagger: 0.06 }, 0.9);
+
+      // timecode readout — written from timeline time, seek-safe
+      const tc = document.getElementById("chrome-right");
+      const clock = { t: 0 };
+      tl.fromTo(clock, { t: 0 }, {
+        t: 45, duration: 45, ease: "none",
+        onUpdate: () => {
+          const s = clock.t;
+          const ss = String(Math.floor(s)).padStart(2, "0");
+          const cs = String(Math.floor((s % 1) * 100)).padStart(2, "0");
+          tc.textContent = `BTC-PERP SIM · T+00:${ss}.${cs}`;
+        },
+      }, 0);
+
+      // live dot pulses on every beat
+      tl.fromTo("#chrome-left i", { scale: 1.8, opacity: 1 }, { scale: 1, opacity: 0.7, duration: B * 0.9, ease: "power2.out", repeat: Math.max(0, Math.floor(45 / B) - 1), repeatDelay: B * 0.1 }, 0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

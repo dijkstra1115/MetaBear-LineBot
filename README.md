@@ -13,6 +13,7 @@
 | LINE Bot、CRM、BingX 核實 | src/、migrations/；/admin |
 | 分析師報單與登入 | /desk、/login；src/signals.ts、src/native-auth.ts |
 | 單課影片與 86 秒 Showreel | motion/；[製作說明](docs/ACADEMY-MOTION.md) |
+| FLOW ARENA 宣傳片（HyperFrames） | motion/promo/；[說明](motion/promo/README.md) |
 
 FLOW ARENA 與 46 秒橫／直式宣傳片保留在各自開發分支，兩者同等優先，尚未合併至本分支。版本與依賴見專案地圖。
 

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="s5-threats-template">
+      <style>
+        #s5-threats-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(ellipse at 70% 55%, #1b1c30 0%, #0a121c 60%, #070d14 100%);
+        }
+        #s5-head {
+          position: absolute;
+          left: 120px;
+          top: 104px;
+          display: flex;
+          align-items: baseline;
+          gap: 30px;
+        }
+        #s5-head .t { font: 400 60px var(--display); letter-spacing: -0.03em; color: var(--ink); white-space: nowrap; }
+        #s5-head .n { font: 700 24px var(--mono); letter-spacing: 0.24em; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .s5-ph { position: absolute; inset: 0; opacity: 0; }
+        .s5-copy { position: absolute; left: 120px; top: 330px; width: 800px; }
+        .s5-copy .eb { font: 700 24px var(--mono); letter-spacing: 0.3em; margin-bottom: 34px; }
+        .s5-copy h2 { font: 400 124px/0.95 var(--display); letter-spacing: -0.04em; }
+        .s5-copy p { margin-top: 34px; font: 700 32px/1.45 var(--mono); color: #cfe3df; max-width: 760px; }
+        .s5-panel {
+          position: absolute;
+          left: 1000px;
+          top: 250px;
+          width: 800px;
+          height: 640px;
+          border-radius: 22px;
+          border: 3px solid #2e4450;
+          background: rgba(12, 24, 34, 0.9);
+          overflow: hidden;
+        }
+        .s5-panel .cap {
+          position: absolute;
+          left: 30px;
+          top: 24px;
+          font: 700 20px var(--mono);
+          letter-spacing: 0.2em;
+          color: var(--muted);
+        }
+        .s5-gl { position: absolute; left: 0; right: 0; height: 2px; background: rgba(151, 175, 181, 0.12); }
+        .s5-band {
+          position: absolute;
+          left: 0;
+          right: 0;
+          border-radius: 4px;
+          background: linear-gradient(90deg, rgba(92, 64, 170, 0) 0%, rgba(92, 64, 170, 0.55) 30%, rgba(242, 197, 117, 0.95) 80%, #fff4d6 100%);
+          box-shadow: 0 0 30px rgba(242, 197, 117, 0.45);
+        }
+        .s5-stamp {
+          position: absolute;
+          padding: 10px 30px 14px;
+          border: 6px solid currentColor;
+          border-radius: 14px;
+          font: 900 92px/1.1 var(--tc);
+          white-space: nowrap;
+          background: rgba(8, 18, 27, 0.72);
+        }
+        /* iceberg */
+        #s5-a-wall {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 262px;
+          height: 0;
+          border-top: 5px dashed var(--gold);
+          filter: drop-shadow(0 0 12px rgba(246, 215, 140, 0.8));
+        }
+        #s5-a-wall-l {
+          position: absolute;
+          right: 30px;
+          top: 214px;
+          font: 700 24px var(--mono);
+          color: var(--gold);
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+        }
+        #s5-a-candle {
+          position: absolute;
+          left: 360px;
+          top: 0;
+          width: 60px;
+          height: 600px;
+          transform-origin: 50% 100%;
+          border-radius: 4px;
+          background: linear-gradient(0deg, #2aa889, #70e6c9);
+          box-shadow: 0 0 30px rgba(112, 230, 201, 0.55);
+        }
+        #s5-a-stamp { left: 150px; top: 330px; color: var(--coral); }
+        /* hunter */
+        #s5-b-liq {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 430px;
+          border-top: 5px dashed var(--coral);
+        }
+        #s5-b-liq-l {
+          position: absolute;
+          left: 30px;
+          top: 446px;
+          font: 700 26px var(--mono);
+          color: var(--coral);
+          white-space: nowrap;
+        }
+        #s5-b-reticle { position: absolute; left: 0; top: 0; width: 240px; height: 240px; margin: -120px 0 0 -120px; }
+        #s5-b-reticle i { position: absolute; width: 50px; height: 50px; border: 0 solid var(--coral); }
+        #s5-b-reticle i:nth-child(1) { left: 0; top: 0; border-left-width: 6px; border-top-width: 6px; }
+        #s5-b-reticle i:nth-child(2) { right: 0; top: 0; border-right-width: 6px; border-top-width: 6px; }
+        #s5-b-reticle i:nth-child(3) { left: 0; bottom: 0; border-left-width: 6px; border-bottom-width: 6px; }
+        #s5-b-reticle i:nth-child(4) { right: 0; bottom: 0; border-right-width: 6px; border-bottom-width: 6px; }
+        #s5-b-reticle b {
+          position: absolute;
+          left: 108px;
+          top: 108px;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: var(--coral);
+          box-shadow: 0 0 20px var(--coral);
+        }
+        #s5-b-lock {
+          position: absolute;
+          left: 50%;
+          top: -52px;
+          transform: translateX(-50%);
+          font: 700 26px var(--mono);
+          letter-spacing: 0.2em;
+          color: var(--coral);
+          white-space: nowrap;
+        }
+        #s5-b-stamp { left: 180px; top: 150px; color: var(--coral); opacity: 0; }
+        #s5-b-reticle, #s5-c-tc, #s5-c-pnl, .s5-d-tag, #s5-d-copy, #s5-d-copy p { opacity: 0; }
+        /* market maker */
+        #s5-c-svg { position: absolute; left: 0; top: 0; width: 800px; height: 640px; overflow: visible; }
+        #s5-c-fair {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 470px;
+          border-top: 4px dotted rgba(112, 230, 201, 0.7);
+        }
+        #s5-c-fair-l { position: absolute; right: 30px; top: 484px; font: 700 22px var(--mono); color: var(--mint); }
+        #s5-c-dot {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 26px;
+          height: 26px;
+          margin: -13px 0 0 -13px;
+          border-radius: 50%;
+          background: #fff;
+          box-shadow: 0 0 20px 6px rgba(251, 127, 145, 0.8);
+        }
+        #s5-c-tc { position: absolute; left: 470px; top: 150px; font: 900 56px var(--tc); color: var(--mint); white-space: nowrap; }
+        #s5-c-pnl {
+          position: absolute;
+          left: 470px;
+          top: 230px;
+          padding: 8px 20px;
+          border-radius: 10px;
+          background: var(--coral);
+          color: #2a0710;
+          font: 700 40px var(--mono);
+        }
+        /* read the tape */
+        #s5-d-bands { position: absolute; inset: 0; }
+        #s5-d-bands .s5-band { opacity: 0.55; }
+        #s5-d-scan {
+          position: absolute;
+          left: -200px;
+          top: 0;
+          width: 160px;
+          height: 1080px;
+          background: linear-gradient(90deg, rgba(112, 230, 201, 0), rgba(112, 230, 201, 0.35) 80%, #eafff8 100%);
+          mix-blend-mode: screen;
+        }
+        .s5-d-tag {
+          position: absolute;
+          padding: 6px 16px;
+          border-radius: 8px;
+          font: 700 26px var(--mono);
+          white-space: nowrap;
+        }
+        .s5-d-tag.ok { background: var(--mint); color: #06231d; }
+        .s5-d-tag.no { background: #2a1f10; color: var(--gold); border: 3px solid var(--gold); }
+        .s5-d-tag.thin { background: #1a2a33; color: var(--muted); border: 3px solid #3a5862; }
+        #s5-d-copy {
+          position: absolute;
+          left: 120px;
+          top: 300px;
+          padding: 40px 50px 44px;
+          border-radius: 24px;
+          background: rgba(8, 18, 27, 0.84);
+        }
+        #s5-d-copy h2 { font: 400 190px/0.9 var(--display); letter-spacing: -0.045em; color: var(--ink); }
+        #s5-d-copy h2 span { color: var(--mint); }
+        #s5-d-copy p { margin-top: 56px; font: 700 34px var(--mono); color: #cfe3df; }
+        #s5-flash { position: absolute; inset: 0; background: #fff4d6; opacity: 0; mix-blend-mode: screen; }
+      </style>
+
+      <div data-hf-id="hf-1jyo" id="s5-threats-root" data-composition-id="s5-threats" data-width="1920" data-height="1080">
+        <!-- A: iceberg -->
+        <div data-hf-id="hf-so45" class="s5-ph" id="s5-a">
+          <div data-hf-id="hf-r2ly" class="s5-copy">
+            <div data-hf-id="hf-xnxh" class="eb" style="color: var(--gold)">THREAT 01 · 冰山</div>
+            <h2 data-hf-id="hf-k35r" style="color: var(--gold)">ICEBERGS</h2>
+            <p data-hf-id="hf-1ivs">A hidden order guards the band. Your push gets absorbed.</p>
+          </div>
+          <div data-hf-id="hf-5pkc" class="s5-panel" id="s5-a-panel">
+            <div data-hf-id="hf-79gm" class="cap">BTC-PERP · 1s</div>
+            <div data-hf-id="hf-vhvw" class="s5-band" style="top: 150px; height: 16px"></div>
+            <div data-hf-id="hf-w8hs" id="s5-a-wall"></div>
+            <div data-hf-id="hf-ybpm" id="s5-a-wall-l">ICEBERG · FILLED <span data-hf-id="hf-bygs" id="s5-a-fill">0.0</span> BTC</div>
+            <div data-hf-id="hf-y47v" id="s5-a-candle"></div>
+            <div data-hf-id="hf-0c4p" class="s5-stamp" id="s5-a-stamp">推不動！</div>
+          </div>
+        </div>
+        <!-- B: hunter -->
+        <div data-hf-id="hf-wm86" class="s5-ph" id="s5-b">
+          <div data-hf-id="hf-djyy" class="s5-copy">
+            <div data-hf-id="hf-c9d4" class="eb" style="color: var(--coral)">THREAT 02 · 獵手</div>
+            <h2 data-hf-id="hf-vowl" style="color: var(--coral)">THE HUNTER</h2>
+            <p data-hf-id="hf-7kaw">Size up too far and a bot starts hunting your liquidation price.</p>
+          </div>
+          <div data-hf-id="hf-40hj" class="s5-panel" id="s5-b-panel">
+            <div data-hf-id="hf-107h" class="cap">YOUR POSITION · LONG 100 BTC · 20×</div>
+            <div data-hf-id="hf-ri5t" id="s5-b-liq"></div>
+            <div data-hf-id="hf-ns0b" id="s5-b-liq-l">YOUR LIQ · 97,340.00</div>
+            <div data-hf-id="hf-m13b" id="s5-b-reticle"><i data-hf-id="hf-wt6k"></i><i data-hf-id="hf-zeb8"></i><i data-hf-id="hf-y7e5"></i><i data-hf-id="hf-ylp6"></i><b data-hf-id="hf-xujp"></b><div data-hf-id="hf-5yr9" id="s5-b-lock" data-layout-allow-overlap="">TRACKING</div></div>
+            <div data-hf-id="hf-a7cr" class="s5-stamp" id="s5-b-stamp">你被盯上了</div>
+          </div>
+        </div>
+        <!-- C: market maker -->
+        <div data-hf-id="hf-0kc7" class="s5-ph" id="s5-c">
+          <div data-hf-id="hf-dy9z" class="s5-copy">
+            <div data-hf-id="hf-57f6" class="eb" style="color: var(--mint)">THREAT 03 · 造市商</div>
+            <h2 data-hf-id="hf-qey6" style="color: var(--ink)">THE PULLBACK</h2>
+            <p data-hf-id="hf-8m0m">Stall short of the band and the market maker drags price home — on your dime.</p>
+          </div>
+          <div data-hf-id="hf-6l7m" class="s5-panel" id="s5-c-panel">
+            <div data-hf-id="hf-w0t4" class="cap">FAIR VALUE REVERSION</div>
+            <div data-hf-id="hf-soex" class="s5-band" style="top: 90px; height: 14px"></div>
+            <div data-hf-id="hf-hh2w" id="s5-c-fair"></div>
+            <div data-hf-id="hf-5ek8" id="s5-c-fair-l">FAIR VALUE</div>
+            <svg data-hf-id="hf-srb4" id="s5-c-svg" viewBox="0 0 800 640">
+              <path data-hf-id="hf-yuy9" id="s5-c-up" d="M 30 470 L 110 462 L 170 440 L 220 380 L 270 300 L 310 220 L 340 180" fill="none" stroke="#70e6c9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+              <path data-hf-id="hf-6boq" id="s5-c-back" d="M 340 180 C 420 180, 460 300, 520 380 S 640 470, 760 470" fill="none" stroke="#fb7f91" stroke-width="7" stroke-linecap="round" stroke-dasharray="4 18" />
+            </svg>
+            <div data-hf-id="hf-i1k3" id="s5-c-dot"></div>
+            <div data-hf-id="hf-lcgu" id="s5-c-tc">造市商 拉回</div>
+            <div data-hf-id="hf-gm9e" id="s5-c-pnl">−$184K</div>
+          </div>
+        </div>
+        <!-- D: read the tape -->
+        <div data-hf-id="hf-6q20" class="s5-ph" id="s5-d">
+          <div data-hf-id="hf-veul" id="s5-d-bands"></div>
+          <div data-hf-id="hf-6sk0" id="s5-d-scan"></div>
+          <div data-hf-id="hf-uxbk" id="s5-d-tags"></div>
+          <div data-hf-id="hf-xbz0" id="s5-d-copy">
+            <h2 data-hf-id="hf-mikj">READ<br data-hf-id="hf-x5px"><span data-hf-id="hf-8n2y">THE TAPE.</span></h2>
+            <p data-hf-id="hf-0cjl">Every band looks worth pushing. Only some are.</p>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-d8fo" id="s5-head"><span data-hf-id="hf-r28f" class="t">Not every line is fuel.</span><span data-hf-id="hf-9ko1" class="n" id="s5-n">01 / 03</span></div>
+        <div data-hf-id="hf-emew" id="s5-flash"></div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 60 / 128;
+          const S = B * 4; // segment length
+          const prand = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const root = document.getElementById("s5-threats-root");
+          const q = (s) => root.querySelector(s);
+          const tl = gsap.timeline({ paused: true });
+
+          // phase switching (hard cut + punch + flash on each downbeat)
+          const phases = ["#s5-a", "#s5-b", "#s5-c", "#s5-d"];
+          phases.forEach((id, i) => {
+            const t = i * S;
+            tl.fromTo(id, { opacity: 0 }, { opacity: 1, duration: 0.02, immediateRender: false }, t);
+            if (i > 0) tl.fromTo(phases[i - 1], { opacity: 1 }, { opacity: 0, duration: 0.02, immediateRender: false }, t);
+            tl.fromTo(id, { scale: 1.08, filter: "blur(10px)" }, { scale: 1, filter: "blur(0px)", duration: 0.3, ease: "expo.out", immediateRender: false }, t);
+            if (i > 0) tl.fromTo("#s5-flash", { opacity: 0.2 }, { opacity: 0, duration: 0.22, immediateRender: false }, t);
+            if (i < 3) {
+              tl.fromTo(`${id} .s5-copy .eb`, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, t + 0.05);
+              tl.fromTo(`${id} .s5-copy h2`, { yPercent: 40, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.35, ease: ["power4.out", "expo.out", "circ.out"][i] }, t + 0.08);
+              tl.fromTo(`${id} .s5-copy p`, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, t + 0.35);
+              tl.fromTo(`${id} .s5-panel`, { x: 80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "expo.out" }, t + 0.04);
+            }
+          });
+          // header + counter (pure function of time)
+          tl.fromTo("#s5-head", { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 0);
+          tl.to("#s5-head", { opacity: 0, duration: 0.05 }, S * 3);
+          const hd = { t: 0 };
+          tl.fromTo(hd, { t: 0 }, { t: S * 3, duration: S * 3, ease: "none", onUpdate: () => { q("#s5-n").textContent = "0" + Math.min(3, 1 + Math.floor(hd.t / S + 1e-6)) + " / 03"; } }, 0);
+
+          // ---- A: iceberg absorbs ----
+          const candle = q("#s5-a-candle");
+          gsap.set(candle, { y: 0 });
+          // candle bottom at panel y=600; top position = 600 - 600*scaleY
+          tl.fromTo(candle, { scaleY: 0.12 }, { scaleY: (600 - 266) / 600, duration: 0.9, ease: "power2.in" }, 0.05);
+          tl.to(candle, { scaleY: (600 - 272) / 600, duration: 0.05, yoyo: true, repeat: 5, ease: "none" }, 0.95);
+          tl.to(candle, { scaleY: (600 - 420) / 600, duration: 0.6, ease: "power3.inOut" }, 1.25);
+          tl.fromTo(candle, { filter: "hue-rotate(0deg)" }, { filter: "hue-rotate(160deg) saturate(1.4)", duration: 0.3 }, 1.25);
+          const fill = { v: 0 };
+          tl.fromTo(fill, { v: 0 }, { v: 8.4, duration: 0.9, ease: "power2.out", onUpdate: () => { q("#s5-a-fill").textContent = fill.v.toFixed(1); } }, 0.9);
+          tl.fromTo("#s5-a-wall", { opacity: 0.35 }, { opacity: 1, duration: 0.08, yoyo: true, repeat: 7, ease: "none" }, 0.9);
+          tl.fromTo("#s5-a-stamp", { scale: 2.4, opacity: 0, rotation: -14 }, { scale: 1, opacity: 1, rotation: -6, duration: 0.28, ease: "power4.out" }, B * 2);
+          tl.fromTo("#s5-a-panel", { x: 0 }, { x: 14, duration: 0.04, yoyo: true, repeat: 5, ease: "none", immediateRender: false }, B * 2);
+
+          // ---- B: hunter locks on ----
+          const T0 = S;
+          const moves = [[610, 150], [220, 280], [520, 380], [400, 430]];
+          tl.fromTo("#s5-b-reticle", { x: moves[0][0], y: moves[0][1], scale: 1.8, opacity: 0 }, { x: moves[0][0], y: moves[0][1], scale: 1.3, opacity: 1, duration: 0.25, ease: "power2.out", immediateRender: false }, T0 + 0.1);
+          [0.525, 0.755, 0.985].forEach((dt, k) => {
+            tl.fromTo("#s5-b-reticle", { x: moves[k][0], y: moves[k][1] }, { x: moves[k + 1][0], y: moves[k + 1][1], duration: 0.18, ease: "expo.out", immediateRender: false }, T0 + dt - 0.1);
+          });
+          tl.fromTo("#s5-b-reticle", { scale: 1.3 }, { scale: 0.62, duration: 0.2, ease: "back.out(3)", immediateRender: false }, T0 + 1.02);
+          tl.fromTo("#s5-b-lock", { opacity: 1 }, { opacity: 0.2, duration: 0.06, yoyo: true, repeat: 5, ease: "none", immediateRender: false }, T0 + 0.3);
+          const lk = { v: 0 };
+          tl.fromTo(lk, { v: 0 }, { v: 1, duration: 0.01, immediateRender: false, onUpdate: () => { q("#s5-b-lock").textContent = lk.v > 0.5 ? "LOCKED" : "TRACKING"; } }, T0 + 1.02);
+          tl.fromTo("#s5-b-liq", { opacity: 0.4 }, { opacity: 1, duration: 0.1, yoyo: true, repeat: 7, ease: "none", immediateRender: false }, T0 + 1.02);
+          tl.fromTo("#s5-b-stamp", { scale: 2.2, opacity: 0, rotation: 10 }, { scale: 1, opacity: 1, rotation: 4, duration: 0.28, ease: "power4.out", immediateRender: false }, T0 + 1.2);
+
+          // ---- C: pulled back ----
+          const T1 = S * 2;
+          const up = q("#s5-c-up"), back = q("#s5-c-back");
+          const LU = up.getTotalLength(), LB = back.getTotalLength();
+          up.style.strokeDasharray = LU; up.style.strokeDashoffset = LU;
+          const dot = q("#s5-c-dot");
+          const pr = { u: 0, b: 0 };
+          const drawC = () => {
+            up.style.strokeDashoffset = LU * (1 - pr.u);
+            const P = pr.b > 0 ? back.getPointAtLength(LB * pr.b) : up.getPointAtLength(LU * pr.u);
+            gsap.set(dot, { x: P.x, y: P.y });
+          };
+          back.style.opacity = 0;
+          drawC();
+          tl.fromTo(pr, { u: 0 }, { u: 1, duration: 0.55, ease: "power2.in", onUpdate: drawC, immediateRender: false }, T1 + 0.05);
+          tl.fromTo(back, { opacity: 0 }, { opacity: 1, duration: 0.2, immediateRender: false }, T1 + 0.62);
+          tl.fromTo(pr, { b: 0 }, { b: 1, duration: 0.75, ease: "power2.inOut", onUpdate: drawC, immediateRender: false }, T1 + 0.65);
+          tl.fromTo("#s5-c-tc", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.3, ease: "expo.out", immediateRender: false }, T1 + 0.65);
+          tl.fromTo("#s5-c-pnl", { scale: 0.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2.5)", immediateRender: false }, T1 + 1.25);
+
+          // ---- D: read the tape ----
+          const T2 = S * 3;
+          const bandsD = [
+            { y: 150, h: 10, tag: "✓ FUEL 58 BTC", c: "ok", x: 1300 },
+            { y: 240, h: 5, tag: "✕ TOO THIN", c: "thin", x: 1480 },
+            { y: 330, h: 16, tag: "✕ ICEBERG", c: "no", x: 1380 },
+            { y: 700, h: 12, tag: "✓ FUEL 112 BTC", c: "ok", x: 1330 },
+            { y: 800, h: 6, tag: "✕ HUNTED", c: "no", x: 1500 },
+            { y: 900, h: 14, tag: "✓ FUEL 31 BTC", c: "ok", x: 1400 },
+          ];
+          const bw = q("#s5-d-bands"), tw = q("#s5-d-tags");
+          bandsD.forEach((b, i) => {
+            const el = document.createElement("div");
+            el.className = "s5-band"; el.style.top = b.y + "px"; el.style.height = b.h + "px";
+            bw.appendChild(el);
+            const tg = document.createElement("div");
+            tg.className = "s5-d-tag " + b.c; tg.textContent = b.tag;
+            tg.style.left = b.x + "px"; tg.style.top = b.y - 56 + "px";
+            tw.appendChild(tg);
+            const hitT = T2 + 0.2 + ((b.x - 0) / 1920) * 1.3;
+            tl.fromTo(tg, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2.5)", immediateRender: false }, hitT);
+            if (b.c !== "ok") tl.to(el, { opacity: 0.18, duration: 0.25 }, hitT);
+            else tl.to(el, { opacity: 1, filter: "brightness(1.6)", duration: 0.25 }, hitT);
+          });
+          tl.fromTo("#s5-d-scan", { x: 0 }, { x: 2160, duration: 1.5, ease: "power1.inOut", immediateRender: false }, T2 + 0.15);
+          tl.fromTo("#s5-d-copy", { x: -120, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "expo.out", immediateRender: false }, T2 + 0.02);
+          tl.fromTo("#s5-d-copy p", { opacity: 0 }, { opacity: 1, duration: 0.4, immediateRender: false }, T2 + B * 2);
+
+          window.__timelines["s5-threats"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

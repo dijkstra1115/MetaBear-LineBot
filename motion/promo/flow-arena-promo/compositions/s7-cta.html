@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: #08121b;
+          color: #e8f3ef;
+          font-family: "Noto Sans TC", sans-serif;
+        }
+        #s7-canvas {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+        }
+        #s7-glow {
+          position: absolute;
+          left: 80px;
+          top: 60px;
+          width: 900px;
+          height: 900px;
+          border-radius: 50%;
+          background: radial-gradient(circle, #f2c57555 0%, #13424b33 45%, #08121b00 70%);
+        }
+        #s7-badgewrap {
+          position: absolute;
+          left: 250px;
+          top: 250px;
+          width: 420px;
+          height: 420px;
+        }
+        #s7-ring {
+          position: absolute;
+          inset: -26px;
+          border-radius: 50%;
+          border: 6px solid transparent;
+          background: conic-gradient(from 0deg, #f6d78c, #7a5a1c, #fff3d6, #b08a3a, #f6d78c) border-box;
+          -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          box-shadow: 0 0 60px #f2c57566;
+        }
+        #s7-badge {
+          position: absolute;
+          inset: 0;
+          width: 420px;
+          height: 420px;
+          border-radius: 50%;
+          box-shadow: 0 0 80px #f2c57544, 0 30px 80px #000c;
+        }
+        .s7-copy {
+          position: absolute;
+          left: 780px;
+          top: 230px;
+          width: 1060px;
+        }
+        .s7-copy small {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          font: 700 24px "JetBrains Mono", monospace;
+          letter-spacing: 0.26em;
+          color: #70e6c9;
+        }
+        .s7-copy small i {
+          display: block;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #70e6c9;
+          box-shadow: 0 0 16px #70e6c9;
+        }
+        #s7-word {
+          display: block;
+          margin-top: 26px;
+          font-family: "Archivo Black", sans-serif;
+          font-size: 146px;
+          line-height: 1.12;
+          letter-spacing: -0.02em;
+          white-space: nowrap;
+          color: #eef8f4;
+        }
+        #s7-word em {
+          font-style: normal;
+          color: #70e6c9;
+        }
+        #s7-zh {
+          display: block;
+          margin-top: 8px;
+          font-size: 76px;
+          font-weight: 900;
+          color: #f2c575;
+          letter-spacing: 0.04em;
+        }
+        .s7-tag {
+          display: flex;
+          gap: 22px;
+          margin-top: 26px;
+        }
+        .s7-tag span {
+          display: block;
+          font-size: 56px;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          white-space: nowrap;
+        }
+        .s7-tag span:last-child {
+          color: #b79cff;
+        }
+        .s7-btns {
+          position: absolute;
+          left: 780px;
+          top: 780px;
+          display: flex;
+          gap: 26px;
+        }
+        .s7-btn {
+          position: relative;
+          height: 104px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          padding: 0 44px;
+          border-radius: 14px;
+          font-size: 44px;
+          font-weight: 900;
+        }
+        .s7-btn .hl {
+          position: absolute;
+          inset: -3px;
+          border-radius: 14px;
+          background: #fff;
+          opacity: 0;
+        }
+        .s7-btn span {
+          position: relative;
+        }
+        #s7-play {
+          width: 420px;
+          background: #70e6c9;
+          color: #0b2825;
+          box-shadow: 0 0 50px #6de6c166;
+        }
+        #s7-duel {
+          width: 400px;
+          background: #1a1430;
+          border: 3px solid #b79cff;
+          color: #ece4ff;
+        }
+        #s7-foot {
+          position: absolute;
+          left: 110px;
+          bottom: 50px;
+          width: 1700px;
+          display: flex;
+          justify-content: space-between;
+          font: 700 22px "JetBrains Mono", monospace;
+          letter-spacing: 0.14em;
+          color: #69818a;
+        }
+        .curpos {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 46px;
+          height: 60px;
+        }
+        #s7-cursor {
+          display: block;
+          transform-origin: 4px 4px;
+          width: 46px;
+          height: 60px;
+          filter: drop-shadow(0 0 14px #70e6c9aa) drop-shadow(0 6px 10px #000c);
+        }
+        .s7-ripple {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 120px;
+          height: 120px;
+          margin: -60px 0 0 -60px;
+          border-radius: 50%;
+          border: 5px solid #f6d78c;
+          opacity: 0;
+        }
+        #s7-flash {
+          position: absolute;
+          inset: 0;
+          background: #fff6dd;
+          opacity: 0;
+        }
+        #s7-black {
+          position: absolute;
+          inset: 0;
+          background: #04090e;
+          opacity: 0;
+        }
+      </style>
+
+      <div id="root" data-composition-id="s7-cta" data-width="1920" data-height="1080">
+        <div id="s7-cues" hidden data-cues='{"hit":[0],"glitch":[0.3],"slam":[1.0,1.3,1.6],"pop":[2.2],"hover":[2.8,3.05,3.3],"click":[3.55],"final":[3.55]}'></div>
+        <canvas id="s7-canvas" width="1920" height="1080"></canvas>
+        <div id="s7-glow"></div>
+        <div id="s7-badgewrap">
+          <div id="s7-ring"></div>
+          <img id="s7-badge" src="assets/img/badge.png" alt="MetaBear" />
+        </div>
+        <div class="s7-copy">
+          <small id="s7-eyebrow"><i></i>METABEAR 互動學院</small>
+          <span id="s7-word">FLOW <em>ARENA</em></span>
+          <span id="s7-zh">爆倉獵場</span>
+          <div class="s7-tag"><span id="s7-t1">120 秒。</span><span id="s7-t2">一個市場。</span><span id="s7-t3">誰是獵物？</span></div>
+        </div>
+        <div class="s7-btns">
+          <div class="s7-btn" id="s7-play"><span class="hl"></span><span>▶ 開始交易</span></div>
+          <div class="s7-btn" id="s7-duel"><span class="hl"></span><span>👥 好友對戰</span></div>
+        </div>
+        <div id="s7-foot"><span>METABEAR 互動學院 · 桌面版試玩中</span><span>模擬市場 · 非真實交易</span></div>
+        <div class="s7-ripple" id="s7-ripple"></div>
+        <div id="s7-curpos" class="curpos">
+          <svg id="s7-cursor" viewBox="0 0 46 60" aria-hidden="true">
+            <path d="M3 3 L3 49 L15 38 L23 57 L32 53 L24 35 L41 35 Z" fill="#f4fffb" stroke="#08121b" stroke-width="3" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div id="s7-flash"></div>
+        <div id="s7-black"></div>
+      </div>
+
+      <script>
+        (() => {
+          const DUR = 6;
+          const cues = JSON.parse(document.getElementById("s7-cues").dataset.cues);
+          const ez = {
+            lin: (x) => x,
+            out3: (x) => 1 - Math.pow(1 - x, 3),
+            out5: (x) => 1 - Math.pow(1 - x, 5),
+            in3: (x) => x * x * x,
+            inout: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+            back: (x) => 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2),
+          };
+          const keys = (t, ks) => {
+            if (t <= ks[0][0]) return ks[0][1];
+            for (let i = 1; i < ks.length; i++) {
+              if (t <= ks[i][0]) {
+                const [t0, v0] = ks[i - 1];
+                const [t1, v1, e] = ks[i];
+                return v0 + (v1 - v0) * ez[e || "inout"]((t - t0) / (t1 - t0));
+              }
+            }
+            return ks[ks.length - 1][1];
+          };
+          const pk = (t, t0, d) => (t < t0 ? 0 : Math.max(0, 1 - (t - t0) / d) ** 2);
+          const prog = (t, t0, d) => Math.min(1, Math.max(0, (t - t0) / d));
+          const hash = (n) => {
+            const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+            return x - Math.floor(x);
+          };
+          const $ = (id) => document.getElementById(id);
+          const heat = (s, a) => {
+            const c = [92 + (255 - 92) * s, 64 + (214 - 64) * s, 170 + (102 - 170) * s].map(Math.round);
+            return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
+          };
+
+          const ctx = $("s7-canvas").getContext("2d");
+          const draw = (t) => {
+            ctx.clearRect(0, 0, 1920, 1080);
+            // drifting heat bands
+            for (let i = 0; i < 9; i++) {
+              const s = hash(i * 3.1 + 1);
+              const y = 80 + hash(i * 5.3) * 920 + Math.sin(t * 0.8 + i) * 12;
+              ctx.fillStyle = heat(s, 0.05 + s * 0.12);
+              ctx.fillRect(0, y, 1920, 8 + s * 18);
+            }
+            // rising embers
+            for (let k = 0; k < 90; k++) {
+              const sp = 40 + hash(k * 2.7) * 120;
+              const y = 1100 - ((hash(k * 1.3) * 1200 + t * sp) % 1200);
+              const x = hash(k * 4.9) * 1920 + Math.sin(t * 1.3 + k) * 20;
+              ctx.fillStyle = `rgba(246,215,140,${(0.15 + hash(k * 8.1) * 0.5).toFixed(3)})`;
+              const sz = 2 + hash(k * 6.1) * 4;
+              ctx.fillRect(x, y, sz, sz);
+            }
+            // click burst
+            const bt = t - cues.click[0];
+            if (bt > 0 && bt < 1.4) {
+              for (let k = 0; k < 140; k++) {
+                const ang = hash(k * 1.1 + 5) * Math.PI * 2;
+                const r = (200 + hash(k * 3.7) * 900) * ez.out3(Math.min(1, bt / 0.9));
+                ctx.fillStyle = k % 3 ? `rgba(246,215,140,${Math.max(0, 1 - bt / 1.4).toFixed(3)})` : `rgba(112,230,201,${Math.max(0, 1 - bt / 1.4).toFixed(3)})`;
+                const sz = 3 + hash(k * 9.7) * 6;
+                ctx.fillRect(990 + Math.cos(ang) * r, 832 + Math.sin(ang) * r * 0.6 + bt * bt * 200, sz, sz);
+              }
+            }
+          };
+          const PLAY = [990, 832], DUEL = [1430, 832];
+          const curKeys = {
+            x: [[0, 1980], [2.45, 1980], [2.8, PLAY[0], "out3"], [3.05, DUEL[0], "inout"], [3.3, PLAY[0] + 20, "inout"], [6, PLAY[0] + 40]],
+            y: [[0, 1100], [2.45, 1100], [2.8, PLAY[1], "out3"], [3.05, DUEL[1]], [3.3, PLAY[1]], [6, PLAY[1] + 20]],
+          };
+          const render = (t) => {
+            draw(t);
+            // badge spring pop + ring spin
+            const b = prog(t, 0, 0.55);
+            $("s7-badgewrap").style.transform = `scale(${0.2 + 0.8 * ez.back(b)}) rotate(${(1 - ez.out3(b)) * -120}deg)`;
+            $("s7-badgewrap").style.opacity = Math.min(1, b * 3);
+            $("s7-ring").style.transform = `rotate(${t * 40}deg)`;
+            $("s7-glow").style.transform = `scale(${1 + 0.06 * Math.sin(t * 3) + 0.25 * pk(t, cues.click[0], 0.6)})`;
+            // wordmark: stretch-glitch entrance
+            const w = prog(t, 0.25, 0.4);
+            const step = Math.floor(t * 20);
+            const gl = t >= cues.glitch[0] && t < cues.glitch[0] + 0.35 ? 1 - (t - cues.glitch[0]) / 0.35 : 0;
+            $("s7-word").style.opacity = w > 0 ? 1 : 0;
+            $("s7-word").style.transform = `translateX(${(hash(step) - 0.5) * 60 * gl}px) scaleX(${1 + 0.5 * (1 - ez.out5(w))})`;
+            $("s7-word").style.textShadow = gl > 0 ? `${-10 * gl}px 0 #fb7f91, ${10 * gl}px 0 #7fd8ff` : "0 0 50px #70e6c944";
+            $("s7-eyebrow").style.opacity = prog(t, 0.4, 0.3);
+            const zh = prog(t, 0.6, 0.35);
+            $("s7-zh").style.opacity = zh;
+            $("s7-zh").style.transform = `translateY(${(1 - ez.out3(zh)) * 40}px)`;
+            // tagline beat slams
+            ["s7-t1", "s7-t2", "s7-t3"].forEach((id, i) => {
+              const k = prog(t, cues.slam[i], 0.3);
+              $(id).style.opacity = k;
+              $(id).style.transform = i === 2 ? `scale(${1 + 0.6 * (1 - ez.out5(k))})` : `translateY(${(1 - ez.out5(k)) * (i ? -60 : 60)}px)`;
+            });
+            // buttons pop
+            [["s7-play", 0], ["s7-duel", 0.12]].forEach(([id, d]) => {
+              const k = prog(t, cues.pop[0] + d, 0.4);
+              $(id).style.opacity = Math.min(1, k * 2);
+              $(id).style.transform = `scale(${(0.6 + 0.4 * ez.back(k)) * (id === "s7-play" ? 1 - 0.08 * pk(t, cues.click[0], 0.35) : 1)})`;
+            });
+            const hPlay = Math.max(pk(t, cues.hover[0], 0.35), pk(t, cues.hover[2], 0.35)) * 0.5 + (t >= cues.hover[2] && t < cues.click[0] ? 0.2 : 0) + 0.9 * pk(t, cues.click[0], 0.7);
+            document.querySelector("#s7-play .hl").style.opacity = Math.min(1, hPlay);
+            document.querySelector("#s7-duel .hl").style.opacity = 0.4 * pk(t, cues.hover[1], 0.4);
+            // cursor
+            $("s7-curpos").style.transform = `translate(${keys(t, curKeys.x) - 4}px, ${keys(t, curKeys.y) - 4}px)`;
+            $("s7-cursor").style.transform = `scale(${1 - 0.22 * pk(t, cues.click[0], 0.25)})`;
+            const rp = t < cues.click[0] ? 1 : prog(t, cues.click[0], 0.6);
+            $("s7-ripple").style.opacity = 1 - rp;
+            $("s7-ripple").style.transform = `translate(${PLAY[0]}px, ${PLAY[1]}px) scale(${0.2 + 5 * ez.out3(rp)})`;
+            $("s7-flash").style.opacity = Math.max(0.6 * pk(t, 0, 0.3), 0.55 * pk(t, cues.click[0], 0.35));
+            $("s7-foot").style.opacity = prog(t, 3.9, 0.4);
+            $("s7-black").style.opacity = keys(t, [[5.4, 0], [6, 1, "in3"]]);
+          };
+          const drive = { t: 0 };
+          render(0);
+          const tl = gsap.timeline({ paused: true });
+          tl.to(drive, { t: DUR, duration: DUR, ease: "none", onUpdate: () => render(drive.t) }, 0);
+          window.__timelines["s7-cta"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

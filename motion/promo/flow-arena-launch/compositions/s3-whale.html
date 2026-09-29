@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="s3-whale-template">
+      <style>
+        #s3-whale-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(ellipse at 75% 50%, #12303a 0%, #08121b 60%);
+        }
+        #s3-ghost {
+          position: absolute;
+          left: -40px;
+          top: 610px;
+          font: 400 420px/1 var(--display);
+          color: rgba(112, 230, 201, 0.07);
+          letter-spacing: -0.04em;
+          white-space: nowrap;
+        }
+        #s3-words {
+          position: absolute;
+          left: 120px;
+          top: 120px;
+          width: 900px;
+        }
+        .s3-w {
+          display: block;
+          width: fit-content;
+          font: 400 172px/0.98 var(--display);
+          letter-spacing: -0.04em;
+          color: var(--ink);
+          transform-origin: 0 80%;
+        }
+        .s3-w.mint { color: var(--mint); text-shadow: 0 0 60px rgba(112, 230, 201, 0.45); }
+        #s3-cap {
+          position: absolute;
+          left: 124px;
+          top: 760px;
+        }
+        #s3-cap .lbl {
+          font: 700 24px var(--mono);
+          letter-spacing: 0.26em;
+          color: var(--muted);
+        }
+        #s3-cap .num {
+          margin-top: 10px;
+          font: 700 86px var(--mono);
+          letter-spacing: -0.04em;
+          color: var(--gold);
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        #s3-cap .num small { font-size: 40px; color: var(--muted); letter-spacing: 0; margin-left: 12px; }
+        #s3-book {
+          position: absolute;
+          left: 1110px;
+          top: 130px;
+          width: 690px;
+          padding: 22px 26px;
+          border: 3px solid #29404b;
+          border-radius: 18px;
+          background: rgba(16, 31, 42, 0.86);
+          box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+        }
+        #s3-book .head {
+          display: flex;
+          justify-content: space-between;
+          font: 700 20px var(--mono);
+          letter-spacing: 0.2em;
+          color: var(--mint);
+          margin-bottom: 12px;
+        }
+        .s3-row {
+          position: relative;
+          height: 33px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font: 700 22px var(--mono);
+          font-variant-numeric: tabular-nums;
+        }
+        .s3-row .bar {
+          position: absolute;
+          right: 0;
+          top: 4px;
+          bottom: 4px;
+          transform-origin: 100% 50%;
+          border-radius: 3px;
+        }
+        .s3-row.ask .bar { background: rgba(251, 127, 145, 0.3); }
+        .s3-row.bid .bar { background: rgba(112, 230, 201, 0.26); }
+        .s3-row .p { position: relative; }
+        .s3-row.ask .p { color: var(--coral); }
+        .s3-row.bid .p { color: var(--mint); }
+        .s3-row .s { position: relative; color: #cfe3df; }
+        #s3-mid {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin: 10px 0;
+          padding: 12px 0;
+          border-top: 2px solid #29404b;
+          border-bottom: 2px solid #29404b;
+        }
+        #s3-mid .px {
+          font: 700 50px var(--mono);
+          letter-spacing: -0.04em;
+          font-variant-numeric: tabular-nums;
+          color: var(--ink);
+        }
+        #s3-mid .chg { font: 700 26px var(--mono); color: var(--mint); }
+        #s3-order {
+          position: absolute;
+          left: 560px;
+          top: 636px;
+          padding: 18px 30px;
+          border-radius: 12px;
+          background: var(--mint);
+          color: #06231d;
+          font: 700 34px var(--mono);
+          letter-spacing: 0.04em;
+          white-space: nowrap;
+          box-shadow: 0 0 60px rgba(112, 230, 201, 0.6);
+        }
+        #s3-eat {
+          position: absolute;
+          left: 1110px;
+          top: 170px;
+          width: 690px;
+          height: 380px;
+          border-radius: 12px;
+          background: linear-gradient(0deg, rgba(112, 230, 201, 0.55), rgba(112, 230, 201, 0));
+          transform-origin: 50% 100%;
+          mix-blend-mode: screen;
+        }
+      </style>
+
+      <div data-hf-id="hf-tzpk" id="s3-whale-root" data-composition-id="s3-whale" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-73bt" id="s3-ghost" data-layout-ignore="">WHALE</div>
+        <div data-hf-id="hf-fukb" id="s3-words">
+          <span data-hf-id="hf-8d5r" class="s3-w" id="s3-w1" data-layout-allow-overlap="">YOU</span>
+          <span data-hf-id="hf-2s6c" class="s3-w" id="s3-w2" data-layout-allow-overlap="">ARE THE</span>
+          <span data-hf-id="hf-r3x9" class="s3-w mint" id="s3-w3" data-layout-allow-overlap="">WHALE.</span>
+        </div>
+        <div data-hf-id="hf-af40" id="s3-cap">
+          <div data-hf-id="hf-fbx2" class="lbl">STARTING CAPITAL</div>
+          <div data-hf-id="hf-km5s" class="num"><span data-hf-id="hf-y25c" id="s3-cap-num">0</span><small data-hf-id="hf-9v4o">USDT</small></div>
+        </div>
+        <div data-hf-id="hf-9pbr" id="s3-book">
+          <div data-hf-id="hf-z992" class="head"><span data-hf-id="hf-c0fg">ORDER BOOK</span><span data-hf-id="hf-rfa7">SIZE BTC</span></div>
+          <div data-hf-id="hf-vodm" id="s3-asks"></div>
+          <div data-hf-id="hf-zceu" id="s3-mid"><span data-hf-id="hf-r7kd" class="px" id="s3-px">100,000.00</span><span data-hf-id="hf-wncq" class="chg" id="s3-chg">+0.00%</span></div>
+          <div data-hf-id="hf-zjzk" id="s3-bids"></div>
+        </div>
+        <div data-hf-id="hf-nnfa" id="s3-eat"></div>
+        <div data-hf-id="hf-0o0y" id="s3-order">▲ MARKET BUY 100 BTC</div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 60 / 128;
+          const prand = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const root = document.getElementById("s3-whale-root");
+          const q = (s) => root.querySelector(s);
+          const fmt = (v, d = 2) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+          const mk = (side, i) => {
+            const r = document.createElement("div");
+            r.className = "s3-row " + side;
+            const step = side === "ask" ? 10 - i : -(i + 1);
+            const size = 2 + prand(i * 5 + (side === "ask" ? 1 : 2)) * 26;
+            r.innerHTML = `<div class="bar" style="width:${Math.round(40 + size * 16)}px"></div><span class="p">${fmt(100000 + step * 348)}</span><span class="s">${size.toFixed(1)}</span>`;
+            return r;
+          };
+          const asks = [], bids = [];
+          for (let i = 0; i < 10; i++) { const r = mk("ask", i); q("#s3-asks").appendChild(r); asks.push(r); }
+          for (let i = 0; i < 10; i++) { const r = mk("bid", i); q("#s3-bids").appendChild(r); bids.push(r); }
+
+          const tl = gsap.timeline({ paused: true });
+
+          // words — one per beat, three distinct attacks
+          tl.fromTo("#s3-w1", { scale: 2.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.32, ease: "power4.out" }, 0);
+          tl.fromTo("#s3-w2", { x: -260, opacity: 0, skewX: -18 }, { x: 0, opacity: 1, skewX: 0, duration: 0.34, ease: "expo.out" }, B);
+          tl.fromTo("#s3-w3", { y: 120, opacity: 0, rotation: 6 }, { y: 0, opacity: 1, rotation: 0, duration: 0.42, ease: "circ.out" }, B * 2);
+          tl.fromTo("#s3-w3", { textShadow: "0 0 60px rgba(112,230,201,.45)" }, { textShadow: "0 0 110px rgba(112,230,201,.95)", duration: B / 2, yoyo: true, repeat: 5, ease: "sine.inOut", immediateRender: false }, B * 3);
+          tl.fromTo("#s3-ghost", { x: 0, opacity: 0 }, { x: -160, opacity: 1, duration: 3.9, ease: "none" }, 0);
+
+          // book slides in
+          tl.fromTo("#s3-book", { x: 140, opacity: 0, rotationY: -18 }, { x: 0, opacity: 1, rotationY: 0, duration: 0.6, ease: "expo.out" }, 0.08);
+          tl.fromTo([...asks, ...bids], { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out", stagger: 0.02 }, 0.2);
+
+          // capital count-up
+          const cap = { v: 0 };
+          tl.fromTo("#s3-cap", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, B * 3);
+          tl.fromTo(cap, { v: 0 }, { v: 10000000, duration: B * 3, ease: "expo.out", onUpdate: () => { q("#s3-cap-num").textContent = fmt(Math.round(cap.v), 0); } }, B * 3);
+
+          // the whale order hits the book on beat 4 and eats the asks upward
+          const HIT = B * 4;
+          tl.fromTo("#s3-order", { x: -700, opacity: 0, scaleX: 1.4 }, { x: 0, opacity: 1, scaleX: 1, duration: 0.3, ease: "expo.out" }, HIT - 0.3);
+          tl.to("#s3-order", { x: 420, scale: 0.6, opacity: 0, duration: 0.22, ease: "power3.in" }, HIT);
+          tl.fromTo("#s3-eat", { scaleY: 0, opacity: 0 }, { scaleY: 1, opacity: 1, duration: B * 2.2, ease: "power2.out" }, HIT);
+          tl.to("#s3-eat", { opacity: 0, duration: 0.5 }, HIT + B * 2.4);
+          const eaten = asks.slice().reverse(); // nearest-to-mid first
+          eaten.forEach((r, i) => {
+            const t = HIT + 0.05 + i * 0.085;
+            tl.to(r.querySelector(".bar"), { scaleX: 0, duration: 0.12, ease: "power2.in" }, t);
+            tl.to(r, { opacity: 0.25, duration: 0.12 }, t + 0.06);
+          });
+          const px = { v: 100000 };
+          tl.fromTo(px, { v: 100000 }, {
+            v: 103480, duration: 1.0, ease: "power2.out",
+            onUpdate: () => {
+              q("#s3-px").textContent = fmt(px.v);
+              q("#s3-chg").textContent = "+" + (((px.v - 100000) / 100000) * 100).toFixed(2) + "%";
+            },
+          }, HIT + 0.05);
+          tl.fromTo("#s3-mid .px", { color: "#e8f3ef" }, { color: "#70e6c9", duration: 0.2 }, HIT + 0.05);
+          tl.fromTo("#s3-book", { x: 0 }, { x: 12, duration: 0.05, yoyo: true, repeat: 5, ease: "none", immediateRender: false }, HIT);
+
+          window.__timelines["s3-whale"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

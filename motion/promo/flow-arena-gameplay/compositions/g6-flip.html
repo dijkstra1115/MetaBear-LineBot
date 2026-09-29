@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="g6-flip-template">
+      <style>
+        #g6-flip-root { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(ellipse at 40% 55%, #11303a 0%, #08121b 62%); }
+        #g6-head { position: absolute; left: 120px; top: 108px; width: 1700px; height: 110px; }
+        .g6-h { position: absolute; left: 0; top: 0; font: 400 80px/1 var(--display); letter-spacing: -0.03em; color: var(--ink); white-space: nowrap; opacity: 0; }
+        .g6-h.m { color: var(--mint); font-size: 96px; }
+        #g6-chart { position: absolute; left: 120px; top: 250px; width: 1120px; height: 610px; border-radius: 20px; border: 3px solid #2f4955; background: rgba(12, 24, 34, 0.9); overflow: hidden; }
+        #g6-chart .cap { position: absolute; left: 26px; top: 20px; font: 700 20px var(--mono); letter-spacing: 0.2em; color: var(--muted); }
+        #g6-svg { position: absolute; left: 0; top: 0; width: 1120px; height: 610px; }
+        #g6-fair { position: absolute; left: 0; right: 0; top: 190px; border-top: 4px dotted rgba(112, 230, 201, 0.75); }
+        #g6-fair-l { position: absolute; right: 26px; top: 150px; font: 700 22px var(--mono); color: var(--mint); white-space: nowrap; }
+        #g6-stall { position: absolute; left: 420px; top: 470px; padding: 6px 16px; border-radius: 8px; border: 3px solid var(--muted); color: var(--ink); font: 700 24px var(--mono); letter-spacing: 0.1em; background: rgba(8, 18, 27, 0.85); opacity: 0; white-space: nowrap; }
+        #g6-pos { position: absolute; left: 1320px; top: 250px; width: 480px; height: 400px; padding: 26px 30px; border-radius: 20px; border: 3px solid #2f4955; background: rgba(12, 24, 34, 0.94); }
+        #g6-pos .lbl { font: 700 20px var(--mono); letter-spacing: 0.2em; color: var(--muted); }
+        .g6-st { position: absolute; left: 30px; right: 30px; top: 70px; opacity: 0; }
+        .g6-st .side { font: 400 54px/1 var(--display); letter-spacing: -0.03em; white-space: nowrap; }
+        .g6-st .side.s { color: var(--coral); }
+        .g6-st .side.l { color: var(--mint); }
+        .g6-st .sub { margin-top: 14px; font: 700 26px var(--mono); color: #cfe3df; }
+        .g6-st .pnl { margin-top: 22px; font: 700 64px var(--mono); letter-spacing: -0.04em; color: var(--mint); font-variant-numeric: tabular-nums; }
+        .g6-st .tagc { display: inline-block; margin-top: 16px; padding: 6px 14px; border-radius: 8px; background: var(--gold); color: #2a1d04; font: 700 22px var(--mono); letter-spacing: 0.12em; }
+        #g6-wallet { position: absolute; left: 1320px; top: 680px; width: 480px; padding: 22px 30px; border-radius: 20px; border: 3px solid #2f4955; background: rgba(12, 24, 34, 0.94); }
+        #g6-wallet .lbl { font: 700 20px var(--mono); letter-spacing: 0.2em; color: var(--muted); }
+        #g6-eq { margin-top: 8px; font: 700 50px var(--mono); letter-spacing: -0.04em; color: var(--ink); font-variant-numeric: tabular-nums; }
+        #g6-keys { position: absolute; left: 120px; top: 890px; display: flex; gap: 40px; }
+        #g6-kf1, #g6-kq, #g6-kf2 { opacity: 0; }
+        #g6-dim { position: absolute; inset: 0; background: rgba(5, 11, 17, 0.82); opacity: 0; }
+        #g6-stage { position: absolute; inset: 0; perspective: 1200px; pointer-events: none; }
+        #g6-big { position: absolute; left: 0; right: 0; top: 380px; text-align: center; opacity: 0; }
+        #g6-big .n { font: 700 190px/1 var(--mono); letter-spacing: -0.06em; color: var(--mint); text-shadow: 0 0 90px rgba(112, 230, 201, 0.6); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        #g6-big .s { margin-top: 20px; font: 700 34px var(--mono); letter-spacing: 0.2em; color: var(--ink); }
+      </style>
+
+      <div data-hf-id="hf-ab74" id="g6-flip-root" data-composition-id="g6-flip" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-gcmp" id="g6-head">
+          <div data-hf-id="hf-xxu3" class="g6-h" id="g6-ha">The chain stalls. Bank it.</div>
+          <div data-hf-id="hf-3daq" class="g6-h" id="g6-hb">Flip long into the pullback.</div>
+          <div data-hf-id="hf-o2x1" class="g6-h m" id="g6-hc">Cash out.</div>
+        </div>
+        <div data-hf-id="hf-gp9l" id="g6-chart">
+          <div data-hf-id="hf-xoqa" class="cap">BTC-PERP · MARKET MAKER PULLS TO FAIR VALUE</div>
+          <div data-hf-id="hf-dwl5" id="g6-fair"></div>
+          <div data-hf-id="hf-a76t" id="g6-fair-l">FAIR VALUE</div>
+          <svg data-hf-id="hf-9exe" id="g6-svg" viewBox="0 0 1120 610">
+            <path data-hf-id="hf-buah" id="g6-line" fill="none" stroke="#fb7f91" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+            <circle data-hf-id="hf-sn4i" id="g6-dot" r="10" fill="#eafff8" />
+          </svg>
+          <div data-hf-id="hf-eelv" id="g6-stall">■ CHAIN STALLED</div>
+        </div>
+        <div data-hf-id="hf-0hdv" id="g6-pos">
+          <div data-hf-id="hf-6fb4" class="lbl">YOUR POSITION</div>
+          <div data-hf-id="hf-lkwx" class="g6-st" id="g6-s1"><div data-hf-id="hf-ruzv" class="side s">SHORT 75 BTC</div><div data-hf-id="hf-vzwg" class="sub">ENTRY 101,304 · 3×</div><div data-hf-id="hf-vdfi" class="pnl">+$480,300</div></div>
+          <div data-hf-id="hf-pj0y" class="g6-st" id="g6-s2"><div data-hf-id="hf-u0nb" class="side l">LONG 100 BTC</div><div data-hf-id="hf-za29" class="sub">ENTRY 94,900 · 3×</div><div data-hf-id="hf-nwup" class="pnl" id="g6-lp">+$0</div></div>
+          <div data-hf-id="hf-th4z" class="g6-st" id="g6-s3"><div data-hf-id="hf-w5hb" class="side" style="color: var(--ink)">FLAT</div><div data-hf-id="hf-5iet" class="sub">REALIZED THIS RUN</div><div data-hf-id="hf-ukzv" class="pnl">+$810,300</div><div data-hf-id="hf-8y0v" class="tagc">CLOSED</div></div>
+        </div>
+        <div data-hf-id="hf-b0p8" id="g6-wallet">
+          <div data-hf-id="hf-9h2o" class="lbl">EQUITY · USDT</div>
+          <div data-hf-id="hf-zgx9" id="g6-eq">10,480,300</div>
+        </div>
+        <div data-hf-id="hf-n11b" id="g6-keys">
+          <div data-hf-id="hf-ooav" class="kc-row" id="g6-kf1"><div data-hf-id="hf-55iy" class="kc gold">F</div><div data-hf-id="hf-vhpf" class="kc-lbl"><small data-hf-id="hf-chrs">CLOSE</small>SHORT</div></div>
+          <div data-hf-id="hf-zgp1" class="kc-row" id="g6-kq"><div data-hf-id="hf-ihw1" class="kc mint">Q</div><div data-hf-id="hf-aez1" class="kc-lbl"><small data-hf-id="hf-q3t8">MARKET BUY</small>100 BTC</div></div>
+          <div data-hf-id="hf-g0f0" class="kc-row" id="g6-kf2"><div data-hf-id="hf-tihq" class="kc gold">F</div><div data-hf-id="hf-vnu5" class="kc-lbl"><small data-hf-id="hf-7s28">CLOSE</small>LONG</div></div>
+        </div>
+        <div data-hf-id="hf-jy1n" id="g6-dim"></div>
+        <div data-hf-id="hf-ohwn" id="g6-stage"><div data-hf-id="hf-w4kj" id="g6-big"><div data-hf-id="hf-w3f7" class="n" id="g6-bn" data-layout-allow-overlap="">+$810,300</div><div data-hf-id="hf-aixs" class="s" data-layout-allow-overlap="">ONE ROUND · 120 SECONDS</div></div></div>
+      </div>
+
+      <script>
+        (function () {
+          const root = document.getElementById("g6-flip-root");
+          const q = (s) => root.querySelector(s);
+          const fmt = (v) => Math.round(v).toLocaleString("en-US");
+          const D = 6.3;
+
+          // price: stalled at the low, then the maker drags it back toward fair value
+          const hist = [];
+          for (let i = 0; i <= 20; i++) hist.push([30 + i * 18, 120 + i * i * 0.95 + Math.sin(i) * 6]);
+          const headAt = (t) => {
+            if (t < 1.5) return [390 + t * 30, 500 + Math.sin(t * 9) * 5];
+            const k = Math.min(1, (t - 1.5) / 2.6);
+            const e = 1 - Math.pow(1 - k, 3);
+            return [435 + k * 560, 500 - e * 290 + Math.sin(t * 8) * 6 * (1 - k)];
+          };
+          const line = q("#g6-line"), dot = q("#g6-dot");
+          const drawLine = (t) => {
+            const pts = hist.slice();
+            for (let s = 0; s <= t; s += 0.04) pts.push(headAt(s));
+            const h = headAt(t); pts.push(h);
+            line.setAttribute("d", pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" "));
+            line.setAttribute("stroke", t >= 1.5 ? "#70e6c9" : "#fb7f91");
+            dot.setAttribute("cx", h[0]); dot.setAttribute("cy", h[1]);
+          };
+
+          const tl = gsap.timeline({ paused: true });
+          const drv = { t: 0 };
+          tl.fromTo(drv, { t: 0 }, {
+            t: D, duration: D, ease: "none",
+            onUpdate: () => {
+              const t = drv.t;
+              drawLine(t);
+              const k = t < 1.5 ? 0 : Math.min(1, (t - 1.5) / 2.5);
+              const lp = 330000 * (1 - Math.pow(1 - k, 3));
+              q("#g6-lp").textContent = "+$" + fmt(lp);
+              q("#g6-eq").textContent = fmt(10480300 + (t >= 4.0 ? 330000 : lp));
+            },
+          }, 0);
+
+          const press = (sel, t, c) => {
+            tl.fromTo(sel, { opacity: 0, y: 30, scale: 0.8 }, { opacity: 1, y: 0, scale: 1, duration: 0.25, ease: "back.out(2.5)" }, t - 0.3);
+            tl.fromTo(sel + " .kc", { y: 0, boxShadow: "0 10px 0 #0c1820, 0 16px 30px rgba(0,0,0,.5)" },
+              { y: 9, boxShadow: `0 1px 0 #0c1820, 0 0 40px ${c}`, duration: 0.06, ease: "power2.in", yoyo: true, repeat: 1 }, t);
+          };
+          press("#g6-kf1", 1.0, "rgba(246,215,140,.9)");
+          press("#g6-kq", 1.5, "rgba(112,230,201,.9)");
+          press("#g6-kf2", 4.0, "rgba(246,215,140,.9)");
+
+          [["#g6-ha", 0.7, 1.45, "expo.out"], ["#g6-hb", 1.5, 3.95, "power4.out"], ["#g6-hc", 4.0, 99, "back.out(2)"]].forEach(([id, a, b, ease]) => {
+            tl.fromTo(id, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease }, a);
+            if (b < 99) tl.to(id, { opacity: 0, y: -30, duration: 0.12 }, b - 0.12);
+          });
+
+          tl.fromTo("#g6-stall", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2.5)" }, 0.5);
+          tl.to("#g6-stall", { opacity: 0, duration: 0.2 }, 1.5);
+
+          // position card states: SHORT → (F) banked → LONG → (F) FLAT
+          tl.fromTo("#g6-s1", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.3, ease: "expo.out" }, 0.3);
+          tl.to("#g6-s1", { opacity: 0, x: -60, duration: 0.2, ease: "power2.in" }, 1.05);
+          tl.fromTo("#g6-s2", { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.3, ease: "expo.out" }, 1.5);
+          tl.to("#g6-s2", { opacity: 0, x: -60, duration: 0.2, ease: "power2.in" }, 4.05);
+          tl.fromTo("#g6-s3", { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.3, ease: "expo.out" }, 4.1);
+          tl.fromTo("#g6-eq", { color: "#e8f3ef" }, { color: "#70e6c9", duration: 0.12, yoyo: true, repeat: 1, immediateRender: false }, 1.0);
+
+          // the payout flies out of the position card at the lens, then lands center
+          tl.fromTo("#g6-dim", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 4.2);
+          tl.to(["#g6-pos", "#g6-wallet", "#g6-chart", "#g6-keys"], { opacity: 0.15, duration: 0.3 }, 4.25);
+          tl.fromTo("#g6-big", { opacity: 0, x: 600, y: -120, z: -900, rotationY: -50, rotationX: 20 },
+            { opacity: 1, x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, duration: 0.6, ease: "expo.out" }, 4.2);
+          tl.fromTo("#g6-big", { scale: 1 }, { scale: 1.06, duration: 1.5, ease: "none", immediateRender: false }, 4.8);
+
+          window.__timelines["g6-flip"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

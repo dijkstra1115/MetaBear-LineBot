@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="g5-iceberg-template">
+      <style>
+        #g5-iceberg-root { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(ellipse at 60% 45%, #22233a 0%, #0a121c 62%); }
+        #g5-head { position: absolute; left: 120px; top: 108px; width: 1700px; height: 110px; }
+        .g5-h { position: absolute; left: 0; top: 0; font: 400 80px/1 var(--display); letter-spacing: -0.03em; color: var(--ink); white-space: nowrap; opacity: 0; }
+        .g5-h.g { color: var(--gold); }
+        #g5-chart { position: absolute; left: 120px; top: 260px; width: 880px; height: 580px; border-radius: 20px; border: 3px solid #2f4955; background: rgba(12, 24, 34, 0.9); overflow: hidden; }
+        #g5-chart .cap { position: absolute; left: 26px; top: 20px; font: 700 20px var(--mono); letter-spacing: 0.2em; color: var(--muted); }
+        #g5-svg { position: absolute; left: 0; top: 0; width: 880px; height: 580px; }
+        #g5-wall { position: absolute; left: 0; right: 0; top: 200px; border-top: 5px dashed var(--gold); filter: drop-shadow(0 0 12px rgba(246, 215, 140, 0.9)); opacity: 0; transform-origin: 0 50%; }
+        #g5-wall-l { position: absolute; left: 26px; top: 150px; font: 700 26px var(--mono); color: var(--gold); white-space: nowrap; opacity: 0; }
+        #g5-wall-l span { font: 900 30px var(--tc); margin-right: 10px; }
+        #g5-stamp { position: absolute; left: 330px; top: 300px; padding: 8px 28px 12px; border: 6px solid var(--coral); border-radius: 14px; color: var(--coral); background: rgba(8, 18, 27, 0.8); font: 900 96px/1.1 var(--tc); white-space: nowrap; opacity: 0; }
+        #g5-fpwrap { position: absolute; left: 1080px; top: 250px; width: 720px; height: 640px; perspective: 1500px; }
+        #g5-fp { position: absolute; inset: 0; padding: 22px 26px; border-radius: 20px; border: 3px solid #2f4955; background: rgba(12, 24, 34, 0.94); transform-style: preserve-3d; }
+        #g5-fp .hd { display: grid; grid-template-columns: 170px 120px 120px 1fr; font: 700 18px var(--mono); letter-spacing: 0.16em; color: var(--mint); margin-bottom: 8px; }
+        .g5-r { position: relative; display: grid; grid-template-columns: 170px 120px 120px 1fr; align-items: center; height: 48px; font: 700 24px var(--mono); font-variant-numeric: tabular-nums; border-bottom: 1px solid rgba(151, 175, 181, 0.1); }
+        .g5-r .p { color: #cfe3df; }
+        .g5-r .bk { color: var(--coral); }
+        .g5-r .by { color: var(--mint); }
+        .g5-r .bar { height: 18px; border-radius: 3px; background: rgba(112, 230, 201, 0.35); transform-origin: 0 50%; }
+        .g5-r.ice { background: rgba(246, 215, 140, 0.1); border-radius: 8px; }
+        .g5-r.ice .p { color: var(--gold); }
+        .g5-r.ice .bar { background: linear-gradient(90deg, var(--gold), #fff4d6); box-shadow: 0 0 20px rgba(246, 215, 140, 0.6); }
+        #g5-tell { position: absolute; left: 1080px; top: 910px; width: 720px; font: 700 26px var(--mono); color: var(--gold); opacity: 0; white-space: nowrap; }
+        #g5-keys { position: absolute; left: 120px; top: 880px; display: flex; gap: 40px; }
+        #g5-k1, #g5-kq { opacity: 0; }
+      </style>
+
+      <div data-hf-id="hf-lslk" id="g5-iceberg-root" data-composition-id="g5-iceberg" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-b968" id="g5-head">
+          <div data-hf-id="hf-bglj" class="g5-h" id="g5-ha">Probe with 10 BTC first.</div>
+          <div data-hf-id="hf-mcn3" class="g5-h" id="g5-hb">Prints pile up at one price…</div>
+          <div data-hf-id="hf-crp4" class="g5-h g" id="g5-hc">It's an iceberg. Walk away.</div>
+        </div>
+        <div data-hf-id="hf-nzm6" id="g5-chart">
+          <div data-hf-id="hf-79gm" class="cap">BTC-PERP · 1s</div>
+          <div data-hf-id="hf-t74l" class="heat" style="position: absolute; left: 0; right: 0; top: 120px; height: 14px"></div>
+          <div data-hf-id="hf-v4lu" id="g5-wall"></div>
+          <div data-hf-id="hf-qu57" id="g5-wall-l"><span data-hf-id="hf-zmaf">疑似冰山</span>ICEBERG? · 100,600</div>
+          <svg data-hf-id="hf-swdv" id="g5-svg" viewBox="0 0 880 580">
+            <path data-hf-id="hf-dbiv" id="g5-line" fill="none" stroke="#70e6c9" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+            <circle data-hf-id="hf-7p4b" id="g5-dot" r="10" fill="#eafff8" />
+          </svg>
+          <div data-hf-id="hf-stme" id="g5-stamp" data-layout-allow-overlap="">推不動！</div>
+        </div>
+        <div data-hf-id="hf-zyk4" id="g5-fpwrap">
+          <div data-hf-id="hf-myew" id="g5-fp">
+            <div data-hf-id="hf-0hws" class="hd"><span data-hf-id="hf-ql08">FOOTPRINT</span><span data-hf-id="hf-z61g">BOOK</span><span data-hf-id="hf-j6lm">BOUGHT</span><span data-hf-id="hf-uckh"></span></div>
+            <div data-hf-id="hf-2wox" id="g5-rows"></div>
+          </div>
+        </div>
+        <div data-hf-id="hf-xig8" id="g5-tell">BOOK SHOWS 2.0 · <span data-hf-id="hf-u74b" id="g5-tell-n">0.0</span> BTC ALREADY FILLED</div>
+        <div data-hf-id="hf-jk2e" id="g5-keys">
+          <div data-hf-id="hf-lbrw" class="kc-row" id="g5-k1"><div data-hf-id="hf-f90h" class="kc">1</div><div data-hf-id="hf-5dxt" class="kc-lbl"><small data-hf-id="hf-ncxp">SIZE</small>10 BTC</div></div>
+          <div data-hf-id="hf-t7rw" class="kc-row" id="g5-kq"><div data-hf-id="hf-ihw1" class="kc mint">Q</div><div data-hf-id="hf-e8tz" class="kc-lbl"><small data-hf-id="hf-q3t8">MARKET BUY</small>PROBE</div></div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const prand = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const root = document.getElementById("g5-iceberg-root");
+          const q = (s) => root.querySelector(s);
+          const D = 6.8;
+
+          // footprint ladder
+          const rows = [];
+          for (let i = 0; i < 11; i++) {
+            const price = 100850 - i * 50;
+            const r = document.createElement("div");
+            r.className = "g5-r" + (price === 100600 ? " ice" : "");
+            const bk = price >= 100600 ? (price === 100600 ? "2.0" : (1 + prand(i * 3) * 6).toFixed(1)) : "—";
+            const by = price < 100600 ? (0.4 + prand(i * 7) * 3).toFixed(1) : "0.0";
+            const w = price < 100600 ? 40 + prand(i * 7) * 120 : 4;
+            r.innerHTML = `<span class="p">${price.toLocaleString("en-US")}</span><span class="bk">${bk}</span><span class="by">${by}</span><div class="bar" style="width:${w}px"></div>`;
+            q("#g5-rows").appendChild(r); rows.push(r);
+          }
+          const ice = rows[5];
+          const iceBy = ice.querySelector(".by"), iceBar = ice.querySelector(".bar"), iceBk = ice.querySelector(".bk");
+          iceBar.style.width = "300px";
+
+          // price: climbs into the wall, gets stuck, drifts back
+          const hist = [];
+          for (let i = 0; i <= 24; i++) hist.push([30 + i * 16, 430 + Math.sin(i * 0.5) * 22 + (prand(i) - 0.5) * 14]);
+          const headAt = (t) => {
+            if (t < 1.25) return [414 + t * 10, 440];
+            if (t < 1.45) { const k = (t - 1.25) / 0.2; return [427 + k * 40, 440 - k * 232]; }
+            if (t < 3.3) { const tick = (t - 1.5) / 0.25; const ph = tick - Math.floor(tick); return [467 + (t - 1.45) * 70, 208 + Math.abs(Math.sin(ph * Math.PI)) * 22]; }
+            const k = Math.min(1, (t - 3.3) / 1.2); const e = 1 - Math.pow(1 - k, 3);
+            return [597 + k * 180, 208 + e * 200 + Math.sin(t * 6) * 4];
+          };
+          const line = q("#g5-line"), dot = q("#g5-dot");
+          const drawLine = (t) => {
+            const pts = hist.slice();
+            for (let s = 0; s <= t; s += 0.04) pts.push(headAt(s));
+            const h = headAt(t); pts.push(h);
+            line.setAttribute("d", pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" "));
+            dot.setAttribute("cx", h[0]); dot.setAttribute("cy", h[1]);
+          };
+
+          const tl = gsap.timeline({ paused: true });
+          const drv = { t: 0 };
+          const tellN = q("#g5-tell-n");
+          tl.fromTo(drv, { t: 0 }, {
+            t: D, duration: D, ease: "none",
+            onUpdate: () => {
+              const t = drv.t;
+              drawLine(t);
+              const n = Math.max(0, Math.min(7, Math.floor((t - 1.5) / 0.25) + 1));
+              iceBy.textContent = (n * 1.2).toFixed(1);
+              tellN.textContent = (n * 1.2).toFixed(1);
+              gsap.set(iceBar, { scaleX: n / 7 });
+              const since = t >= 1.5 && n < 7 ? (t - 1.5) % 0.25 : 1;
+              gsap.set(iceBk, { opacity: since < 0.08 ? 0.25 : 1 });
+            },
+          }, 0);
+          tl.fromTo("#g5-fp", { rotationY: -24, rotationX: 6 }, { rotationY: -10, rotationX: 2, duration: D, ease: "sine.inOut" }, 0);
+          tl.fromTo("#g5-fpwrap", { x: 100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 0.3);
+          tl.fromTo(rows, { opacity: 0, z: -300 }, { opacity: 1, z: 0, duration: 0.35, ease: "expo.out", stagger: 0.03 }, 0.4);
+
+          const press = (sel, t) => {
+            tl.fromTo(sel, { opacity: 0, y: 30, scale: 0.8 }, { opacity: 1, y: 0, scale: 1, duration: 0.25, ease: "back.out(2.5)" }, t - 0.3);
+            tl.fromTo(sel + " .kc", { y: 0, boxShadow: "0 10px 0 #0c1820, 0 16px 30px rgba(0,0,0,.5)" },
+              { y: 9, boxShadow: "0 1px 0 #0c1820, 0 0 40px rgba(112,230,201,.8)", duration: 0.06, ease: "power2.in", yoyo: true, repeat: 1 }, t);
+          };
+          press("#g5-k1", 0.75);
+          press("#g5-kq", 1.25);
+
+          [["#g5-ha", 0.8, 2.45, "expo.out"], ["#g5-hb", 2.5, 3.95, "power4.out"], ["#g5-hc", 4.0, 99, "back.out(2)"]].forEach(([id, a, b, ease]) => {
+            tl.fromTo(id, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease }, a);
+            if (b < 99) tl.to(id, { opacity: 0, y: -30, duration: 0.12 }, b - 0.12);
+          });
+
+          // the tell: the wall is detected, the push stalls
+          tl.fromTo("#g5-tell", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.3 }, 1.6);
+          tl.fromTo("#g5-wall", { opacity: 0, scaleX: 0 }, { opacity: 1, scaleX: 1, duration: 0.45, ease: "expo.out" }, 2.5);
+          tl.fromTo("#g5-wall-l", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, 2.6);
+          tl.fromTo(ice, { scale: 1 }, { scale: 1.06, duration: 0.12, yoyo: true, repeat: 3, immediateRender: false }, 2.5);
+          tl.fromTo("#g5-stamp", { scale: 2.4, opacity: 0, rotation: -14 }, { scale: 1, opacity: 1, rotation: -6, duration: 0.28, ease: "power4.out" }, 3.0);
+          tl.fromTo("#g5-chart", { x: 0 }, { x: 12, duration: 0.04, yoyo: true, repeat: 5, ease: "none", immediateRender: false }, 3.0);
+          tl.to("#g5-stamp", { opacity: 0.35, duration: 0.3 }, 4.0);
+          tl.to(["#g5-k1", "#g5-kq"], { opacity: 0.3, duration: 0.3 }, 4.0);
+
+          window.__timelines["g5-iceberg"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="s8-end-template">
+      <style>
+        #s8-end-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(ellipse at 50% 48%, #172f3f 0%, #08121b 58%, #050b11 100%);
+        }
+        #s8-all { position: absolute; inset: 0; }
+        .s8-band {
+          position: absolute;
+          left: 0;
+          width: 1920px;
+          border-radius: 4px;
+          background: linear-gradient(90deg, rgba(92, 64, 170, 0) 0%, rgba(92, 64, 170, 0.6) 25%, rgba(242, 197, 117, 1) 60%, rgba(92, 64, 170, 0.6) 85%, rgba(92, 64, 170, 0) 100%);
+          box-shadow: 0 0 40px rgba(242, 197, 117, 0.5);
+        }
+        .s8-rule {
+          position: absolute;
+          left: 260px;
+          width: 1400px;
+          height: 5px;
+          border-radius: 3px;
+          background: linear-gradient(90deg, rgba(246, 215, 140, 0), #fff4d6 50%, rgba(246, 215, 140, 0));
+          box-shadow: 0 0 30px rgba(246, 215, 140, 0.8);
+        }
+        #s8-brand {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 140px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 20px;
+        }
+        #s8-brand img { width: 76px; height: 76px; }
+        #s8-brand span { font: 700 40px var(--mono); color: var(--ink); letter-spacing: 0.02em; }
+        #s8-brand em { font: 500 34px var(--tc); font-style: normal; color: var(--muted); padding-left: 22px; border-left: 3px solid #3b4d51; }
+        #s8-word {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 372px;
+          text-align: center;
+          font: 400 216px/1 var(--display);
+          letter-spacing: -0.04em;
+          color: var(--ink);
+          text-shadow: 0 0 80px rgba(112, 230, 201, 0.35);
+          white-space: nowrap;
+        }
+        #s8-tc span { display: inline-block; }
+        #s8-tc {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 640px;
+          text-align: center;
+          font: 900 92px/1 var(--tc);
+          letter-spacing: 0.34em;
+          padding-left: 0.34em;
+          color: var(--gold);
+          text-shadow: 0 0 50px rgba(246, 215, 140, 0.5);
+        }
+        #s8-cta {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 786px;
+          display: flex;
+          justify-content: center;
+        }
+        #s8-cta div {
+          padding: 18px 44px;
+          border-radius: 14px;
+          background: var(--mint);
+          color: #06231d;
+          font: 700 40px var(--mono);
+          letter-spacing: 0.06em;
+          box-shadow: 0 0 60px rgba(112, 230, 201, 0.5);
+          white-space: nowrap;
+        }
+        #s8-foot {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 948px;
+          text-align: center;
+          font: 700 24px var(--mono);
+          letter-spacing: 0.16em;
+          color: #8fa9af;
+          white-space: nowrap;
+        }
+        #s8-foot span { font: 500 24px var(--tc); letter-spacing: 0.1em; }
+        #s8-black { position: absolute; inset: 0; background: #000; opacity: 0; }
+      </style>
+
+      <div data-hf-id="hf-o6eu" id="s8-end-root" data-composition-id="s8-end" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-bcky" id="s8-all">
+          <div data-hf-id="hf-jtov" id="s8-bands"></div>
+          <div data-hf-id="hf-2qz0" class="s8-rule" id="s8-r1" style="top: 350px"></div>
+          <div data-hf-id="hf-m5hw" class="s8-rule" id="s8-r2" style="top: 610px"></div>
+          <div data-hf-id="hf-mzz0" id="s8-brand"><img data-hf-id="hf-4d1q" src="assets/logo.png" alt=""><span data-hf-id="hf-ler6">MetaBear</span><em data-hf-id="hf-smnk">互動學院</em></div>
+          <div data-hf-id="hf-iyg6" id="s8-word">FLOW ARENA</div>
+          <div data-hf-id="hf-3dri" id="s8-tc"><span data-hf-id="hf-gyg5">爆</span><span data-hf-id="hf-awag">倉</span><span data-hf-id="hf-1a9o">獵</span><span data-hf-id="hf-0r9r">場</span></div>
+          <div data-hf-id="hf-wc99" id="s8-cta"><div data-hf-id="hf-kbgb">PLAY THE LIQUIDATION HUNT →</div></div>
+          <div data-hf-id="hf-9w02" id="s8-foot">SIMULATED MARKET · NO REAL FUNDS · <span data-hf-id="hf-po92">虛構市場 · 模擬合約 · 無真實資金</span></div>
+        </div>
+        <div data-hf-id="hf-8vcu" id="s8-black"></div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 60 / 128;
+          const root = document.getElementById("s8-end-root");
+          const q = (s) => root.querySelector(s);
+          const tl = gsap.timeline({ paused: true });
+
+          // bands slam shut into one line at y=480 (the wordmark's center)
+          const YS = [120, 250, 700, 860, 990];
+          const H = [10, 16, 22, 14, 8];
+          const bw = q("#s8-bands");
+          const bands = YS.map((y, i) => {
+            const el = document.createElement("div");
+            el.className = "s8-band"; el.style.top = y - H[i] / 2 + "px"; el.style.height = H[i] + "px";
+            bw.appendChild(el);
+            return el;
+          });
+          bands.forEach((el, i) => {
+            tl.fromTo(el, { y: 0, opacity: 1, scaleY: 1 }, { y: 480 - YS[i], scaleY: 0.4, duration: 0.3, ease: "power4.in" }, 0);
+            tl.to(el, { opacity: 0, duration: 0.2 }, 0.3);
+          });
+
+          // the line tears open into two rules and the wordmark is revealed between them
+          tl.fromTo("#s8-r1", { y: 130, scaleX: 0.2, opacity: 0 }, { y: 130, scaleX: 1, opacity: 1, duration: 0.12 }, 0.28);
+          tl.fromTo("#s8-r2", { y: -130, scaleX: 0.2, opacity: 0 }, { y: -130, scaleX: 1, opacity: 1, duration: 0.12 }, 0.28);
+          tl.to("#s8-r1", { y: 0, duration: 0.55, ease: "expo.out" }, 0.4);
+          tl.to("#s8-r2", { y: 0, duration: 0.55, ease: "expo.out" }, 0.4);
+          tl.fromTo("#s8-word", { clipPath: "inset(50% 0% 50% 0%)", scale: 1.12 }, { clipPath: "inset(0% 0% 0% 0%)", scale: 1, duration: 0.6, ease: "expo.out" }, 0.4);
+
+          tl.fromTo("#s8-tc", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, B * 2);
+          gsap.utils.toArray(root.querySelectorAll("#s8-tc span")).forEach((el, i) => {
+            tl.fromTo(el, { x: (i - 1.5) * 90 }, { x: 0, duration: 0.8, ease: "expo.out" }, B * 2);
+          });
+          tl.fromTo("#s8-brand", { opacity: 0, y: -30 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, B * 3);
+          tl.fromTo("#s8-brand img", { rotation: -30, scale: 0.4 }, { rotation: 0, scale: 1, duration: 0.6, ease: "back.out(2.2)" }, B * 3);
+          tl.fromTo("#s8-cta div", { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2.4)" }, B * 4);
+          tl.fromTo("#s8-cta div", { boxShadow: "0 0 30px rgba(112,230,201,.35)" }, { boxShadow: "0 0 90px rgba(112,230,201,.9)", duration: B, yoyo: true, repeat: 3, ease: "sine.inOut", immediateRender: false }, B * 5);
+          tl.fromTo("#s8-foot", { opacity: 0 }, { opacity: 1, duration: 0.5 }, B * 5);
+          tl.fromTo("#s8-all", { scale: 1 }, { scale: 1.035, duration: 5.6, ease: "none" }, 0);
+          tl.fromTo("#s8-word", { textShadow: "0 0 80px rgba(112,230,201,.35)" }, { textShadow: "0 0 120px rgba(112,230,201,.7)", duration: B * 2, yoyo: true, repeat: 3, ease: "sine.inOut", immediateRender: false }, 1.2);
+
+          // final scene may exit: fade to black on the ring-out
+          tl.fromTo("#s8-black", { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power2.in" }, 4.65);
+
+          window.__timelines["s8-end"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

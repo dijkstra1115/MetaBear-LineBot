@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="s6-stats-template">
+      <style>
+        #s6-stats-root { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
+        .s6-card {
+          position: absolute;
+          inset: 0;
+          opacity: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 0 140px 40px;
+        }
+        .s6-card .big { font: 400 300px/0.9 var(--display); letter-spacing: -0.05em; white-space: nowrap; }
+        .s6-card .lbl { margin-top: 34px; font: 700 44px var(--mono); letter-spacing: 0.2em; white-space: nowrap; }
+        .s6-card .idx {
+          position: absolute;
+          right: 140px;
+          top: 110px;
+          font: 700 26px var(--mono);
+          letter-spacing: 0.2em;
+          opacity: 0.75;
+        }
+        .s6-card .tc { font: 900 60px var(--tc); margin-top: 18px; white-space: nowrap; }
+        .s6-card .tc .lat { font: 700 44px var(--mono); letter-spacing: 0.16em; }
+        .s6-card.dark { background: radial-gradient(ellipse at 30% 50%, #12293a, #08121b 70%); color: var(--ink); }
+        .s6-card.mint { background: var(--mint); color: #05241d; }
+        .s6-card.gold { background: var(--gold); color: #2a1d04; }
+        .s6-card.coral { background: var(--coral); color: #2a0710; }
+        .s6-card.violet { background: #3b2a78; color: #f3eeff; }
+        .s6-card .big.m { color: var(--mint); }
+        .s6-card .big.g { color: var(--gold); text-shadow: 0 0 80px rgba(246, 215, 140, 0.4); }
+        #s6-c8 { align-items: center; padding: 0; }
+        #s6-c8 .big { font-size: 640px; line-height: 0.82; }
+        #s6-c8 .ring {
+          position: absolute;
+          left: 960px;
+          top: 470px;
+          width: 700px;
+          height: 700px;
+          margin: -350px 0 0 -350px;
+          border-radius: 50%;
+          border: 10px solid rgba(246, 215, 140, 0.6);
+          box-shadow: 0 0 80px rgba(246, 215, 140, 0.4);
+        }
+        #s6-c8 .lbl { margin-top: 10px; }
+      </style>
+
+      <div data-hf-id="hf-j9mi" id="s6-stats-root" data-composition-id="s6-stats" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-pyew" class="s6-card dark" id="s6-c1"><div data-hf-id="hf-3pyx" class="idx">01 / 08</div><div data-hf-id="hf-46aw" class="big m">120</div><div data-hf-id="hf-m5pj" class="lbl">SECOND ROUNDS</div></div>
+        <div data-hf-id="hf-onl7" class="s6-card mint" id="s6-c2"><div data-hf-id="hf-putu" class="idx">02 / 08</div><div data-hf-id="hf-8svk" class="big" style="font-size: 220px">10,000,000</div><div data-hf-id="hf-eqyf" class="lbl">USDT TO START</div></div>
+        <div data-hf-id="hf-uo6q" class="s6-card dark" id="s6-c3"><div data-hf-id="hf-ickb" class="idx">03 / 08</div><div data-hf-id="hf-mwr0" class="big g" style="font-size: 250px">1× → 20×</div><div data-hf-id="hf-ubcg" class="lbl">ISOLATED LEVERAGE</div></div>
+        <div data-hf-id="hf-8bkz" class="s6-card gold" id="s6-c4"><div data-hf-id="hf-96es" class="idx">04 / 08</div><div data-hf-id="hf-ulb5" class="big" style="font-size: 240px">ICEBERGS</div><div data-hf-id="hf-76kc" class="tc">冰山 <span data-hf-id="hf-ydwo" class="lat">· HIDDEN SIZE</span></div></div>
+        <div data-hf-id="hf-nic5" class="s6-card coral" id="s6-c5"><div data-hf-id="hf-cwq5" class="idx">05 / 08</div><div data-hf-id="hf-2ojc" class="big" style="font-size: 260px">HUNTERS</div><div data-hf-id="hf-r8fr" class="tc">獵手 <span data-hf-id="hf-zj6i" class="lat">· THEY SEE YOUR SIZE</span></div></div>
+        <div data-hf-id="hf-m0av" class="s6-card dark" id="s6-c6"><div data-hf-id="hf-itqu" class="idx">06 / 08</div><div data-hf-id="hf-poo0" class="big" style="font-size: 200px; white-space: normal">DAILY<br data-hf-id="hf-x5px">MARKET</div><div data-hf-id="hf-sfuw" class="lbl" style="color: var(--mint)">ONE SEED · EVERYONE</div></div>
+        <div data-hf-id="hf-xp7h" class="s6-card violet" id="s6-c7"><div data-hf-id="hf-f5hr" class="idx">07 / 08</div><div data-hf-id="hf-zr0v" class="big" style="font-size: 180px; white-space: normal">SHADOW<br data-hf-id="hf-rsrt">CHALLENGE</div><div data-hf-id="hf-zn1h" class="lbl">RACE A FRIEND'S GHOST</div></div>
+        <div data-hf-id="hf-zah5" class="s6-card dark" id="s6-c8"><div data-hf-id="hf-0qcu" class="ring"></div><div data-hf-id="hf-tt76" class="big g">S</div><div data-hf-id="hf-gve5" class="lbl" style="color: var(--gold)">RANK · SCORE ≥ 200</div></div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 60 / 128;
+          const tl = gsap.timeline({ paused: true });
+          const ENTR = [
+            [{ scale: 1.5 }, { scale: 1, ease: "power4.out" }],
+            [{ x: -300 }, { x: 0, ease: "expo.out" }],
+            [{ y: 200 }, { y: 0, ease: "circ.out" }],
+            [{ scale: 0.7, rotation: -4 }, { scale: 1, rotation: 0, ease: "back.out(2)" }],
+            [{ x: 300 }, { x: 0, ease: "expo.out" }],
+            [{ y: -200 }, { y: 0, ease: "power4.out" }],
+            [{ scaleX: 1.6 }, { scaleX: 1, ease: "expo.out" }],
+            [{ scale: 2.2 }, { scale: 1, ease: "power4.out" }],
+          ];
+          for (let i = 0; i < 8; i++) {
+            const id = "#s6-c" + (i + 1);
+            const t = i * B;
+            tl.fromTo(id, { opacity: 0 }, { opacity: 1, duration: 0.01, immediateRender: false }, t);
+            if (i < 7) tl.fromTo(id, { opacity: 1 }, { opacity: 0, duration: 0.01, immediateRender: false }, t + B);
+            const [a, b] = ENTR[i];
+            tl.fromTo(`${id} .big`, a, Object.assign({ duration: 0.3, immediateRender: false }, b), t);
+            tl.fromTo(`${id} .lbl, ${id} .tc`, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.2, ease: "power2.out" }, t + 0.08);
+            // drift through the hold so nothing freezes
+            tl.fromTo(id, { x: 0 }, { x: i % 2 ? -24 : 24, duration: B, ease: "none", immediateRender: false }, t);
+          }
+          tl.fromTo("#s6-c8 .ring", { scale: 0.3, opacity: 1 }, { scale: 1.25, opacity: 0.8, duration: 0.6, ease: "expo.out", immediateRender: false }, 7 * B);
+          tl.fromTo("#s6-c8 .big", { textShadow: "0 0 80px rgba(246,215,140,.4)" }, { textShadow: "0 0 160px rgba(246,215,140,1)", duration: 0.3, yoyo: true, repeat: 1, immediateRender: false }, 7 * B + 0.1);
+
+          window.__timelines["s6-stats"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

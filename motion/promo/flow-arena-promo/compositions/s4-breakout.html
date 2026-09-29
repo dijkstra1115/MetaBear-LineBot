@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(circle at 25% 45%, #13424b66, #08121b00 55%), #08121b;
+          color: #e8f3ef;
+          font-family: "Noto Sans TC", sans-serif;
+        }
+        #s4-world {
+          position: absolute;
+          inset: 0;
+        }
+        #s4-news {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 78px;
+          display: flex;
+          align-items: center;
+          gap: 26px;
+          padding: 0 110px;
+          background: linear-gradient(90deg, #5a1c2b, #3a1822);
+          border-bottom: 3px solid #fb7f91;
+          box-shadow: 0 10px 50px #fb7f9155;
+          font-size: 34px;
+          font-weight: 900;
+          color: #ffe3e8;
+        }
+        #s4-news b {
+          font: 700 24px "JetBrains Mono", monospace;
+          letter-spacing: 0.2em;
+          color: #08121b;
+          background: #f2c575;
+          padding: 6px 12px;
+          border-radius: 6px;
+        }
+        #s4-news em {
+          font-style: normal;
+          color: #f6d78c;
+        }
+        .s4-col {
+          position: absolute;
+          left: 1110px;
+          top: 130px;
+          width: 720px;
+        }
+        .s4-chip {
+          font: 700 22px "JetBrains Mono", monospace;
+          letter-spacing: 0.2em;
+          color: #70e6c9;
+        }
+        .s4-num {
+          display: block;
+          margin-top: 8px;
+          font: 700 180px "JetBrains Mono", monospace;
+          line-height: 1;
+          color: #08121b;
+          -webkit-text-stroke: 3px #70e6c9;
+        }
+        .s4-title {
+          display: block;
+          font-size: 146px;
+          font-weight: 900;
+          letter-spacing: -0.03em;
+          line-height: 1.1;
+          white-space: nowrap;
+        }
+        .s4-sub {
+          margin-top: 28px;
+          font-size: 36px;
+          font-weight: 500;
+          line-height: 1.45;
+          color: #a9c1bd;
+        }
+        .s4-sub span {
+          display: block;
+        }
+        .s4-depth {
+          position: absolute;
+          left: 1110px;
+          top: 690px;
+          display: flex;
+          align-items: baseline;
+          gap: 20px;
+        }
+        .s4-depth small {
+          font: 700 22px "JetBrains Mono", monospace;
+          letter-spacing: 0.14em;
+          color: #97afb5;
+        }
+        .s4-depth strong {
+          font: 700 56px "JetBrains Mono", monospace;
+          color: #fb7f91;
+          font-variant-numeric: tabular-nums;
+        }
+        .s4-cost {
+          position: absolute;
+          left: 1110px;
+          top: 790px;
+          width: 700px;
+        }
+        .s4-cost-row {
+          position: relative;
+          height: 86px;
+        }
+        .s4-cost-row small {
+          display: block;
+          font-size: 24px;
+          font-weight: 700;
+          color: #a9c1bd;
+        }
+        .s4-cost-bar {
+          position: absolute;
+          left: 0;
+          top: 40px;
+          height: 34px;
+          border-radius: 6px;
+          transform-origin: 0 50%;
+        }
+        .s4-cost-row b {
+          position: absolute;
+          right: 0;
+          top: 0;
+          font: 700 28px "JetBrains Mono", monospace;
+        }
+        #s4-stamp {
+          position: absolute;
+          left: 1400px;
+          top: 858px;
+          padding: 6px 22px;
+          border: 5px solid #f2c575;
+          border-radius: 12px;
+          font: 700 76px "JetBrains Mono", monospace;
+          color: #f6d78c;
+          background: #08121bcc;
+          box-shadow: 0 0 50px #f2c57566;
+          opacity: 0;
+        }
+        #s4-panel {
+          position: absolute;
+          left: 110px;
+          top: 110px;
+          width: 920px;
+          height: 890px;
+          border-radius: 18px;
+          border: 3px solid #31545b;
+          background: linear-gradient(160deg, #142c36, #0f1f29);
+          box-shadow: 0 40px 100px #000a;
+          transform-origin: 100% 50%;
+        }
+        .s4-head {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 72px;
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding: 0 26px;
+          border-bottom: 2px solid #29404b;
+          font-size: 28px;
+          font-weight: 700;
+        }
+        .s4-head span {
+          font: 700 20px "JetBrains Mono", monospace;
+          letter-spacing: 0.12em;
+          color: #69818a;
+        }
+        .s4-row {
+          position: absolute;
+          left: 14px;
+          width: 886px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 18px;
+          font: 700 28px "JetBrains Mono", monospace;
+          border-radius: 6px;
+          overflow: hidden;
+        }
+        .s4-row .bar {
+          position: absolute;
+          right: 0;
+          top: 4px;
+          height: 40px;
+          width: 100%;
+          border-radius: 4px;
+          transform-origin: 100% 50%;
+        }
+        .s4-row .fl {
+          position: absolute;
+          inset: 0;
+          background: #fff6dd;
+          opacity: 0;
+        }
+        .s4-row b,
+        .s4-row i {
+          position: relative;
+          font-style: normal;
+        }
+        .s4-row.ask b {
+          color: #fb7f91;
+        }
+        .s4-row.ask .bar {
+          background: #fb7f9130;
+        }
+        .s4-row.bid b {
+          color: #70e6c9;
+        }
+        .s4-row.bid .bar {
+          background: #70e6c926;
+        }
+        .s4-row i {
+          color: #cfe3df;
+        }
+        .s4-mid {
+          position: absolute;
+          left: 14px;
+          top: 392px;
+          width: 886px;
+          height: 80px;
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          padding: 0 18px;
+          border-top: 2px solid #29404b;
+          border-bottom: 2px solid #29404b;
+        }
+        #s4-last {
+          font: 700 54px "JetBrains Mono", monospace;
+          color: #f2c575;
+          font-variant-numeric: tabular-nums;
+        }
+        #s4-arrow {
+          font-size: 40px;
+          font-weight: 900;
+          color: #70e6c9;
+        }
+        .s4-mid small {
+          margin-left: auto;
+          font: 700 20px "JetBrains Mono", monospace;
+          letter-spacing: 0.12em;
+          color: #69818a;
+        }
+        #s4-preview {
+          position: absolute;
+          left: 24px;
+          top: 646px;
+          width: 866px;
+          height: 44px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 14px;
+          border-radius: 6px;
+          background: #12352f;
+          border: 2px solid #70e6c955;
+          font-size: 22px;
+          font-weight: 700;
+          color: #b6ffe6;
+          white-space: nowrap;
+          opacity: 0;
+        }
+        #s4-preview b {
+          font: 700 22px "JetBrains Mono", monospace;
+          color: #f6d78c;
+        }
+        .s4-qrow {
+          position: absolute;
+          left: 24px;
+          top: 705px;
+          display: flex;
+          gap: 12px;
+          align-items: center;
+        }
+        .s4-qty,
+        .s4-act {
+          position: relative;
+          height: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          font: 700 26px "JetBrains Mono", monospace;
+        }
+        .s4-qty {
+          width: 150px;
+          border: 2px solid #42616a;
+          background: #1c323e;
+        }
+        .s4-qty .hl,
+        .s4-act .hl {
+          position: absolute;
+          inset: -2px;
+          border-radius: 8px;
+          background: #70e6c9;
+          opacity: 0;
+        }
+        .s4-qty span,
+        .s4-act span,
+        .s4-act kbd {
+          position: relative;
+        }
+        .s4-arow {
+          position: absolute;
+          left: 24px;
+          top: 790px;
+          display: flex;
+          gap: 14px;
+        }
+        .s4-act {
+          width: 429px;
+          height: 72px;
+          gap: 14px;
+          font-family: "Noto Sans TC", sans-serif;
+          font-size: 32px;
+          font-weight: 900;
+        }
+        .s4-act kbd {
+          font: 700 18px "JetBrains Mono", monospace;
+          border: 2px solid #ffffff55;
+          border-radius: 4px;
+          padding: 0 6px;
+        }
+        .s4-act.buy {
+          background: #1f6a58;
+          border: 2px solid #70e6c9;
+          color: #e7fff7;
+        }
+        .s4-act.sell {
+          background: #4a1d2a;
+          border: 2px solid #fb7f91;
+          color: #ffe3e8;
+        }
+        #s4-band {
+          position: absolute;
+          left: 110px;
+          top: 40px;
+          width: 1700px;
+          height: 28px;
+          border-radius: 6px;
+          background: linear-gradient(90deg, rgba(255, 214, 102, 0), rgba(255, 214, 102, 0.9) 30%, rgba(255, 214, 102, 0.9) 70%, rgba(255, 214, 102, 0));
+          box-shadow: 0 0 50px rgba(255, 214, 102, 0.7);
+          opacity: 0;
+        }
+        #s4-bandlab {
+          position: absolute;
+          left: 110px;
+          top: 84px;
+          font: 700 26px "JetBrains Mono", monospace;
+          letter-spacing: 0.1em;
+          color: #f6d78c;
+          opacity: 0;
+        }
+        #s4-flyers {
+          position: absolute;
+          inset: 0;
+          perspective: 1400px;
+          perspective-origin: 560px 380px;
+          pointer-events: none;
+        }
+        #s4-flyers .s4-row {
+          background: #5a1c2b;
+          border: 2px solid #fb7f91;
+          box-shadow: 0 0 40px #fb7f9188;
+          opacity: 0;
+        }
+        .s4-streak {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 6px;
+          height: 150px;
+          border-radius: 3px;
+          background: linear-gradient(180deg, #70e6c900, #70e6c9);
+          opacity: 0;
+        }
+        .curpos {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 46px;
+          height: 60px;
+        }
+        #s4-cursor {
+          display: block;
+          transform-origin: 4px 4px;
+          width: 46px;
+          height: 60px;
+          filter: drop-shadow(0 0 14px #70e6c9aa) drop-shadow(0 6px 10px #000c);
+        }
+        .s4-ripple {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 120px;
+          height: 120px;
+          margin: -60px 0 0 -60px;
+          border-radius: 50%;
+          border: 4px solid #70e6c9;
+          opacity: 0;
+        }
+      </style>
+
+      <div id="root" data-composition-id="s4-breakout" data-width="1920" data-height="1080">
+        <div
+          id="s4-cues"
+          hidden
+          data-cues='{"alarm":[0.9],"shrink":[1.2],"hover":[2.3,2.45,2.6,2.75,2.9,3.35],"click":[3.05,3.55],"eat":[3.65,3.8,3.95,4.1,4.25,4.4],"bar":[4.8],"stamp":[5.6],"band":[6.3],"whoosh":[8.45]}'
+        ></div>
+        <div id="s4-world">
+          <div id="s4-band"></div>
+          <div id="s4-bandlab">下一站 ▲ 101,050 · 爆倉帶 1,240 BTC</div>
+          <div class="s4-col">
+            <div class="s4-chip" id="s4-chip">PLAY 02 / 03</div>
+            <span class="s4-num" id="s4-num">02</span>
+            <span class="s4-title" id="s4-title">薄簿突破</span>
+            <div class="s4-sub" id="s4-sub"><span>趁訂單簿變薄，</span><span>用最低成本市價推穿。</span></div>
+          </div>
+          <div class="s4-depth" id="s4-depth"><small>近價賣單深度</small><strong id="s4-depthv">2,800 BTC</strong></div>
+          <div class="s4-cost" id="s4-cost">
+            <div class="s4-cost-row">
+              <small>正常簿面 · 推到同一價位</small><b style="color: #fb7f91" id="s4-c1v">$4,120,000</b>
+              <span class="s4-cost-bar" id="s4-c1" style="width: 700px; background: #fb7f91"></span>
+            </div>
+            <div class="s4-cost-row" style="margin-top: 14px">
+              <small>流動性枯竭時</small><b style="color: #70e6c9" id="s4-c2v">$910,000</b>
+              <span class="s4-cost-bar" id="s4-c2" style="width: 155px; background: #70e6c9; box-shadow: 0 0 24px #70e6c9"></span>
+            </div>
+          </div>
+          <div id="s4-stamp">−78%</div>
+          <div id="s4-panel">
+            <div class="s4-head">委託簿 <span>BTC/USDT 永續 · 賣單簿</span></div>
+            <div id="s4-rows"></div>
+            <div class="s4-mid"><span id="s4-last">100,120.0</span><span id="s4-arrow"></span><small>LAST PRICE</small></div>
+            <div id="s4-preview">▲ 2,500 BTC 依可見掛單推到 <b>100,860 (+0.74%)</b> · 熱圖估計穿過 <b>1,240 BTC</b> 空單強平</div>
+            <div class="s4-qrow">
+              <div class="s4-qty"><span class="hl"></span><span>500</span></div>
+              <div class="s4-qty"><span class="hl"></span><span>1,250</span></div>
+              <div class="s4-qty"><span class="hl"></span><span>2,500</span></div>
+              <div class="s4-qty"><span class="hl"></span><span>5,000</span></div>
+            </div>
+            <div class="s4-arow">
+              <div class="s4-act buy" id="s4-buy"><span class="hl"></span><span>▲ 市價買入</span><kbd>Q</kbd></div>
+              <div class="s4-act sell"><span>▼ 市價賣出</span><kbd>E</kbd></div>
+            </div>
+          </div>
+          <div id="s4-streaks"></div>
+          <div id="s4-flyers"></div>
+          <div class="s4-ripple" id="s4-ripple"></div>
+          <div id="s4-curpos" class="curpos">
+            <svg id="s4-cursor" viewBox="0 0 46 60" aria-hidden="true">
+              <path d="M3 3 L3 49 L15 38 L23 57 L32 53 L24 35 L41 35 Z" fill="#f4fffb" stroke="#08121b" stroke-width="3" stroke-linejoin="round" />
+            </svg>
+          </div>
+        </div>
+        <div id="s4-news"><b>⚡ 快訊</b>流動性枯竭 —— 近價掛單只剩 <em>20%</em></div>
+      </div>
+
+      <script>
+        (() => {
+          const DUR = 9;
+          const cues = JSON.parse(document.getElementById("s4-cues").dataset.cues);
+          const ez = {
+            lin: (x) => x,
+            out3: (x) => 1 - Math.pow(1 - x, 3),
+            in3: (x) => x * x * x,
+            inout: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+          };
+          const keys = (t, ks) => {
+            if (t <= ks[0][0]) return ks[0][1];
+            for (let i = 1; i < ks.length; i++) {
+              if (t <= ks[i][0]) {
+                const [t0, v0] = ks[i - 1];
+                const [t1, v1, e] = ks[i];
+                return v0 + (v1 - v0) * ez[e || "inout"]((t - t0) / (t1 - t0));
+              }
+            }
+            return ks[ks.length - 1][1];
+          };
+          const pk = (t, t0, d) => (t < t0 ? 0 : Math.max(0, 1 - (t - t0) / d) ** 2);
+          const hash = (n) => {
+            const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+            return x - Math.floor(x);
+          };
+          const fmt = (n, d = 0) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+          const $ = (id) => document.getElementById(id);
+
+          const PX = 110, PY = 110;
+          const asks = [100860, 100720, 100580, 100440, 100300, 100180];
+          const askSz = [900, 760, 640, 560, 480, 420];
+          const bids = [100080, 100020, 99960];
+          const bidSz = [380, 460, 520];
+          const host = $("s4-rows");
+          const mk = (price, size, side, top) => {
+            const d = document.createElement("div");
+            d.className = "s4-row " + side;
+            d.style.top = top + "px";
+            d.innerHTML = `<span class="bar"></span><span class="fl"></span><b>${fmt(price)}.0</b><i>${fmt(size)}</i>`;
+            host.appendChild(d);
+            return { d, bar: d.querySelector(".bar"), fl: d.querySelector(".fl"), sz: d.querySelector("i"), size };
+          };
+          const askRows = asks.map((p, i) => mk(p, askSz[i], "ask", 84 + i * 50));
+          // eaten rows tear off the book and fly at the viewer
+          const flyers = asks.map((p, i) => {
+            const d = document.createElement("div");
+            d.className = "s4-row ask";
+            d.style.left = PX + 14 + "px";
+            d.style.top = PY + 84 + i * 50 + "px";
+            d.innerHTML = `<b>${fmt(p)}.0</b><i>吃掉 ${fmt(Math.round(askSz[i] * 0.2))}</i>`;
+            d.setAttribute("data-layout-ignore", "");
+            $("s4-flyers").appendChild(d);
+            return d;
+          });
+          bids.forEach((p, i) => {
+            const r = mk(p, bidSz[i], "bid", 484 + i * 50);
+            r.bar.style.transform = `scaleX(${bidSz[i] / 1000})`;
+          });
+          // streaks for the price rocket
+          const sh = $("s4-streaks");
+          const streaks = [];
+          for (let i = 0; i < 16; i++) {
+            const d = document.createElement("div");
+            d.className = "s4-streak";
+            sh.appendChild(d);
+            streaks.push({ d, x: PX + 30 + hash(i * 3.7) * 860, sp: 900 + hash(i * 5.1) * 1400, o: hash(i * 2.2) });
+          }
+
+          const qtys = [...document.querySelectorAll(".s4-qty")];
+          const qx = [209, 371, 533, 695];
+          const QY = PY + 705 + 30;
+          const BX = 346, BY = PY + 790 + 36;
+          const curKeys = {
+            x: [[0, 900], [2.0, 900], [2.3, qx[0], "out3"], [2.45, qx[1]], [2.6, qx[2]], [2.75, qx[3]], [2.9, qx[2]], [3.2, qx[2]], [3.35, BX, "out3"], [4.2, BX], [5.0, 560, "inout"], [9, 580]],
+            y: [[0, 1150], [2.0, 1150], [2.3, QY, "out3"], [3.2, QY], [3.35, BY, "out3"], [4.2, BY], [5.0, 1010, "inout"], [9, 1020]],
+          };
+          const shrinkAt = (i) => cues.shrink[0] + (asks.length - 1 - i) * 0.12;
+          const lastPrice = (t) => {
+            let p = 100120 + Math.sin(t * 5) * 4;
+            cues.eat.forEach((e, k) => {
+              if (t >= e) p = keys(t, [[e, k === 0 ? 100120 : asks[asks.length - k]], [e + 0.12, asks[asks.length - 1 - k], "out3"]]);
+            });
+            return p;
+          };
+
+          const render = (t) => {
+            const cx = keys(t, curKeys.x);
+            const cy = keys(t, curKeys.y);
+            $("s4-curpos").style.transform = `translate(${cx - 4}px, ${cy - 4}px)`;
+            let press = 0;
+            cues.click.forEach((c) => (press = Math.max(press, pk(t, c, 0.22))));
+            $("s4-cursor").style.transform = `scale(${1 - 0.2 * press})`;
+            const lc = cues.click.filter((c) => t >= c).pop();
+            const rp = lc === undefined ? 1 : Math.min(1, (t - lc) / 0.5);
+            const rpos = lc === cues.click[0] ? [qx[2], QY] : [BX, BY];
+            $("s4-ripple").style.opacity = 1 - rp;
+            $("s4-ripple").style.transform = `translate(${rpos[0]}px, ${rpos[1]}px) scale(${0.2 + (lc === cues.click[1] ? 2.6 : 1.6) * ez.out3(rp)})`;
+
+            // qty hovers; 2,500 selected after first click
+            qtys.forEach((q, i) => {
+              let h = 0;
+              cues.hover.slice(0, 5).forEach((hv, k) => {
+                const target = [0, 1, 2, 3, 2][k];
+                if (target === i) h = Math.max(h, pk(t, hv, 0.4));
+              });
+              const sel = i === 2 && t >= cues.click[0];
+              q.querySelector(".hl").style.opacity = sel ? 0.9 : h * 0.85;
+              q.style.color = sel || h > 0.5 ? "#08231f" : "#e8f3ef";
+              q.style.transform = `scale(${1 + 0.1 * h})`;
+            });
+            const bh = t >= cues.hover[5] && t < cues.click[1] ? 0.35 : 0.9 * pk(t, cues.click[1], 0.7);
+            document.querySelector("#s4-buy .hl").style.opacity = bh;
+            $("s4-buy").style.transform = `scale(${1 - 0.07 * pk(t, cues.click[1], 0.3)})`;
+            $("s4-preview").style.opacity = t >= cues.click[0] ? Math.min(1, (t - cues.click[0]) / 0.2) : 0;
+
+            // asks thin out, then get eaten nearest-first
+            let depth = 0;
+            askRows.forEach((r, i) => {
+              const sk = t < shrinkAt(i) ? 1 : 1 - 0.8 * ez.out3(Math.min(1, (t - shrinkAt(i)) / 0.35));
+              const size = Math.round(r.size * sk);
+              const e = cues.eat[asks.length - 1 - i];
+              const eaten = t >= e;
+              r.bar.style.transform = `scaleX(${eaten ? 0 : (r.size / 1000) * sk})`;
+              r.sz.textContent = eaten ? "—" : fmt(size);
+              r.fl.style.opacity = 0.85 * pk(t, e, 0.25);
+              r.d.style.opacity = eaten ? 0.18 + 0.82 * pk(t, e, 0.25) : 1;
+              if (!eaten) depth += size;
+              r.d.style.transform = `translateX(${sk < 1 && t < shrinkAt(i) + 0.35 ? (hash(Math.floor(t * 30) + i) - 0.5) * 8 : 0}px)`;
+            });
+            $("s4-depthv").textContent = `${fmt(Math.round(depth))} BTC`;
+            flyers.forEach((d, i) => {
+              const e = cues.eat[asks.length - 1 - i];
+              const u = t - e;
+              if (u < 0 || u > 0.75) {
+                d.style.opacity = 0;
+                return;
+              }
+              const k = u / 0.75;
+              d.style.opacity = 1 - k * k;
+              d.style.transform = `translate3d(${(i - 2.5) * 160 * k}px, ${-60 * k}px, ${1100 * ez.in3(Math.min(1, k * 1.15))}px) rotateX(${-35 * k}deg) rotateZ(${(i % 2 ? 1 : -1) * 12 * k}deg)`;
+            });
+            // price
+            const lp = lastPrice(t);
+            $("s4-last").textContent = fmt(lp, 1);
+            const rising = t >= cues.eat[0];
+            $("s4-last").style.color = rising ? "#70e6c9" : "#f2c575";
+            $("s4-last").style.textShadow = rising ? `0 0 ${20 + 40 * pk(t, cues.eat[cues.eat.length - 1], 0.6)}px #70e6c9` : "none";
+            $("s4-arrow").textContent = rising ? "▲" : "";
+            // rocket streaks during the eat window
+            const sw = t >= cues.eat[0] && t < cues.eat[5] + 0.4;
+            streaks.forEach((s, i) => {
+              const tt = t - cues.eat[0] - s.o * 0.3;
+              const y = PY + 300 - ((tt * s.sp) % 220);
+              s.d.style.opacity = sw && tt > 0 ? 0.8 * (1 - Math.max(0, t - cues.eat[5]) / 0.4) : 0;
+              s.d.style.transform = `translate(${s.x}px, ${y}px)`;
+            });
+            // news banner shake at arrival
+            $("s4-news").style.transform = `translateX(${(hash(Math.floor(t * 30)) - 0.5) * 18 * pk(t, cues.alarm[0], 0.4)}px)`;
+            // stamp
+            const sIn = t >= cues.stamp[0] ? Math.min(1, (t - cues.stamp[0]) / 0.2) : 0;
+            $("s4-stamp").style.opacity = sIn;
+            $("s4-stamp").style.transform = `scale(${1 + 1.2 * (1 - ez.out3(sIn))}) rotate(-8deg)`;
+            // teaser band
+            const bIn = t >= cues.band[0] ? Math.min(1, (t - cues.band[0]) / 0.4) : 0;
+            const pulse = 0.75 + 0.25 * Math.sin((t - cues.band[0]) * 9);
+            $("s4-band").style.opacity = bIn * pulse;
+            $("s4-bandlab").style.opacity = bIn;
+          };
+          const drive = { t: 0 };
+          render(0);
+          const tl = gsap.timeline({ paused: true });
+          tl.to(drive, { t: DUR, duration: DUR, ease: "none", onUpdate: () => render(drive.t) }, 0);
+          tl.fromTo("#s4-panel", { opacity: 0, x: -260, rotationY: 38, transformPerspective: 1800 }, { opacity: 1, x: 0, rotationY: 0, duration: 0.75, ease: "expo.out" }, 0);
+          tl.fromTo("#s4-chip", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 0.05);
+          tl.fromTo("#s4-num", { opacity: 0, y: 70 }, { opacity: 1, y: 0, duration: 0.45, ease: "circ.out" }, 0.1);
+          tl.fromTo("#s4-title", { opacity: 0, x: 200 }, { opacity: 1, x: 0, duration: 0.45, ease: "expo.out" }, 0.25);
+          tl.fromTo("#s4-sub", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, 0.5);
+          tl.fromTo("#s4-news", { y: -110 }, { y: 0, duration: 0.3, ease: "back.out(2)" }, cues.alarm[0]);
+          tl.to("#s4-news", { y: -110, duration: 0.3, ease: "power2.in" }, 6.0);
+          tl.fromTo("#s4-depth", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, 1.1);
+          tl.fromTo("#s4-cost", { opacity: 0 }, { opacity: 1, duration: 0.2 }, cues.bar[0]);
+          tl.fromTo("#s4-c1", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "power3.out" }, cues.bar[0]);
+          tl.fromTo("#s4-c2", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power3.out" }, cues.bar[0] + 0.35);
+          // exit: camera tilts up toward the band
+          tl.to("#s4-world", { y: 420, scale: 0.92, opacity: 0, filter: "blur(10px)", duration: 0.5, ease: "power3.in" }, 8.5);
+          window.__timelines["s4-breakout"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

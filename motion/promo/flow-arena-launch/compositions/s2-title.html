@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="s2-title-template">
+      <style>
+        #s2-title-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(ellipse at 50% 45%, #1a2f45 0%, #0a1520 55%, #060d14 100%);
+        }
+        .s2-streak {
+          position: absolute;
+          left: 0;
+          top: 0;
+          border-radius: 99px;
+          filter: blur(1.5px);
+        }
+        #s2-ring {
+          position: absolute;
+          left: 960px;
+          top: 440px;
+          width: 600px;
+          height: 600px;
+          margin: -300px 0 0 -300px;
+          border-radius: 50%;
+          border: 6px solid rgba(246, 215, 140, 0.9);
+          box-shadow: 0 0 60px rgba(246, 215, 140, 0.5), inset 0 0 60px rgba(246, 215, 140, 0.3);
+        }
+        #s2-slit {
+          position: absolute;
+          left: 0;
+          top: 437px;
+          width: 1920px;
+          height: 6px;
+          background: linear-gradient(90deg, rgba(255, 244, 214, 0) 0%, #fff4d6 50%, rgba(255, 244, 214, 0) 100%);
+          box-shadow: 0 0 40px 10px rgba(246, 215, 140, 0.5);
+        }
+        #s2-lockup {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding-bottom: 60px;
+        }
+        #s2-glitch {
+          display: grid;
+        }
+        #s2-glitch span {
+          grid-area: 1 / 1;
+          font: 400 228px/1 var(--display);
+          letter-spacing: -0.035em;
+          white-space: nowrap;
+        }
+        #s2-glitch .base {
+          z-index: 2;
+          color: var(--ink);
+          text-shadow: 0 0 70px rgba(112, 230, 201, 0.35);
+        }
+        #s2-glitch .copy {
+          z-index: 1;
+          opacity: 0;
+          mix-blend-mode: screen;
+        }
+        #s2-glitch .warm { color: #ff5d78; }
+        #s2-glitch .cool { color: #41f0d0; }
+        #s2-underline {
+          width: 1180px;
+          height: 8px;
+          margin-top: 26px;
+          border-radius: 4px;
+          background: linear-gradient(90deg, var(--violet), var(--gold) 60%, #fff4d6);
+          box-shadow: 0 0 24px rgba(246, 215, 140, 0.6);
+          transform-origin: 0 50%;
+        }
+        #s2-sub {
+          display: flex;
+          align-items: center;
+          gap: 44px;
+          margin-top: 44px;
+        }
+        #s2-tc {
+          display: flex;
+          font: 900 128px/1 var(--tc);
+          color: var(--gold);
+          letter-spacing: 0.06em;
+          text-shadow: 0 0 40px rgba(246, 215, 140, 0.45);
+        }
+        #s2-tc span { display: inline-block; }
+        #s2-div {
+          width: 5px;
+          height: 130px;
+          background: rgba(232, 243, 239, 0.5);
+          transform-origin: 50% 50%;
+        }
+        #s2-mono { display: flex; flex-direction: column; gap: 16px; }
+        #s2-mono div {
+          font: 700 40px var(--mono);
+          letter-spacing: 0.22em;
+          color: var(--ink);
+          white-space: nowrap;
+        }
+        #s2-mono div.dim { font-size: 26px; color: var(--mint); letter-spacing: 0.18em; }
+      </style>
+
+      <div data-hf-id="hf-xmuk" id="s2-title-root" data-composition-id="s2-title" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-eee0" id="s2-streaks"></div>
+        <div data-hf-id="hf-p18h" id="s2-ring"></div>
+        <div data-hf-id="hf-2u4d" id="s2-slit"></div>
+        <div data-hf-id="hf-mgyl" id="s2-lockup">
+          <div data-hf-id="hf-k61s" id="s2-glitch">
+            <span data-hf-id="hf-giva" class="copy warm" aria-hidden="true" data-layout-ignore="">FLOW ARENA</span>
+            <span data-hf-id="hf-7rxm" class="copy cool" aria-hidden="true" data-layout-ignore="">FLOW ARENA</span>
+            <span data-hf-id="hf-anll" class="base">FLOW ARENA</span>
+          </div>
+          <div data-hf-id="hf-gkhh" id="s2-underline"></div>
+          <div data-hf-id="hf-53x3" id="s2-sub">
+            <div data-hf-id="hf-d5aw" id="s2-tc"><span data-hf-id="hf-gyg5">爆</span><span data-hf-id="hf-awag">倉</span><span data-hf-id="hf-1a9o">獵</span><span data-hf-id="hf-0r9r">場</span></div>
+            <div data-hf-id="hf-078w" id="s2-div"></div>
+            <div data-hf-id="hf-q5q6" id="s2-mono">
+              <div data-hf-id="hf-d6tu">LIQUIDATION HUNT</div>
+              <div data-hf-id="hf-hdg1" class="dim">BTC-PERP · 120-SECOND ROUNDS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 60 / 128;
+          const D = 3.975;
+          const prand = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const root = document.getElementById("s2-title-root");
+          const q = (s) => root.querySelector(s);
+          const tl = gsap.timeline({ paused: true });
+
+          // --- rushing heat streaks: x is a pure function of time ---
+          const wrap = q("#s2-streaks");
+          const COLORS = [
+            "linear-gradient(90deg, rgba(246,215,140,0), rgba(246,215,140,.95), #fff4d6)",
+            "linear-gradient(90deg, rgba(92,64,170,0), rgba(140,110,230,.8))",
+            "linear-gradient(90deg, rgba(112,230,201,0), rgba(112,230,201,.8))",
+            "linear-gradient(90deg, rgba(251,127,145,0), rgba(251,127,145,.85))",
+          ];
+          const streaks = [];
+          for (let i = 0; i < 26; i++) {
+            const el = document.createElement("div");
+            el.className = "s2-streak";
+            const w = 260 + prand(i * 7) * 900;
+            const h = 2 + Math.round(prand(i * 11) * 9);
+            el.style.width = w + "px";
+            el.style.height = h + "px";
+            el.style.background = COLORS[i % 4 === 0 ? 0 : i % 5 === 0 ? 2 : i % 7 === 0 ? 3 : i % 2 ? 0 : 1];
+            el.style.opacity = (0.35 + prand(i * 13) * 0.6).toFixed(2);
+            wrap.appendChild(el);
+            streaks.push({ el, w, y: 40 + prand(i * 17) * 1000, speed: 1800 + prand(i * 19) * 3200, phase: prand(i * 23) * 3200 });
+          }
+          const drive = { t: 0 };
+          const placeStreaks = () => {
+            const span = 1920 + 1200;
+            streaks.forEach((s) => {
+              const k = (s.phase + drive.t * s.speed) % (span + s.w);
+              gsap.set(s.el, { x: 1920 - k, y: s.y });
+            });
+          };
+          tl.fromTo(drive, { t: 0 }, { t: D, duration: D, ease: "none", onUpdate: placeStreaks }, 0);
+          tl.fromTo("#s2-streaks", { opacity: 1 }, { opacity: 0.45, duration: 1.2, ease: "power2.out" }, 0.4);
+
+          // --- impact: slit + shockwave ---
+          tl.fromTo("#s2-slit", { scaleY: 6, opacity: 1 }, { scaleY: 0.2, opacity: 0, duration: 0.6, ease: "expo.out" }, 0);
+          tl.fromTo("#s2-ring", { scale: 0.1, opacity: 1 }, { scale: 3.4, opacity: 0, duration: 0.9, ease: "expo.out" }, 0);
+
+          // --- title: glitch-stretch entrance ---
+          const glitchHash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const copies = gsap.utils.toArray(root.querySelectorAll("#s2-glitch .copy"));
+          const glitch = (start, dur, max) => {
+            const amp = { a: 0 };
+            tl.set(amp, { a: 1 }, start);
+            tl.set(copies, { opacity: 0.9 }, start);
+            tl.fromTo(amp, { a: 1 }, {
+              a: 0, duration: dur, ease: "power3.in", immediateRender: false,
+              onUpdate: () => {
+                const step = Math.floor(tl.time() / 0.04);
+                copies.forEach((el, layer) => {
+                  gsap.set(el, {
+                    x: (glitchHash(step * 13 + layer * 7) * 2 - 1) * max * amp.a,
+                    y: (glitchHash(step * 29 + layer * 11) * 2 - 1) * max * 0.3 * amp.a,
+                  });
+                });
+              },
+            }, start);
+            tl.set(copies, { x: 0, y: 0, opacity: 0 }, start + dur);
+          };
+          tl.fromTo("#s2-glitch", { scaleX: 1.7, scaleY: 0.7, opacity: 0 }, { scaleX: 1, scaleY: 1, opacity: 1, duration: 0.45, ease: "power4.out" }, 0);
+          glitch(0, 0.45, 60);
+          glitch(B * 5, 0.16, 34);
+          glitch(B * 5 + 0.3, 0.12, 22);
+          tl.fromTo("#s2-lockup", { scale: 1 }, { scale: 1.06, duration: D, ease: "none" }, 0);
+
+          // --- underline sweep, TC drop, mono lock ---
+          tl.fromTo("#s2-underline", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "expo.inOut" }, B * 1);
+          tl.fromTo("#s2-tc span", { y: -90, opacity: 0, rotationX: -80 }, { y: 0, opacity: 1, rotationX: 0, duration: 0.5, ease: "back.out(2.2)", stagger: 0.07 }, B * 2);
+          tl.fromTo("#s2-div", { scaleY: 0 }, { scaleY: 1, duration: 0.35, ease: "power3.out" }, B * 3);
+          tl.fromTo("#s2-mono div", { x: 60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: "expo.out", stagger: 0.1 }, B * 3);
+          tl.fromTo("#s2-tc", { textShadow: "0 0 40px rgba(246,215,140,.45)" }, { textShadow: "0 0 80px rgba(246,215,140,.9)", duration: B, ease: "sine.inOut", yoyo: true, repeat: 3 }, B * 4);
+
+          window.__timelines["s2-title"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

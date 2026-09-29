@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template id="s4-cascade-template">
+      <style>
+        #s4-cascade-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: radial-gradient(ellipse at 45% 40%, #11283a 0%, #08121b 65%);
+        }
+        #s4-shake, #s4-cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+        .s4-grid { position: absolute; left: 0; width: 1920px; height: 2px; background: rgba(151, 175, 181, 0.12); }
+        .s4-ax {
+          position: absolute;
+          left: 1250px;
+          font: 400 20px var(--mono);
+          color: rgba(151, 175, 181, 0.5);
+          font-variant-numeric: tabular-nums;
+        }
+        .s4-c { position: absolute; width: 22px; border-radius: 2px; }
+        .s4-c.up { background: #5fcfb3; }
+        .s4-c.dn { background: #e0707f; }
+        .s4-c i { position: absolute; left: 10px; width: 2px; background: inherit; }
+        #s4-candle {
+          position: absolute;
+          left: 880px;
+          width: 70px;
+          height: 2600px;
+          top: -1780px; /* bottom edge sits at world y = 820 */
+          transform-origin: 50% 100%;
+          border-radius: 4px;
+          background: linear-gradient(0deg, #2aa889 0%, #70e6c9 70%, #eafff8 100%);
+          box-shadow: 0 0 40px rgba(112, 230, 201, 0.7), 0 0 120px rgba(112, 230, 201, 0.3);
+        }
+        .s4-band { position: absolute; left: 0; width: 1920px; transform-origin: 50% 50%; }
+        .s4-band .core {
+          position: absolute;
+          inset: 0;
+          border-radius: 4px;
+          background: linear-gradient(90deg, rgba(92, 64, 170, 0) 0%, rgba(92, 64, 170, 0.6) 25%, rgba(242, 197, 117, 1) 70%, #fff4d6 100%);
+        }
+        .s4-band .glow {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: -26px;
+          bottom: -26px;
+          filter: blur(20px);
+          background: linear-gradient(90deg, rgba(92, 64, 170, 0) 10%, rgba(242, 197, 117, 0.5) 70%, rgba(255, 240, 200, 0.75) 100%);
+        }
+        .s4-band .lbl {
+          position: absolute;
+          left: 1000px;
+          top: -44px;
+          font: 700 24px var(--mono);
+          color: var(--gold);
+          letter-spacing: 0.05em;
+          white-space: nowrap;
+        }
+        .s4-ring {
+          position: absolute;
+          width: 300px;
+          height: 300px;
+          margin: -150px 0 0 -150px;
+          border-radius: 50%;
+          border: 5px solid #fff4d6;
+          box-shadow: 0 0 40px rgba(246, 215, 140, 0.8);
+          opacity: 0;
+        }
+        .s4-p {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 14px;
+          height: 5px;
+          border-radius: 3px;
+          opacity: 0;
+        }
+        .s4-pop {
+          position: absolute;
+          right: 1075px;
+          padding: 10px 20px;
+          border-radius: 10px;
+          background: rgba(246, 215, 140, 0.16);
+          border: 3px solid var(--gold);
+          color: #fff2cc;
+          font: 900 40px var(--tc);
+          white-space: nowrap;
+          opacity: 0;
+          transform-origin: 100% 50%;
+        }
+        #s4-tag {
+          position: absolute;
+          left: 970px;
+          top: 0;
+          margin-top: -22px;
+          padding: 5px 14px;
+          border-radius: 6px;
+          background: var(--mint);
+          color: #06231d;
+          font: 700 28px var(--mono);
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        /* HUD */
+        #s4-hud {
+          position: absolute;
+          left: 100px;
+          top: 96px;
+          width: 560px;
+          padding: 28px 34px 30px;
+          border-radius: 18px;
+          border: 3px solid rgba(246, 215, 140, 0.45);
+          background: rgba(8, 18, 27, 0.8);
+        }
+        #s4-hud .lbl { font: 700 22px var(--mono); letter-spacing: 0.24em; color: var(--muted); }
+        #s4-ign {
+          font: 700 96px/1.05 var(--mono);
+          letter-spacing: -0.04em;
+          color: var(--gold);
+          text-shadow: 0 0 40px rgba(246, 215, 140, 0.5);
+          font-variant-numeric: tabular-nums;
+        }
+        #s4-combo-row { display: flex; align-items: baseline; gap: 22px; margin-top: 14px; }
+        #s4-combo-row .tc { font: 900 46px var(--tc); color: var(--ink); }
+        #s4-combo {
+          display: inline-block;
+          font: 400 150px/0.9 var(--display);
+          color: var(--mint);
+          text-shadow: 0 0 50px rgba(112, 230, 201, 0.6);
+          transform-origin: 0 80%;
+        }
+        #s4-tape {
+          position: absolute;
+          right: 100px;
+          top: 96px;
+          width: 500px;
+          height: 800px;
+          padding: 24px 26px;
+          border-radius: 18px;
+          border: 3px solid #29404b;
+          background: rgba(12, 25, 35, 0.92);
+          overflow: hidden;
+        }
+        #s4-tape .head { display: flex; justify-content: space-between; font: 700 22px var(--mono); letter-spacing: 0.2em; color: var(--gold); margin-bottom: 18px; }
+        #s4-tape .head b { color: var(--mint); font-weight: 700; }
+        #s4-rows { position: relative; height: 700px; }
+        .s4-row {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 0;
+          height: 60px;
+          display: grid;
+          grid-template-columns: 96px 1fr auto;
+          align-items: center;
+          padding: 0 16px;
+          border-radius: 8px;
+          border-left: 6px solid var(--gold);
+          background: linear-gradient(90deg, #4a3b1c, #132733);
+          font: 700 24px var(--mono);
+          white-space: nowrap;
+          opacity: 0;
+        }
+        .s4-row span { color: #9fb8bb; }
+        .s4-row strong { color: var(--ink); }
+        .s4-row em { font-style: normal; color: var(--gold); }
+        #s4-flash {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse at 48% 50%, rgba(255, 244, 214, 0.9), rgba(246, 215, 140, 0.25) 60%, rgba(246, 215, 140, 0) 100%);
+          opacity: 0;
+          mix-blend-mode: screen;
+        }
+        #s4-dim { position: absolute; inset: 0; background: rgba(5, 11, 17, 0.86); opacity: 0; }
+        #s4-final {
+          position: absolute;
+          left: 120px;
+          top: 270px;
+          width: 1680px;
+        }
+        .s4-fw { display: block; width: fit-content; font: 400 210px/0.92 var(--display); letter-spacing: -0.04em; color: var(--ink); }
+        .s4-fw.gold { color: var(--gold); text-shadow: 0 0 80px rgba(246, 215, 140, 0.5); }
+        #s4-final p {
+          margin-top: 36px;
+          font: 700 34px/1.4 var(--mono);
+          color: #cfe3df;
+          max-width: 1100px;
+        }
+      </style>
+
+      <div data-hf-id="hf-wmfs" id="s4-cascade-root" data-composition-id="s4-cascade" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-ju4p" id="s4-shake">
+          <div data-hf-id="hf-y75u" id="s4-cam">
+            <div data-hf-id="hf-fo6h" id="s4-gridwrap"></div>
+            <div data-hf-id="hf-m1ep" id="s4-candles"></div>
+            <div data-hf-id="hf-pb23" id="s4-bands"></div>
+            <div data-hf-id="hf-oe5y" id="s4-candle"></div>
+            <div data-hf-id="hf-4p9n" id="s4-fx"></div>
+            <div data-hf-id="hf-s24s" id="s4-tag">104,000.00</div>
+          </div>
+        </div>
+        <div data-hf-id="hf-dgl1" id="s4-flash"></div>
+        <div data-hf-id="hf-jfmk" id="s4-hud">
+          <div data-hf-id="hf-s25n" class="lbl" data-layout-allow-overlap="">LIQUIDATIONS YOU IGNITED</div>
+          <div data-hf-id="hf-5weh" id="s4-ign" data-layout-allow-overlap="">$0</div>
+          <div data-hf-id="hf-rix2" id="s4-combo-row"><span data-hf-id="hf-udn0" class="tc">連環爆倉</span><span data-hf-id="hf-xv79" id="s4-combo">×0</span></div>
+        </div>
+        <div data-hf-id="hf-02p9" id="s4-tape">
+          <div data-hf-id="hf-z992" class="head"><span data-hf-id="hf-5nty">LIQUIDATION TAPE</span><b data-hf-id="hf-rsps">● LIVE</b></div>
+          <div data-hf-id="hf-vl8m" id="s4-rows"></div>
+        </div>
+        <div data-hf-id="hf-wzad" id="s4-dim"></div>
+        <div data-hf-id="hf-k2jj" id="s4-final">
+          <span data-hf-id="hf-te8y" class="s4-fw" id="s4-f1" data-layout-allow-overlap="">CHAIN</span>
+          <span data-hf-id="hf-2jnb" class="s4-fw gold" id="s4-f2" data-layout-allow-overlap="">REACTION.</span>
+          <p data-hf-id="hf-xhi0" id="s4-fp">Every liquidation is a market order — and it shoves the price into the next band.</p>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          const B = 60 / 128;
+          const prand = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+          const root = document.getElementById("s4-cascade-root");
+          const q = (s) => root.querySelector(s);
+          const fmt = (v, d = 2) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+          const BASE = 820;
+          const priceAt = (y) => 104000 + (BASE - y) * 4;
+
+          // ---- world: grid + axis ----
+          const gw = q("#s4-gridwrap");
+          for (let y = 900; y >= -1900; y -= 140) {
+            const g = document.createElement("div"); g.className = "s4-grid"; g.setAttribute("data-layout-ignore", ""); g.style.top = y + "px"; gw.appendChild(g);
+            const a = document.createElement("div"); a.className = "s4-ax"; a.setAttribute("data-layout-ignore", ""); a.style.top = y - 30 + "px"; a.textContent = fmt(priceAt(y)); gw.appendChild(a);
+          }
+          // ---- history candles ----
+          const cw = q("#s4-candles");
+          let c = 812;
+          for (let i = 0; i < 30; i++) {
+            const o = c;
+            c = o + (prand(i * 3.7) - 0.52) * 34 + (812 - o) * 0.15;
+            const top = Math.min(o, c), h = Math.max(6, Math.abs(o - c));
+            const el = document.createElement("div");
+            el.className = "s4-c " + (c < o ? "up" : "dn");
+            el.style.left = 120 + i * 25 + "px"; el.style.top = top + "px"; el.style.height = h + "px";
+            const wick = 8 + prand(i * 9) * 20;
+            el.innerHTML = `<i style="top:${-wick}px;height:${h + wick * 2}px"></i>`;
+            cw.appendChild(el);
+          }
+
+          // ---- bands ----
+          const P = [1.875, 3.28125, 4.6875, 5.625, 6.5625]; // pierce times (on the grid)
+          const BY = [420, -40, -520, -960, -1420];
+          const BH = [10, 14, 18, 22, 30];
+          const LBL = ["23 BTC · 25× SHORTS", "58 BTC · 20× SHORTS", "112 BTC · 20× SHORTS", "240 BTC · 50× SHORTS", "510 BTC · 25× SHORTS"];
+          const POP = ["空單爆倉 23 BTC", "空單爆倉 58 BTC", "空單爆倉 112 BTC", "空單爆倉 240 BTC", "空單爆倉 510 BTC"];
+          const bw = q("#s4-bands"), fx = q("#s4-fx");
+          const bands = BY.map((y, i) => {
+            const el = document.createElement("div");
+            el.className = "s4-band"; el.style.top = y - BH[i] / 2 + "px"; el.style.height = BH[i] + "px";
+            el.innerHTML = `<div class="glow"></div><div class="core"></div><div class="lbl">⚡ ${LBL[i]}</div>`;
+            bw.appendChild(el);
+            return el;
+          });
+
+          const tl = gsap.timeline({ paused: true });
+
+          // ---- the push: one head driver owns candle, camera, tag ----
+          const head = { y: BASE };
+          const cand = q("#s4-candle"), cam = q("#s4-cam"), tag = q("#s4-tag");
+          const drawHead = () => {
+            const y = head.y;
+            gsap.set(cand, { scaleY: Math.max(0.001, (BASE - y) / 2600) });
+            gsap.set(cam, { y: Math.max(0, 600 - y) });
+            gsap.set(tag, { y: y });
+            tag.textContent = fmt(priceAt(y));
+          };
+          drawHead();
+          const legs = [
+            [0.3, P[0], BY[0], "power2.in"],
+            [P[0], P[1], BY[1], "power1.in"],
+            [P[1], P[2], BY[2], "power1.in"],
+            [P[2], P[3], BY[3], "none"],
+            [P[3], P[4], BY[4], "none"],
+            [P[4], P[4] + 0.6, BY[4] - 170, "power3.out"],
+          ];
+          let prevY = BASE;
+          legs.forEach(([a, b, y, ease]) => {
+            tl.fromTo(head, { y: prevY }, { y, duration: b - a, ease, onUpdate: drawHead, immediateRender: false }, a);
+            prevY = y;
+          });
+          tl.fromTo(tag, { opacity: 0 }, { opacity: 1, duration: 0.2 }, 0.3);
+
+          // ---- shake (hash-jitter, envelope per hit) ----
+          const hash = (n) => { const x = Math.sin(n * 91.7 + 17.3) * 43758.5453; return x - Math.floor(x); };
+          const shakeEl = q("#s4-shake");
+          const shake = (t, amp, dur) => {
+            const env = { a: 0 };
+            tl.fromTo(env, { a: amp }, {
+              a: 0, duration: dur, ease: "power2.out", immediateRender: false,
+              onUpdate: () => {
+                const s = Math.floor(tl.time() / 0.033);
+                gsap.set(shakeEl, { x: (hash(s) * 2 - 1) * env.a, y: (hash(s + 50) * 2 - 1) * env.a });
+              },
+            }, t);
+            tl.set(shakeEl, { x: 0, y: 0 }, t + dur);
+          };
+
+          // ---- tape rows (absolute y per appearance event, no relative tweens) ----
+          const rowsWrap = q("#s4-rows");
+          const TAPE = [];
+          P.forEach((t, i) => {
+            TAPE.push({ t, txt: `<span>00:0${i + 4}</span><strong>SHORT ${LBL[i].split(" ·")[0]}</strong><em>×${i + 1}</em>` });
+            TAPE.push({ t: t + 0.12, txt: `<span>00:0${i + 4}</span><strong>SHORT ${(2 + prand(i * 4) * 9).toFixed(1)} BTC</strong><em>×${i + 1}</em>` });
+          });
+          const rowEls = TAPE.map((r) => { const el = document.createElement("div"); el.className = "s4-row"; el.innerHTML = r.txt; rowsWrap.appendChild(el); return el; });
+          TAPE.forEach((r, e) => {
+            tl.fromTo(rowEls[e], { opacity: 0, x: 80, y: 0 }, { opacity: 1, x: 0, y: 0, duration: 0.25, ease: "expo.out", immediateRender: false }, r.t);
+            for (let k = 0; k < e; k++) {
+              tl.to(rowEls[k], { y: (e - k) * 70, duration: 0.2, ease: "power3.out" }, r.t);
+            }
+          });
+
+          // ---- HUD counters ----
+          const IGN = [310000, 740000, 1200000, 1860000, 2580000];
+          const ign = { v: 0 };
+          const combo = { v: 0 };
+          const ignEl = q("#s4-ign"), comboEl = q("#s4-combo");
+          const drawIgn = () => { ignEl.textContent = "$" + (ign.v >= 1e6 ? (ign.v / 1e6).toFixed(2) + "M" : ign.v < 1000 ? "0" : Math.round(ign.v / 1000) + "K"); };
+          tl.fromTo("#s4-hud", { x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 0.1);
+          tl.fromTo("#s4-tape", { x: 120, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 0.2);
+
+          // ---- detonations ----
+          const COLORS = ["#fff4d6", "#f6d78c", "#f2c575", "#70e6c9", "#fb7f91"];
+          P.forEach((t, i) => {
+            const bx = 915, by = BY[i];
+            const band = bands[i];
+            // band flare & burst apart
+            tl.to(band.querySelector(".core"), { filter: "brightness(3)", duration: 0.06 }, t - 0.06);
+            tl.to(band, { scaleY: 6, opacity: 0, duration: 0.45, ease: "expo.out" }, t);
+            // shockwave
+            const ring = document.createElement("div");
+            ring.className = "s4-ring"; ring.style.left = bx + "px"; ring.style.top = by + "px"; fx.appendChild(ring);
+            tl.fromTo(ring, { scale: 0.1, opacity: 1 }, { scale: 2.6 + i * 0.5, opacity: 0, duration: 0.7, ease: "expo.out", immediateRender: false }, t);
+            // shards
+            const parts = [];
+            const NP = 24;
+            for (let k = 0; k < NP; k++) {
+              const p = document.createElement("div");
+              p.className = "s4-p"; p.style.background = COLORS[(k + i) % COLORS.length];
+              fx.appendChild(p);
+              const ang = prand(i * 100 + k) * Math.PI * 2;
+              parts.push({ p, ang, sp: 260 + prand(i * 100 + k + 50) * (520 + i * 120), rot: ang * 57.3 });
+            }
+            const dr = { T: 0 };
+            tl.fromTo(dr, { T: 0 }, {
+              T: 1, duration: 0.95, ease: "none", immediateRender: false,
+              onUpdate: () => {
+                const T = dr.T, e = 1 - Math.pow(1 - T, 3);
+                parts.forEach((o) => {
+                  gsap.set(o.p, {
+                    x: bx + Math.cos(o.ang) * o.sp * e,
+                    y: by + Math.sin(o.ang) * o.sp * 0.6 * e + 380 * T * T,
+                    rotation: o.rot,
+                    opacity: T <= 0 || T >= 1 ? 0 : 1 - T,
+                  });
+                });
+              },
+            }, t);
+            // TC pop label
+            const pop = document.createElement("div");
+            pop.className = "s4-pop"; pop.style.top = by - 96 + "px"; pop.textContent = POP[i]; fx.appendChild(pop);
+            tl.fromTo(pop, { scale: 0.4, opacity: 0, x: 30 }, { scale: 1, opacity: 1, x: 0, duration: 0.35, ease: "back.out(2.4)", immediateRender: false }, t + 0.03);
+            tl.to(pop, { opacity: 0, y: -40, duration: 0.4, ease: "power2.in" }, t + 1.1);
+            // screen flash, shake
+            tl.fromTo("#s4-flash", { opacity: 0.35 + i * 0.1 }, { opacity: 0, duration: 0.4, ease: "power2.out", immediateRender: false }, t);
+            shake(t, 8 + i * 5, 0.35 + i * 0.04);
+            // counters
+          });
+          // counters are a pure function of scene time
+          const drv = { t: 0 };
+          const drawCounters = () => {
+            const t = drv.t;
+            let n = 0; P.forEach((p) => { if (t >= p) n++; });
+            let v = 0;
+            if (n > 0) {
+              const from = n > 1 ? IGN[n - 2] : 0, to = IGN[n - 1];
+              const k = Math.min(1, (t - P[n - 1]) / 0.3);
+              v = from + (to - from) * (1 - Math.pow(1 - k, 3));
+            }
+            ign.v = v; drawIgn();
+            comboEl.textContent = "×" + Math.max(1, n);
+            const dt = n ? t - P[n - 1] : 9;
+            const rest = 1 + Math.max(0, n - 1) * 0.04;
+            const kick = (0.9 + n * 0.25) * Math.exp(-dt * 11) * Math.cos(dt * 14);
+            gsap.set(comboEl, { scale: rest + Math.max(-0.12, kick) });
+          };
+          tl.fromTo(drv, { t: 0 }, { t: 9.6, duration: 9.6, ease: "none", onUpdate: drawCounters }, 0);
+          tl.fromTo("#s4-combo-row", { opacity: 0 }, { opacity: 1, duration: 0.15 }, P[0]);
+          tl.fromTo("#s4-combo", { color: "#70e6c9" }, { color: "#f6d78c", duration: 0.2, immediateRender: false }, P[4]);
+
+          // ---- finale: CHAIN REACTION on the downbeat ----
+          const F = B * 16;
+          tl.fromTo("#s4-dim", { opacity: 0 }, { opacity: 1, duration: 0.25, ease: "power2.out" }, F - 0.05);
+          tl.to(["#s4-hud", "#s4-tape"], { opacity: 0, scale: 0.94, duration: 0.2, ease: "power2.in" }, F - 0.1);
+          tl.fromTo("#s4-f1", { scaleX: 1.8, opacity: 0, x: -200 }, { scaleX: 1, opacity: 1, x: 0, duration: 0.35, ease: "power4.out" }, F);
+          tl.fromTo("#s4-f2", { scaleX: 1.8, opacity: 0, x: 200 }, { scaleX: 1, opacity: 1, x: 0, duration: 0.35, ease: "power4.out" }, F + 0.08);
+          tl.fromTo("#s4-fp", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, F + B * 1.5);
+          tl.fromTo("#s4-final", { scale: 1 }, { scale: 1.04, duration: 2.1, ease: "none" }, F);
+          shake(F, 16, 0.4);
+
+          window.__timelines["s4-cascade"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>
