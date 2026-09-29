@@ -63,7 +63,8 @@ export const lesson = {
 
 - **確定性**：`draw` 不保留前一格狀態，因此可任意回拖、跳章、平行輸出，聲畫永遠對齊。`tests/orderflow-motion.test.mjs` 每 0.1 秒在一般與減少動態模式下檢查有限幾何，並驗證回拖後同一時間畫出同一格。
 - **頁面**：`scripts/build-motion-pages.mjs` 依 catalog 中 `format: "motion"` 的課生成 `public/orderflow/<id>.html`（側欄章節、標題、播放器、註腳），再由 `buildAcademy` 注入課程導覽。不要手改生成的課程頁。
-- **播放器**：預設靜音自動播放；點大播放鍵或「開啟聲音」後有聲，選擇記住於 `localStorage`（`metabear-motion-sound`）。空白鍵／K 播放暫停、←→ 3 秒、PageUp／PageDown 換章、M 聲音、F 全螢幕、Esc 離開劇院。桌面使用元素全螢幕；觸控裝置改用文件全螢幕加 CSS 劇院，直式時整個播放器旋轉成橫向，iPhone 則只有劇院。播完顯示結束卡，連到 catalog 中的下一課並記錄完成。
+- **播放器**：預設靜音自動播放；點大播放鍵或「開啟聲音」後有聲，選擇記住於 `localStorage`（`metabear-motion-sound`）；聲音鍵旁的音量滑桿記住於 `metabear-motion-volume`，拉到 0 等同靜音（iOS 無法由網頁調整元素音量，會隱藏滑桿）。空白鍵／K 播放暫停、←→ 3 秒、PageUp／PageDown 換章、M 聲音、F 全螢幕、Esc 離開劇院。桌面使用元素全螢幕；觸控裝置改用文件全螢幕加 CSS 劇院，直式時整個播放器旋轉成橫向，iPhone 則只有劇院。播完顯示結束卡，連到 catalog 中的下一課並記錄完成。
+- **配樂音色**：`motion/synth.mjs` 為反覆觀看調暗高頻——點擊音壓在 2 kHz 內、旋律音超過 D6 自動降八度、hi-hat 與噪音掃頻收低，母帶再做 3.2 kHz −4 dB、5 kHz 高架 −5 dB、11 kHz 低通。改動合成器後需 `npm run motion:audio` 重產音檔，並調高 `player.js` 的 `audio_v` 讓瀏覽器換掉快取。
 - **手機**：直式頁面保留 16:9 影片與下方字幕；細字建議橫向或全螢幕觀看。
 - **減少動態**：`prefers-reduced-motion` 時關閉鏡頭晃動與全畫面閃光，時間軸與數字不變。
 

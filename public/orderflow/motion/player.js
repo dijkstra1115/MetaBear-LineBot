@@ -95,11 +95,19 @@ export async function mountMotionLesson(root, lesson) {
     type: "button",
     "aria-label": "開啟聲音",
   });
+  const volume = el("input", "motion-volume", {
+    type: "range",
+    min: "0",
+    max: "100",
+    step: "5",
+    value: "100",
+    "aria-label": "音量",
+  });
   const full = el("button", "motion-btn motion-full", {
     type: "button",
     "aria-label": "全螢幕播放",
   });
-  bar.append(play, time, chapLabel, spacer, sound, full);
+  bar.append(play, time, chapLabel, spacer, sound, volume, full);
   hud.append(scrub, bar);
   stage.append(canvas, loading, bigPlay, soundHint, end, hud);
   const caption = el("p", "motion-caption", { "aria-live": "polite" });
@@ -216,7 +224,7 @@ export async function mountMotionLesson(root, lesson) {
 
   // ---------- audio ----------
   const audioUrl = lesson.audio ? new URL(lesson.audio, location.href) : null;
-  if (audioUrl) audioUrl.searchParams.set("audio_v", "2");
+  if (audioUrl) audioUrl.searchParams.set("audio_v", "3");
   const audio = audioUrl ? new Audio(audioUrl.href) : null;
   if (audio) {
     audio.preload = "auto";
@@ -224,6 +232,14 @@ export async function mountMotionLesson(root, lesson) {
     stage.append(audio);
   }
   let muted = store.get("metabear-motion-sound") !== "on";
+  const storedVolume = Number(store.get("metabear-motion-volume"));
+  let level = storedVolume > 0 && storedVolume <= 1 ? storedVolume : 1;
+  if (audio) {
+    // iOS keeps element volume at 1 (hardware buttons only): hide the slider.
+    audio.volume = 0.5;
+    if (audio.volume !== 0.5) volume.hidden = true;
+    audio.volume = level;
+  }
   const transport = audio
     ? createAudioTransport(audio, () => {
         muted = true;
@@ -235,7 +251,11 @@ export async function mountMotionLesson(root, lesson) {
     sound.dataset.state = muted ? "off" : "on";
     sound.setAttribute("aria-label", muted ? "開啟聲音" : "關閉聲音");
     soundHint.hidden = !muted || !audio;
-    if (!audio) sound.hidden = true;
+    if (!audio) sound.hidden = volume.hidden = true;
+    const shown = muted ? 0 : Math.round(level * 100);
+    volume.value = String(shown);
+    volume.setAttribute("aria-valuetext", muted ? "靜音" : `${shown}%`);
+    volume.style.setProperty("--vol", String(shown / 100));
   }
   function audioPlay() {
     if (!audio || muted || !playing) return;
@@ -307,6 +327,18 @@ export async function mountMotionLesson(root, lesson) {
     if (pointerType !== "touch" || awakeBeforeTap || !playing) toggle();
   });
   sound.addEventListener("click", () => setMuted(!muted));
+  volume.addEventListener("input", () => {
+    const v = Number(volume.value) / 100;
+    if (v === 0) {
+      if (!muted) setMuted(true);
+      return;
+    }
+    level = v;
+    audio.volume = v;
+    store.set("metabear-motion-volume", String(v));
+    if (muted) setMuted(false);
+    else syncSound();
+  });
   soundHint.addEventListener("click", () => {
     setMuted(false);
     if (!playing) start();

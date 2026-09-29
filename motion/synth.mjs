@@ -9,6 +9,43 @@ const SR = 48000;
 const TAU = Math.PI * 2;
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+// Melodic sounds fold down by octaves above this note (D6, ~1175 Hz) so
+// high-priced fills and sparkles never land in the ear's most sensitive band.
+const TOP_NOTE = 86;
+const tame = (m) => {
+  while (m > TOP_NOTE) m -= 12;
+  return m;
+};
+
+/** RBJ biquad, applied in place. type: "peak" | "highshelf" | "lowpass". */
+function biquad(x, type, f0, { q = 0.707, gain = 0 } = {}) {
+  const A = 10 ** (gain / 40);
+  const w = (TAU * f0) / SR;
+  const cw = Math.cos(w);
+  const alpha = Math.sin(w) / (2 * q);
+  let b0, b1, b2, a0, a1, a2;
+  if (type === "peak") {
+    [b0, b1, b2] = [1 + alpha * A, -2 * cw, 1 - alpha * A];
+    [a0, a1, a2] = [1 + alpha / A, -2 * cw, 1 - alpha / A];
+  } else if (type === "highshelf") {
+    const s = 2 * Math.sqrt(A) * alpha;
+    [b0, b1, b2] = [A * (A + 1 + (A - 1) * cw + s), -2 * A * (A - 1 + (A + 1) * cw), A * (A + 1 + (A - 1) * cw - s)];
+    [a0, a1, a2] = [A + 1 - (A - 1) * cw + s, 2 * (A - 1 - (A + 1) * cw), A + 1 - (A - 1) * cw - s];
+  } else {
+    [b0, b1, b2] = [(1 - cw) / 2, 1 - cw, (1 - cw) / 2];
+    [a0, a1, a2] = [1 + alpha, -2 * cw, 1 - alpha];
+  }
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const x0 = x[i];
+    const y0 = (b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0;
+    x2 = x1;
+    x1 = x0;
+    y2 = y1;
+    y1 = y0;
+    x[i] = y0;
+  }
+}
 
 /** Chord palettes as MIDI notes around D; `key` transposes them. */
 export const PALETTES = {
@@ -114,17 +151,20 @@ export function renderScore({ duration, cues, music = {} }) {
     const s0 = Math.floor(t * SR);
     const dur = open ? 0.18 : 0.035;
     let lp = 0;
+    let soft = 0;
     const [gl, gr] = panLR(pan);
     for (let k = 0; k < SR * dur * 4; k++) {
       const n = rand();
       lp += 0.6 * (n - lp);
-      const v = (n - lp) * Math.exp(-k / SR / dur) * 0.26 * vel;
+      // Roll off the fizz above ~4 kHz; it tires the ear over repeat views.
+      soft += 0.45 * (n - lp - soft);
+      const v = soft * Math.exp(-k / SR / dur) * 0.2 * vel;
       add(drums, s0 + k, v * gl, v * gr);
     }
   }
   function pluck(t, midi, vel = 0.5, o = {}) {
     const s0 = Math.floor(t * SR);
-    const f = mtof(midi);
+    const f = mtof(tame(midi));
     const dec = o.decay ?? 0.35;
     const idx = o.index ?? 1.6;
     const [gl, gr] = panLR(o.pan ?? 0);
@@ -192,9 +232,14 @@ export function renderScore({ duration, cues, music = {} }) {
   function click(t, freq = 3200, vel = 0.3, pan = 0) {
     const s0 = Math.floor(t * SR);
     const [gl, gr] = panLR(pan);
+    // Squash requested pitches under 2 kHz (4200 → ~1650, 2200 → ~1090) and
+    // soften the noise transient, keeping higher-vs-lower contrast.
+    const f = 2000 * Math.tanh(freq / 3600);
+    let lp = 0;
     for (let k = 0; k < SR * 0.05; k++) {
       const x = k / SR;
-      const v = (Math.sin(TAU * freq * x) * Math.exp(-x / 0.008) + rand() * Math.exp(-x / 0.0015) * 0.5) * vel * 0.4;
+      lp += 0.3 * (rand() - lp);
+      const v = (Math.sin(TAU * f * x) * Math.exp(-x / 0.008) + lp * Math.exp(-x / 0.0015) * 0.6) * vel * 0.34;
       add(sfx, s0 + k, v * gl, v * gr);
       add(send, s0 + k, v * 0.2);
     }
@@ -225,7 +270,7 @@ export function renderScore({ duration, cues, music = {} }) {
     }
   }
   function coin(t, vel = 0.4, pan = 0) {
-    [88, 95].forEach((m, i) => pluck(t + i * 0.06, m, vel, { decay: 0.25, index: 0.6, ratio: 3.01, pan, wet: 0.5 }));
+    [76, 83].forEach((m, i) => pluck(t + i * 0.06, m, vel, { decay: 0.25, index: 0.6, ratio: 3.01, pan, wet: 0.5 }));
   }
 
   // ---------- score ----------
@@ -370,25 +415,25 @@ export function renderScore({ duration, cues, music = {} }) {
       case "whoosh":
         noiseSweep(t - (c.dur ?? 0.5) * 0.5, c.dur ?? 0.5, {
           f0: 300,
-          f1: 5000,
+          f1: 2800,
           vel: 0.9 * (c.vel ?? 1),
           pan: rand() * 0.5,
         });
         break;
       case "riser":
-        noiseSweep(t, c.dur, { f0: 200, f1: 9000, vel: 0.7 * (c.vel ?? 1), shape: "riser" });
+        noiseSweep(t, c.dur, { f0: 200, f1: 4000, vel: 0.6 * (c.vel ?? 1), shape: "riser" });
         riserTone(t, c.dur, 0.06 * (c.vel ?? 1));
         break;
       case "impact":
         boom(t, (c.big ? 1 : 0.7) * (c.vel ?? 1), !!c.big);
-        noiseSweep(t, 0.4, { f0: 6000, f1: 800, vel: 0.5 * (c.vel ?? 1) });
+        noiseSweep(t, 0.4, { f0: 2600, f1: 600, vel: 0.5 * (c.vel ?? 1) });
         break;
       case "thud":
         boom(t, 0.5 * (c.vel ?? 1));
         break;
       case "shimmer":
         [0, 7, 12, 16, 19, 24].forEach((m, i) =>
-          pluck(t + i * 0.045, 74 + key + m, 0.25, { decay: 0.6, index: 0.8, pan: (i % 2 ? 1 : -1) * 0.5, wet: 0.7 }),
+          pluck(t + i * 0.045, 62 + key + m, 0.25, { decay: 0.6, index: 0.6, pan: (i % 2 ? 1 : -1) * 0.5, wet: 0.7 }),
         );
         break;
       case "pluck":
@@ -404,7 +449,7 @@ export function renderScore({ duration, cues, music = {} }) {
         const vel = (c.soft ? 0.32 : c.big ? 0.85 : 0.6) * (c.vel ?? 1);
         pluck(t, m, vel, {
           decay: c.arp ? 0.12 : c.soft ? 0.18 : 0.32,
-          index: buy ? 2.2 : 1.2,
+          index: buy ? 1.5 : 1.1,
           ratio: buy ? 2 : 1.5,
           pan: buy ? -0.3 : 0.3,
         });
@@ -421,13 +466,13 @@ export function renderScore({ duration, cues, music = {} }) {
       case "stamp":
         boom(t, 0.35);
         click(t, 1800, 0.5);
-        noiseSweep(t, 0.25, { f0: 3000, f1: 400, vel: 0.35 });
+        noiseSweep(t, 0.25, { f0: 2000, f1: 400, vel: 0.35 });
         break;
       case "crack":
         click(t, 700 + (c.price - 96) * 25, c.loud ? 0.7 : 0.28, rand() * 0.6);
         if (c.loud) {
           boom(t, 0.45);
-          noiseSweep(t, 0.3, { f0: 5000, f1: 300, vel: 0.6 });
+          noiseSweep(t, 0.3, { f0: 2500, f1: 300, vel: 0.6 });
         }
         break;
       case "rumble":
@@ -435,7 +480,7 @@ export function renderScore({ duration, cues, music = {} }) {
         glide(t, c.dur, 220, 55, 0.12);
         break;
       case "swell":
-        noiseSweep(t, c.dur, { f0: 400, f1: 2400, vel: 0.28 });
+        noiseSweep(t, c.dur, { f0: 400, f1: 1800, vel: 0.28 });
         break;
       case "drain":
         glide(t, c.dur + 0.2, 880, 330, 0.12);
@@ -447,7 +492,7 @@ export function renderScore({ duration, cues, music = {} }) {
         coin(t, c.vel ?? 0.4, c.pan ?? 0);
         break;
       case "alarm":
-        [0, 0.16].forEach((o) => pluck(t + o, 81 + key, 0.45, { decay: 0.12, index: 3, ratio: 1.41 }));
+        [0, 0.16].forEach((o) => pluck(t + o, 69 + key, 0.45, { decay: 0.12, index: 1.6, ratio: 1.41 }));
         break;
       case "type":
         for (let i = 0; i < (c.n ?? 21); i++)
@@ -494,15 +539,22 @@ export function renderScore({ duration, cues, music = {} }) {
   // ---------- master ----------
   const L = new Float32Array(N);
   const R = new Float32Array(N);
-  let peak = 0;
   const fadeOutAt = music.fadeOut ?? duration + 0.8;
   for (let i = 0; i < N; i++) {
     const t = i / SR;
     const g = Math.min(1, t / 0.05) * Math.min(1, Math.max(0, (fadeOutAt - t) / 1.2));
     L[i] = Math.tanh((music_[0][i] + drums[0][i] * 0.9 + sfx[0][i] + wet[0][i] * 1.6) * g * 1.3);
     R[i] = Math.tanh((music_[1][i] + drums[1][i] * 0.9 + sfx[1][i] + wet[1][i] * 1.6) * g * 1.3);
-    peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
   }
+  // Gentle "listening fatigue" EQ: dip the 3 kHz presence band, shelve the
+  // top end down and keep nothing above 11 kHz.
+  for (const ch of [L, R]) {
+    biquad(ch, "peak", 3200, { q: 0.9, gain: -4 });
+    biquad(ch, "highshelf", 5000, { gain: -5 });
+    biquad(ch, "lowpass", 11000);
+  }
+  let peak = 0;
+  for (let i = 0; i < N; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
   const norm = 10 ** (-1 / 20) / (peak || 1);
   for (let i = 0; i < N; i++) {
     L[i] *= norm;

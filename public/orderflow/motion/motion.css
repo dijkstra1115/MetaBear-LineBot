@@ -281,6 +281,60 @@
   border-radius: 0;
   transform: rotate(-45deg);
 }
+.motion-volume {
+  --vol: 1;
+  flex: none;
+  width: 72px;
+  height: 36px;
+  margin: 0 4px 0 -8px;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.motion-volume[hidden] {
+  display: none;
+}
+.motion-volume::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--mp-text) calc(var(--vol) * 100%),
+    #ffffff38 calc(var(--vol) * 100%)
+  );
+}
+.motion-volume::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: #ffffff38;
+}
+.motion-volume::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--mp-text);
+}
+.motion-volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mp-text);
+}
+.motion-volume::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mp-text);
+}
+.motion-volume:focus-visible {
+  outline: 1px solid #78e1d580;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .motion-full::before {
   inset: 10px;
   border: 2px solid currentColor;
@@ -500,6 +554,11 @@ body[data-lesson-style="motion"] .motion-note {
   }
   .motion-chapter {
     display: none;
+  }
+  .motion-volume {
+    width: 56px;
+    height: 44px;
+    margin-left: -6px;
   }
   .motion-bigplay {
     width: 56px;
