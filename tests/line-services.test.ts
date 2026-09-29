@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
-import { richMenuDefinition } from "../src/line-rich-menu";
+import { communityUrl, richMenuDefinition } from "../src/line-rich-menu";
 import { startLoading } from "../src/line-loading";
 import { webhook } from "../src/webhook";
 import { isImmediateCommand } from "../src/assistant";
@@ -228,27 +228,35 @@ test("rich menu covers exactly six tiles and has no AI toggles or public VIP lin
   assert.ok(
     !JSON.stringify(menu).match(/TOGGLE_LLM|reurl|免費加入|開啟 AI|關閉 AI/),
   );
+  const [community] = menu.areas.splice(3, 1);
+  assert.deepEqual(community.action, {
+    type: "uri",
+    label: "加入聊天社群",
+    uri: communityUrl,
+  });
+  assert.ok(communityUrl.startsWith("https://line.me/ti/g2/"));
   assert.ok(menu.areas.every((area) => area.action.type === "postback"));
+  const text = (i: number) =>
+    new URLSearchParams((menu.areas[i].action as { data: string }).data).get(
+      "text",
+    );
   assert.equal(
-    new URLSearchParams(menu.areas[0].action.data).get("text"),
+    text(0),
     "提交 UID",
   );
   assert.equal(
-    new URLSearchParams(menu.areas[1].action.data).get("text"),
+    text(1),
     "我的進度",
   );
   assert.equal(
-    new URLSearchParams(menu.areas[2].action.data).get("text"),
+    text(2),
     "開始註冊",
   );
   assert.equal(
-    new URLSearchParams(menu.areas[3].action.data).get("text"),
-    "入金教學",
-  );
-  assert.equal(
-    new URLSearchParams(menu.areas[4].action.data).get("text"),
+    text(3),
     "合約基礎",
   );
-  for (const text of ["提交 UID", "開始註冊", "入金教學", "合約基礎"])
-    assert.equal(isImmediateCommand(text), true);
+  assert.equal(text(4), "人工協助");
+  for (const command of ["提交 UID", "開始註冊", "合約基礎", "人工協助"])
+    assert.equal(isImmediateCommand(command), true);
 });

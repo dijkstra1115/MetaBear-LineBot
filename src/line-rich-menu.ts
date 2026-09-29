@@ -1,7 +1,9 @@
 import { audit } from "./db";
 
 export type MenuInstallMessage = { kind: "line-menu-install"; id: string };
-const menuName = "MetaBear service menu 2026-09-15-v2";
+const menuName = "MetaBear service menu 2026-09-29-v3";
+export const communityUrl =
+  "https://line.me/ti/g2/c962LJ6bbEZ8X63UX9UhWWdw3bwmHJUv9mVM5g?utm_source=invitation&utm_medium=link_copy&utm_campaign=default";
 export function richMenuDefinition(_base: string) {
   const actions = [
     {
@@ -20,9 +22,9 @@ export function richMenuDefinition(_base: string) {
       displayText: "新手教學",
     },
     {
-      type: "postback",
-      data: "text=" + encodeURIComponent("入金教學"),
-      displayText: "入金教學",
+      type: "uri",
+      label: "加入聊天社群",
+      uri: communityUrl,
     },
     {
       type: "postback",

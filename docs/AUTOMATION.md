@@ -10,7 +10,7 @@ Staging Worker 已透過 Cloudflare MCP 部署，版本 `27b99257f85c4060835e82d
 
 本次修正與網站更新部署版本：`1cac5aaba45f4068b37b4e12e40b4480`。首頁桌面與 390 × 844 手機版已檢查，網站引流連結已確認對應 `@804bmpkh`。
 
-2026-09-14 已設置六格新版選單：登記 UID、審核進度、新手教學、入金教學、交易學習、人工協助。圖片為 `public/line-rich-menu.png`（2500 × 1686，約 139 KB），可編輯來源由 `scripts/create-rich-menu.mjs` 產生 SVG 再輸出 PNG。樣式沿用網站深藍、薄荷綠、金色；沒有 AI 開關或直接公開 VIP 邀請。
+2026-09-14 已設置六格新版選單：登記 UID、審核進度、新手教學、入金教學、交易學習、人工協助。2026-09-29 起第 4 格「入金教學」改為「聊天社群」，以 uri 開啟 LINE 聊天社群邀請連結（`communityUrl`，選單名稱升為 v3）。圖片為 `public/line-rich-menu.png`（2500 × 1686，約 139 KB），可編輯來源由 `scripts/create-rich-menu.mjs` 產生 SVG 再輸出 PNG。樣式沿用網站深藍、薄荷綠、金色；沒有 AI 開關或直接公開 VIP 邀請。
 
 新版 ID：`richmenu-054f3dc4424f06d4f03700563a6fcb93`。舊版 `richmenu-36d9d4965d1118b5ec04f33001918f43` 保留，可用 LINE default rich menu API 切回。對應官方帳號 basic ID 為 `@804bmpkh`（MetaBear 小幫手）。安裝操作透過可信 Queue 的 `line-menu-install` 執行，或由 Access 管理員 POST `/api/line/rich-menu` 排程；稽核紀錄保存新舊 ID 及結果。最多處理 100 個已知客戶的個別選單覆蓋，較大團隊需另行分批處理。
 
