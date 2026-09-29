@@ -39,7 +39,7 @@ export function motionPage(course, lesson) {
       content="${escape(course.description)} 約 ${Math.round(lesson.duration)} 秒的動態${concept ? "圖解" : "故事"}。"
     />
     <title>${escape(course.title)} · MetaBear</title>
-    <link rel="icon" href="/favicon-v2.png" />
+    <link rel="icon" href="/metabear-logo-transparent-64.png" />
     <link rel="stylesheet" href="./motion/fonts/fonts.css" />
     <link rel="stylesheet" href="/mb.css" />
     <link rel="stylesheet" href="./motion/motion.css" />
@@ -52,7 +52,7 @@ export function motionPage(course, lesson) {
   <body data-chapter="${course.id}" data-lesson-style="compact" data-format="motion" class="mb-grain">
     <a class="skip" href="#story">跳到${escape(course.title)}動態課程</a>
     <header class="site-header mb-header lesson-header" data-header>
-      <a href="/" class="brand mb-brand"><img src="/favicon-v2.png" width="34" height="34" alt="" /><span>MetaBear<small>ORDERFLOW ACADEMY</small></span></a>
+      <a href="/" class="brand mb-brand"><img src="/metabear-logo-transparent-64.png" width="34" height="34" alt="" /><span>MetaBear<small>ORDERFLOW ACADEMY</small></span></a>
       <p class="series crumbs"><a href="./courses.html">互動學院</a><span aria-hidden="true">/</span>${kind}<span aria-hidden="true">/</span><strong>${escape(course.title)}</strong></p>
       <a class="mb-btn ghost small header-map" href="./courses.html">課程地圖 <span class="arrow" aria-hidden="true">↗</span></a>
     </header>

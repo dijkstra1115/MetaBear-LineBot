@@ -91,7 +91,10 @@ npm run build
 
 ### 網站品牌與行情
 
-- `Logo.png` 是原始品牌檔；網站使用 `public/logo.webp`，頁首以 CSS 顯示圓形徽章，頁尾保留完整 Logo。
+- `metabear-logo-white-bg-original.png`：1254 × 1254 白底原始品牌檔；不可用作 favicon 或深色頁面的 Logo。
+- `public/metabear-logo-white-bg.webp`：白底完整版，用於社群分享圖（`og:image`）及品牌遮罩來源。
+- `public/metabear-logo-transparent-64.png`：64 × 64 去背圖示，統一用於 favicon、頁首／頁尾及小尺寸 Logo。建置腳本也使用此檔名。
+- `public/favicon.ico`：同一去背圖示的瀏覽器預設相容入口，保留標準檔名；不要用白底 Logo 覆蓋。
 - 首頁使用固定美元行情快照，資料集中於 `web/market-data.js`，包含報價、日期、每日開高低收數列與來源。更新時一併查證並替換資料，執行 `npm run build:site`。
 - BTC／ETH 報價來源為 CoinGecko，K 線來源為 CoinLore，美股為 QQQ（Nasdaq-100 ETF），來源為 Stock Analysis。價格為查詢時快照，走勢為有日期的日 K 線（綠漲紅跌），兩者分別標示日期。
 - 不載入外部行情圖表，不自動更新；頁面標示「固定快照 · 非即時行情」。

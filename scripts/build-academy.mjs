@@ -32,7 +32,7 @@ function replaceElement(html, marker, replacement) {
 function transparentAcademyBrand(html) {
   return html.replace(
     /(<header\b[\s\S]*?<img\b[^>]*\bsrc=")[^"]+"/,
-    '$1/favicon-v2.png"',
+    '$1/metabear-logo-transparent-64.png"',
   );
 }
 

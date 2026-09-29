@@ -70,7 +70,7 @@ export function lessonShell(course, matching) {
   return `
     <a class="f-skip" href="#f-main">跳到互動教學</a>
     <header class="f-header">
-      <a class="f-brand" href="/" aria-label="MetaBear 首頁"><span class="f-mark" aria-hidden="true"><img src="/logo.webp" alt="" width="96" height="96" /></span><b>MetaBear</b><span>訂單流學院</span></a>
+      <a class="f-brand" href="/" aria-label="MetaBear 首頁"><span class="f-mark" aria-hidden="true"><img src="/metabear-logo-transparent-64.png" alt="" width="96" height="96" /></span><b>MetaBear</b><span>訂單流學院</span></a>
       <button type="button" class="f-route-button" id="f-open-map" aria-haspopup="dialog">課程路徑 <span id="f-completed-count"></span><span aria-hidden="true">↗</span></button>
     </header>
     <main class="f-main" id="f-main" tabindex="-1">

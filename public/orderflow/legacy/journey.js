@@ -13,7 +13,7 @@ export function mountJourney(root) {
   document.documentElement.classList.add("journey-page");
   root.innerHTML = `
     <a class="skip" href="#journey-content">跳到市場旅程</a>
-    <header class="header"><a class="brand" href="/"><img src="/logo.webp" alt="" width="32" height="32"><b>MetaBear</b><span>交易學院</span></a><span class="edition">一筆成交之後 <b id="j-number">01 / 06</b></span></header>
+    <header class="header"><a class="brand" href="/"><img src="/metabear-logo-transparent-64.png" alt="" width="32" height="32"><b>MetaBear</b><span>交易學院</span></a><span class="edition">一筆成交之後 <b id="j-number">01 / 06</b></span></header>
     <div class="journey-main" id="journey-content">
       <div class="introduction"><p class="eyebrow" id="j-eyebrow">從 K 線走進市場</p><h1 id="j-title"></h1><p id="j-lead"></p></div>
       <ol class="journey-route" aria-label="市場旅程進度">${journey.map((part) => '<li data-part="' + part.number + '"><span>' + String(part.number).padStart(2, "0") + "</span>" + ["價格的形成", "買入被吸收", "流動性變薄", "成交的足跡", "合約與成本", "急跌與承接"][part.number - 1] + "</li>").join("")}</ol>
