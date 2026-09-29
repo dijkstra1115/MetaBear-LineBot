@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>報價方向對照 · MetaBear 流動性實驗室</title>
+  <link rel="stylesheet" href="./liquidity-lab.css" />
+  <link rel="stylesheet" href="./taker-compare.css" />
+  <script type="module" src="./taker-compare.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./courses.html"><span class="brand-mark">M</span><span>METABEAR<small>ORDER FLOW LAB</small></span></a>
+    <nav aria-label="頁面導覽"><a id="limit-link" href="./taker-only.html">隨機限價委託 ↗</a><a href="./liquidity-lab.html">Maker 比例對照 ↗</a><a href="./courses.html">返回學院 ↗</a></nav>
+  </header>
+  <main class="compare-main">
+    <section class="compare-hero">
+      <div class="compare-intro"><span class="eyebrow"><i></i> EXPERIMENT 003 / SAME RANDOM DRAWS, DIFFERENT DIRECTION</span><h1>抽到哪裡，<em>就往哪邊交易。</em></h1><p>兩個市場共用亂數種子，每筆固定 1 BEAR。左邊獨立隨機決定買賣方向；右邊在最新成交價 ±1% 抽目標價，下方視為賣單、上方視為買單。只有目標價能碰到對手掛單才成交，否則就在目標價掛單。</p></div>
+      <div class="compare-controls" aria-label="對照模擬控制">
+        <div class="control-top"><span id="live-status" class="status-dot">模擬進行中</span><span id="session-id">SEED —</span></div>
+        <div class="control-actions"><button id="toggle" type="button">暫停</button><button id="restart" type="button">新市場 ↗</button></div>
+        <label class="speed-row" for="speed">委託到達速度<select id="speed"><option value="1">1× · 每秒 10 筆</option><option value="4" selected>4× · 每秒 40 筆</option><option value="12">12× · 每秒 120 筆</option></select></label>
+        <div class="lifetime-control"><label for="lifetime">掛單保留時間 <output id="lifetime-value" for="lifetime">60 模擬秒</output></label><input id="lifetime" type="range" min="5" max="300" step="5" value="60" aria-label="掛單保留時間，模擬秒" /><div class="lifetime-scale"><span>5 秒</span><span>300 秒</span></div></div>
+        <p>兩邊同步調整。縮短期限會立即撤掉超齡掛單；每 10 筆委託＝1 模擬秒。</p>
+      </div>
+    </section>
+    <div class="compare-strip"><span>同步委託 <strong id="shared-orders">0</strong> 筆</span><span>共用亂數抽樣與價格座標</span><span>綠色＝歷史買盤掛單　粉紅＝歷史賣盤掛單</span></div>
+    <section class="compare-grid" aria-label="兩種撮合規則並排比較">
+      <article class="compare-panel" id="limit-panel">
+        <div class="panel-header"><span class="mode-index">01 / PRICE CONDITIONAL</span><h2>隨機限價委託</h2><p>買價 ≥ 最佳賣價、或賣價 ≤ 最佳買價才成交；否則掛入委託簿。</p></div>
+        <div class="panel-stats"><div><span>最新成交</span><strong data-stat="last">100.00</strong><small>USDT</small></div><div><span>委託成交率</span><strong data-stat="rate">—</strong><small>有任意成交</small></div><div><span>當下簿上量</span><strong data-stat="resting">0</strong><small>BEAR</small></div><div><span>到期撤單</span><strong data-stat="expired">0</strong><small>筆</small></div></div>
+        <div class="chart-title"><span>成交 K 線 × 歷史掛單熱圖</span><span data-stat="range">—</span></div>
+        <div class="chart-wrap"><canvas id="limit-chart" role="img" aria-label="隨機限價委託的 K 線與掛單熱圖"></canvas></div>
+        <div class="panel-bottom"><div><span>當前最佳買價</span><strong data-stat="bid">—</strong></div><div><span>當前最佳賣價</span><strong data-stat="ask">—</strong></div><div><span>最新委託</span><strong data-stat="arrival">等待委託</strong></div></div>
+      </article>
+      <article class="compare-panel target-panel" id="target-panel">
+        <div class="panel-header"><span class="mode-index">02 / QUOTE DECIDES SIDE</span><h2>報價決定方向</h2><p>下方報價賣給買價 ≥ 目標價的掛單；上方報價買進賣價 ≤ 目標價的掛單。無符合價位就掛單。</p></div>
+        <div class="panel-stats"><div><span>最新成交</span><strong data-stat="last">100.00</strong><small>USDT</small></div><div><span>委託成交率</span><strong data-stat="rate">—</strong><small>有任意成交</small></div><div><span>當下簿上量</span><strong data-stat="resting">0</strong><small>BEAR</small></div><div><span>到期撤單</span><strong data-stat="expired">0</strong><small>筆</small></div></div>
+        <div class="chart-title"><span>成交 K 線 × 歷史掛單熱圖</span><span data-stat="range">—</span></div>
+        <div class="chart-wrap"><canvas id="target-chart" role="img" aria-label="報價決定方向模式的 K 線與掛單熱圖"></canvas></div>
+        <div class="panel-bottom"><div><span>當前最佳買價</span><strong data-stat="bid">—</strong></div><div><span>當前最佳賣價</span><strong data-stat="ask">—</strong></div><div><span>最新委託</span><strong data-stat="arrival">等待委託</strong></div></div>
+      </article>
+    </section>
+    <section class="compare-note"><span class="eyebrow">READ THE RESULT</span><p><strong>熱圖是歷史，簿上量是現在。</strong>色帶保留各時段曾經存在的掛單；撤單後仍可在過去的熱圖位置看到它。兩張圖共用價格座標，當下仍有效的量請看「當下簿上量」與最佳買賣價。每 12 筆委託形成一根 K 線，畫面保留最近 160 根。</p><p><strong>目標價決定方向與能否成交。</strong>低於最新成交價就嘗試賣出，高於最新成交價就嘗試買進；剛好等於最新成交價時用另一個隨機值決定方向。沒有符合限價的對手掛單，委託就在抽中的價格等待。兩邊共用亂數抽樣，但價格路徑分開後，各自的 ±1% 實際價位也不同。</p></section>
+  </main>
+  <footer><span>METABEAR / LIQUIDITY LAB / 003</span><span>虛構市場 · 本機模擬 · 無真實交易</span></footer>
+</body>
+</html>

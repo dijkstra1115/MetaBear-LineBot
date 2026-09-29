@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>隨機委託市場 · MetaBear 流動性實驗室</title>
+  <link rel="stylesheet" href="./liquidity-lab.css" />
+  <link rel="stylesheet" href="./taker-only.css" />
+  <script type="module" src="./taker-only.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./courses.html"><span class="brand-mark">M</span><span>METABEAR<small>ORDER FLOW LAB</small></span></a>
+    <nav aria-label="頁面導覽"><a id="compare-link" href="./taker-compare.html">報價方向對照 ↗</a><a href="./liquidity-lab.html">Maker 比例對照 ↗</a><a href="./challenge.html">合約挑戰 ↗</a><a href="./courses.html">返回學院 ↗</a></nav>
+  </header>
+  <main class="live-main">
+    <section class="live-hero">
+      <div><span class="eyebrow"><i></i> EXPERIMENT 002 / ONE RULE FOR EVERY TRADER</span><h1>只有隨機委託，<br /><em>市場會走去哪裡？</em></h1><p>每筆固定 1 BEAR，交易者隨機選買賣方向，並在最新成交價 ±1% 內出價。跨過對手報價就成交；未成交的委託留在簿上，成為下一人的流動性。掛單超過指定時間會撤除。</p></div>
+      <div class="live-controls" aria-label="模擬控制">
+        <div class="control-top"><span id="live-status" class="status-dot">模擬進行中</span><span id="session-id">SEED —</span></div>
+        <div class="control-actions"><button id="toggle" type="button">暫停</button><button id="restart" type="button">新市場 ↗</button></div>
+        <label for="speed">委託到達速度<select id="speed"><option value="1">1× · 每秒 10 筆</option><option value="4" selected>4× · 每秒 40 筆</option><option value="12">12× · 每秒 120 筆</option></select></label>
+        <div class="lifetime-control"><label for="lifetime">掛單保留時間 <output id="lifetime-value" for="lifetime">60 模擬秒</output></label><input id="lifetime" type="range" min="5" max="300" step="5" value="60" aria-label="掛單保留時間，模擬秒" /><div class="lifetime-scale"><span>5 秒</span><span>300 秒</span></div></div>
+        <p>拖動時立即套用到簿上掛單；已撤除的單不會復原。時間按每 10 筆委託＝1 模擬秒計算，與播放速度無關。</p>
+      </div>
+    </section>
+    <section class="live-statbar" aria-label="市場統計">
+      <div><span>LAST TRADE</span><strong id="last-price">100.00</strong><small>USDT</small></div>
+      <div><span>價格區間</span><strong id="range">—</strong><small>由成交計算</small></div>
+      <div><span>已送委託</span><strong id="orders">0</strong><small>筆隨機限價單</small></div>
+      <div><span>發生成交</span><strong id="trades">0</strong><small>筆逐檔撮合</small></div>
+      <div><span>簿上掛單量</span><strong id="resting">0.00</strong><small>BEAR · 尚未成交</small></div>
+      <div><span>到期撤單</span><strong id="expired">0</strong><small>筆掛單</small></div>
+    </section>
+    <section class="live-grid">
+      <article class="live-chart-panel">
+        <div class="panel-heading"><div><span class="eyebrow">LIVE ORDER BOOK MEMORY</span><h2>成交 K 線 × 掛單熱圖</h2><p>背景每一列代表當時某價位的待成交量；亮度越高，累積掛單越厚。綠色為買盤，粉紅色為賣盤。</p></div><span class="live-pill">● LIVE</span></div>
+        <div class="chart-stage"><canvas id="market-chart" role="img" aria-label="隨機委託市場的成交 K 線與歷史掛單熱圖"></canvas></div>
+        <div class="chart-footer"><span><i class="legend-bid"></i>買方掛單</span><span><i class="legend-ask"></i>賣方掛單</span><span><i class="legend-candle"></i>實際成交 K 線</span><span id="window-label" class="window-label">最近 160 根 · 每根 12 筆委託</span></div>
+      </article>
+      <aside class="live-side">
+        <article class="side-card"><span class="eyebrow">THE LAST ARRIVAL</span><h2>最新委託</h2><div id="arrival" class="arrival-copy">等待第一筆委託…</div><div class="meter"><span>委託成交率</span><strong id="match-rate">—</strong><div class="meter-track"><i id="match-bar"></i></div></div></article>
+        <article class="side-card"><span class="eyebrow">RESTING LIQUIDITY</span><h2>即時委託簿</h2><div class="book-header"><span>價位 USDT</span><span>掛單 BEAR</span></div><div id="asks" class="book-levels" aria-label="賣方掛單"></div><div class="book-middle"><span>價差</span><strong id="spread">—</strong></div><div id="bids" class="book-levels" aria-label="買方掛單"></div></article>
+      </aside>
+    </section>
+    <section class="live-note"><span class="eyebrow">HOW TO READ THE EXPERIMENT</span><div><p><strong>同一種交易者，兩種角色</strong>每筆都是帶價格的進場委託。出價跨過簿上對手單時，它在該部分成交中是 taker；剩餘量掛住時，就成為之後的 maker。熱圖顯示的是已掛住、尚未成交的量。</p><p><strong>價格只由成交更新</strong>出價本身不會推動 K 線。委託按照價格優先撮合，成交價採原本簿上的報價。沒有撮合時，最後成交價保持不變；圖中的橫線代表這段沒有新成交。</p><p><strong>掛單有保留期限</strong>超過設定時間仍未成交的剩餘量會撤除。調短會立即檢查所有現有掛單，調長只影響仍在簿上的單。畫面保存最近 160 根 K 線與熱圖，市場統計持續累計。</p></div></section>
+  </main>
+  <footer><span>METABEAR / LIQUIDITY LAB / 002</span><span>虛構市場 · 本機模擬 · 無真實交易</span></footer>
+</body>
+</html>

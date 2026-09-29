@@ -1,0 +1,446 @@
+/* A portrait reading layout plus a wide, same-scene theater for detailed charts. */
+.chart-tools {
+  display: none;
+}
+@media (max-width: 650px), (max-width: 950px) and (max-height: 500px) {
+  body {
+    padding-bottom: 0;
+    background: #0c1115;
+  }
+  .site-header,
+  main,
+  footer {
+    width: auto;
+    margin: 0 16px;
+  }
+  .site-header {
+    height: 60px;
+    padding: 0;
+    gap: 12px;
+  }
+  .site-header .series {
+    display: none;
+  }
+  main {
+    display: block;
+    padding: 22px 0 0;
+  }
+  .lesson-heading {
+    display: block;
+    margin: 0 0 20px;
+  }
+  .lesson-heading p {
+    margin: 0 0 8px;
+    font-size: 10px;
+    color: #98b7ab;
+    letter-spacing: 1.5px;
+  }
+  .lesson-heading p span {
+    margin: 0 6px;
+    color: #455d62;
+  }
+  .lesson-heading h2 {
+    margin: 0;
+    font-size: 23px;
+    line-height: 1.45;
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    text-wrap: balance;
+  }
+  .lesson-format {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 12px;
+    color: #90aaa5;
+    font-size: 11px;
+  }
+  .lesson-format i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #a0dfce;
+  }
+  .lesson-format > span {
+    display: inline;
+    margin-left: 4px;
+    color: #718b92;
+  }
+  .scene-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 12px;
+    font-size: 11px;
+  }
+  .scene-route {
+    margin: 0;
+  }
+  .scene-route li {
+    flex: none;
+    width: 12px;
+  }
+  .lesson-player {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    max-height: none;
+    border: 1px solid #2b3b40;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #10191e;
+  }
+  .stage {
+    display: contents;
+  }
+  .stage-top {
+    order: 0;
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    min-height: 48px;
+    gap: 8px;
+  }
+  .instrument strong {
+    font-size: 11px;
+  }
+  .instrument small {
+    display: none;
+  }
+  .clock {
+    gap: 4px;
+  }
+  .clock span {
+    font-size: 9px;
+  }
+  .clock b {
+    font-size: 10px;
+  }
+  .canvas {
+    order: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    background: radial-gradient(ellipse at 50% 60%, #244e492b, transparent 60%);
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #48685f transparent;
+  }
+  #market {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: none;
+  }
+  .chart-tools {
+    order: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0 8px;
+    padding: 0 10px 5px;
+    border-bottom: 1px solid #26383c70;
+  }
+  .chart-tools button {
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #a0dfce;
+    font-size: 12px;
+  }
+  .chart-tools button:active {
+    background: #a0dfce15;
+  }
+  .chart-hint {
+    width: 100%;
+    padding: 6px 10px 0;
+    font-size: 10px;
+    color: #78958e;
+  }
+  .story-copy {
+    order: 3;
+    min-height: 94px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 18px 14px;
+    text-align: center;
+    background: linear-gradient(180deg, #17262677, #10191e);
+  }
+  .story-copy #eyebrow {
+    display: none;
+  }
+  .story-copy h1 {
+    font-size: 18px;
+    line-height: 1.55;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+    text-wrap: balance;
+  }
+  #question {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.65;
+    color: #9eb3b8;
+  }
+  #question:empty {
+    display: none;
+  }
+  .stage-bottom {
+    order: 4;
+    display: flex;
+    min-height: 44px;
+    margin: 0 12px;
+    padding: 8px 0;
+  }
+  #lens-label {
+    max-width: 72%;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .last-price span {
+    font-size: 9px;
+  }
+  .last-price b {
+    font-size: 15px;
+  }
+  .timeline {
+    order: 5;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0 8px;
+    margin: 0 12px;
+    padding: 9px 0 0;
+    font-size: 10px;
+  }
+  .timeline label {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .elapsed {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 10px;
+  }
+  #scene-progress {
+    grid-column: 1/-1;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    touch-action: pan-y;
+  }
+  .story-controls {
+    order: 6;
+    position: static;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    padding: 4px 12px 12px;
+    gap: 2px 8px;
+    background: #10191e;
+    border: 0;
+    backdrop-filter: none;
+  }
+  .story-controls button {
+    min-height: 44px;
+    font-size: 12px;
+  }
+  .back {
+    padding: 8px 4px;
+  }
+  .advance {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+  }
+  .pause {
+    min-width: 62px;
+    padding: 8px 12px;
+    border: 1px solid #a0dfce45 !important;
+    border-radius: 6px;
+    color: #c6e5da;
+    background: #a0dfce09;
+  }
+  .next {
+    min-width: 92px;
+    padding: 8px 10px;
+    gap: 8px;
+    border: 1px solid #3b5052 !important;
+    background: transparent;
+    color: #a9c1bb;
+    border-radius: 6px;
+  }
+  .next:disabled {
+    background: transparent;
+    color: #647f84;
+  }
+  .replay {
+    order: 0;
+    grid-column: 1/-1;
+    display: block;
+    justify-self: center;
+    padding: 8px 12px;
+    border: 0;
+    background: transparent;
+    color: #8ea6ab;
+  }
+  footer {
+    display: block;
+    padding: 18px 0 max(20px, env(safe-area-inset-bottom));
+    font-size: 10px;
+    line-height: 1.8;
+  }
+  footer > span {
+    display: block;
+  }
+  footer > span + span {
+    margin-top: 8px;
+    color: #617d81;
+  }
+  .chart-enlarged .canvas {
+    height: min(430px, 55svh);
+  }
+  .chart-enlarged #market {
+    width: 900px;
+    height: auto;
+  }
+}
+.academy-theater-open {
+  overflow: hidden;
+}
+body[data-theater="true"] .lesson-player {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100dvw;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 44px minmax(0, 1fr) auto 40px 50px;
+  padding: 0 max(12px, env(safe-area-inset-right)) 0
+    max(12px, env(safe-area-inset-left));
+  background: #10191e;
+}
+body[data-theater="true"] .stage {
+  display: contents;
+}
+body[data-theater="true"] .stage-top {
+  grid-row: 1;
+  grid-column: 1;
+  padding: 0 8px;
+  min-height: 0;
+  border: 0;
+}
+body[data-theater="true"] .instrument small,
+body[data-theater="true"] .clock span,
+body[data-theater="true"] .chart-hint,
+body[data-theater="true"] .stage-bottom {
+  display: none;
+}
+body[data-theater="true"] .chart-tools {
+  display: flex;
+  flex-wrap: nowrap;
+  grid-row: 1;
+  grid-column: 2;
+  padding: 0;
+  border: 0;
+  gap: 4px;
+}
+body[data-theater="true"] .chart-tools button {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  color: #a0dfce;
+  background: transparent;
+  font-size: 12px;
+}
+body[data-theater="true"] .canvas {
+  grid-row: 2;
+  grid-column: 1/-1;
+  overflow: auto;
+  min-height: 0;
+  height: auto;
+}
+body[data-theater="true"] #market {
+  width: 100%;
+  height: 100%;
+}
+body[data-theater="true"] .story-copy {
+  grid-row: 3;
+  grid-column: 1/-1;
+  min-height: 0;
+  padding: 5px 20px;
+}
+body[data-theater="true"] .story-copy h1 {
+  font-size: 16px;
+  line-height: 1.45;
+}
+body[data-theater="true"] #eyebrow {
+  display: none;
+}
+body[data-theater="true"] #question {
+  font-size: 11px;
+  margin: 2px 0 0;
+}
+body[data-theater="true"] .timeline {
+  grid-row: 4;
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 10px;
+  padding: 0;
+}
+body[data-theater="true"] .timeline label {
+  display: none;
+}
+body[data-theater="true"] #scene-progress {
+  height: 40px;
+  flex: 1;
+}
+body[data-theater="true"] .elapsed {
+  flex-shrink: 0;
+  font-size: 10px;
+}
+body[data-theater="true"] .story-controls {
+  grid-row: 5;
+  grid-column: 1/-1;
+  position: static;
+  display: flex;
+  padding: 0 10px 6px;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+}
+body[data-theater="true"] .story-controls button {
+  min-height: 44px;
+}
+body[data-theater="true"] .replay {
+  display: block;
+  order: -1;
+}
+body[data-theater="true"] .advance {
+  margin-left: auto;
+}
+body[data-theater="true"] .chart-enlarged #market {
+  width: max(100%, 1100px);
+  height: auto;
+}
+@media (orientation: portrait) {
+  body[data-theater="true"] .lesson-player {
+    width: 100dvh;
+    height: 100dvw;
+    right: auto;
+    bottom: auto;
+    transform-origin: top left;
+    transform: translateX(100dvw) rotate(90deg);
+  }
+}

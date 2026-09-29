@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c1115" />
+    <meta
+      name="description"
+      content="MetaBear 現貨交易沙盒。自由下單，感受市場，隨時倒帶重新出發。"
+    />
+    <title>交易沙盒 · MetaBear</title>
+    <link rel="icon" href="/favicon-v2.png" />
+    <link rel="stylesheet" href="./exchange.css" />
+    <script type="module" src="./exchange.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#order-form">跳到下單</a>
+    <header class="topbar">
+      <a class="brand" href="./courses.html" aria-label="MetaBear 學院"
+        ><img src="/favicon-v2.png" width="30" height="30" alt="" /><span
+          >MetaBear</span
+        ></a
+      >
+      <span class="top-divider"></span>
+      <h1>交易沙盒</h1>
+      <span class="sandbox-badge">SPOT PLAYGROUND</span>
+      <nav aria-label="交易沙盒選單">
+        <a href="./courses.html" class="academy-link"
+          >返回學院 <span aria-hidden="true">↗</span></a
+        >
+        <a href="./challenge.html" class="academy-link"
+          >合約挑戰 <span aria-hidden="true">↗</span></a
+        >
+        <button id="rules-open" class="quiet-button" type="button">
+          交易規則
+        </button>
+        <button id="new-open" class="quiet-button" type="button">
+          <span aria-hidden="true">↻</span> 新市場
+        </button>
+      </nav>
+    </header>
+
+    <main id="terminal" aria-busy="true" inert>
+      <section class="market-strip" aria-label="市場概況">
+        <div class="instrument">
+          <div class="coin-symbol" aria-hidden="true">B</div>
+          <div>
+            <div class="pair">
+              BEAR <span>/ USDT</span><span class="spot-tag">現貨</span>
+            </div>
+            <p>MetaBear Exchange <span>· 虛擬市場</span></p>
+          </div>
+        </div>
+        <div class="hero-price">
+          <strong id="last-price">100.00</strong
+          ><span id="price-change">+0.00%</span>
+        </div>
+        <dl class="market-stats">
+          <div>
+            <dt>本局最高</dt>
+            <dd id="session-high">—</dd>
+          </div>
+          <div>
+            <dt>本局最低</dt>
+            <dd id="session-low">—</dd>
+          </div>
+          <div>
+            <dt>本局成交量 <span>BEAR</span></dt>
+            <dd id="session-volume">—</dd>
+          </div>
+        </dl>
+        <div class="market-state">
+          <span class="state-dot" id="state-dot"></span
+          ><span id="market-status">市場準備中</span>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <section class="chart-panel panel" aria-label="市場圖表">
+          <div class="panel-toolbar">
+            <div class="tab-group" aria-label="圖表類型">
+              <button
+                type="button"
+                data-chart="candles"
+                class="active"
+                aria-pressed="true"
+              >
+                市場走勢</button
+              ><button type="button" data-chart="depth" aria-pressed="false">
+                深度
+              </button>
+            </div>
+            <div class="chart-controls">
+              <div class="timeframes" aria-label="K 線週期">
+                <button
+                  type="button"
+                  data-frame="10"
+                  class="active"
+                  aria-pressed="true"
+                >
+                  10秒</button
+                ><button type="button" data-frame="30" aria-pressed="false">
+                  30秒</button
+                ><button type="button" data-frame="60" aria-pressed="false">
+                  1分</button
+                ><button type="button" data-frame="300" aria-pressed="false">
+                  5分
+                </button>
+              </div>
+              <span class="toolbar-divider"></span
+              ><button
+                id="zoom-out"
+                class="icon-button"
+                type="button"
+                aria-label="縮小圖表"
+              >
+                −</button
+              ><button
+                id="zoom-in"
+                class="icon-button"
+                type="button"
+                aria-label="放大圖表"
+              >
+                ＋
+              </button>
+            </div>
+          </div>
+          <div class="study-toolbar">
+            <button id="indicators-open" class="study-button" type="button">
+              ＋ 指標 <span id="indicator-count">1</span>
+            </button>
+            <span id="study-legend">VOL</span>
+            <button id="chart-live" class="text-button" type="button" hidden>
+              追蹤最新 →
+            </button>
+            <button
+              id="chart-expand"
+              class="icon-button"
+              type="button"
+              aria-label="展開圖表"
+              aria-pressed="false"
+              title="展開圖表"
+            >
+              ⛶
+            </button>
+          </div>
+          <div class="chart-meta">
+            <span class="chart-pair">BEAR / USDT</span
+            ><span id="candle-stats">—</span>
+          </div>
+          <div class="chart-wrap" id="chart-wrap">
+            <canvas
+              id="market-chart"
+              role="img"
+              tabindex="0"
+              aria-label="BEAR 互動 K 線圖；方向鍵平移，加減鍵縮放，End 追蹤最新"
+              aria-describedby="chart-hint"
+            ></canvas>
+            <div class="chart-watermark" aria-hidden="true">
+              MetaBear<span>EXCHANGE</span>
+            </div>
+          </div>
+          <div class="chart-footer">
+            <span
+              ><i class="legend-dot mint"></i>買入
+              <i class="legend-dot gold"></i>賣出</span
+            ><span id="chart-caption">每根 K 線 10 秒</span
+            ><span id="chart-history">—</span>
+          </div>
+          <div class="chart-detail">
+            <span id="chart-detail">—</span
+            ><span id="chart-hint">滾輪縮放 · 拖曳平移 · 雙擊追蹤最新</span>
+          </div>
+        </section>
+
+        <section class="book-panel panel" aria-labelledby="book-heading">
+          <div class="panel-toolbar">
+            <h2 id="book-heading">委託簿</h2>
+            <label class="aggregate-label"
+              ><span class="sr-only">委託簿價格分組</span
+              ><select id="book-group">
+                <option value="1">0.01</option>
+                <option value="10">0.10</option>
+                <option value="100">1.00</option>
+              </select></label
+            >
+          </div>
+          <div class="book-labels">
+            <span>價格 <small>USDT</small></span
+            ><span>數量 <small>BEAR</small></span
+            ><span>累計</span>
+          </div>
+          <div class="book-side asks" id="asks"></div>
+          <div class="book-spread">
+            <strong id="book-price">—</strong
+            ><span>價差 <b id="spread">—</b></span>
+          </div>
+          <div class="book-side bids" id="bids"></div>
+          <div class="book-balance">
+            <div class="balance-labels">
+              <span id="bid-ratio">買 —</span><span id="ask-ratio">賣 —</span>
+            </div>
+            <div class="balance-track"><div id="bid-bar"></div></div>
+          </div>
+        </section>
+
+        <aside class="trade-panel panel" aria-label="交易與資產">
+          <div class="panel-toolbar">
+            <h2>下單</h2>
+            <span class="small-badge">現貨</span>
+          </div>
+          <form id="order-form" novalidate>
+            <div class="side-toggle">
+              <button
+                type="button"
+                data-side="buy"
+                class="active"
+                aria-pressed="true"
+              >
+                買入</button
+              ><button type="button" data-side="sell" aria-pressed="false">
+                賣出
+              </button>
+            </div>
+            <div class="order-types">
+              <button
+                type="button"
+                data-type="limit"
+                class="active"
+                aria-pressed="true"
+              >
+                限價</button
+              ><button type="button" data-type="market" aria-pressed="false">
+                市價
+              </button>
+            </div>
+            <div class="available-line">
+              <span>可用</span><strong id="available-balance">—</strong>
+            </div>
+            <label class="field" id="price-field"
+              ><span>價格</span>
+              <div>
+                <input
+                  id="order-price"
+                  name="price"
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  value="100.00"
+                  aria-describedby="order-message"
+                /><span>USDT</span
+                ><button
+                  type="button"
+                  id="use-last"
+                  aria-label="使用最新成交價"
+                >
+                  最新
+                </button>
+              </div></label
+            >
+            <div class="market-price-field" id="market-price-field" hidden>
+              <span>價格</span><strong>依市場最佳價格成交</strong>
+            </div>
+            <label class="field"
+              ><span>數量</span>
+              <div>
+                <input
+                  id="order-size"
+                  name="size"
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  value="10"
+                  aria-describedby="order-message"
+                /><span>BEAR</span>
+              </div></label
+            >
+            <div class="size-presets" aria-label="使用可用資產比例">
+              <button type="button" data-percent="10">10%</button
+              ><button type="button" data-percent="25">25%</button
+              ><button type="button" data-percent="50">50%</button
+              ><button type="button" data-percent="100">100%</button>
+            </div>
+            <dl class="order-estimate">
+              <div>
+                <dt id="estimate-label">委託金額</dt>
+                <dd id="estimated-total">— USDT</dd>
+              </div>
+              <div>
+                <dt>預估手續費</dt>
+                <dd id="estimated-fee">— USDT</dd>
+              </div>
+            </dl>
+            <button id="submit-order" class="submit-order" type="submit">
+              買入 BEAR
+            </button>
+            <p
+              id="order-message"
+              class="order-message"
+              role="status"
+              aria-live="polite"
+            ></p>
+          </form>
+          <section class="portfolio" aria-labelledby="portfolio-title">
+            <div class="portfolio-heading">
+              <h2 id="portfolio-title">我的資產</h2>
+              <span>模擬帳戶</span>
+            </div>
+            <p class="equity-label">總資產估值 <span>USDT</span></p>
+            <div class="equity">
+              <strong id="equity">50,000.00</strong><span id="pnl">+0.00%</span>
+            </div>
+            <div class="allocation-track"><div id="allocation-bar"></div></div>
+            <dl class="holdings">
+              <div>
+                <dt><i class="asset-dot usdt"></i>USDT</dt>
+                <dd id="cash-balance">25,000.00</dd>
+              </div>
+              <div>
+                <dt><i class="asset-dot bear"></i>BEAR</dt>
+                <dd id="base-balance">250.00</dd>
+              </div>
+            </dl>
+            <div class="locked-line">
+              <span>掛單占用</span><span id="locked-balance">—</span>
+            </div>
+            <div class="fee-line">
+              <span>本局手續費</span><span id="total-fees">0.00 USDT</span>
+            </div>
+          </section>
+        </aside>
+
+        <section class="orders-panel panel" aria-label="我的交易紀錄">
+          <div class="panel-toolbar">
+            <div class="tab-group">
+              <button
+                type="button"
+                data-records="open"
+                class="active"
+                aria-pressed="true"
+              >
+                目前委託 <span id="open-count">0</span></button
+              ><button
+                type="button"
+                data-records="history"
+                aria-pressed="false"
+              >
+                歷史委託</button
+              ><button type="button" data-records="fills" aria-pressed="false">
+                我的成交
+              </button>
+            </div>
+            <button id="cancel-all" type="button" class="text-button" disabled>
+              全部撤單
+            </button>
+          </div>
+          <div class="orders-scroll">
+            <table>
+              <thead id="orders-head"></thead>
+              <tbody id="orders-body"></tbody>
+            </table>
+            <div class="orders-empty" id="orders-empty">
+              <span aria-hidden="true">≋</span><strong>還沒有掛單</strong>
+              <p>你的下一筆交易，由你決定。</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="tape-panel panel" aria-labelledby="tape-title">
+          <div class="panel-toolbar">
+            <h2 id="tape-title">最新成交</h2>
+            <span class="live-label">TAPE</span>
+          </div>
+          <div class="tape-labels">
+            <span>價格</span><span>數量</span><span>時間</span>
+          </div>
+          <div id="trade-tape" class="trade-tape"></div>
+        </section>
+      </div>
+
+      <section class="time-machine" aria-label="市場時間控制">
+        <div class="play-controls">
+          <button
+            id="play-pause"
+            class="play-button"
+            type="button"
+            aria-label="暫停市場"
+          >
+            <span id="play-icon" aria-hidden="true">Ⅱ</span
+            ><span id="play-label">暫停</span></button
+          ><button
+            id="step"
+            class="icon-button"
+            type="button"
+            aria-label="前進一秒"
+            title="前進一秒"
+          >
+            ▹│</button
+          ><label
+            ><span class="sr-only">播放速度</span
+            ><select id="speed">
+              <option value="1">1×</option>
+              <option value="2">2×</option>
+              <option value="5">5×</option>
+              <option value="10">10×</option>
+            </select></label
+          >
+        </div>
+        <div class="clock">
+          <strong id="sim-clock">00:00</strong
+          ><span id="branch-label">時間線 01</span>
+        </div>
+        <div class="timeline">
+          <div class="timeline-labels">
+            <span id="earliest-time">00:00</span
+            ><span id="timeline-note">市場時間</span
+            ><span id="latest-time">00:00</span>
+          </div>
+          <input
+            id="timeline"
+            type="range"
+            min="0"
+            max="1"
+            value="0"
+            step="1"
+            aria-label="倒帶市場時間"
+          />
+        </div>
+        <div class="rewind-controls">
+          <button id="rewind" class="quiet-button" type="button" disabled>
+            <span aria-hidden="true">↶</span> 30 秒</button
+          ><button id="return-live" class="quiet-button" type="button" hidden>
+            回到最新</button
+          ><button id="fork" class="fork-button" type="button" hidden>
+            從此重玩
+          </button>
+        </div>
+      </section>
+      <footer class="terminal-footer">
+        <span id="save-status">此裝置自動存檔</span
+        ><span id="session-code">—</span><span>虛擬資產 · 無真實資金</span>
+      </footer>
+    </main>
+
+    <dialog id="indicators-dialog">
+      <form method="dialog">
+        <div class="dialog-heading">
+          <h2>圖表指標</h2>
+          <button class="icon-button" aria-label="關閉圖表指標">×</button>
+        </div>
+        <div class="indicator-options">
+          <label
+            ><input type="checkbox" data-indicator="volume" checked /><span
+              ><strong>Volume</strong><small>成交量</small></span
+            ></label
+          >
+          <label
+            ><input type="checkbox" data-indicator="footprint" /><span
+              ><strong>Footprint</strong
+              ><small>逐價主動賣 × 主動買；放大後顯示</small></span
+            ></label
+          >
+          <label
+            ><input type="checkbox" data-indicator="cvd" /><span
+              ><strong>CVD</strong><small>累積主動買量 − 主動賣量</small></span
+            ></label
+          >
+          <label
+            ><input type="checkbox" data-indicator="heatmap" /><span
+              ><strong>掛單熱力圖</strong
+              ><small>每側最近 40 檔；每 10 秒保留一張快照</small></span
+            ></label
+          >
+          <label
+            ><input type="checkbox" data-indicator="delta" /><span
+              ><strong>Delta</strong
+              ><small>每根 K 線的主動買賣量差</small></span
+            ></label
+          >
+          <label class="unavailable-indicator"
+            ><input type="checkbox" disabled /><span
+              ><strong>OI · 未平倉量</strong><small>現貨不適用</small></span
+            ><span class="small-badge">衍生品</span></label
+          >
+        </div>
+        <button class="dialog-primary">完成</button>
+      </form>
+    </dialog>
+    <dialog id="rules-dialog">
+      <form method="dialog">
+        <div class="dialog-heading">
+          <h2>交易規則</h2>
+          <button class="icon-button" aria-label="關閉交易規則">×</button>
+        </div>
+        <dl class="rules-list">
+          <div>
+            <dt>市場</dt>
+            <dd>
+              BEAR / USDT 現貨。起始 25,000 USDT 與 250 BEAR，無槓桿、無借幣。
+            </dd>
+          </div>
+          <div>
+            <dt>委託</dt>
+            <dd>
+              價格與數量最小單位都是
+              0.01。同價位先到先成交，限價單可立即成交或留在簿上。
+            </dd>
+          </div>
+          <div>
+            <dt>資產</dt>
+            <dd>
+              買單預留現金與手續費，賣單預留 BEAR。每次成交都會結算雙方資產。
+            </dd>
+          </div>
+          <div>
+            <dt>市價</dt>
+            <dd>
+              逐檔成交；流動性或現金不足時，剩餘數量取消。觸及自己的掛單時，取消新單剩餘數量。
+            </dd>
+          </div>
+          <div>
+            <dt>費率</dt>
+            <dd>
+              掛單成交 0.02%，主動成交 0.05%。費用以 USDT 扣除，最低計費單位
+              0.0001 USDT。
+            </dd>
+          </div>
+          <div>
+            <dt>暫停與倒帶</dt>
+            <dd>
+              暫停時可以下單並立即撮合，其他參與者在時間繼續後反應。可回到最近
+              20 分鐘；回看時下單或選擇「從此重玩」會捨棄該時刻之後的舊路徑。
+            </dd>
+          </div>
+          <div>
+            <dt>存檔</dt>
+            <dd>
+              進度存在這個瀏覽器。離開頁面時暫停，回來後按繼續。新市場會取代目前存檔。
+            </dd>
+          </div>
+          <div>
+            <dt>上限</dt>
+            <dd>
+              每筆價格最高 1,000,000 USDT、數量最高 1,000,000 BEAR、金額最高
+              1,000,000,000 USDT；最多 100 筆有效掛單。
+            </dd>
+          </div>
+        </dl>
+        <button class="dialog-primary">回到市場</button>
+      </form>
+    </dialog>
+    <dialog id="new-dialog">
+      <form method="dialog" id="new-form">
+        <div class="dialog-heading">
+          <h2>開啟新市場</h2>
+          <button class="icon-button" value="cancel" aria-label="取消新市場">
+            ×
+          </button>
+        </div>
+        <p>以 25,000 USDT 與 250 BEAR 重新出發。目前進度會被取代。</p>
+        <label class="field"
+          ><span>市場代碼</span>
+          <div>
+            <input
+              id="new-seed"
+              type="text"
+              maxlength="10"
+              inputmode="numeric"
+              autocomplete="off"
+            /><button id="random-seed" type="button" aria-label="隨機市場代碼">
+              ↻
+            </button>
+          </div></label
+        >
+        <p class="dialog-note">相同代碼，從相同的市場起點開始。</p>
+        <div class="dialog-actions">
+          <button value="cancel" class="quiet-button">取消</button
+          ><button value="new" class="dialog-primary">進入新市場</button>
+        </div>
+        <p id="seed-error" role="alert"></p>
+      </form>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <noscript
+      ><p class="no-script">請啟用 JavaScript 以運行交易沙盒。</p></noscript
+    >
+  </body>
+</html>

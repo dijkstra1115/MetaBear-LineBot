@@ -106,11 +106,8 @@ export async function buildAcademy() {
           "</head>",
           `  <link rel="stylesheet" href="./${sheet}" />\n  </head>`,
         );
-    if (!html.includes('src="./academy-mobile.js"'))
-      html = html.replace(
-        "</head>",
-        '  <script type="module" src="./academy-mobile.js"></script>\n  </head>',
-      );
+    // The old SVG theater controller does not apply to the canvas player.
+    html = html.replace(/\s*<script type="module" src="\.\/academy-mobile\.js"><\/script>/g, "");
     await writeFile(path, transparentAcademyBrand(html));
   }
   let map = transparentAcademyBrand(await readFile(root + "courses.html", "utf8"));

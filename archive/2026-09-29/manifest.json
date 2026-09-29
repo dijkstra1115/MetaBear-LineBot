@@ -1,0 +1,1956 @@
+{
+  "date": "2026-09-29",
+  "mainCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+  "files": [
+    {
+      "path": "QUICKSTART.md",
+      "archive": "archive/2026-09-29/main/QUICKSTART.md",
+      "category": "python-bot",
+      "sha256": "773eeb19fa8f987030d81366581e48171497216db04357d7580408030879b002"
+    },
+    {
+      "path": "alembic.ini",
+      "archive": "archive/2026-09-29/main/alembic.ini",
+      "category": "python-bot",
+      "sha256": "472116344fd58df057a364fa0e55790db940602d6652fdb3fd9f5f8661d6268f"
+    },
+    {
+      "path": "alembic/env.py",
+      "archive": "archive/2026-09-29/main/alembic/env.py",
+      "category": "python-bot",
+      "sha256": "d90b6fb83081670fe984b2027f5b8c277024da0845b9ed372300438b9e78b201"
+    },
+    {
+      "path": "alembic/script.py.mako",
+      "archive": "archive/2026-09-29/main/alembic/script.py.mako",
+      "category": "python-bot",
+      "sha256": "ab423dccc4ca2de044fe6d54c700d46c5db91fa80e0cccccf9d812999847e37e"
+    },
+    {
+      "path": "alembic/versions/.gitkeep",
+      "archive": "archive/2026-09-29/main/alembic/versions/.gitkeep",
+      "category": "python-bot",
+      "sha256": "5b7f57830198682f2bf3fa48020af906c3e51ae6432bf7e27406efc55eb1994d"
+    },
+    {
+      "path": "alembic/versions/001_initial_migration.py",
+      "archive": "archive/2026-09-29/main/alembic/versions/001_initial_migration.py",
+      "category": "python-bot",
+      "sha256": "3fbc5e6900d3c8055d3154d43b12377c702ac074697d1311f19b97a385ba002f"
+    },
+    {
+      "path": "app/__init__.py",
+      "archive": "archive/2026-09-29/main/app/__init__.py",
+      "category": "python-bot",
+      "sha256": "d479c95a93351d84f6cd9271c37fbdeef7fd1f7c76a96a05f146e4f106738154"
+    },
+    {
+      "path": "app/config.py",
+      "archive": "archive/2026-09-29/main/app/config.py",
+      "category": "python-bot",
+      "sha256": "f661d955a7762d3546dfb5dc548553de164c91af169d14c58d69064d9c30888a"
+    },
+    {
+      "path": "app/content/__init__.py",
+      "archive": "archive/2026-09-29/main/app/content/__init__.py",
+      "category": "python-bot",
+      "sha256": "17ffd752741641d556178ac8b36c7418f6f2e424192bae3b9a9c8ed2d81927ec"
+    },
+    {
+      "path": "app/content/questions.yaml",
+      "archive": "archive/2026-09-29/main/app/content/questions.yaml",
+      "category": "python-bot",
+      "sha256": "064eb4ffeb1261f60a03f6b63e5dc2f0fe368918777c72172b0237b48d3ef50f"
+    },
+    {
+      "path": "app/db/__init__.py",
+      "archive": "archive/2026-09-29/main/app/db/__init__.py",
+      "category": "python-bot",
+      "sha256": "17ffd752741641d556178ac8b36c7418f6f2e424192bae3b9a9c8ed2d81927ec"
+    },
+    {
+      "path": "app/db/crud.py",
+      "archive": "archive/2026-09-29/main/app/db/crud.py",
+      "category": "python-bot",
+      "sha256": "a750b3c4ae7fadbc39cd656ffc491b2b66697dbc40092b149abb42b67e6679f2"
+    },
+    {
+      "path": "app/db/models.py",
+      "archive": "archive/2026-09-29/main/app/db/models.py",
+      "category": "python-bot",
+      "sha256": "b44bd61e0ecae17bfb3bd2491696a539ce18ba5f94ea98292f8e7bf3b31f587f"
+    },
+    {
+      "path": "app/db/session.py",
+      "archive": "archive/2026-09-29/main/app/db/session.py",
+      "category": "python-bot",
+      "sha256": "43b7369cd7f4457064a1bfc965e226785d21585fbe24e10990be47f4e6c70025"
+    },
+    {
+      "path": "app/line/__init__.py",
+      "archive": "archive/2026-09-29/main/app/line/__init__.py",
+      "category": "python-bot",
+      "sha256": "17ffd752741641d556178ac8b36c7418f6f2e424192bae3b9a9c8ed2d81927ec"
+    },
+    {
+      "path": "app/line/client.py",
+      "archive": "archive/2026-09-29/main/app/line/client.py",
+      "category": "python-bot",
+      "sha256": "877a618b4544f72a548797701194fd02a01d8f321e6bd79529023f03bc20ec73"
+    },
+    {
+      "path": "app/line/handlers.py",
+      "archive": "archive/2026-09-29/main/app/line/handlers.py",
+      "category": "python-bot",
+      "sha256": "deafa290bc22b85f4669c254eee2212e1a5a6601eff935a707b2479b3450e90f"
+    },
+    {
+      "path": "app/line/rich_menu.png",
+      "archive": "archive/2026-09-29/main/app/line/rich_menu.png",
+      "category": "python-bot",
+      "sha256": "305d1031d83a9ae990f48d6a3a75aa618b9fbd43b3beec5ed4c0418272705cdc"
+    },
+    {
+      "path": "app/line/richmenu.py",
+      "archive": "archive/2026-09-29/main/app/line/richmenu.py",
+      "category": "python-bot",
+      "sha256": "4ed8edd6ad808340537b72d0aeb936caa61c5e9086d97f9e69efc66b4a619632"
+    },
+    {
+      "path": "app/line/schemas.py",
+      "archive": "archive/2026-09-29/main/app/line/schemas.py",
+      "category": "python-bot",
+      "sha256": "d175ae91e8f06614a60f479af8fcf70f8ba23d94ab929635eedacda192980834"
+    },
+    {
+      "path": "app/llm/__init__.py",
+      "archive": "archive/2026-09-29/main/app/llm/__init__.py",
+      "category": "python-bot",
+      "sha256": "17ffd752741641d556178ac8b36c7418f6f2e424192bae3b9a9c8ed2d81927ec"
+    },
+    {
+      "path": "app/llm/client.py",
+      "archive": "archive/2026-09-29/main/app/llm/client.py",
+      "category": "python-bot",
+      "sha256": "ee7a33ca12761cc642c1e1e98fc7c0103de6e131d9c2b78e0fd092671c308c3f"
+    },
+    {
+      "path": "app/llm/output_checker.py",
+      "archive": "archive/2026-09-29/main/app/llm/output_checker.py",
+      "category": "python-bot",
+      "sha256": "fed5afc6a1de5bb97b4cda97daace046cad9d76173f56a341b3bd5fe00a3d339"
+    },
+    {
+      "path": "app/llm/prompts.py",
+      "archive": "archive/2026-09-29/main/app/llm/prompts.py",
+      "category": "python-bot",
+      "sha256": "95a3d5900995d4433575f21e01abb615695ab7c150ee930542cbc2e4ff5a2d97"
+    },
+    {
+      "path": "app/main.py",
+      "archive": "archive/2026-09-29/main/app/main.py",
+      "category": "python-bot",
+      "sha256": "04aa801b35422294980583a6fd3ab912a66c791124b94212db05472d0a613d0f"
+    },
+    {
+      "path": "docs/ABSORPTION-STORY.md",
+      "archive": "archive/2026-09-29/main/docs/ABSORPTION-STORY.md",
+      "category": "historical-docs",
+      "sha256": "ecd001c525f7bdcaa5e82eec2cc3a413c92aafddefe3255df0826a92ec50151d"
+    },
+    {
+      "path": "docs/ACADEMY-LEGACY.md",
+      "archive": "archive/2026-09-29/main/docs/ACADEMY-LEGACY.md",
+      "category": "historical-docs",
+      "sha256": "9f7631c8f98f8f9ec13281e3307b2e0f1f871ca0ad7b0cdf81740ff9d703750c"
+    },
+    {
+      "path": "docs/ACADEMY-MOBILE-LAUNCH.md",
+      "archive": "archive/2026-09-29/main/docs/ACADEMY-MOBILE-LAUNCH.md",
+      "category": "historical-docs",
+      "sha256": "eb6008ab302a81868916e606a16750b49fa48314fd274bd9489612286070a762"
+    },
+    {
+      "path": "docs/ACADEMY-MOBILE-RELEASE.md",
+      "archive": "archive/2026-09-29/main/docs/ACADEMY-MOBILE-RELEASE.md",
+      "category": "historical-docs",
+      "sha256": "34d3a17f526bfb380396a60369d65a02fc36f1903fbd49e44df60bc0f14f1579"
+    },
+    {
+      "path": "docs/BEGINNER-PROLOGUE.md",
+      "archive": "archive/2026-09-29/main/docs/BEGINNER-PROLOGUE.md",
+      "category": "historical-docs",
+      "sha256": "a9babf354721775161dde48c28e334dbb393979dc2e82e5b25bebae3c48a813b"
+    },
+    {
+      "path": "docs/BREAKOUT-LESSON-PLAN.md",
+      "archive": "archive/2026-09-29/main/docs/BREAKOUT-LESSON-PLAN.md",
+      "category": "historical-docs",
+      "sha256": "22294009c9001fcf5fcde0d054a78212bbaf8bc81df8f3305d1a53d8feaad517"
+    },
+    {
+      "path": "docs/DELTA-STORY.md",
+      "archive": "archive/2026-09-29/main/docs/DELTA-STORY.md",
+      "category": "historical-docs",
+      "sha256": "173d55fc971868f03a5988277f302039ac15ea20333e0c89305e8c1fffab9b96"
+    },
+    {
+      "path": "docs/JEV-PAPER-TRADING-PLAN.md",
+      "archive": "archive/2026-09-29/main/docs/JEV-PAPER-TRADING-PLAN.md",
+      "category": "quant-research",
+      "sha256": "2512a3f2d01daca0789ae5635653a0f04a6c9492dfa94a8fd01ec6ab311abcdc"
+    },
+    {
+      "path": "docs/LEGACY_README.md",
+      "archive": "archive/2026-09-29/main/docs/LEGACY_README.md",
+      "category": "historical-docs",
+      "sha256": "ce8fef554c849371c15e7c1273db2cf775e98eb50ab39618f66ccb92a70504c3"
+    },
+    {
+      "path": "docs/MARK-PRICE-LESSON-PLAN.md",
+      "archive": "archive/2026-09-29/main/docs/MARK-PRICE-LESSON-PLAN.md",
+      "category": "historical-docs",
+      "sha256": "8744b3bcd042b21e75be86df5c02d82f40470cc1672666142bf9f36e9279477f"
+    },
+    {
+      "path": "docs/MARKET-JOURNEY.md",
+      "archive": "archive/2026-09-29/main/docs/MARKET-JOURNEY.md",
+      "category": "historical-docs",
+      "sha256": "9b864ed0cb764f3f28ade14a636e83b695ba23277ace4ff25ebdd5fddda9d61a"
+    },
+    {
+      "path": "docs/MARKET-STORYBOARD-V2.md",
+      "archive": "archive/2026-09-29/main/docs/MARKET-STORYBOARD-V2.md",
+      "category": "historical-docs",
+      "sha256": "eac9591303f6840ea5906be8e16d8879b38ec56370f4834317829d3b9657b219"
+    },
+    {
+      "path": "docs/ORDERFLOW-ACADEMY.md",
+      "archive": "archive/2026-09-29/main/docs/ORDERFLOW-ACADEMY.md",
+      "category": "historical-docs",
+      "sha256": "abc98ddd8b79f51a02d3ecf3cb0f868b58a80bfa1e9106346c1a1ef0c56edf49"
+    },
+    {
+      "path": "docs/ORDERFLOW-IMMERSIVE-PLAN.md",
+      "archive": "archive/2026-09-29/main/docs/ORDERFLOW-IMMERSIVE-PLAN.md",
+      "category": "historical-docs",
+      "sha256": "c8fb56e6a087b03e93184065cc03ff1bf573c96844a5c8cb450967c98e4608d1"
+    },
+    {
+      "path": "docs/QUANT-LAB.md",
+      "archive": "archive/2026-09-29/main/docs/QUANT-LAB.md",
+      "category": "quant-research",
+      "sha256": "cd0506e84f40e0aa9d770420df2c218a78c02c62ffd0a4cc9cc1e750a883b60f"
+    },
+    {
+      "path": "docs/QUANT-RECORDER.md",
+      "archive": "archive/2026-09-29/main/docs/QUANT-RECORDER.md",
+      "category": "quant-research",
+      "sha256": "1e5e6360032440e6d7aabc3beb61c3fb667f2b9d7407e24d445fc91bf07e3e61"
+    },
+    {
+      "path": "docs/REVISIT-STORY.md",
+      "archive": "archive/2026-09-29/main/docs/REVISIT-STORY.md",
+      "category": "historical-docs",
+      "sha256": "f296b114c504c554562445ba137bb8ad0fb4597eb74d171a6ef37e7c622b402b"
+    },
+    {
+      "path": "docs/STAGING.md",
+      "archive": "archive/2026-09-29/main/docs/STAGING.md",
+      "category": "historical-docs",
+      "sha256": "9cb0d210f3edad66c086e9e2bda3aede23e8a27c0eeb956171279f1ac6f6b4fc"
+    },
+    {
+      "path": "docs/WEBSITE-WORK.md",
+      "archive": "archive/2026-09-29/main/docs/WEBSITE-WORK.md",
+      "category": "historical-docs",
+      "sha256": "31dfead100561f25aebbc6364dae4a09d1f5f8a75cc57d2fce7dd51d8d759012"
+    },
+    {
+      "path": "docs/WICK-PROLOGUE.md",
+      "archive": "archive/2026-09-29/main/docs/WICK-PROLOGUE.md",
+      "category": "historical-docs",
+      "sha256": "0c70acaf2beebd8f7510aa074091bbdae4c3410885e91daf0ca8a97c36736dad"
+    },
+    {
+      "path": "docs/WITHDRAWAL-LESSON-PLAN.md",
+      "archive": "archive/2026-09-29/main/docs/WITHDRAWAL-LESSON-PLAN.md",
+      "category": "historical-docs",
+      "sha256": "dae956d931409f420f67d9442f1742983851027a1cd4abd3e68844d784f62ddb"
+    },
+    {
+      "path": "env.template",
+      "archive": "archive/2026-09-29/main/env.template",
+      "category": "python-bot",
+      "sha256": "5674911f4690ee0776d808dfc50eeb243eb8642737cd047faa094902258e6672"
+    },
+    {
+      "path": "public/guides/market/cvd-1.png",
+      "archive": "archive/2026-09-29/main/public/guides/market/cvd-1.png",
+      "category": "replaced-images",
+      "sha256": "48b8b74065278aa2b72cfca538aa6c62c320e2fc72074a5e9daa1c623fffc5f0"
+    },
+    {
+      "path": "public/guides/market/cvd-example.svg",
+      "archive": "archive/2026-09-29/main/public/guides/market/cvd-example.svg",
+      "category": "replaced-images",
+      "sha256": "af0f9f5ef7a3e19f054498f332f99c243d980f275da9e8bdf5666de819341d01"
+    },
+    {
+      "path": "public/guides/market/oi-1.png",
+      "archive": "archive/2026-09-29/main/public/guides/market/oi-1.png",
+      "category": "replaced-images",
+      "sha256": "f93fa804d2ef3cdd4f389f92631ae8a5d6b80a7bfa1a6b6853a39110400d5f81"
+    },
+    {
+      "path": "public/guides/market/oi-2.png",
+      "archive": "archive/2026-09-29/main/public/guides/market/oi-2.png",
+      "category": "replaced-images",
+      "sha256": "9e9611d0c1b5d36c412751cc1cca147cd9be6528b31fe24240b223e3cf96b374"
+    },
+    {
+      "path": "public/guides/market/oi-example.svg",
+      "archive": "archive/2026-09-29/main/public/guides/market/oi-example.svg",
+      "category": "replaced-images",
+      "sha256": "5a2ba824abf290dd0639875bfb60af206a93e10dbc3eb24cb54a782e1fa11e0f"
+    },
+    {
+      "path": "public/orderflow/absorption-story-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/absorption-story-model.js",
+      "category": "svg-academy",
+      "sha256": "f25fe18c10f43915bf645f3df2362b134d9b54700d3c226fee0248b19678894e"
+    },
+    {
+      "path": "public/orderflow/absorption-story-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/absorption-story-script.js",
+      "category": "svg-academy",
+      "sha256": "e544d032e088178d8063a73fdb1ec991e9804e49e8b47008f9c49481dac2059a"
+    },
+    {
+      "path": "public/orderflow/absorption-story-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/absorption-story-view.js",
+      "category": "svg-academy",
+      "sha256": "005a7a8fde3b12e4e7b4df01abba3e5933cf3f85a2281521e6715006e440cac4"
+    },
+    {
+      "path": "public/orderflow/absorption-story.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/absorption-story.js",
+      "category": "svg-academy",
+      "sha256": "4ee71b21b323464c1d92bdc7b5030df45f3d67ef11503ea5511996cf3c321993"
+    },
+    {
+      "path": "public/orderflow/academy-mobile.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/academy-mobile.js",
+      "category": "svg-academy",
+      "sha256": "965ef8482bb753d5a8fec0307c39073ec914062d832e3ff2bc14a005858fb48d"
+    },
+    {
+      "path": "public/orderflow/bear-market.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/bear-market.js",
+      "category": "svg-academy",
+      "sha256": "e0d65653d4cb8045e42e5300380c30af63add4cb7e94c5c43d9afd6e2a048feb"
+    },
+    {
+      "path": "public/orderflow/breakout-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout-model.js",
+      "category": "svg-academy",
+      "sha256": "22084748085b7585c5ad4bee27ac12d44f13ecd3c00444a0389b2a6956e198f1"
+    },
+    {
+      "path": "public/orderflow/breakout-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout-script.js",
+      "category": "svg-academy",
+      "sha256": "67730e1e56477c4e137113dc3d3c8ce0e339dd004a7684845103cf0dc1993ad4"
+    },
+    {
+      "path": "public/orderflow/breakout-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout-view.js",
+      "category": "svg-academy",
+      "sha256": "849fdd95f2e7d00483ed30f3ec74f767108b78c85428d20834eac46876be1aef"
+    },
+    {
+      "path": "public/orderflow/breakout-volume-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout-volume-model.js",
+      "category": "svg-academy",
+      "sha256": "5b68701b6f6309e41e52e52e3cabba468888df7ce3e30e7a86723eae8befbee3"
+    },
+    {
+      "path": "public/orderflow/breakout-volume-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout-volume-script.js",
+      "category": "svg-academy",
+      "sha256": "306cbea8a613effdb5a434f7c9f71715c00c6257743768eecca77721a976923d"
+    },
+    {
+      "path": "public/orderflow/breakout-volume-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout-volume-view.js",
+      "category": "svg-academy",
+      "sha256": "9e9af711fd0f6135ec38be3abbce3a9ce1a2fd782ab3a795e0612b70a48c4095"
+    },
+    {
+      "path": "public/orderflow/breakout-volume.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout-volume.js",
+      "category": "svg-academy",
+      "sha256": "8f57a7abc66e6a4fc69ba4c8ab6fad036333648d852ee63eab7462db07f148c9"
+    },
+    {
+      "path": "public/orderflow/breakout.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout.js",
+      "category": "svg-academy",
+      "sha256": "61c304f35f12335e1993f096d73a7b33a2ab5cc35ae0306131e5e729f4ff66f4"
+    },
+    {
+      "path": "public/orderflow/delta-concept-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/delta-concept-model.js",
+      "category": "svg-academy",
+      "sha256": "3488826a4650be8ea07ab26632b852bd4ce58382ae7e43e8833a3ffb9a7eefa7"
+    },
+    {
+      "path": "public/orderflow/delta-concept-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/delta-concept-script.js",
+      "category": "svg-academy",
+      "sha256": "9d2e39b912c9d1bebb09f22482dc0882e909e3a847e9e223df5af280da53d11a"
+    },
+    {
+      "path": "public/orderflow/delta-concept-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/delta-concept-view.js",
+      "category": "svg-academy",
+      "sha256": "79342a613b662c5b1a376e5c683dfd8aa195fc422b3cd1697a74890db22eceb6"
+    },
+    {
+      "path": "public/orderflow/delta-concept.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/delta-concept.js",
+      "category": "svg-academy",
+      "sha256": "85f6e1a91720290443329588d917f261fb364c5c1f84dcbefdc31208dee2c97d"
+    },
+    {
+      "path": "public/orderflow/delta-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/delta-model.js",
+      "category": "svg-academy",
+      "sha256": "94db3ff20175dee0c1e645f92cfc3754f1a1ef92d85ae7d397a35a9a8a109005"
+    },
+    {
+      "path": "public/orderflow/delta-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/delta-script.js",
+      "category": "svg-academy",
+      "sha256": "ef41e47174b31aa54b79aea0e81d8a8279908e8a2ea4db6a9b21774dab65b5ef"
+    },
+    {
+      "path": "public/orderflow/delta-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/delta-view.js",
+      "category": "svg-academy",
+      "sha256": "2d17176077c0c17e2f6747f8cb5952fe29f6f2dd2bfdd5ef99522faa5b974abd"
+    },
+    {
+      "path": "public/orderflow/engine.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/engine.js",
+      "category": "svg-academy",
+      "sha256": "78046571c9de015eb696a9fde23ba98dd89000cce50b5a5d4c0c39547b993910"
+    },
+    {
+      "path": "public/orderflow/footprint-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/footprint-model.js",
+      "category": "svg-academy",
+      "sha256": "38d1118c79c6122c0c77e57070e271c223bf57afc40cd0bcb476d70d0dde1348"
+    },
+    {
+      "path": "public/orderflow/footprint-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/footprint-script.js",
+      "category": "svg-academy",
+      "sha256": "026fa141e9a1ebc8ba9fe6d1ba9b81e3422da05bd8d6772a70b81a489ff1d1ba"
+    },
+    {
+      "path": "public/orderflow/footprint-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/footprint-view.js",
+      "category": "svg-academy",
+      "sha256": "7f8b4caf6825ae773723e1ae38c5379b3cc4316d1ea355095345b25e67bce0f9"
+    },
+    {
+      "path": "public/orderflow/footprint.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/footprint.js",
+      "category": "svg-academy",
+      "sha256": "3a0f91c7af6113a877f5306dc10bed3db894205c8df06b91b5e2848b8239999d"
+    },
+    {
+      "path": "public/orderflow/funding-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/funding-model.js",
+      "category": "svg-academy",
+      "sha256": "dd54910c67059e1388c246a028d9468c1156767683b8f823fc8504ea022b3380"
+    },
+    {
+      "path": "public/orderflow/funding-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/funding-script.js",
+      "category": "svg-academy",
+      "sha256": "fa953c516198924ff12ebdf58bd28fae334cb10d8bb041e18ff760e646185c7a"
+    },
+    {
+      "path": "public/orderflow/funding-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/funding-view.js",
+      "category": "svg-academy",
+      "sha256": "6b5d18d6c214fbc22e781f95d474e6c42a1134e9033a7b1b5c1ddb2b0741eda8"
+    },
+    {
+      "path": "public/orderflow/funding.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/funding.js",
+      "category": "svg-academy",
+      "sha256": "e04774ef4fbd894268782e933ed3c6e2f77b19b75aada4ba77074b57829b610c"
+    },
+    {
+      "path": "public/orderflow/heatmap-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/heatmap-model.js",
+      "category": "svg-academy",
+      "sha256": "230e68c9e0e1b79cf3011c329843bf847bac56287d7acf52b2c1b75132d8320c"
+    },
+    {
+      "path": "public/orderflow/heatmap-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/heatmap-script.js",
+      "category": "svg-academy",
+      "sha256": "b720d20bf624ad7ec100c65273404584a12974ec17e8541dd7232fe03344401a"
+    },
+    {
+      "path": "public/orderflow/heatmap-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/heatmap-view.js",
+      "category": "svg-academy",
+      "sha256": "a5ca3151853187a48e02cd40d88b8a2ea0e973b672c8b89cdc2e16b7fb0d586f"
+    },
+    {
+      "path": "public/orderflow/heatmap.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/heatmap.js",
+      "category": "svg-academy",
+      "sha256": "7b39b8bb206e6e67fffb3b7702b4e5f1defba0640410f9f8368fd98ded5c68a2"
+    },
+    {
+      "path": "public/orderflow/imbalance-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/imbalance-model.js",
+      "category": "svg-academy",
+      "sha256": "4a2a7e3c1e851793e3bfc40a4591bfd055b867a1b33c3cc7473fe7d588f73984"
+    },
+    {
+      "path": "public/orderflow/imbalance-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/imbalance-script.js",
+      "category": "svg-academy",
+      "sha256": "7728d1069e7679a4db5ff7a9f5b7425fbb1fc1b6234e1ec6a4577c09ea020d39"
+    },
+    {
+      "path": "public/orderflow/imbalance-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/imbalance-view.js",
+      "category": "svg-academy",
+      "sha256": "ec6f6b49e50faa3424933ed729734b6c3c7449c61ebc8e17e757d450e2c60874"
+    },
+    {
+      "path": "public/orderflow/imbalance.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/imbalance.js",
+      "category": "svg-academy",
+      "sha256": "a9b38d6a9d15a7ae86db9578c506d7a0ff3239e411e4897c5847642089c3cb55"
+    },
+    {
+      "path": "public/orderflow/legacy-redirect.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy-redirect.js",
+      "category": "svg-academy",
+      "sha256": "a97553af9a16fc885e550c7f0a7022be6a2dad0c0db59297b427ca359a6a3590"
+    },
+    {
+      "path": "public/orderflow/legacy/absorption-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/absorption-model.js",
+      "category": "legacy-academy",
+      "sha256": "6ab620d261376ea70431ec665ac59dbe9952fd4a09b89dcbdcf22611db91de07"
+    },
+    {
+      "path": "public/orderflow/legacy/absorption-story.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/absorption-story.js",
+      "category": "legacy-academy",
+      "sha256": "d9c6ce6c907e89e3ea788040e88e47b13aef3652eaab7b73aa8b1bc50f470736"
+    },
+    {
+      "path": "public/orderflow/legacy/absorption.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/absorption.css",
+      "category": "legacy-academy",
+      "sha256": "eb95c93a80d7bf6d29e12f27199ba0a2315110b2d13e61d8a4d4ddae48d601e0"
+    },
+    {
+      "path": "public/orderflow/legacy/absorption.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/absorption.html",
+      "category": "legacy-academy",
+      "sha256": "fc071aeb330270233f497f1128056a6a52c9002d07ef30f1afb85c77e578d9b6"
+    },
+    {
+      "path": "public/orderflow/legacy/app.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/app.js",
+      "category": "legacy-academy",
+      "sha256": "8c1b1e37e01dcc942860611af04ce9275dc853f18ff04c2bcabbf26e6605e6de"
+    },
+    {
+      "path": "public/orderflow/legacy/archive.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/archive.css",
+      "category": "legacy-academy",
+      "sha256": "8fd079f73fa3ff2409aaf4de819a44263bd8bf4dc36bdfd651f45fd56cea1596"
+    },
+    {
+      "path": "public/orderflow/legacy/charts.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/charts.js",
+      "category": "legacy-academy",
+      "sha256": "2e1df93f372bd471356ca1e62216c3cc9737fc0063c6d9a16d331bdeb7507c6c"
+    },
+    {
+      "path": "public/orderflow/legacy/classic.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/classic.html",
+      "category": "legacy-academy",
+      "sha256": "d159334daac9a23698cba766d6cd22334cfb1cabbf879c50cabcd494029b2958"
+    },
+    {
+      "path": "public/orderflow/legacy/curriculum.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/curriculum.js",
+      "category": "legacy-academy",
+      "sha256": "b8fc3c2f6cb1e4b1a1b4902076b0d61f7b2168687f1ba89c321b0f3b9763b707"
+    },
+    {
+      "path": "public/orderflow/legacy/entry.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/entry.js",
+      "category": "legacy-academy",
+      "sha256": "3c7e313dc587c5ee16b9c0c2d2830464c6820deca429c9a1d2f5348bd4ba6acf"
+    },
+    {
+      "path": "public/orderflow/legacy/feed.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/feed.js",
+      "category": "legacy-academy",
+      "sha256": "888d3b0a574ab5df2f5554158f8eae1766abad1386f064a8f4915e9598aa947e"
+    },
+    {
+      "path": "public/orderflow/legacy/foundation-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/foundation-model.js",
+      "category": "legacy-academy",
+      "sha256": "8e97185437c5c6c1567b4085ea4baea429ca73cad4894c47635b32ec973bb8b4"
+    },
+    {
+      "path": "public/orderflow/legacy/foundation.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/foundation.css",
+      "category": "legacy-academy",
+      "sha256": "84e05ba23dcd73f339d54bd0ab270e5e5f2795770645f7b20047bc5b8e7e8c67"
+    },
+    {
+      "path": "public/orderflow/legacy/foundation.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/foundation.js",
+      "category": "legacy-academy",
+      "sha256": "d0b7a5626962905bceaff88b7993a2f4879b1389dca4a50a5ec4f8807d063bcb"
+    },
+    {
+      "path": "public/orderflow/legacy/guided-charts.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/guided-charts.js",
+      "category": "legacy-academy",
+      "sha256": "115af42ae198eb1a52eefeaee72fc42ac816c5071bf714abf47e62dc43dc3cf6"
+    },
+    {
+      "path": "public/orderflow/legacy/guided-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/guided-model.js",
+      "category": "legacy-academy",
+      "sha256": "fc69d1345f4e616f416797413aa635bb1dc5ec4bdeeee1b4d52fffe6b0c7d954"
+    },
+    {
+      "path": "public/orderflow/legacy/index.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/index.html",
+      "category": "legacy-academy",
+      "sha256": "3c497b26f37e11362babfc0a2f7bc4047d65b26f2f5fecc7fa1b186df28aac52"
+    },
+    {
+      "path": "public/orderflow/legacy/journey-charts.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/journey-charts.js",
+      "category": "legacy-academy",
+      "sha256": "23b47862b52b895c2b96198ae15f063253d5c2356046d660a5c7022b4c1e2acc"
+    },
+    {
+      "path": "public/orderflow/legacy/journey-curriculum.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/journey-curriculum.js",
+      "category": "legacy-academy",
+      "sha256": "5dffc259169dc936f00106b5a77a3c16683d2d77cd5cacaa99fcb357d6ae20a9"
+    },
+    {
+      "path": "public/orderflow/legacy/journey-entry.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/journey-entry.js",
+      "category": "legacy-academy",
+      "sha256": "fbe1ac6a93b4a0334c2a301ac2972cbcdf28dbb9538ce69a11e773e4729c2d95"
+    },
+    {
+      "path": "public/orderflow/legacy/journey-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/journey-model.js",
+      "category": "legacy-academy",
+      "sha256": "a1362cae138247b97d237cd1034851f768ada538f845c81192c9b828a54e9402"
+    },
+    {
+      "path": "public/orderflow/legacy/journey.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/journey.css",
+      "category": "legacy-academy",
+      "sha256": "0b438f0a513d27e01b864b4b4312cec8c5707066f40a5ccfb527c51de7cc8d89"
+    },
+    {
+      "path": "public/orderflow/legacy/journey.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/journey.html",
+      "category": "legacy-academy",
+      "sha256": "e1657202f56688725e0b0c451db686bd085beb94b75d716c7626a1c3843ec49b"
+    },
+    {
+      "path": "public/orderflow/legacy/journey.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/journey.js",
+      "category": "legacy-academy",
+      "sha256": "68720d6b25c361a4e4f276cbc9bc0bfcfb3c60188eea738e1620a2e14ddd2cf4"
+    },
+    {
+      "path": "public/orderflow/legacy/lesson-shell.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/lesson-shell.js",
+      "category": "legacy-academy",
+      "sha256": "f14d787e7d79825b3b06b834ce0f75bc147455823ed2ba66ff309bc770f13fd1"
+    },
+    {
+      "path": "public/orderflow/legacy/lessons.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/lessons.js",
+      "category": "legacy-academy",
+      "sha256": "54cab819558e710c0c5b3e74c821fd22049cf92db027ae4342497019751e06a4"
+    },
+    {
+      "path": "public/orderflow/legacy/style.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/legacy/style.css",
+      "category": "legacy-academy",
+      "sha256": "7f85ff466967f6073c3cc133e5fd2d0d0fd8898a267aa4a8c9be4aa9928f7c46"
+    },
+    {
+      "path": "public/orderflow/leverage-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/leverage-model.js",
+      "category": "svg-academy",
+      "sha256": "8aebe63e8f25571f21b6a066cbe4597f1b4fb3387846fb2d9c11aeda326b6244"
+    },
+    {
+      "path": "public/orderflow/leverage-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/leverage-script.js",
+      "category": "svg-academy",
+      "sha256": "cf235f446813a3f7ef46a64c7ba9d12d9aaf867ee6000eab7d1a9285570e5b8c"
+    },
+    {
+      "path": "public/orderflow/leverage-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/leverage-view.js",
+      "category": "svg-academy",
+      "sha256": "a8d7d012e1274a551265bbc180579cd981d925ad3a211186456609ca149eea49"
+    },
+    {
+      "path": "public/orderflow/leverage.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/leverage.js",
+      "category": "svg-academy",
+      "sha256": "22d2db80d1fceaf1752c058cd5470db1ab0f8c5490a2c815621e5d97718a70ca"
+    },
+    {
+      "path": "public/orderflow/liquidation-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/liquidation-model.js",
+      "category": "svg-academy",
+      "sha256": "02d86cf6508afe1601f7104d766659e38ef4b9f2f1a4e491e50c04b30592f6ad"
+    },
+    {
+      "path": "public/orderflow/liquidation-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/liquidation-script.js",
+      "category": "svg-academy",
+      "sha256": "a0604e573689b6ae4936981038219184c4de0840d5a2e815e494e99548b816fd"
+    },
+    {
+      "path": "public/orderflow/liquidation-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/liquidation-view.js",
+      "category": "svg-academy",
+      "sha256": "fb68d2f309e18625e5251297ef6ca0ee1da369bf5c461c1f9b809deb3f40cdae"
+    },
+    {
+      "path": "public/orderflow/liquidation.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/liquidation.js",
+      "category": "svg-academy",
+      "sha256": "fb2a772f316d03089d73677f1c9c3e5cedf570899eeadb5c3181f89c447b5641"
+    },
+    {
+      "path": "public/orderflow/mark-price-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/mark-price-model.js",
+      "category": "svg-academy",
+      "sha256": "fee5d3aa848af18c7dd68968a49f6b28e67c392df3f5e994cff2f92d9b41e168"
+    },
+    {
+      "path": "public/orderflow/mark-price-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/mark-price-script.js",
+      "category": "svg-academy",
+      "sha256": "30191686664e431398d2e2e6d7f4c0e82a08f040f49bdd8ee504ede68880e6ae"
+    },
+    {
+      "path": "public/orderflow/mark-price-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/mark-price-view.js",
+      "category": "svg-academy",
+      "sha256": "21590cad6a3c7b1ea3f9ad8b00fd4e09f50f352749ac0935b1fe611658b4fc40"
+    },
+    {
+      "path": "public/orderflow/market-mobile-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/market-mobile-view.js",
+      "category": "svg-academy",
+      "sha256": "5dc3676326effac46912512a127d812daddc5b2a757608504b66f4d84f79ab46"
+    },
+    {
+      "path": "public/orderflow/mobile-svg.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/mobile-svg.js",
+      "category": "svg-academy",
+      "sha256": "d1fa5a6a05cb98ebab1ab1a62b6a6b49579d3008d453444e3c2cc112ea9440d9"
+    },
+    {
+      "path": "public/orderflow/open-interest-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/open-interest-model.js",
+      "category": "svg-academy",
+      "sha256": "8b9314c70b66cbe8e019ff8cb7469cf7fdfbe59762fc79f64bef28e885effb05"
+    },
+    {
+      "path": "public/orderflow/open-interest-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/open-interest-script.js",
+      "category": "svg-academy",
+      "sha256": "75b114d3e1de55ca40d3db03827a5789cf637072c923f646ba5f24fb46c70b30"
+    },
+    {
+      "path": "public/orderflow/open-interest-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/open-interest-view.js",
+      "category": "svg-academy",
+      "sha256": "86e3126c822148fbc6b05a018615365fab0c271113280843467dcc036aeb0cd7"
+    },
+    {
+      "path": "public/orderflow/open-interest.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/open-interest.js",
+      "category": "svg-academy",
+      "sha256": "3581103d39bc8866096aaf3cc1c61d3d8cbb21de09f23d9d0bd70c0e61ec0b58"
+    },
+    {
+      "path": "public/orderflow/order-block-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-block-model.js",
+      "category": "svg-academy",
+      "sha256": "db5a58bb069a03d9072a8dd8e128389d283515aa7bfc53f9db15bab6c08e24d8"
+    },
+    {
+      "path": "public/orderflow/order-block-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-block-script.js",
+      "category": "svg-academy",
+      "sha256": "a006fd59c1decd0310c9a5682d4541d35181d88cc77c964b16407e0561967040"
+    },
+    {
+      "path": "public/orderflow/order-block-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-block-view.js",
+      "category": "svg-academy",
+      "sha256": "c997e79c95069ca591bb54e1f7756053b632d8d1492aab8790a21bed3a52c239"
+    },
+    {
+      "path": "public/orderflow/order-block.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-block.js",
+      "category": "svg-academy",
+      "sha256": "51a0056309a3fceb5e1a544bdb0421adbe5c98dd74536471cd87aff1387d07d4"
+    },
+    {
+      "path": "public/orderflow/order-types-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-types-model.js",
+      "category": "svg-academy",
+      "sha256": "c8f6b5c6129229375facce9dd406cd52fb5b06ef423f558307fb49f2356d6bc8"
+    },
+    {
+      "path": "public/orderflow/order-types-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-types-script.js",
+      "category": "svg-academy",
+      "sha256": "114fbfd29b4a16f927ebf47b6317031e3c324d1cb391864487bbfaaa4a0c8ad2"
+    },
+    {
+      "path": "public/orderflow/order-types-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-types-view.js",
+      "category": "svg-academy",
+      "sha256": "77777463033bd9c6722bfd0d616cc973a15fee433d3d89a96d35f470223672e8"
+    },
+    {
+      "path": "public/orderflow/order-types.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-types.js",
+      "category": "svg-academy",
+      "sha256": "f58ade9c24fea8fcd8d9f96b910840c5379d92df5a6050a41c8cfbef47ddc856"
+    },
+    {
+      "path": "public/orderflow/primer-animation.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-animation.js",
+      "category": "svg-academy",
+      "sha256": "2633ee076ea47c393cf4bed1ac0e64cb3f411f803a3d2077ad5ca7258e304321"
+    },
+    {
+      "path": "public/orderflow/primer-desktop-motion.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-desktop-motion.js",
+      "category": "svg-academy",
+      "sha256": "bb739e63e343fafd32b451e4477fc46a4ce1f22b70b1d3f779de64d70cd58437"
+    },
+    {
+      "path": "public/orderflow/primer-desktop-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-desktop-script.js",
+      "category": "svg-academy",
+      "sha256": "139ca4c3075cdc6d5ddd8a13e5fd94c3af3246f3d4a87dce507ca2a81261998a"
+    },
+    {
+      "path": "public/orderflow/primer-desktop-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-desktop-view.js",
+      "category": "svg-academy",
+      "sha256": "f96be0e0adbf5d355f19bfb21519ece67b6eccfce13b5d35613218dd7d3a2ba7"
+    },
+    {
+      "path": "public/orderflow/primer-desktop.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-desktop.css",
+      "category": "svg-academy",
+      "sha256": "68da552ce1f4cbe01b7dbb992913128111ed4764f005619db48aae9f709da1db"
+    },
+    {
+      "path": "public/orderflow/primer-matching-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-matching-view.js",
+      "category": "svg-academy",
+      "sha256": "3d0a76e8b78cc2b2aea9e0ae45b177d5f0418e4ead211863238bba10f09c470b"
+    },
+    {
+      "path": "public/orderflow/primer-mobile-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-mobile-view.js",
+      "category": "svg-academy",
+      "sha256": "0c406b61f605d8c4b96d6d88f64923881fc10b10fb86303b75f8a6f911045518"
+    },
+    {
+      "path": "public/orderflow/primer-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-model.js",
+      "category": "svg-academy",
+      "sha256": "995ceaa9f882a6399a4f44355a683502a3beddb5bbbb5a118bb805b72752ac4f"
+    },
+    {
+      "path": "public/orderflow/primer-scene-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-scene-view.js",
+      "category": "svg-academy",
+      "sha256": "7586f8a5e21dd52d6877bdb7406c6f6d0b4b69b9372a6cddccf3fb17fcfcf475"
+    },
+    {
+      "path": "public/orderflow/primer-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-script.js",
+      "category": "svg-academy",
+      "sha256": "6d9ddf85685eecac239d12819580dacfa4a6dd18d0341c0bfb1b7503c8f0f8b7"
+    },
+    {
+      "path": "public/orderflow/primer-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer-view.js",
+      "category": "svg-academy",
+      "sha256": "b7181e1ff3f4eaeb3cda1c758201ecd6a1695a8911af39495524439ba8188b2a"
+    },
+    {
+      "path": "public/orderflow/primer.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/primer.js",
+      "category": "svg-academy",
+      "sha256": "d3817f611b27cc1234b4bd8f0b75dc8fc3aad6c17b24d5064cfc2646555c5336"
+    },
+    {
+      "path": "public/orderflow/revisit-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/revisit-model.js",
+      "category": "svg-academy",
+      "sha256": "b569f4da31d0a68738388f0a71416fa5548d07d495d960ed0467618c6480cb35"
+    },
+    {
+      "path": "public/orderflow/revisit-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/revisit-script.js",
+      "category": "svg-academy",
+      "sha256": "ffbdd2e018c1b4c90391d5f55daba4ab1b5f789b39c580343bb7f6badc36ca1b"
+    },
+    {
+      "path": "public/orderflow/revisit-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/revisit-view.js",
+      "category": "svg-academy",
+      "sha256": "2346d3562968af147da2d3fc5a427d57db13b7a5e5e7df859307e578e1184798"
+    },
+    {
+      "path": "public/orderflow/slippage-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/slippage-model.js",
+      "category": "svg-academy",
+      "sha256": "5fb3c94ac5501ddf08479b80f80d068c04eec0a0949d6e3808e075eb86fc06d6"
+    },
+    {
+      "path": "public/orderflow/slippage-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/slippage-script.js",
+      "category": "svg-academy",
+      "sha256": "322cf97398ff5e5c41cf4c7c2e102369a7804d3e26e7d747f56f781812374db9"
+    },
+    {
+      "path": "public/orderflow/slippage-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/slippage-view.js",
+      "category": "svg-academy",
+      "sha256": "859b40c6deb590a0e1b79453755041067d227957a8fd75a1cd85da548c2d2de2"
+    },
+    {
+      "path": "public/orderflow/slippage.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/slippage.js",
+      "category": "svg-academy",
+      "sha256": "8714a40b7dbd4ce24c3d06b44920619db6228b03d3d4d65cb8e19a33ca5f031f"
+    },
+    {
+      "path": "public/orderflow/stop-orders-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/stop-orders-model.js",
+      "category": "svg-academy",
+      "sha256": "36a0fc0ebd0de28157666eb754ddc6379ac083e510cf309e535f1689808c7158"
+    },
+    {
+      "path": "public/orderflow/stop-orders-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/stop-orders-script.js",
+      "category": "svg-academy",
+      "sha256": "f9f95e570ab8928c2ef88a18b8253e5aa32fca146e607378c85370c780557487"
+    },
+    {
+      "path": "public/orderflow/stop-orders-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/stop-orders-view.js",
+      "category": "svg-academy",
+      "sha256": "b0423894c0f6b890eabfffe19e04037940b1b32b9f442b6e68a7beec728181aa"
+    },
+    {
+      "path": "public/orderflow/stop-orders.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/stop-orders.js",
+      "category": "svg-academy",
+      "sha256": "cb8db1d3963eb70b12af427cd89e8431bf07c1ac5d2ab60b3ba442925b6b5726"
+    },
+    {
+      "path": "public/orderflow/story-player.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/story-player.js",
+      "category": "svg-academy",
+      "sha256": "6d5b2d7571a5eaf9c522fbf7065696857de03aeb6a8ee1f47a4ddcdc458c20ee"
+    },
+    {
+      "path": "public/orderflow/volume-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume-model.js",
+      "category": "svg-academy",
+      "sha256": "97a8270fb074faab4ac7901f7d2bbcc779c09e7ab2dd06e6e400eb104cbe600c"
+    },
+    {
+      "path": "public/orderflow/volume-profile-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume-profile-model.js",
+      "category": "svg-academy",
+      "sha256": "6cd0d7ad32d77d30f059703809bd3754776ff0192f880a7bf9a275dde2788607"
+    },
+    {
+      "path": "public/orderflow/volume-profile-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume-profile-script.js",
+      "category": "svg-academy",
+      "sha256": "2ae335280cc7573031a31400b879b2eecb58d9aa6a2522beb9c8c50af06d7595"
+    },
+    {
+      "path": "public/orderflow/volume-profile-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume-profile-view.js",
+      "category": "svg-academy",
+      "sha256": "fb27bbeecf6de2c78a64c8ef13c616a469c5233299784b441175e139d8516df7"
+    },
+    {
+      "path": "public/orderflow/volume-profile.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume-profile.js",
+      "category": "svg-academy",
+      "sha256": "41c3ff88a7feabd7e8b6e672279e3c7090a86da7e3020f0e89a72c9461f43bcb"
+    },
+    {
+      "path": "public/orderflow/volume-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume-script.js",
+      "category": "svg-academy",
+      "sha256": "edb2a0db693f95449168f4b8ed311e63c2ffca1b803975f660970db63f66abf0"
+    },
+    {
+      "path": "public/orderflow/volume-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume-view.js",
+      "category": "svg-academy",
+      "sha256": "576404efdd4ddfe7f8d3b5e9d567f870e333cc51789b4d613f776258fbaf8c25"
+    },
+    {
+      "path": "public/orderflow/volume.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume.js",
+      "category": "svg-academy",
+      "sha256": "eef7c95d479d4afea9cae0ed137e58440b513b760edcf7c3d7487a8969f4ba02"
+    },
+    {
+      "path": "public/orderflow/wick-desktop-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/wick-desktop-script.js",
+      "category": "svg-academy",
+      "sha256": "02b371c928e600a00a461e2caf93f463e56553157ac095c5ac29f68bca5e904b"
+    },
+    {
+      "path": "public/orderflow/wick-desktop-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/wick-desktop-view.js",
+      "category": "svg-academy",
+      "sha256": "3cc076e89c4e8dcf76c9a02ae6d65395cb8bb84c84eb1259ee74e09de0f4d7e2"
+    },
+    {
+      "path": "public/orderflow/wick-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/wick-model.js",
+      "category": "svg-academy",
+      "sha256": "072e42f0f27fd8c22636206b561d636edcfe9c673b3293c7681674ca0f5d4622"
+    },
+    {
+      "path": "public/orderflow/wick-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/wick-script.js",
+      "category": "svg-academy",
+      "sha256": "7ef602e1a9f68d7c836aa068d9299e70a1593db5b076505ed103a5a50774cad5"
+    },
+    {
+      "path": "public/orderflow/wick-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/wick-view.js",
+      "category": "svg-academy",
+      "sha256": "3918722b78f2e849d9144e25abddcf9612e450ff3eb8bb5df750fadb600d8ce7"
+    },
+    {
+      "path": "public/orderflow/wick.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/wick.css",
+      "category": "svg-academy",
+      "sha256": "91fc6094a631345db0b75f8161d78f30c9b48a69949f8df8f9c0eab6378b2e11"
+    },
+    {
+      "path": "public/orderflow/wick.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/wick.js",
+      "category": "svg-academy",
+      "sha256": "66327e2dd736d60d63872fdf949dc110fc7fbc3c60a6d60a8266233fee57e90d"
+    },
+    {
+      "path": "public/orderflow/withdrawal-model.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/withdrawal-model.js",
+      "category": "svg-academy",
+      "sha256": "c981f41adcc63c78e1adc05697d75052d7f62068c9c7ab198e02c1c73a57960d"
+    },
+    {
+      "path": "public/orderflow/withdrawal-script.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/withdrawal-script.js",
+      "category": "svg-academy",
+      "sha256": "884b67b57ba7c87ce6c2417b8027c52896a1bb877184c552a858fb8b1e9ac6cb"
+    },
+    {
+      "path": "public/orderflow/withdrawal-view.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/withdrawal-view.js",
+      "category": "svg-academy",
+      "sha256": "621105a6d66af169c3047ff996d49a85201d029fa9d5b3ffe377f0e41b072e97"
+    },
+    {
+      "path": "public/orderflow/withdrawal.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/withdrawal.js",
+      "category": "svg-academy",
+      "sha256": "55a299fb7933babbd1824c7f2e4d08c14caf1eec6283ad16fd1366db16cbb09d"
+    },
+    {
+      "path": "public/quant-heatmap.js",
+      "archive": "archive/2026-09-29/main/public/quant-heatmap.js",
+      "category": "quant-research",
+      "sha256": "80e5b8d6f572f86d96f09db985dc094eac36679e947c2b0df0bc66504136c286"
+    },
+    {
+      "path": "public/quant.css",
+      "archive": "archive/2026-09-29/main/public/quant.css",
+      "category": "quant-research",
+      "sha256": "1eba1d0306214d517137190f6c0f13df002fb19b80976b442f4b670ff0179353"
+    },
+    {
+      "path": "public/quant.html",
+      "archive": "archive/2026-09-29/main/public/quant.html",
+      "category": "quant-research",
+      "sha256": "d6d8af676265f4d6aae449df5a8cee5c0956e11c3083ed984ec90b64d94aa13b"
+    },
+    {
+      "path": "public/quant.js",
+      "archive": "archive/2026-09-29/main/public/quant.js",
+      "category": "quant-research",
+      "sha256": "751b835beef33b16d289732816e6aeb33412396b8a5f11a19bd38a5474347bf0"
+    },
+    {
+      "path": "quant/collector.ts",
+      "archive": "archive/2026-09-29/main/quant/collector.ts",
+      "category": "quant-research",
+      "sha256": "cb3deaae70032a99bcb129fac9617bf1b1c24b35e9c598f74ec978c36813161c"
+    },
+    {
+      "path": "quant/demo.ts",
+      "archive": "archive/2026-09-29/main/quant/demo.ts",
+      "category": "quant-research",
+      "sha256": "9c24b05a117693a10ddb8d3187b4f49b74b2442f1125368983763b6535851e7e"
+    },
+    {
+      "path": "quant/engine.test.ts",
+      "archive": "archive/2026-09-29/main/quant/engine.test.ts",
+      "category": "quant-research",
+      "sha256": "3e38e8d52d429bab47251e128221f080bfbc81a5e1224677bcd40c44061929db"
+    },
+    {
+      "path": "quant/engine.ts",
+      "archive": "archive/2026-09-29/main/quant/engine.ts",
+      "category": "quant-research",
+      "sha256": "d1d08731a3d1b86946950273c8473d94ccf59d8954cd252861f60f2baa391e80"
+    },
+    {
+      "path": "quant/liquidity.test.ts",
+      "archive": "archive/2026-09-29/main/quant/liquidity.test.ts",
+      "category": "quant-research",
+      "sha256": "665d4c38f77e5b4673a1fc6c110bdacdd6a4dcd6405159602fa28f97d7940ec7"
+    },
+    {
+      "path": "quant/liquidity.ts",
+      "archive": "archive/2026-09-29/main/quant/liquidity.ts",
+      "category": "quant-research",
+      "sha256": "e83643ae73156a4bc0a742cce004207224a55ebf200743b3c122c15975a05f31"
+    },
+    {
+      "path": "quant/market.ts",
+      "archive": "archive/2026-09-29/main/quant/market.ts",
+      "category": "quant-research",
+      "sha256": "f8b431e7a9a128bce2ccaaefe611f2f4e4aa96b467a9839d087078e29e4a5dcd"
+    },
+    {
+      "path": "quant/model-input.ts",
+      "archive": "archive/2026-09-29/main/quant/model-input.ts",
+      "category": "quant-research",
+      "sha256": "0f5d971385cbee693aa5f2635521a8e5b7c19f61c8364a48595b2f81b32eee31"
+    },
+    {
+      "path": "quant/recording-replay.ts",
+      "archive": "archive/2026-09-29/main/quant/recording-replay.ts",
+      "category": "quant-research",
+      "sha256": "147621919c629006592cbad27b2f57f48043565b9cc6839d0a687e7aeee74dd0"
+    },
+    {
+      "path": "quant/recording-state.ts",
+      "archive": "archive/2026-09-29/main/quant/recording-state.ts",
+      "category": "quant-research",
+      "sha256": "43fceeb705fe5aa7556423dc104e102ab428dd084088bcf7d8232b0e4c1c4705"
+    },
+    {
+      "path": "quant/recording.test.ts",
+      "archive": "archive/2026-09-29/main/quant/recording.test.ts",
+      "category": "quant-research",
+      "sha256": "df66d7cac24987fbd392570151cf7f9c6043c5c31052bbb6cb1ca36cc253bbb9"
+    },
+    {
+      "path": "quant/recording.ts",
+      "archive": "archive/2026-09-29/main/quant/recording.ts",
+      "category": "quant-research",
+      "sha256": "b6fbe7c26d5f948f7f3d711554e01d2e143d501f94db40b59f80e3ecdfaee274"
+    },
+    {
+      "path": "quant/replay.ts",
+      "archive": "archive/2026-09-29/main/quant/replay.ts",
+      "category": "quant-research",
+      "sha256": "fc0276a5d0f94e2f962732beb4eb6c4918bba9d7d7603eec51edb9693b10ef07"
+    },
+    {
+      "path": "quant/server.ts",
+      "archive": "archive/2026-09-29/main/quant/server.ts",
+      "category": "quant-research",
+      "sha256": "3f3df1f84d2dfc34cf370322f4df6ee413268a868a6090a097b703f88d329f98"
+    },
+    {
+      "path": "quant/store.ts",
+      "archive": "archive/2026-09-29/main/quant/store.ts",
+      "category": "quant-research",
+      "sha256": "8de7810f3b27aa17f5af78f40aaa0c3bad53dfd871a38ea8e5eb1490251a9004"
+    },
+    {
+      "path": "quant/tsconfig.json",
+      "archive": "archive/2026-09-29/main/quant/tsconfig.json",
+      "category": "quant-research",
+      "sha256": "6f420bb03210aa07ba6c8ae72c29bf1458a60587dde17b0265d712d611112df4"
+    },
+    {
+      "path": "quant/types.ts",
+      "archive": "archive/2026-09-29/main/quant/types.ts",
+      "category": "quant-research",
+      "sha256": "913c5e692878707352edcd84a9eb2f3b064a7c1769ab7dfb167a3e6be04eca1f"
+    },
+    {
+      "path": "requirements.txt",
+      "archive": "archive/2026-09-29/main/requirements.txt",
+      "category": "python-bot",
+      "sha256": "3d93a17d0f1928c649bc0c15edbfb8363d55f421d3f1f43d171faa0e5fb850c4"
+    },
+    {
+      "path": "tests/orderflow-absorption-story.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-absorption-story.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "66bc26a06f2d6bbea68fb16df21f44bfab268b13198a466cc102011d9bce47fc"
+    },
+    {
+      "path": "tests/orderflow-absorption-view.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-absorption-view.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "32db15bd460ef207d287f32c1588824a1ba0e4f2cb855f20f919a03f293a5dcd"
+    },
+    {
+      "path": "tests/orderflow-absorption.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-absorption.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "4b2b58c95bb9142e9327823e84f0bf96ae6b4f5a665320185305017c3b6757e0"
+    },
+    {
+      "path": "tests/orderflow-bear.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-bear.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "21f7c11daf2f4f878aa03788cc4fb0f4243a82c726162cfdcbf897263b7eb9b8"
+    },
+    {
+      "path": "tests/orderflow-breakout-volume-view.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-breakout-volume-view.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "1beb70f35858f06e4d058236b385da6e3d17e72e4a5ae0b2bff6607ea12ed00b"
+    },
+    {
+      "path": "tests/orderflow-breakout-volume.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-breakout-volume.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "acdbaf60bbf950e2fec00b1b0aa5ef9a1caba731b44942ad847252fc53988bc8"
+    },
+    {
+      "path": "tests/orderflow-breakout.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-breakout.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "b497a246fd08190a28820401d05fa3193304274f822691488e47b411c1389602"
+    },
+    {
+      "path": "tests/orderflow-delta-concept.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-delta-concept.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "0b40885833ff52dac587685d8ed7d508299eb7dcb46ecbfaafee66ea3a87ff01"
+    },
+    {
+      "path": "tests/orderflow-delta.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-delta.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "82c995b64d3270486e94bcd009ca8b9f4cac66b9bc2b898d701ff0c7503233f1"
+    },
+    {
+      "path": "tests/orderflow-footprint.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-footprint.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "de5729c8831775c62ca15a3c3dde15a309fd2ac306f3125d77ef4766c443f9be"
+    },
+    {
+      "path": "tests/orderflow-foundation.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-foundation.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "c3106b563f73a04a78a1dd2df00bd6396c5bb9df544ab627f37f64b035b33254"
+    },
+    {
+      "path": "tests/orderflow-funding.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-funding.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "6388e495becf65dd089b2116763fe1229b849fa87fa17438203d6551619843cd"
+    },
+    {
+      "path": "tests/orderflow-guided.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-guided.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "ba4c4adf2ed29fc24a7750eeec76f1abf0c00ac661bce2d2be6e2107b168c573"
+    },
+    {
+      "path": "tests/orderflow-heatmap.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-heatmap.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "746bba856900a4f03428ee920d3af1558582c8233ec1415c31b95657d5b57d19"
+    },
+    {
+      "path": "tests/orderflow-imbalance.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-imbalance.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "e27132fe889dcc004a1430a553aabf92f0f8ef7b6ad27d05f342e560fdf4db6b"
+    },
+    {
+      "path": "tests/orderflow-journey.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-journey.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "2a6e3c0cb7e5ba9df0cba3546e93f3a4ba90f42c6ab68fe6655cdb0f7860bb50"
+    },
+    {
+      "path": "tests/orderflow-leverage.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-leverage.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "c446a42046ef1d9039a055d1c9d3f8f7a52b6c9a950ff777a286ec87289314df"
+    },
+    {
+      "path": "tests/orderflow-liquidation.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-liquidation.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "d55e76c0bae616ba8e9876412e915275027a011c91c7819a1a1fab8822e92f5b"
+    },
+    {
+      "path": "tests/orderflow-mark-price.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-mark-price.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "b04be69893c61d8d6641dc51757de1a6dd6d57eee2276d9f1155d45a9bf7e6c3"
+    },
+    {
+      "path": "tests/orderflow-mobile.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-mobile.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "2a8b05cd8a9ac6a79d2ad74f63b291c821f6e5b77ca552c16bd838e56eba22f1"
+    },
+    {
+      "path": "tests/orderflow-open-interest.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-open-interest.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "dddd42309f3ae5a3bf5a17e5d012b8085181162c49c74b0907b37c3d24824466"
+    },
+    {
+      "path": "tests/orderflow-order-block.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-order-block.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "46e0e793cd627a0b0401479db897b3d820fe745c7851b41a82c2b364c5a44427"
+    },
+    {
+      "path": "tests/orderflow-order-types.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-order-types.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "5e9d82017bd44639780e08f39a47fe582e2b5246a62516ff92a9cc27741325e5"
+    },
+    {
+      "path": "tests/orderflow-player.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-player.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "bfcbb3dd11c646b78ebcff4eef9b48467195c23a814e9fd111fe651d04c798dc"
+    },
+    {
+      "path": "tests/orderflow-primer.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-primer.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "d895390b684067a408a6471b9754824cd28ecf0bc2ee8d6f3743c2f627767bce"
+    },
+    {
+      "path": "tests/orderflow-revisit.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-revisit.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "5e50302c5ac02c97393b671e9e30a5520b8a9329ca61513c7bfa8bb0b1d7915f"
+    },
+    {
+      "path": "tests/orderflow-slippage.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-slippage.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "529d38a09df6ef66e77dd9202d3f2353ab7cd5fd1b38b9813ecd90ba74cfe66c"
+    },
+    {
+      "path": "tests/orderflow-stop-orders.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-stop-orders.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "77f018295eb43dc00db5b20e4121596aa4bd8ff6e387c7cbad9539e352c0df27"
+    },
+    {
+      "path": "tests/orderflow-volume-profile.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-volume-profile.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "22c2a2297b313588385dde7091aa61e0f440aea5098ce084847c2dd2c1444adf"
+    },
+    {
+      "path": "tests/orderflow-volume.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-volume.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "7f047eb55b5ac4fa9cdc4bbe1b11847a94adb4e8560bff03c17d86aaa19f90ff"
+    },
+    {
+      "path": "tests/orderflow-wick-desktop.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-wick-desktop.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "4838625f9d594da76c10fa5e39a823d0771f263e3291f32ca6bafba07a8400ee"
+    },
+    {
+      "path": "tests/orderflow-wick.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-wick.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "6ad0002e7d01b7b4d07d81787a80fb8c2c2dee01a4433cee0604f092005af750"
+    },
+    {
+      "path": "tests/orderflow-withdrawal.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow-withdrawal.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "82ef318ab691a8be8d1887e9003a7ee17f04a67b97e9e4ecc57c3370f8f747e2"
+    },
+    {
+      "path": "tests/orderflow.test.mjs",
+      "archive": "archive/2026-09-29/main/tests/orderflow.test.mjs",
+      "category": "svg-academy-tests",
+      "sha256": "bbc272d55f9fa97c0b8dac963521ad1f7cdc1b1f0c9f25a75f14f583dfa37bdc"
+    },
+    {
+      "path": "zbpack.json",
+      "archive": "archive/2026-09-29/main/zbpack.json",
+      "category": "python-bot",
+      "sha256": "c42b573369940d8107469d05fe1d8c25dda5dae1976a9dc2f7729c95fce8da85"
+    }
+  ],
+  "snapshots": [
+    {
+      "path": "docs/EXCHANGE-SANDBOX.md",
+      "archive": "archive/2026-09-29/flow-arena/docs/EXCHANGE-SANDBOX.md",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "bf91b312a2d6ef1ab30711c70dcc69a898704ac474a4de561cbb14e943d110ce"
+    },
+    {
+      "path": "docs/LIQUIDITY-LAB.md",
+      "archive": "experiments/liquidity/docs/LIQUIDITY-LAB.md",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "93a7de87b205dd9347eea281b8652e03e1e43980142c200723177c31db97d863"
+    },
+    {
+      "path": "public/orderflow/exchange-chart-data.js",
+      "archive": "archive/2026-09-29/flow-arena/public/orderflow/exchange-chart-data.js",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "42b5f4f64e2a3bf4f302584ebe18698ff5b76609bc6a3e70c3aaac808f7c28d9"
+    },
+    {
+      "path": "public/orderflow/exchange-chart.js",
+      "archive": "archive/2026-09-29/flow-arena/public/orderflow/exchange-chart.js",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "8ce2d010ba4151d163dc05a839ec44348037a335bb290a5009394f61e654cef1"
+    },
+    {
+      "path": "public/orderflow/exchange-engine.js",
+      "archive": "archive/2026-09-29/flow-arena/public/orderflow/exchange-engine.js",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "04e8f53c902d3a7a59c5528ad6e771f62f39f6af83239c2aedfecce2265e59e9"
+    },
+    {
+      "path": "public/orderflow/exchange-market.js",
+      "archive": "archive/2026-09-29/flow-arena/public/orderflow/exchange-market.js",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "cb3c42e67705325b345b275d9474f2ff295bdbc976f1bb1b283b01f051b951b8"
+    },
+    {
+      "path": "public/orderflow/exchange-session.js",
+      "archive": "archive/2026-09-29/flow-arena/public/orderflow/exchange-session.js",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "3a855b36644bd2e71dcfb7284700006a74610900e30b01e07e4630c6c995e3ba"
+    },
+    {
+      "path": "public/orderflow/exchange-storage.js",
+      "archive": "archive/2026-09-29/flow-arena/public/orderflow/exchange-storage.js",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "2d22f1c94b8ea68cdac38773b60b2be984ebe4b19ed54bf5729d27683dded608"
+    },
+    {
+      "path": "public/orderflow/exchange.css",
+      "archive": "archive/2026-09-29/flow-arena/public/orderflow/exchange.css",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "02bcba97bd176a28d458006a3c800cc21ebfa0a73e35fc2a75512e1149620b5a"
+    },
+    {
+      "path": "public/orderflow/exchange.html",
+      "archive": "archive/2026-09-29/flow-arena/public/orderflow/exchange.html",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "db3fcdaddc9e3a817b3d87e71233d4b9083619a373d2d6dd0b5e9fa8655cbd11"
+    },
+    {
+      "path": "public/orderflow/exchange.js",
+      "archive": "archive/2026-09-29/flow-arena/public/orderflow/exchange.js",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "df7a9f6cb564e48b3ed074c34f823a91686051d63597c04dcee6b5a80242938b"
+    },
+    {
+      "path": "public/orderflow/liquidity-lab-engine.js",
+      "archive": "experiments/liquidity/public/orderflow/liquidity-lab-engine.js",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "b458fc9e08452a5a7b50776135dd47836e4b9015c686cacfdf3dd7d38262d32d"
+    },
+    {
+      "path": "public/orderflow/liquidity-lab.css",
+      "archive": "experiments/liquidity/public/orderflow/liquidity-lab.css",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "7d3ff16bbbb3f51649c15fe9c7530073aa68c51944516621bd77602d179b7bba"
+    },
+    {
+      "path": "public/orderflow/liquidity-lab.html",
+      "archive": "experiments/liquidity/public/orderflow/liquidity-lab.html",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "7e425091a40eed563d3ad55d627591c84968ee7a62594d6ca95fb6a217a2e96d"
+    },
+    {
+      "path": "public/orderflow/liquidity-lab.js",
+      "archive": "experiments/liquidity/public/orderflow/liquidity-lab.js",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "c67049a5095e4f00f04d7ffe4a749b8a93d1eb9da5a56fbbe3d7b0ad00fa2f57"
+    },
+    {
+      "path": "public/orderflow/taker-compare.css",
+      "archive": "experiments/liquidity/public/orderflow/taker-compare.css",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "6dd59f8b2a2e178bf257f397a7cd4267d5697e078dfd4fd0dc095c2ab4e03c6f"
+    },
+    {
+      "path": "public/orderflow/taker-compare.html",
+      "archive": "experiments/liquidity/public/orderflow/taker-compare.html",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "f0bba0c517a1e7bc0cafdbe99930b44eceb9f661fa74499003513c7fa15dd7cb"
+    },
+    {
+      "path": "public/orderflow/taker-compare.js",
+      "archive": "experiments/liquidity/public/orderflow/taker-compare.js",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "debf8450309a74714dfabddc06f1133cafb43ce37edf859923a56ef5381262d5"
+    },
+    {
+      "path": "public/orderflow/taker-only-engine.js",
+      "archive": "experiments/liquidity/public/orderflow/taker-only-engine.js",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "9f6e2a6fedc14a219fa1d8b95140aa3725f0d9da7ce2645dfca46ce076f5dca4"
+    },
+    {
+      "path": "public/orderflow/taker-only.css",
+      "archive": "experiments/liquidity/public/orderflow/taker-only.css",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "c1b30c7a37c47e73bf25cf00fb47232eab914df1f6ac897a1370e2d4c2c9772f"
+    },
+    {
+      "path": "public/orderflow/taker-only.html",
+      "archive": "experiments/liquidity/public/orderflow/taker-only.html",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "23507324e5da6a3cca3f687c7a67ea22f967691ee06023259b5c6d158f62dcd2"
+    },
+    {
+      "path": "public/orderflow/taker-only.js",
+      "archive": "experiments/liquidity/public/orderflow/taker-only.js",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "7d5a074f7ca0058948c9584621e2d450e5dbc31f536516b1b0b3879c5784b448"
+    },
+    {
+      "path": "tests/exchange.test.mjs",
+      "archive": "archive/2026-09-29/flow-arena/tests/exchange.test.mjs",
+      "category": "exchange-sandbox",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "5088b03f9fe134a2e87e8627adce95bda64c18c330022cca2c83abd191a067cb"
+    },
+    {
+      "path": "tests/liquidity-lab.test.mjs",
+      "archive": "experiments/liquidity/tests/liquidity-lab.test.mjs",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "856b1e3bd46191351542503ac507f22e4efe196729cd1bd57549bc65694ab37b"
+    },
+    {
+      "path": "tests/taker-only.test.mjs",
+      "archive": "experiments/liquidity/tests/taker-only.test.mjs",
+      "category": "paused-liquidity",
+      "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+      "sha256": "8220bc984eafd9df1df65bb0489313cb11cfbd2fef2ad5791d07333e166f0cfb"
+    },
+    {
+      "path": "README.md",
+      "archive": "archive/2026-09-29/main/README.md",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "99d857f9d7c3f7a428df12337158efd0dac184493db28290a29196da5383024b"
+    },
+    {
+      "path": "docs/ACADEMY-CURRICULUM.md",
+      "archive": "archive/2026-09-29/main/docs/ACADEMY-CURRICULUM.md",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "c1a87c213b1c97efd95167f002f81b566eedbff384f86e8c0200d2e0d3b823bf"
+    },
+    {
+      "path": "docs/ACADEMY-HANDOFF.md",
+      "archive": "archive/2026-09-29/main/docs/ACADEMY-HANDOFF.md",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "0b6c599cfd884ec246fb4e60f1068c51712fb7154957c8c5e22bb819e47ed507"
+    },
+    {
+      "path": "package.json",
+      "archive": "archive/2026-09-29/main/package.json",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "4b1131e24a80507c6611d4a90fe2fa0cd78208d9489c3ba64eb441c17432d71e"
+    },
+    {
+      "path": "public/orderflow/absorption-story.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/absorption-story.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "52694a10fe7b0a0b3d7939565e4a21a73ea6d2da1daa52cf3f7559db89325648"
+    },
+    {
+      "path": "public/orderflow/absorption.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/absorption.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "dd1ed05bf2763895ab9a26f65afc88f01e4b1bdd2181d90d22c22afaa9204cea"
+    },
+    {
+      "path": "public/orderflow/academy-entry.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/academy-entry.js",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "86aa3bca81fffa9fd55bf3b31ad47338835965b876484dff9a749c632e7055e4"
+    },
+    {
+      "path": "public/orderflow/academy-map-render.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/academy-map-render.js",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "a39555d51f7b05f72ff25f26c7592d4dede2f0b81cd7303e49f25c8e4c4b7a59"
+    },
+    {
+      "path": "public/orderflow/academy-map.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/academy-map.css",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "2c47b0aa99c29328c503292b179c2fa4b60eb794f3d3f235bdfc0b612a853ddf"
+    },
+    {
+      "path": "public/orderflow/academy-map.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/academy-map.js",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "866f3b412b97c59ea8c618c74a8ee8e25d71f99732fb827df7b1ee0b40af53d1"
+    },
+    {
+      "path": "public/orderflow/academy-mobile.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/academy-mobile.css",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "9cd8b261f05f728e6c18e3a7a05e3aea14add0ea8ac92f49fce0834335e6f3e6"
+    },
+    {
+      "path": "public/orderflow/academy-navigation.css",
+      "archive": "archive/2026-09-29/main/public/orderflow/academy-navigation.css",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "4052bb9ed101bc20e7abcbbab7b80e75c58f922fb3afcc3f43e323e99d761574"
+    },
+    {
+      "path": "public/orderflow/academy-navigation.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/academy-navigation.js",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "ddfc81acc79d4612b234da8f15d5b6d42b3df5defce5373a384e35c03e23db16"
+    },
+    {
+      "path": "public/orderflow/academy-posters.js",
+      "archive": "archive/2026-09-29/main/public/orderflow/academy-posters.js",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "2b24627ac0a1d023327556e1228655d03601373733ce6437ecaf5a4dd0bd11e6"
+    },
+    {
+      "path": "public/orderflow/accumulation.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/accumulation.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "d62f5f556afd5c8e47e60c610f4e09bdf1eebe7631a085693b600b5f4c26125d"
+    },
+    {
+      "path": "public/orderflow/breakout-volume.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout-volume.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "4cbdbe68eb5bd103c9aa1d326b624fe5d9f5b929a62f64c6f3ce1e62fa8caf2a"
+    },
+    {
+      "path": "public/orderflow/breakout.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/breakout.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "6fbcda9a9ad93fb3235593c141aab2aab025e12e79e990698133173b4f6d8b19"
+    },
+    {
+      "path": "public/orderflow/btc-wall.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/btc-wall.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "f47fe1ae94339d455b66e7cdbdda0b16972a0b657a28fefb40a6d7b95c86871a"
+    },
+    {
+      "path": "public/orderflow/candles.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/candles.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "caeb99b99f5154ef3f2bc51a1da484db88eaa416a97d237a4679373cc61e327d"
+    },
+    {
+      "path": "public/orderflow/classic.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/classic.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "e415ab704759f3775a251ecf354a774ae2b53391c7f4770e939db525c0e05a9e"
+    },
+    {
+      "path": "public/orderflow/courses.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/courses.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "7c015a8324eee685134bf612a5b3754b2017478d2ebee29f21bd0ee80accdc88"
+    },
+    {
+      "path": "public/orderflow/delta-concept.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/delta-concept.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "cf94ac85fad86f63334c8a8201ec420dca652926d47f3596ea2a5539f2d2d301"
+    },
+    {
+      "path": "public/orderflow/delta.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/delta.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "d62f5f556afd5c8e47e60c610f4e09bdf1eebe7631a085693b600b5f4c26125d"
+    },
+    {
+      "path": "public/orderflow/footprint.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/footprint.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "6c2ef4c9f0405aaf8210ed7b83f00c303089841855b7a0f6e462a634b3b43449"
+    },
+    {
+      "path": "public/orderflow/funding.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/funding.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "34d4ec2e5c6c06f92582d86e8d11ae386fadf8d476b9beddcf8813e16a3998dd"
+    },
+    {
+      "path": "public/orderflow/heatmap.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/heatmap.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "3de1ebdb279d9c0289d9d00f7072f90e690d7a26070e9168c2548fc77b468224"
+    },
+    {
+      "path": "public/orderflow/imbalance.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/imbalance.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "7ab4605a462a0710133e03f95982b7622d41afb0fa0fd53d7015e42268370b02"
+    },
+    {
+      "path": "public/orderflow/index.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/index.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "1d0cebadbe60c2da746f0a2a53ab89ff92de6a696681b0f2ff84d9037b970354"
+    },
+    {
+      "path": "public/orderflow/journey.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/journey.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "b551833dba0abc2e6c570df7b2a3c87917f064e919f749f85c17ff3d5bfe5cc2"
+    },
+    {
+      "path": "public/orderflow/leverage.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/leverage.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "9299e339b346ed83e0fab7f237185933ab1c0ebfe16248204b029f04fcc60bdf"
+    },
+    {
+      "path": "public/orderflow/liquidation.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/liquidation.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "f9c2d9aea703d9b0d84fc41ce2cbec475be8fac7d77dcad885b300e286b7f4b1"
+    },
+    {
+      "path": "public/orderflow/mark-price.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/mark-price.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "d62f5f556afd5c8e47e60c610f4e09bdf1eebe7631a085693b600b5f4c26125d"
+    },
+    {
+      "path": "public/orderflow/matching.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/matching.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "24b10698ca5e092ab7e17724932a4351ba34206e54142a8144fa16a36b8288c4"
+    },
+    {
+      "path": "public/orderflow/open-interest.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/open-interest.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "74ca82418d930f96d4d7c5ababff73faae154d34c4701c4988335952028c8a63"
+    },
+    {
+      "path": "public/orderflow/order-block.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-block.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "29ecf25da1f82e4c518ca98538467d66578a942ddad7440e8db1bf1d847162ab"
+    },
+    {
+      "path": "public/orderflow/order-types.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/order-types.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "78e0a6a75f64487befdcec0038276577d66ea8fc6ea95fa0cc553a1b418acd2b"
+    },
+    {
+      "path": "public/orderflow/revisit.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/revisit.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "aca847fadb996264e0dbaf11ddc15e66b858c9811f75928b42ec6b349e21ce99"
+    },
+    {
+      "path": "public/orderflow/slippage.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/slippage.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "558f1d753db29947a449ed964ca52a3d38e1508ff5539573a7db3915dd6a915c"
+    },
+    {
+      "path": "public/orderflow/stop-orders.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/stop-orders.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "3943f62032e6ff45eb08e728e6dcefafce4b9e986e64f3c90be567358cbf3924"
+    },
+    {
+      "path": "public/orderflow/volume-profile.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume-profile.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "f42a182fe3ca040d8c6aaf0896020a922e39df32191c62d421de359f7e1f8440"
+    },
+    {
+      "path": "public/orderflow/volume.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/volume.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "7544ae5cc45d0f0289de0eb36a40d517516e68579905f1f7a5df8a9a381c3162"
+    },
+    {
+      "path": "public/orderflow/wick.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/wick.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "5f08235274ca49af96e5de2275a12da2c970c5fb2e577b923b1a3903037f1199"
+    },
+    {
+      "path": "public/orderflow/withdrawal.html",
+      "archive": "archive/2026-09-29/main/public/orderflow/withdrawal.html",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "6fbcda9a9ad93fb3235593c141aab2aab025e12e79e990698133173b4f6d8b19"
+    },
+    {
+      "path": "scripts/create-market-diagrams.mjs",
+      "archive": "archive/2026-09-29/main/scripts/create-market-diagrams.mjs",
+      "category": "frozen-test-and-document-context",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "7bf87cb3d46100bcd18b706eb2649464acdf79bf80adf7d0cc8ce93042cc2c29"
+    },
+    {
+      "path": "docs/ACADEMY-DESIGN-LANGUAGE.md",
+      "archive": "archive/2026-09-29/main/docs/ACADEMY-DESIGN-LANGUAGE.md",
+      "category": "historical-design-contract",
+      "sourceCommit": "a894a3c5ff56c47360ee7feee7b602675e50bf78",
+      "sha256": "4d7c91f8a399654a51ec1efa1eaa9df33bc4c2e465f712e56c40a267574e8cad"
+    }
+  ]
+}

@@ -2,6 +2,8 @@
 
 擷取日期：2026-09-14。官方原圖保留原樣；不是即時行情。
 
+2026-09-29 整理：oi-1.png、oi-2.png、cvd-1.png、oi-example.svg、cvd-example.svg 已移至 repository 的 archive/2026-09-29/main/public/guides/market/，不再隨網站發布。下列來源保留供追溯；目前示意圖產生器僅輸出 depth-example.svg。
+
 ## oi
 
 https://www.tradingview.com/support/solutions/43000685269-open-interest/

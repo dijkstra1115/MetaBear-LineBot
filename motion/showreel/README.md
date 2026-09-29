@@ -14,7 +14,7 @@
 | 62–76 s | 04 CVD              | 自 14:33:30 累計：+404 時價格卡在 101；跌到 97 時 CVD 仍為 +230         |
 | 76–86 s | 結尾                | 四章收攏成標誌、metabear.io/orderflow、合成行情免責說明                 |
 
-數字沿用各故事文件（`docs/BEGINNER-PROLOGUE.md`、`WICK-PROLOGUE.md`、`REVISIT-STORY.md`、`DELTA-STORY.md`），以 `bear-market.js` 的換算呈現為整數元與隻。影片為動態設計詮釋，節奏經過壓縮，不取代可回拖的互動課程。
+數字沿用 [早期故事文件](../../archive/2026-09-29/main/docs/BEGINNER-PROLOGUE.md) 及同目錄的 WICK-PROLOGUE、REVISIT-STORY、DELTA-STORY。舊 bear-market.js 已封存；Showreel 的場景自帶對應時間軸與數字，執行時使用現役 motion/core.js，不匯入舊 SVG 模型。影片為動態設計詮釋，節奏經過壓縮，不取代可回拖的互動課程。
 
 ## 使用
 
@@ -35,7 +35,7 @@ node motion/render.mjs showreel --from 30 --to 48   # 只渲染一段
 node motion/render.mjs showreel --fps 30 --crf 20   # 較快、較小的預覽檔
 ```
 
-學院 18 課已改用同一套動態設計語言，見 [動態影片課程](../../docs/ACADEMY-MOTION.md)。
+學院現有 19 課使用同一套動態設計語言，見 [動態影片課程](../../docs/ACADEMY-MOTION.md)。
 
 ## 結構
 

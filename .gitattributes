@@ -1,0 +1,3 @@
+# Preserve snapshot bytes across platforms so manifest SHA-256 stays valid.
+archive/** -text
+experiments/liquidity/** -text

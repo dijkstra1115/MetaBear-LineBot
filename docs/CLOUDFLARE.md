@@ -1,6 +1,6 @@
 # Cloudflare 架構與維護
 
-目前部署與登入資訊見 [STAGING.md](STAGING.md)。新版部署入口是 TypeScript Worker；Python／Zeabur 舊碼保留作參考。
+目前部署與登入資訊見 [STAGING.md](../archive/2026-09-29/main/docs/STAGING.md)。新版部署入口是 TypeScript Worker；Python／Zeabur 舊碼保留作參考。
 
 ## 架構
 

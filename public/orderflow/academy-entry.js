@@ -35,11 +35,7 @@ if (
   params.get("classic") === "1" ||
   (lesson && !stories[lesson])
 ) {
-  const target = new URL("./legacy/classic.html", location.href);
-  target.search = params.toString();
-  if (!params.has("workspace")) target.searchParams.set("classic", "1");
-  target.hash = location.hash;
-  location.replace(target.href);
+  location.replace("./courses.html");
 } else if (["delta", "cvd", "mark-price", "accumulation"].includes(lesson)) {
   location.replace("./courses.html");
 } else if (["breakout", "withdrawal"].includes(lesson)) {

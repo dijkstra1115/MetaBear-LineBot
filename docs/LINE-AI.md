@@ -43,7 +43,7 @@ npx tsx scripts/test-openai.ts
 
 本機可填在 `.dev.vars` 的 `LINE_CHANNEL_SECRET` 與 `LINE_CHANNEL_ACCESS_TOKEN`；Cloudflare 正式服務使用 Workers Secrets。部署步驟見 [Cloudflare 部署](CLOUDFLARE.md)。
 
-目前測試環境已啟用並通過 LINE 官方 webhook 驗證，詳情見 [測試環境](STAGING.md)：
+目前測試環境已啟用並通過 LINE 官方 webhook 驗證，詳情見 [測試環境](../archive/2026-09-29/main/docs/STAGING.md)：
 
 ```text
 https://metabear-line-crm-staging.style78432.workers.dev/webhook/line

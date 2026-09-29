@@ -36,18 +36,12 @@
 - 分清畫面直接顯示的事、模擬中已知設定、外部行情無法推知的意圖。不得由 K 線直接認定莊家在出貨或吸籌。
 - MetaBear 熊、元、隻為明示的合成教材。涉及合約風險時可以用「教學用線性合約」固定簡化條件；明確標出初始保證金、部位、維持保證金、費用假設。不要把某個假設百分比當真實平台通則。
 - 限價可能立即成交、部分成交或等待；市價不保證某個價格。滑價與手續費分開。新增／撤單本身不改最後成交價。
-- 以純函式從 playhead 重建資料與畫面。可共用 `engine.js`，但不要修改其規則。不要匯入另一課的模型作為新課模型。
+- 以純函式從 playhead 重建資料與畫面。共用現役 motion/core.js 與 kit.js；舊 SVG engine.js 已封存。
 
-## 本批分工邊界
+## 現行實作契約（2026-09-29）
 
-各 Agent 只建立自己被指派的課程檔案、測試與課程卡；不修改共用播放器、CSS、導覽、入口、首頁、README 或其他課程。主 Agent 統一整合這些檔案與視覺驗收。
+課程動畫位於 public/orderflow/motion/lessons/<id>.js，匯出 lesson，使用共用 Canvas 核心與播放器。章節、字幕、音效與繪製函式依 [動態課程架構](ACADEMY-MOTION.md)；HTML 與課程導覽由建置腳本產生。
 
-每課交付：
+每課保留 docs/<NAME>-LESSON-PLAN.md，記錄來源、假設與驗收；課程內容有改動時更新有意義的時間軸／數量／幾何檢查。日常執行 npm run test:academy。
 
-1. `public/orderflow/<id>.html`、`<id>.js`、`<id>-model.js`、`<id>-view.js`、`<id>-script.js`。
-2. body 使用自己的 `data-chapter="<id>"`，並加 `data-lesson-style="compact"`。沿用 `wick.css`、`primer-desktop.css` 和 `story-player.js`。主 Agent 會接入共用樣式與生成導覽。
-3. `docs/<NAME>-LESSON-PLAN.md`：一句目標、簡短分鏡、資料／假設、來源、驗收。
-4. `tests/orderflow-<id>.test.mjs`：有意義的模型與邊界驗證、反向回拖、有限幾何；不為文案排列寫脆弱測試。
-5. 匯出 `SCENE_DURATIONS`、`SCENE_STARTS`、`TOTAL_DURATION` 與 `scenePosition`；`scenes` 與 `narrativeAt`；mountStory 設 `continuousDesktop:true`、`completionLabel:"本課完成"`。
-
-同一工作目錄共享修改。不要覆蓋他人工作；commit／部署由主 Agent 按本輪使用者授權統一執行。只有主 Agent 操作瀏覽器驗收，避免多個 Agent 爭用頁面。可執行自己的測試；Windows Node 若受沙盒 EPERM 限制，可申請工具層級執行本地檢查。
+早期五檔 SVG 架構、mountStory 與逐課 Agent 分工為歷史規則，已存於 [原設計文件](../archive/2026-09-29/main/docs/ACADEMY-DESIGN-LANGUAGE.md)，不再要求新課沿用。當前任務範圍以 [專案地圖](PROJECT-MAP.md) 及使用者最新指示為準。

@@ -1,6 +1,6 @@
 # 互動學院：動態影片課程（Motion）
 
-2026-09-28 更新。使用者看過學院 showreel 後，要求把學院全部課程改成同一種 motion graphic video 風格，並授權依製作需要重新規劃課程內容。原 18 課都是 `format: "motion"` 的動態影片課；舊的 SVG／`mountStory` 課程檔案仍留在 repo 作為來源，但不再被任何課程頁載入。同日新增第 19 課 `btc-wall`（市場故事 S05）。
+2026-09-29：現役 19 課均為 `format: "motion"` 的 Canvas 動態影片課，包含第 19 課 `btc-wall`（市場故事 S05）。舊 SVG／`mountStory` 課程原碼與測試已移到 `archive/2026-09-29/main/`，不再發布到網站。維護範圍見 [專案地圖](PROJECT-MAP.md)。
 
 ## 課程一覽
 
