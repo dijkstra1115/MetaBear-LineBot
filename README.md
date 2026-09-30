@@ -43,7 +43,7 @@ test:all 包含後端整合與現役課程、轉址、封存完整性檢查。�
 
 正式站 metabear.io 使用 env.production（Worker 歷史名稱為 metabear-line-crm-staging）。預覽站 preview.metabear.io 在 flow-arena 分支還有對戰後端；不要用 main 的純網站預覽設定覆蓋它。見 [部署文件](docs/DOMAIN-DEPLOYMENT.md)。
 
-Pages／Worker 拆分設定已準備，尚待 GitHub repository access 與正式網域切換。網站建置使用 `npm run build:pages`，後端正式建置只帶入後台資產。**初次切換完成前不要執行 `npm run deploy`**；Git 自動更新的完整設定與切換順序見 [Pages／Worker 部署](docs/PAGES-WORKER-SPLIT.md)。
+Pages／Worker 拆分設定已準備，GitHub main 已連接 Pages 自動部署，目前等待正式網域切換核准。網站建置使用 `npm run build:pages`，後端正式建置只帶入後台資產。**初次切換完成前不要執行 `npm run deploy`**；Git 自動更新的完整設定與切換順序見 [Pages／Worker 部署](docs/PAGES-WORKER-SPLIT.md)。
 
 ## 暫停與封存
 

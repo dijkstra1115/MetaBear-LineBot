@@ -27,7 +27,7 @@ const common = "default-src 'self'; script-src 'self'; style-src 'self'; img-src
 const analytics = common.replace("script-src 'self'", "script-src 'self' https://static.cloudflareinsights.com/beacon.min.js/").replace("connect-src 'self'", "connect-src 'self' https://cloudflareinsights.com");
 const academy = analytics.replace("connect-src 'self'", "connect-src 'self' wss://stream.bybit.com");
 const rules = [
-  "/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer",
+  "/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  X-MetaBear-Hosting: pages",
 ];
 const documents = ["/", "/index.html", "/learn", "/learn/", "/guide", "/guide.html", "/orderflow/", "/orderflow/index.html"];
 for (const entry of await readdir(new URL("orderflow/", output))) {

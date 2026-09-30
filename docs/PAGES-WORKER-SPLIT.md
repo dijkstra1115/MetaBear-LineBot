@@ -1,6 +1,8 @@
 # Pages 網站與 Worker 後端
 
-2026-09-30：程式與本機建置已拆分。**尚未建立正式 Pages Git 專案、push 或切換網域。** Cloudflare Pages 的 GitHub App 目前僅能存取 `id3a`；需先新增 `dijkstra1115/MetaBear-LineBot` 的儲存庫授權。
+2026-09-30：程式、本機建置與 GitHub Pages 自動部署已完成。GitHub App 已獲准存取 `dijkstra1115/MetaBear-LineBot`，Pages 專案 `metabear-site` 從 main 建置成功。後端 path routes 已加入原 Worker。**正式 DNS 切換與後端精簡版本發布尚未完成，等待正式 DNS 變更的明確核准。**
+
+Pages 網址：https://metabear-site.pages.dev 。第一次 Git 建置 commit：`db1b332`，deployment：`ef574e01-38de-47c8-bf30-a2922441774f`。切換前 Worker 版本：`206a81c2-d154-4aa0-8852-99e670ca56f3`。線上已驗證公開頁面、/learn query、課程 clean URL、私人頁面 404、靜態資產与旁白 206（32 bytes）。本機 103 個後端測試、19 個網站／課程測試及新增 Pages narration adapter 測試通過，TypeScript 與 Worker dry-run、Pages Function compile 通過。
 
 ## 分工
 
