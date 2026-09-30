@@ -90,7 +90,7 @@ test("preview cannot expose staff pages, APIs or LINE actions, including encoded
 
 test("analytics CSP is limited to production public HTML; private and preview pages stay restricted", async () => {
   const env = { ASSETS: assets } as Env;
-  for (const path of ["/", "/learn", "/orderflow/"]) {
+  for (const path of ["/", "/learn", "/orderflow/", "/orderflow/wick.html"]) {
     const response = await worker.fetch(
       new Request("https://metabear.io" + path),
       env,
@@ -99,7 +99,7 @@ test("analytics CSP is limited to production public HTML; private and preview pa
     const csp = response.headers.get("Content-Security-Policy")!;
     assert.match(
       csp,
-      /https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js/,
+      /https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js\/;/,
     );
     assert.match(csp, /https:\/\/cloudflareinsights\.com/);
     assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval/);

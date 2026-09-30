@@ -6,9 +6,12 @@ const publicDocuments = new Set([
 
 export function siteSecurityHeaders(path: string, origin: string): Headers {
   const productionAnalytics =
-    origin === "https://metabear.io" && publicDocuments.has(path);
+    origin === "https://metabear.io" &&
+    (publicDocuments.has(path) || /^\/orderflow\/[a-z0-9-]+\.html$/.test(path));
+  // Trailing slash: the beacon loads as /beacon.min.js/v<hash>, and a CSP path
+  // without one only matches that exact file.
   const scriptSources = productionAnalytics
-    ? "'self' https://static.cloudflareinsights.com/beacon.min.js"
+    ? "'self' https://static.cloudflareinsights.com/beacon.min.js/"
     : "'self'";
   const connections = ["'self'"];
   if (
