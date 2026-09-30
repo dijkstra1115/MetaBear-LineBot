@@ -40,13 +40,33 @@ createServer(async (req, res) => {
       return;
     }
     const body = await readFile(file);
-    res.writeHead(200, {
+    const headers = {
       "Content-Type": types[extname(file)] + "; charset=utf-8",
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
+      "Accept-Ranges": "bytes",
       "Content-Security-Policy":
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' wss://stream.bybit.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
-    });
+    };
+    // Byte ranges make lesson audio seekable, as it is in production;
+    // without them the player cannot move the soundtrack to the playhead.
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? "");
+    if (range) {
+      const size = body.length;
+      let start = range[1] === "" ? size - Number(range[2]) : Number(range[1]);
+      let end = range[1] === "" || range[2] === "" ? size - 1 : Number(range[2]);
+      start = Math.max(0, start);
+      end = Math.min(end, size - 1);
+      if (start > end) {
+        res.writeHead(416, { "Content-Range": `bytes */${size}` });
+        res.end();
+        return;
+      }
+      res.writeHead(206, { ...headers, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": end - start + 1 });
+      res.end(req.method === "HEAD" ? undefined : body.subarray(start, end + 1));
+      return;
+    }
+    res.writeHead(200, { ...headers, "Content-Length": body.length });
     res.end(req.method === "HEAD" ? undefined : body);
   } catch {
     res.writeHead(404);
