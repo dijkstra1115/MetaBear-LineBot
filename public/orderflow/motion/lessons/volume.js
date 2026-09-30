@@ -264,7 +264,7 @@ export const lesson = {
     legend(
       ctx,
       140,
-      150,
+      90,
       [
         { color: C.buy, label: "收 ≥ 開" },
         { color: C.sell, label: "收 < 開（柱色依設定，不等於主動買賣量）" },
