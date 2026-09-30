@@ -38,6 +38,7 @@ export const POSTER_T = {
   "breakout-volume": 26,
   "order-block": 31,
   "btc-wall": 30.5,
+  "failed-auction": 49.2,
 };
 export const posterTime = (lesson) => POSTER_T[lesson.id] ?? lesson.duration * 0.5;
 

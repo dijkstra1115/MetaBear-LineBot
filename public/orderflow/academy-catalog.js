@@ -277,7 +277,50 @@ export const courses = [
     href: "./btc-wall.html",
     prerequisites: ["order-block", "stop-orders", "open-interest"],
   },
+  {
+    id: "failed-auction",
+    number: "01",
+    kind: "strategy",
+    topic: "reading",
+    status: "new",
+    title: "掃過前低，收回才算數",
+    subtitle: "失敗拍賣：掃蕩、吸收、收回",
+    description:
+      "地點、事件、確認、執行：跌破前低後 OI 驟降、低點吸收、收回價值區，等回測進場；同一個跌破若被接受，就不做。",
+    duration: 77,
+    format: "motion",
+    href: "./failed-auction.html",
+    prerequisites: ["volume-profile", "stop-orders", "open-interest", "absorption-story"],
+  },
 ];
+
+/** Course kinds in map order: labels for cards, navigation and lesson pages. */
+export const kinds = {
+  concept: {
+    label: "名詞圖解",
+    code: "CONCEPT",
+    short: "C",
+    format: "動態圖解",
+    eyebrow: "01 / CONCEPTS",
+    blurb: "一次看懂一個名詞，隨時回來查。",
+  },
+  story: {
+    label: "市場故事",
+    code: "STORY",
+    short: "S",
+    format: "動態故事",
+    eyebrow: "02 / MARKET STORIES",
+    blurb: "帶著一個疑問，走進一段行情。",
+  },
+  strategy: {
+    label: "策略實戰",
+    code: "STRATEGY",
+    short: "T",
+    format: "動態策略",
+    eyebrow: "03 / STRATEGIES",
+    blurb: "把名詞串成一套流程：地點、事件、確認、執行。",
+  },
+};
 
 export const paths = [
   {

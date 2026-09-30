@@ -1,6 +1,6 @@
 # 互動學院：動態影片課程（Motion）
 
-2026-09-29：現役 19 課均為 `format: "motion"` 的 Canvas 動態影片課，包含第 19 課 `btc-wall`（市場故事 S05）。舊 SVG／`mountStory` 課程原碼與測試已移到 `archive/2026-09-29/main/`，不再發布到網站。維護範圍見 [專案地圖](PROJECT-MAP.md)。
+2026-09-30：現役 20 課均為 `format: "motion"` 的 Canvas 動態影片課，包含第 19 課 `btc-wall`（市場故事 S05）與第一堂策略實戰 `failed-auction`（T01）。舊 SVG／`mountStory` 課程原碼與測試已移到 `archive/2026-09-29/main/`，不再發布到網站。維護範圍見 [專案地圖](PROJECT-MAP.md)。
 
 ## 課程一覽
 
@@ -27,6 +27,9 @@
 | `breakout-volume`  | 放量突破，怎樣才算站穩？     | 38  | 十根完整行情 → 放量突破 → 回踩 104 → 掛買接住 240 隻 → 再推到 109                                     |
 | `order-block`      | 訂單塊到底長怎樣？           | 38  | 十一根完整行情 → A 先掛買承接 50 → 收跌還差 30 → 改主動買入 → 畫出 101–104 訂單塊                     |
 | `btc-wall`         | 一道賣牆，最後倒給了誰？     | 54  | 38 根同高 K → 賣牆吸收約 4,500 BTC → 擊穿、止損連鎖到 61,322 → 頂後 20 秒淨賣 → 賣在牆上方 → 回到牆下 |
+| `failed-auction`   | 掃過前低，收回才算數         | 77  | 全景 → 地點：停損在哪裡 → 事件：掃蕩 → 確認：誰贏了 → 執行：等回測 → 另一個結局 → 兩種結局          |
+
+策略實戰（`kind: "strategy"`）在故事課的鏡頭語言上多一條常駐「策略軌」（地點｜事件｜確認｜執行＋確認槽），證據卡從圖上飛向鏡頭再落進槽位；分類的標籤、代碼與說明集中在 `academy-catalog.js` 的 `kinds`。見 [失敗拍賣課程卡](FAILED-AUCTION-LESSON-PLAN.md)。
 
 `btc-wall` 是學院第一堂真實行情復盤（2026-07-02 BTC），單位用 BTC／U，畫面右上標示「REAL MARKET」（lesson 的 `dataLabel`）；其餘課程維持熊、元、隻的合成教材。見 [BTC 賣牆課程卡](BTC-WALL-LESSON-PLAN.md)。
 

@@ -161,7 +161,7 @@ if (showcase) {
       $("[data-screen-title]").textContent = c.title;
       $("[data-screen-sub]").textContent = c.description;
       $("[data-screen-kicker]").textContent =
-        `${c.kind === "concept" ? "CONCEPT" : "STORY"} ${c.number} · ${c.kind === "concept" ? "名詞圖解" : "市場故事"}`;
+        `${catalog.kinds[c.kind].code} ${c.number} · ${catalog.kinds[c.kind].label}`;
     }
     $("[data-screen-link]").href = f.getAttribute("href");
   };

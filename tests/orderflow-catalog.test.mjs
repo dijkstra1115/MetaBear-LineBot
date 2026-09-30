@@ -79,9 +79,9 @@ test("the curriculum has unique ids, existing available pages and an acyclic pre
 });
 
 test("available, new, planned and route filtering work together without exposing unbuilt links", () => {
-  assert.equal(selectCourses().length, 19);
-  assert.equal(selectCourses({ view: "new" }).length, 7);
-  assert.equal(selectCourses({ view: "all" }).length, 19);
+  assert.equal(selectCourses().length, 20);
+  assert.equal(selectCourses({ view: "new" }).length, 8);
+  assert.equal(selectCourses({ view: "all" }).length, 20);
   assert.equal(
     selectCourses({ view: "all", query: "訂單塊" })[0].id,
     "order-block",

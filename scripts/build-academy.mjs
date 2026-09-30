@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import {
   courses,
+  kinds,
   selectCourses,
   isAvailable,
   durationLabel,
@@ -59,13 +60,12 @@ export async function buildAcademy() {
         `$1${course.title}$2`,
       )
       .replace(
-        /\b(?:CONCEPT|STORY) \d{2}/g,
-        `${course.kind === "concept" ? "CONCEPT" : "STORY"} ${course.number}`,
+        /\b(?:CONCEPT|STORY|STRATEGY) \d{2}/g,
+        `${kinds[course.kind].code} ${course.number}`,
       )
       .replace(
-        /(<span class="lesson-format"[\s\S]*?<i><\/i>\s*)動態(?:圖解|故事)/,
-        (_, opening) =>
-          opening + (course.kind === "concept" ? "動態圖解" : "動態故事"),
+        /(<span class="lesson-format"[\s\S]*?<i><\/i>\s*)動態(?:圖解|故事|策略)/,
+        (_, opening) => opening + kinds[course.kind].format,
       )
       .replace(
         /(<span class="lesson-format"[\s\S]*?<span>)[^<]+(<\/span>)/,

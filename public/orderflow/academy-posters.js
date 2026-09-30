@@ -1,18 +1,19 @@
 // Course map, live layer: a hero reel that cycles through lesson highlights,
 // poster frames stamped into every card, and a silent preview on hover.
 // All frames come from the lessons' own draw(ctx, t).
-import { courses } from "./academy-catalog.js";
+import { courses, kinds } from "./academy-catalog.js";
 import { createPreview, loadLesson, stampPoster, posterTime } from "./motion/preview.js";
 import { initAll, motionOff } from "/mb.js";
 
 initAll();
 const byId = Object.fromEntries(courses.map((c) => [c.id, c]));
 const kicker = (c) =>
-  `${c.kind === "concept" ? "CONCEPT" : "STORY"} ${c.number} · ${c.kind === "concept" ? "名詞圖解" : "市場故事"}`;
+  `${kinds[c.kind].code} ${c.number} · ${kinds[c.kind].label}`;
 
 // ---------------- hero reel ----------------
 const REEL = [
   ["btc-wall", 18.8, 27.6],
+  ["failed-auction", 17.2, 26.6],
   ["wick", 8.2, 16.4],
   ["footprint", 5.2, 13.6],
   ["absorption-story", 21.5, 30.5],
