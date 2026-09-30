@@ -36,7 +36,7 @@ export const FLASHES = [
   { t: 76, amt: 0.65, pre: 0.15, decay: 9 },
 ];
 
-/** Score settings for motion/synth.mjs (level 0 pads · 1 light · 2 full · 3 intense). */
+/** Score settings for motion/tools/synth.mjs (level 0 pads · 1 light · 2 full · 3 intense). */
 export const MUSIC = {
   palette: "deep",
   padLevel: 0.5,

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Render the score for motion lessons (or the showreel) from their cue sheets.
 //
-//   node motion/audio.mjs                 every lesson → public/orderflow/motion/audio/<id>.m4a
-//   node motion/audio.mjs footprint wick  selected lessons
-//   node motion/audio.mjs showreel        → motion/showreel/out/soundtrack.wav
+//   node motion/tools/audio.mjs                 every lesson → public/orderflow/motion/audio/<id>.m4a
+//   node motion/tools/audio.mjs footprint wick  selected lessons
+//   node motion/tools/audio.mjs showreel        → motion/showreel/out/soundtrack.wav
 //
 // Encoding to AAC needs ffmpeg (FFMPEG env var, ffmpeg-static, or ffmpeg on PATH).
 import { readdir, rm } from "node:fs/promises";
@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { renderScore, writeWav } from "./synth.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const root = resolve(here, "..");
+const root = resolve(here, "../..");
 const lessonsDir = join(root, "public/orderflow/motion/lessons");
 const audioDir = join(root, "public/orderflow/motion/audio");
 const require = createRequire(join(root, "package.json"));
@@ -38,7 +38,7 @@ async function lessonAudio(id) {
   const { lesson } = await import(pathToFileURL(join(lessonsDir, `${id}.js`)).href);
   const started = Date.now();
   const score = renderScore({ duration: lesson.duration, cues: lesson.cues ?? [], music: lesson.music });
-  const wav = join(here, "out/audio", `${id}.wav`);
+  const wav = join(root, "motion/out/audio", `${id}.wav`);
   await writeWav(wav, score);
   const out = join(audioDir, `${id}.m4a`);
   await run(ffmpegPath(), [
@@ -60,17 +60,17 @@ async function lessonAudio(id) {
 }
 
 async function showreelAudio() {
-  const { CUES, TOTAL, MUSIC } = await import(pathToFileURL(join(here, "showreel/src/timeline.js")).href);
+  const { CUES, TOTAL, MUSIC } = await import(pathToFileURL(join(root, "motion/showreel/src/timeline.js")).href);
   const score = renderScore({ duration: TOTAL, cues: CUES, music: MUSIC });
-  const wav = join(here, "showreel/out/soundtrack.wav");
+  const wav = join(root, "motion/showreel/out/soundtrack.wav");
   await writeWav(wav, score);
   console.log(`showreel → ${wav}`);
 }
 
 async function promoAudio() {
-  const { DURATION, cues, music } = await import(pathToFileURL(join(here, "promo/promo.js")).href);
+  const { DURATION, cues, music } = await import(pathToFileURL(join(root, "motion/academy-promo/promo.js")).href);
   const score = renderScore({ duration: DURATION, cues, music });
-  const wav = join(here, "promo/out/promo.wav");
+  const wav = join(root, "motion/academy-promo/out/promo.wav");
   await writeWav(wav, score);
   console.log(`promo → ${wav}`);
 }

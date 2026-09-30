@@ -7,9 +7,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "motion:audio": "node motion/audio.mjs",
-    "motion:render": "node motion/render.mjs",
-    "motion:serve": "node motion/render.mjs --serve",
+    "motion:audio": "node motion/tools/audio.mjs",
+    "motion:render": "node motion/tools/render.mjs",
+    "motion:serve": "node motion/tools/render.mjs --serve",
     "dev": "wrangler dev --local --port 8787",
     "db:migrate": "wrangler d1 migrations apply metabear-crm --local",
     "types": "wrangler types --env production --strict-vars false",

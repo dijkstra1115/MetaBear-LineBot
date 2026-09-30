@@ -1,5 +1,5 @@
 // Promo harness: ?fmt=wide (1920×1080) | tall (1080×1920). Exposes the same
-// window.TOTAL / renderFrame / ready contract motion/render.mjs expects;
+// window.TOTAL / renderFrame / ready contract motion/tools/render.mjs expects;
 // ?preview plays it in real time with the soundtrack and a scrubber.
 import { fontUsage } from "../../public/orderflow/motion/core.js";
 import { preloadLessonFonts } from "../../public/orderflow/motion/compositor.js";

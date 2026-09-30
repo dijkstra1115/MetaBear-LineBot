@@ -3,11 +3,11 @@
 // Every frame is a pure function of time, so parallel headless-Chromium
 // workers render disjoint ranges and the segments are joined losslessly.
 //
-//   node motion/render.mjs footprint                 → motion/out/footprint.mp4 (captions burned in)
-//   node motion/render.mjs footprint --still 3,12.5  → motion/out/stills/footprint-*.png
-//   node motion/render.mjs showreel                  → motion/out/showreel.mp4
-//   node motion/render.mjs promo | promo-tall        → motion/out/promo.mp4 (16:9) / promo-tall.mp4 (9:16)
-//   node motion/render.mjs --serve                   → http://127.0.0.1:8791/motion/export.html?lesson=<id>
+//   node motion/tools/render.mjs footprint                 → motion/out/footprint.mp4 (captions burned in)
+//   node motion/tools/render.mjs footprint --still 3,12.5  → motion/out/stills/footprint-*.png
+//   node motion/tools/render.mjs showreel                  → motion/out/showreel.mp4
+//   node motion/tools/render.mjs promo | promo-tall        → motion/out/promo.mp4 (16:9) / promo-tall.mp4 (9:16)
+//   node motion/tools/render.mjs --serve                   → http://127.0.0.1:8791/motion/tools/export.html?lesson=<id>
 //   options: --fps 60  --workers 4  --from 0 --to 30  --crf 18  --no-captions
 import { createServer } from "node:http";
 import { readFile, mkdir, writeFile, rm } from "node:fs/promises";
@@ -19,8 +19,8 @@ import { fileURLToPath } from "node:url";
 import { cpus } from "node:os";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const root = resolve(here, "..");
-const outDir = join(here, "out");
+const root = resolve(here, "../..");
+const outDir = join(root, "motion/out");
 const require = createRequire(join(root, "package.json"));
 
 const args = process.argv.slice(2);
@@ -239,23 +239,23 @@ async function video(url, name, audio, { fps, workers, from, to, crf }) {
 const server = await serve(flag("serve") ? Number(opt("port", 8791)) : 0);
 const base = `http://127.0.0.1:${server.address().port}`;
 if (flag("serve")) {
-  console.log(`lesson export preview: ${base}/motion/export.html?lesson=<id>`);
+  console.log(`lesson export preview: ${base}/motion/tools/export.html?lesson=<id>`);
   console.log(`showreel preview:      ${base}/motion/showreel/index.html?preview`);
-  console.log(`promo preview:         ${base}/motion/promo/index.html?preview&fmt=wide|tall`);
+  console.log(`promo preview:         ${base}/motion/academy-promo/index.html?preview&fmt=wide|tall`);
 } else {
-  if (!target) throw new Error("usage: node motion/render.mjs <lesson-id|showreel> [options]");
+  if (!target) throw new Error("usage: node motion/tools/render.mjs <lesson-id|showreel> [options]");
   await mkdir(outDir, { recursive: true });
   const showreel = target === "showreel";
   const promo = target === "promo" || target === "promo-tall";
   const url = showreel
     ? `${base}/motion/showreel/index.html`
     : promo
-      ? `${base}/motion/promo/index.html?fmt=${target === "promo" ? "wide" : "tall"}`
-      : `${base}/motion/export.html?lesson=${target}&captions=${flag("no-captions") ? 0 : 1}`;
+      ? `${base}/motion/academy-promo/index.html?fmt=${target === "promo" ? "wide" : "tall"}`
+      : `${base}/motion/tools/export.html?lesson=${target}&captions=${flag("no-captions") ? 0 : 1}`;
   const audio = showreel
-    ? join(here, "showreel/out/soundtrack.wav")
+    ? join(root, "motion/showreel/out/soundtrack.wav")
     : promo
-      ? join(here, "promo/out/promo.wav")
+      ? join(root, "motion/academy-promo/out/promo.wav")
       : join(root, "public/orderflow/motion/audio", `${target}.m4a`);
   const still = opt("still");
   if (still) await stills(url, target, still.split(",").map(Number));

@@ -7,6 +7,6 @@ snapshots/
 check.log
 # Analysis images from the score scripts
 **/audio-src/*.png
-# Full system-font copy used only to re-subset (see flow-arena-promo/scripts/subset-font.py)
-flow-arena-promo/scripts/font-src/
-flow-arena-promo/scripts/.chars.txt
+# Full system-font copy used only to re-subset (see promo/scripts/subset-font.py)
+promo/scripts/font-src/
+promo/scripts/.chars.txt

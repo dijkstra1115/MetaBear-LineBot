@@ -60,5 +60,5 @@
 ## 驗收
 
 - `npm run test:academy`：19／19 通過（含每 0.1 秒一般／減少動態的有限幾何、回拖純函式、章節字幕不重疊、catalog 篩選 20 堂／8 堂新課）。`npm run check` 通過，`npm run build:site` 成功。
-- 以 `motion/export.html` 逐格輸出 1280×720 檢查開場、地點、掃蕩、足跡鑽入、四張證據卡、執行框、倒帶、B、並排與收尾；修正文字互撞、右側價格軸、分布圖聚焦淡出、OI 讀數跳值與倒帶字幕底。
+- 以 `motion/tools/export.html` 逐格輸出 1280×720 檢查開場、地點、掃蕩、足跡鑽入、四張證據卡、執行框、倒帶、B、並排與收尾；修正文字互撞、右側價格軸、分布圖聚焦淡出、OI 讀數跳值與倒帶字幕底。
 - 課程頁、側欄「策略實戰」分組、課程地圖「03 / STRATEGIES」區塊與 77 秒配樂在本機預覽載入無錯誤；本機預覽伺服器補上 HTTP Range，開聲音時配樂可跳到播放頭。以 Playwright 輸出完整 1080p MP4（`npm run motion:render -- failed-auction`）。

@@ -22,24 +22,24 @@
 
 ```sh
 npm ci
-node motion/audio.mjs showreel          # 合成配樂 → motion/showreel/out/soundtrack.wav
-node motion/render.mjs showreel         # 渲染並混音 → motion/out/showreel.mp4
+node motion/tools/audio.mjs showreel          # 合成配樂 → motion/showreel/out/soundtrack.wav
+node motion/tools/render.mjs showreel         # 渲染並混音 → motion/out/showreel.mp4
 npm run motion:serve                    # http://127.0.0.1:8791/motion/showreel/index.html?preview ，空白鍵播放、可拖曳
 ```
 
-其他選項（與學院課程共用 `motion/render.mjs`）：
+其他選項（與學院課程共用 `motion/tools/render.mjs`）：
 
 ```sh
-node motion/render.mjs showreel --still 20.3,41.5   # 輸出指定秒數的 PNG
-node motion/render.mjs showreel --from 30 --to 48   # 只渲染一段
-node motion/render.mjs showreel --fps 30 --crf 20   # 較快、較小的預覽檔
+node motion/tools/render.mjs showreel --still 20.3,41.5   # 輸出指定秒數的 PNG
+node motion/tools/render.mjs showreel --from 30 --to 48   # 只渲染一段
+node motion/tools/render.mjs showreel --fps 30 --crf 20   # 較快、較小的預覽檔
 ```
 
 學院現有 19 課使用同一套動態設計語言，見 [動態影片課程](../../docs/ACADEMY-MOTION.md)。
 
 ## 結構
 
-配樂由共用的 `motion/synth.mjs` 合成（D 小調、成交音高隨成交價變化），`motion/render.mjs` 以多個無頭 Chromium 平行逐格渲染後由 ffmpeg 編碼並混音。
+配樂由共用的 `motion/tools/synth.mjs` 合成（D 小調、成交音高隨成交價變化），`motion/tools/render.mjs` 以多個無頭 Chromium 平行逐格渲染後由 ffmpeg 編碼並混音。
 
 | 檔案              | 用途                                                                                  |
 | ----------------- | ------------------------------------------------------------------------------------- |
