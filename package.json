@@ -39,6 +39,7 @@
     "@types/node": "^24.0.0",
     "esbuild": "0.28.2",
     "miniflare": "5.20260911.0-alpha",
+    "playwright": "^1.63.0",
     "prettier": "3.9.6",
     "tsx": "4.23.13",
     "typescript": "7.0.2",
