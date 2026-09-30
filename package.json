@@ -24,13 +24,16 @@
     "deploy": "wrangler deploy --env production",
     "deploy:staging": "wrangler deploy --env staging",
     "build:site": "node scripts/build-site.mjs",
+    "build:pages": "node scripts/build-pages.mjs",
+    "build:backend-assets": "node scripts/build-backend-assets.mjs",
+    "check:pages": "node scripts/check-pages-build.mjs",
     "preview:academy": "node scripts/orderflow-preview.mjs",
     "predev": "npm run build:site",
     "prebuild": "npm run build:site",
     "prebuild:staging": "npm run build:site",
-    "prebuild:production": "npm run build:site",
+    "prebuild:production": "npm run build:backend-assets",
     "predeploy:staging": "npm run build:site",
-    "predeploy": "npm run build:site"
+    "predeploy": "npm run build:backend-assets"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

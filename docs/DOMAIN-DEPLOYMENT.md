@@ -1,5 +1,7 @@
 # MetaBear 正式網域與教學整合
 
+2026-09-30：已準備 Pages 網站與 Worker 後端拆分，尚未切換線上服務。後續部署以 [Pages／Worker 拆分文件](PAGES-WORKER-SPLIT.md) 為準；下文保留原部署與網域沿革。
+
 部署日期：2026-09-21。
 
 - 主站：https://metabear.io/
