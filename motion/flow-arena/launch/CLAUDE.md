@@ -1,8 +1,8 @@
 # HyperFrames Composition Project
 
-## Skills — USE THESE FIRST
+## Skills
 
-**Always invoke the relevant skill before writing or modifying compositions.** Skills encode framework-specific patterns (e.g., `window.__timelines` registration, `data-*` attribute semantics, shader-compatible CSS rules) that are NOT in generic web docs. Skipping them produces broken compositions.
+Load the relevant skill before writing or modifying compositions: skills encode framework-specific patterns (e.g., `window.__timelines` registration, `data-*` attribute semantics, shader-compatible CSS rules) that generic web docs don't cover, and compositions written without them break.
 
 **Doing anything with HyperFrames?** Start at `/hyperframes` — it tells you what HyperFrames can do and which skill or workflow handles your intent (make a video, TTS / BGM, prep footage, author / animate, render, install blocks), confirms your brief up front (the intent layer), and routes every "make me a…" request (a video, a deck, a composition port) to the right workflow. Read it first, especially when there's no project context to orient you. The workflows it routes to:
 
@@ -63,7 +63,7 @@ npx hyperframes docs <topic>
 
 Topics: `data-attributes`, `gsap`, `compositions`, `rendering`, `examples`, `troubleshooting`
 
-**For full documentation**, discover pages via the machine-readable index — do NOT guess URLs:
+**For full documentation**, discover pages via the machine-readable index rather than guessing URLs:
 
 ```
 https://hyperframes.heygen.com/llms.txt
@@ -76,9 +76,9 @@ https://hyperframes.heygen.com/llms.txt
 - `meta.json` — project metadata (id, name)
 - `transcript.json` — whisper word-level transcript (if generated)
 
-## Linting — ALWAYS RUN AFTER CHANGES
+## Linting
 
-After creating or editing any `.html` composition, **always** run the full check before considering the task complete:
+After creating or editing any `.html` composition, run the full check before considering the task complete:
 
 ```bash
 npm run check
