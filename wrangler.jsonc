@@ -59,7 +59,7 @@
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "env": {
     "production": {
-      "name": "metabear-line-crm-staging",
+      "name": "metabear-backend",
       "main": "src/backend.ts",
       "workers_dev": true,
       "routes": [

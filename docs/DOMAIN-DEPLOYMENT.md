@@ -1,6 +1,6 @@
 # MetaBear 正式網域與教學整合
 
-2026-09-30：已準備 Pages 網站與 Worker 後端拆分，尚未切換線上服務。後續部署以 [Pages／Worker 拆分文件](PAGES-WORKER-SPLIT.md) 為準；下文保留原部署與網域沿革。
+2026-09-30：Pages 網站與 Worker 後端拆分已正式上線，Worker 已改名為 `metabear-backend`，Pages 網域與 TLS 均為 active。網站 push 到 GitHub main 自動更新；後端仍使用 `npm run deploy`。目前部署以 [Pages／Worker 拆分文件](PAGES-WORKER-SPLIT.md) 為準；下文僅保留 2026-09-21 的歷史部署與網域沿革，舊 staging workers.dev 網址已隨改名停用。
 
 部署日期：2026-09-21。
 

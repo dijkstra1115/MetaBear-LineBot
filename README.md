@@ -41,9 +41,9 @@ npm run build:production
 
 test:all 包含後端整合與現役課程、轉址、封存完整性檢查。封存測試不再混入日常套件，復原與驗證方式見 [封存說明](archive/README.md)。build:production 只做 dry-run，npm run deploy 才發布正式站。
 
-正式站 metabear.io 使用 env.production（Worker 歷史名稱為 metabear-line-crm-staging）。預覽站 preview.metabear.io 在 flow-arena 分支還有對戰後端；不要用 main 的純網站預覽設定覆蓋它。見 [部署文件](docs/DOMAIN-DEPLOYMENT.md)。
+正式站 metabear.io 的公開網站使用 Pages `metabear-site`，後端使用 env.production 的 Worker `metabear-backend`。預覽站 preview.metabear.io 在 flow-arena 分支還有對戰後端；不要用 main 的純網站預覽設定覆蓋它。見 [部署文件](docs/DOMAIN-DEPLOYMENT.md)。
 
-Pages／Worker 拆分設定已準備，GitHub main 已連接 Pages 自動部署，目前等待正式網域切換核准。網站建置使用 `npm run build:pages`，後端正式建置只帶入後台資產。**初次切換完成前不要執行 `npm run deploy`**；Git 自動更新的完整設定與切換順序見 [Pages／Worker 部署](docs/PAGES-WORKER-SPLIT.md)。
+Pages／Worker 拆分已於 2026-09-30 正式上線，GitHub main 的網站修改 push 後自動建置與發布，已實測成功。網站建置使用 `npm run build:pages`；`npm run deploy` 僅更新後端與後台資產。完整設定見 [Pages／Worker 部署](docs/PAGES-WORKER-SPLIT.md)。
 
 ## 暫停與封存
 
