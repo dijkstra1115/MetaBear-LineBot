@@ -321,3 +321,19 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 .indicator-list label{display:flex;align-items:center;gap:7px;color:#cfe3df;font:11px "Noto Sans TC",sans-serif;letter-spacing:0;white-space:nowrap}
 .indicator-list input{accent-color:var(--mint)}
 @media(max-width:1500px){.order-panel.dock{grid-template-columns:minmax(300px,1fr) minmax(300px,1fr)}.account-block{grid-column:1/-1}}
+
+/* Tutorial spotlight */
+.tour-shield{position:fixed;inset:0;z-index:900}
+.tour-spot{position:fixed;z-index:901;border-radius:12px;box-shadow:0 0 0 9999px rgba(2,9,14,.8),0 0 0 2px var(--mint),0 0 28px #70e6c988;pointer-events:none;transition:left .3s,top .3s,width .3s,height .3s;animation:tour-glow 1.6s ease-in-out infinite}
+.tour-card{position:fixed;z-index:902;width:min(380px,calc(100vw - 32px));display:grid;gap:8px;padding:16px 18px;border:1px solid var(--mint);border-radius:12px;background:#0f2630;box-shadow:0 20px 60px #000c;transition:left .3s,top .3s}
+.tour-card strong,.tour-ask-card strong{font-size:18px;color:#effff8}
+.tour-card p,.tour-ask-card p{margin:0;color:#c3d9d6;font-size:13px;line-height:1.7}
+.tour-count{color:var(--mint);font:700 10px Consolas,monospace;letter-spacing:.16em}
+.tour-actions{display:flex;align-items:center;gap:8px;margin-top:4px}.tour-actions span{flex:1}
+.tour-actions button{height:32px;padding:0 12px;border:1px solid #42636b;border-radius:6px;background:#1b3640;color:#cbebe2;font-size:12px;font-weight:700}
+.tour-actions button:disabled{opacity:.4;cursor:default}
+.tour-actions [data-tour=skip],.tour-actions [data-ask=no]{border-color:transparent;background:transparent;color:#8fa9ae}
+.tour-actions .tour-next{border-color:var(--mint);background:#1a504b;color:#e8fff6}
+.tour-ask{position:fixed;inset:0;z-index:900;display:grid;place-items:center;background:rgba(2,9,14,.72);backdrop-filter:blur(4px)}
+.tour-ask-card{width:min(420px,calc(100vw - 32px));display:grid;gap:10px;padding:22px 24px;border:1px solid var(--mint);border-radius:14px;background:#0f2630;box-shadow:0 0 0 8px #70e6c914,0 30px 80px #000d;animation:dialog-in .4s cubic-bezier(.2,1.2,.3,1)}
+@keyframes tour-glow{50%{box-shadow:0 0 0 9999px rgba(2,9,14,.8),0 0 0 2px var(--mint),0 0 44px #70e6c9cc}}

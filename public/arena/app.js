@@ -2,6 +2,7 @@ import { Sandbox } from "./engine/market.js";
 import { DEFAULT_LEVERAGE, LEVERAGES, Player } from "./engine/player.js";
 import { ALERT_KINDS, Session } from "./engine/session.js";
 import { REGIMES } from "./engine/regime.js";
+import { Tour, askForTour } from "./tutorial.js";
 import { MAX_ZOOM, MIN_CANDLES, MIN_ZOOM, chartGeometry, chartOnAxis, chartPriceAt, drawChart, gameClock } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -49,6 +50,19 @@ const alertPrefs = { bigFlow: true, cascade: true, own: true, move: true, event:
 const INDICATOR_DEFAULTS = { ema20: true, ema50: true, vwap: true, volume: true, cvd: true, oi: true, footprint: true, absorb: true, omen: true, fills: true };
 const view = { count: 120, zoom: 1, offset: 0, layer: "liq", ind: { ...INDICATOR_DEFAULTS, ...store.get("indicators", {}) }, pushes: [], now: 0, reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null };
 
+/* ---------- Tutorial ---------- */
+
+let touring = false;
+function startTour() {
+  if (touring) return;
+  touring = true;
+  running = false;
+  $("pause-card").hidden = true;
+  document.querySelector(".indicator-menu")?.removeAttribute("open");
+  render();
+  new Tour(undefined, { onEnd: () => { touring = false; } }).start();
+}
+
 /* ---------- Market lifecycle ---------- */
 
 function randomSeed() {
@@ -82,6 +96,11 @@ function newMarket(seed = randomSeed()) {
     $("seed-label").textContent = String(seed);
     $("loading").hidden = true;
     setMessage("新市場已建立。計畫階段市場暫停：先讀圖、推測人群的停損與強平在哪，再按「執行回合」。");
+    // First visit: offer the walkthrough once the page is filled in.
+    if (!store.get("tourSeen", false)) {
+      store.set("tourSeen", true);
+      setTimeout(() => askForTour({ onYes: startTour, onNo: () => {} }), 400);
+    }
     render();
   }, 30);
 }
@@ -1077,6 +1096,7 @@ $("clear-protection").addEventListener("click", () => {
 for (const key of ["stop", "take"]) {
   $(`${key}-share`).addEventListener("input", () => { $(`${key}-share-label`).textContent = `${$(`${key}-share`).value}%`; });
 }
+$("tour-button").addEventListener("click", () => startTour());
 $("run-button").addEventListener("click", () => setRunning(!running));
 $("pause-continue").addEventListener("click", () => setRunning(true));
 $("reveal-button").addEventListener("click", () => toggleReveal());
@@ -1195,7 +1215,7 @@ canvas.addEventListener("dblclick", () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.target.closest?.("input, select, textarea") || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (touring || event.target.closest?.("input, select, textarea") || event.metaKey || event.ctrlKey || event.altKey) return;
   const key = event.key.toLowerCase();
   if (key === " ") {
     event.preventDefault();

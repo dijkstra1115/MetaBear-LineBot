@@ -27,6 +27,8 @@
 
 ## 畫面
 
+- 第一次進入時會詢問要不要看玩法教學；標題列的「? 教學」可以隨時重看。教學會讓畫面變暗、只亮出目前介紹的區塊，依序介紹回合、執行、K 線與熱圖、指標、燃料雷達、人群、下單、持倉、帳戶、戰術暫停、揭曉，共 12 步（方向鍵可前後切換，Esc 跳過）。
+
 - 左欄是讀盤資訊：燃料雷達、揭曉、強平跑馬燈、自動暫停、市場裡的人群、快捷鍵。
 - 圖表下方是交易區：下單（市價／限價、數量、槓桿、只減倉）｜持倉（均價、未實現、強平價、保證金、平倉滑桿、止損止盈）｜帳戶（總損益、已實現、手續費、最大回撤、累積成交、委託清單）。
 - 「指標」選單可以單獨開關 EMA20、EMA50、VWAP、成交量、CVD、OI、每根 K 的 Footprint、吸收標記、燃料預兆、我的成交；成交量與 CVD／OI 都關掉時，K 線區會占滿高度。設定會記在瀏覽器裡。
@@ -190,6 +192,7 @@
 | `public/arena/engine/market.js` | `Sandbox`：歷史生成、cohort 生命週期、觸發與連環、主動出場、揭曉資料 |
 | `public/arena/engine/player.js` | 玩家帳戶與委託 |
 | `public/arena/engine/session.js` | 回合與戰術暫停 |
+| `public/arena/tutorial.js` | 玩法教學（聚光燈導覽） |
 | `public/arena/chart.js`、`app.js`、`index.html`、`arena.css` | 畫面 |
 | `tests/flow-arena-engine.test.mjs` | `npm run test:flow-arena` |
 | `scripts/flow-arena-lab.mjs` | `npm run lab:flow-arena` |
