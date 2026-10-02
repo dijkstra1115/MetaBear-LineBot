@@ -247,7 +247,7 @@ export const POOLS = [
   {
     key: "value",
     name: "長線承接",
-    rate: 2,
+    rate: 1.2,
     weights: W(0.8, 0.8, 1, 1, 1.5, 1.3),
     leverage: [[1, 0.5], [2, 0.3], [3, 0.2]],
     // The further the price strays from the fair value they believe in, the more of them act.
@@ -272,12 +272,20 @@ export const POOLS = [
         });
         return;
       }
-      const depth = rng.range(0.005, 0.06);
-      const price = roundPrice(fair * (1 - dir * depth));
+      // Most ladders sit within a percent or two of value; a few reach far out.
+      const depth = Math.min(0.06, 0.003 + rng.lognormal(0.01, 0.8));
+      let price = roundPrice(fair * (1 - dir * depth));
+      // Two in five defend a chart level instead: just in front of a swing point or round number,
+      // which is where hidden size piles up.
+      const levels = chartLevels(sim, dir > 0 ? "low" : "high", 0.03).filter((level) => dir > 0 ? level < sim.last * 0.998 : level > sim.last * 1.002);
+      if (levels.length && rng.chance(0.4)) price = roundPrice(pickLevel(rng, levels) * (1 + dir * rng.range(0, 0.0006)));
       if (dir > 0 ? price >= sim.last * 0.998 : price <= sim.last * 1.002) return;
+      // Big patient money hides its size: most ladders show only a twentieth to a seventh of it.
+      const lots = btcLots(rng, 4 * (1 + depth / 0.02), 0.8);
+      const display = rng.chance(0.75) ? Math.max(100, Math.round(lots * rng.range(0.05, 0.15))) : null;
       sim.openCohort({
-        pool: "value", side: dir, lots: btcLots(rng, 4 * (1 + depth / 0.02), 0.8), leverage: sim.leverageFor(this),
-        entry: { type: "limit", price, expireAt: sim.time + rng.int(60, 180) * MIN },
+        pool: "value", side: dir, lots, leverage: sim.leverageFor(this),
+        entry: { type: "limit", price, display, expireAt: sim.time + rng.int(60, 180) * MIN },
         stop: rng.chance(0.1) ? roundPrice(price * (1 - dir * rng.range(0.04, 0.06))) : null,
         take: take(price), takeMode: "limit", hold: rng.int(240, 720) * MIN,
       });

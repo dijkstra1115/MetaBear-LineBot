@@ -303,7 +303,9 @@ export class Sandbox {
       const bound = roundPrice(this.last * (1 + spec.side * MARKET_BAND));
       this.book.submit(side, bound, spec.lots, { owner: cohort.id, acct: cohort.id, rest: false });
     } else if (entry.type === "limit") {
-      const arrival = this.book.submit(side, entry.price, spec.lots, { owner: cohort.id, acct: cohort.id });
+      // entry.display: an iceberg that shows only part of its size.
+      const iceberg = entry.display > 0 && entry.display < spec.lots ? { display: entry.display } : null;
+      const arrival = this.book.submit(side, entry.price, spec.lots, { owner: cohort.id, acct: cohort.id, iceberg });
       cohort.entryOrder = arrival.resting ? arrival.id : null;
       cohort.entryExpire = entry.expireAt;
     } else {

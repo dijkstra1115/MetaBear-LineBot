@@ -45,7 +45,7 @@ let openPrice = 0;
 let turnOpen = null;
 let message = { text: "", error: false };
 const alertPrefs = store.get("alerts", { bigFlow: true, cascade: true, own: true, move: true });
-const view = { count: 120, zoom: 1, offset: 0, layer: "liq", averages: true, fills: store.get("fills", true), reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null };
+const view = { count: 120, zoom: 1, offset: 0, layer: "liq", averages: true, fills: store.get("fills", true), pushes: [], now: 0, reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null };
 
 /* ---------- Market lifecycle ---------- */
 
@@ -526,6 +526,8 @@ function submit(side) {
   const reduceOnly = $("reduce-only").checked;
   let result;
   const before = sim.last;
+  // What the visible book says a market order should reach, to tell when hidden size absorbed it.
+  const promised = orderType === "market" ? sim.book.preview(side, lots, side === "buy" ? sim.book.maxPrice : 1, "player") : null;
   if (orderType === "market") result = player.submitMarket(side, lots, { reduceOnly });
   else if (orderType === "twap") result = player.addTwap(side, lots, Number($("twap-select").value), 20, { reduceOnly });
   else {
@@ -544,12 +546,29 @@ function submit(side) {
     const move = sim.last / before - 1;
     setMessage(`市價${word} ${btc(result.matched)}，均價 ${price(result.avgPrice ?? before)}，價格 ${pct(move)}${result.unfilled ? `；${btc(result.unfilled)} 超出 10% 保護價未成交` : ""}${result.wave ? `；引爆強平 ${btc(result.wave.lots)}` : ""}`);
     const point = chartPoint(sim.last);
-    if (Math.abs(move) >= 0.0015) {
+    const reach = result.lastPrice ?? before;
+    const promisedMove = promised?.worstPrice ? promised.worstPrice / before - 1 : 0;
+    const reachMove = reach / before - 1;
+    // Absorbed: the visible book promised a real move and the order stopped well short of it.
+    const stalled = result.matched > 0 && Math.abs(promisedMove) >= 0.0015 && Math.abs(reachMove) < Math.abs(promisedMove) * 0.75;
+    if (effectsEnabled && result.matched >= 5000) {
+      view.pushes.push({ from: before, to: reach, expected: stalled ? promised.worstPrice : null, side, stalled, born: performance.now() });
+      view.pushes = view.pushes.slice(-4);
+    }
+    if (stalled) {
+      const wall = chartPoint(reach);
+      floatLabel("🛡 撞牆！有人在吸收", wall.x - 40, wall.y + (side === "buy" ? -28 : 28), "amber", true);
+      // A dull thud instead of the usual click.
+      tone(78, 0.3, "square", 0.07, 48);
+      boom(0.35);
+      shake(2);
+      setMessage(`市價${word} ${btc(result.matched)}：簿上看得到的掛單應該推到 ${price(promised.worstPrice)}（${pct(promisedMove)}），實際只到 ${price(reach)}（${pct(reachMove)}）。看不見的掛單在吸收你的單。`, true);
+    } else if (Math.abs(move) >= 0.0015) {
       floatLabel(`推動 ${pct(move)}`, point.x - 40, point.y + (move > 0 ? 26 : -26), move > 0 ? "mint" : "coral", Math.abs(move) >= 0.01);
       ring(point.x, point.y, move > 0 ? "mint" : "coral", Math.min(1, Math.abs(move) * 50));
     }
     if (lots >= 125000) shake(lots >= 500000 ? 2 : 1);
-    tone(side === "buy" ? 680 : 420, 0.1, "triangle", 0.04);
+    if (!stalled) tone(side === "buy" ? 680 : 420, 0.1, "triangle", 0.04);
   } else if (orderType === "twap") setMessage(`TWAP ${word} ${btc(lots)}，分 ${Math.min(20, Math.floor(lots / 100) || 1)} 筆在 ${Number($("twap-select").value) / 60} 分鐘內送出`);
   else if (orderType === "trigger") setMessage(`觸價${word} ${btc(lots)} @ ${price(priceCents())}：標記價穿過時送出市價單`);
   else setMessage(`${orderType === "iceberg" ? "冰山" : "限價"}${word} ${btc(lots)} @ ${price(priceCents())}${result.matched ? `，立即成交 ${btc(result.matched)}` : ""}${result.resting ? `，掛單 ${btc(result.resting)}` : ""}`);
@@ -814,6 +833,9 @@ function frame(now) {
     }
   }
   if (sim) {
+    view.now = now;
+    view.effects = effectsEnabled;
+    view.pushes = view.pushes.filter((push) => now - push.born < 1500);
     for (const flash of view.flashes) flash.age = (now - flash.born) / 1600;
     view.flashes = view.flashes.filter((flash) => flash.age < 1);
     checkCascadeEnd(now);

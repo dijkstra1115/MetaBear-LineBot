@@ -254,6 +254,8 @@ export function drawChart(canvas, sim, view = {}) {
   }
   ctx.restore();
 
+  if (view.effects !== false) drawFuelOmen(ctx, scale, estimate, maxEstimate, last, view.now ?? 0);
+
   if (view.averages !== false) {
     const lines = overlays(scale.all, scale.first);
     line(ctx, lines.vwap, x, y, "#7fb8ffaa", [5, 4]);
@@ -338,6 +340,8 @@ export function drawChart(canvas, sim, view = {}) {
     ctx.fillStyle = `rgba(${rgb},${(0.85 * fade).toFixed(3)})`;
     ctx.fillRect(liveX - 5, top, 10, Math.max(3, bottom - top));
   }
+
+  if (view.pushes?.length) drawPushes(ctx, scale, view.pushes, view.now ?? 0);
 
   // True crowd map (practice reveal).
   const reveal = view.reveal ? sim.reveal(bin) : null;
@@ -574,4 +578,96 @@ function drawCandleFootprints(ctx, scale, visible) {
       ctx.fillText(shortBtc(row.buy), left + width / 2 + 3, top + rowHeight / 2);
     }
   });
+}
+
+const OMEN_RANGE = 0.008;
+
+// The brightest estimated liquidation bands heat up as the price closes in: they flicker faster,
+// glow hotter and carry a tag with the fuel and the distance, so the chart warns before it blows.
+function drawFuelOmen(ctx, scale, estimate, maxEstimate, last, now) {
+  const { left, plotRight, y } = scale;
+  for (const row of estimate) {
+    const lots = row.long + row.short;
+    if (lots / maxEstimate < 0.45 || lots < 3000) continue;
+    const distance = Math.abs(row.price / last - 1);
+    if (distance > OMEN_RANGE) continue;
+    const heat = 1 - distance / OMEN_RANGE;
+    const flicker = 0.55 + 0.45 * Math.sin(now / (260 - heat * 190) + row.price);
+    const yy = y(row.price);
+    const band = Math.max(4, 6 + heat * 10);
+    const green = Math.round(150 + heat * 90);
+    const blue = Math.round(60 + heat * 150);
+    ctx.save();
+    ctx.shadowColor = `rgba(255,${green},${blue},${(0.6 * heat).toFixed(3)})`;
+    ctx.shadowBlur = 8 + heat * 18;
+    ctx.fillStyle = `rgba(255,${green},${blue},${(0.06 + heat * 0.24 * flicker).toFixed(3)})`;
+    ctx.fillRect(left, yy - band / 2, plotRight - left, band);
+    ctx.fillStyle = `rgba(255,${green},${blue},${(0.35 + heat * 0.6 * flicker).toFixed(3)})`;
+    ctx.fillRect(left, yy - 0.75, plotRight - left, 1.5);
+    ctx.restore();
+    if (heat > 0.35) {
+      const side = row.price < last ? "多單" : "空單";
+      tag(ctx, `🔥 ${side}燃料 ${btc(lots)} · ${(distance * 100).toFixed(2)}%`, left + 150, yy, `rgba(70,30,10,${(0.75 + 0.2 * flicker).toFixed(3)})`, `rgb(255,${green},${blue})`);
+    }
+  }
+}
+
+// A market push: a wave front sweeps from where the price was to where the order reached, leaving a
+// glow behind it. If something unseen absorbed the order, a wall flashes where it stopped and breaks
+// apart, with a ghost line at the price the visible book promised.
+function drawPushes(ctx, scale, pushes, now) {
+  const { left, plotRight, y, x, candles } = scale;
+  const liveX = x(Math.max(0, candles.length - 1));
+  for (const push of pushes) {
+    const age = now - push.born;
+    if (age < 0 || age > 1500) continue;
+    const grow = Math.min(1, age / 350);
+    const ease = 1 - (1 - grow) ** 3;
+    const fade = age < 350 ? 1 : Math.max(0, 1 - (age - 350) / 1150);
+    const rgb = push.side === "buy" ? "112,230,201" : "251,127,145";
+    const front = push.from + (push.to - push.from) * ease;
+    const top = Math.min(y(push.from), y(front));
+    const height = Math.abs(y(push.from) - y(front));
+    ctx.save();
+    ctx.fillStyle = `rgba(${rgb},${(0.16 * fade).toFixed(3)})`;
+    ctx.fillRect(left, top, plotRight - left, Math.max(1, height));
+    ctx.shadowColor = `rgba(${rgb},${fade.toFixed(3)})`;
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = `rgba(${rgb},${(0.9 * fade).toFixed(3)})`;
+    ctx.fillRect(left, y(front) - 1.5, plotRight - left, 3);
+    ctx.fillRect(liveX - 3, top, 6, Math.max(2, height));
+    ctx.restore();
+    if (!push.stalled || age < 300) continue;
+    // Ghost of the promised reach, then the wall shattering where the order actually stopped.
+    if (push.expected) {
+      ctx.save();
+      ctx.setLineDash([4, 5]);
+      ctx.strokeStyle = `rgba(242,197,117,${(0.7 * fade).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(left, y(push.expected));
+      ctx.lineTo(plotRight, y(push.expected));
+      ctx.stroke();
+      ctx.restore();
+    }
+    const burst = (age - 300) / 1200;
+    const wallY = y(push.to);
+    const pieces = 14;
+    const width = (plotRight - left) / pieces;
+    ctx.save();
+    ctx.shadowColor = "rgba(242,197,117,0.9)";
+    ctx.shadowBlur = 12;
+    for (let i = 0; i < pieces; i++) {
+      const seed = Math.sin(i * 12.9898 + push.born) * 43758.5453;
+      const r = seed - Math.floor(seed);
+      const dx = (r - 0.5) * 60 * burst;
+      const dy = ((i % 2 ? 1 : -1) * (10 + r * 40)) * burst * (push.side === "buy" ? -1 : 1) + 30 * burst * burst;
+      ctx.save();
+      ctx.translate(left + width * (i + 0.5) + dx, wallY + dy);
+      ctx.rotate((r - 0.5) * 1.6 * burst);
+      ctx.fillStyle = `rgba(242,197,117,${Math.max(0, 0.95 - burst).toFixed(3)})`;
+      ctx.fillRect(-width / 2 + 1, -3, width - 2, 6);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
 }
