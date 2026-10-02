@@ -554,6 +554,8 @@ function showRankedFinal() {
   $("ranked-stats").textContent = `成交 ${btc(result.volume)} · 引爆強平 ${btc(result.ignited)} · 被強平 ${result.liquidations} 次 · 種子 ${sim.seed}`;
   $("ranked-name").value = store.get("rankedName", "");
   $("ranked-status").textContent = "";
+  $("ranked-name").disabled = false;
+  $("ranked-upload").textContent = "上傳成績";
   $("ranked-upload").disabled = false;
   $("ranked-final").hidden = false;
   if (result.pnl > 0) chime(8);
@@ -573,8 +575,12 @@ async function uploadRanked() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw Error(body.error ?? `伺服器回應 ${response.status}`);
+    // Stay on the card; the button turns into the way to the board.
+    ranked.uploadedId = body.id;
     $("ranked-status").textContent = `已上傳，目前第 ${body.rank} 名。`;
-    showLeaderboard(body.id);
+    $("ranked-name").disabled = true;
+    $("ranked-upload").textContent = "查看排行榜";
+    $("ranked-upload").disabled = false;
   } catch (error) {
     $("ranked-upload").disabled = false;
     $("ranked-status").textContent = `上傳失敗：${error.message}`;
@@ -980,7 +986,8 @@ function render() {
   const mid = mark;
   const equity = player.equity(mark);
   const account = player.account;
-  $("turn-label").textContent = ranked ? `排名賽 ${Math.min(session.turn, RANKED_TURNS)} / ${RANKED_TURNS}` : `第 ${session.turn} 回合`;
+  $("turn-title").textContent = ranked ? "排名賽回合" : "回合";
+  $("turn-label").textContent = ranked ? `${Math.min(session.turn, RANKED_TURNS)} / ${RANKED_TURNS}` : `第 ${session.turn} 回合`;
   $("clock-label").textContent = `${gameClock(sim.time)} · 剩 ${mmss(Math.max(0, session.secondsLeft))}`;
   $("turn-fill").style.width = `${(1 - session.secondsLeft / session.turnSeconds) * 100}%`;
   $("hud-pnl").textContent = money(equity);
@@ -1187,7 +1194,7 @@ $("ranked-button").addEventListener("click", () => {
   newMarket(randomSeed(), { rankedGame: true });
 });
 $("board-button").addEventListener("click", () => showLeaderboard());
-$("ranked-upload").addEventListener("click", uploadRanked);
+$("ranked-upload").addEventListener("click", () => (ranked?.uploadedId ? showLeaderboard(ranked.uploadedId) : uploadRanked()));
 $("ranked-again").addEventListener("click", () => newMarket(randomSeed(), { rankedGame: true }));
 $("ranked-sandbox").addEventListener("click", () => newMarket());
 $("leaderboard-close").addEventListener("click", () => $("leaderboard").close());
@@ -1334,6 +1341,7 @@ if (new URLSearchParams(location.search).has("debug")) {
     get sim() { return sim; },
     get player() { return player; },
     get session() { return session; },
-    processLiquidations, processEvents, showPause, registerResult, showCash, updateMoneyMoments, render,
+    get ranked() { return ranked; },
+    processLiquidations, processEvents, showPause, registerResult, showCash, updateMoneyMoments, render, showRankedFinal,
   };
 }
