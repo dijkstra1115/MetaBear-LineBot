@@ -2,7 +2,7 @@ import { OrderBook, Random, roundPrice, PRICE_TICK } from "./book.js";
 import { applyFill, liquidationPrice, newAccount } from "./ledger.js";
 import { Indicators } from "./indicators.js";
 import { readRegime, Sentiment } from "./regime.js";
-import { ArbDesk, IndexPrice, MarketMaker } from "./maker.js";
+import { FairValue, MarketMaker } from "./maker.js";
 import { POOLS, POOL_MAP } from "./pools.js";
 import { LiquidationEstimate } from "./estimate.js";
 
@@ -55,8 +55,7 @@ export class Sandbox {
     this.insurance = this.addAccount("insurance", "insurance");
     this.legacy = this.addAccount("legacy", "legacy");
     this.maker = new MarketMaker(this);
-    this.arb = new ArbDesk(this);
-    this.index = new IndexPrice(this, START_PRICE);
+    this.fair = new FairValue(this, START_PRICE);
     this.virtual = [];
     this.virtualMode = false;
     this.time = -(synthCandles * CANDLE_SECONDS + warmSeconds);
@@ -107,6 +106,8 @@ export class Sandbox {
       const candle = { time: this.time, open, high, low, close, volume, buy: (volume + delta) / 2, sell: (volume - delta) / 2, delta, cvd: this.cvd, oi: 0, trades: 1, synthetic: true, liq: { long: 0, short: 0 } };
       price = close;
       this.book.last = close;
+      this.fair.value = close;
+      this.fair.trail = close;
       for (let s = 0; s < CANDLE_SECONDS; s++) this.sentiment.step(this.time + s);
       this.time += CANDLE_SECONDS;
       this.estimate.decay(CANDLE_SECONDS);
@@ -127,7 +128,7 @@ export class Sandbox {
     this.virtualMode = false;
     this.priceTrail = [];
     this.live = this.newCandle();
-    this.index = new IndexPrice(this, this.last);
+    this.fair = new FairValue(this, this.last);
     this.maker.act();
     this.materialize();
   }
@@ -212,7 +213,7 @@ export class Sandbox {
   // ---- Crowd cohorts -----------------------------------------------------------------------------
 
   activity(pool) {
-    return (pool.weights[this.regime.key] ?? 1) * (1 + 0.25 * Math.abs(this.sentiment.value));
+    return (pool.weights[this.regime.key] ?? 1) * (1 + 0.25 * Math.abs(this.sentiment.value)) * (pool.boost?.(this) ?? 1);
   }
 
   leverageFor(pool) {
@@ -644,7 +645,7 @@ export class Sandbox {
       this.live = this.newCandle();
     }
     this.sentiment.step(this.time);
-    this.index.step();
+    this.fair.step();
     this.maker.act();
     const noise = POOL_MAP.get("noise");
     const flow = this.rng.poisson(noise.rate / 60 * this.activity(noise));
@@ -657,7 +658,6 @@ export class Sandbox {
       const decisions = this.rng.poisson(pool.rate / 60 * this.activity(pool));
       for (let i = 0; i < decisions; i++) pool.decide(this);
     }
-    this.arb.act();
     this.maintain();
     this.resolveTriggers();
     this.activeExits();
@@ -761,6 +761,7 @@ export class Sandbox {
     return {
       regime: this.regime,
       sentiment: this.sentiment.value,
+      fairValue: Math.round(this.fair.value),
       pools: Object.values(pools),
       levels: [...rows.values()].sort((a, b) => b.price - a.price),
     };

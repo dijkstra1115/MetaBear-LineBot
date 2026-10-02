@@ -51,6 +51,7 @@
         <section id="reveal-panel" class="panel reveal-panel" hidden>
           <div class="panel-title"><span class="eyebrow">REVEAL</span><span>練習揭曉 · 市場已暫停</span></div>
           <div class="reveal-regime"><span>盤勢</span><strong id="reveal-regime">—</strong></div>
+          <div class="reveal-regime"><span>人群心中的合理價值</span><strong id="reveal-value">—</strong></div>
           <div class="reveal-mood"><span>隱藏情緒</span><div class="mood-bar"><i id="reveal-mood"></i></div><em id="reveal-mood-text">—</em></div>
           <table class="pool-table"><thead><tr><th>族群</th><th>活躍</th><th>多</th><th>空</th><th>待進場</th></tr></thead><tbody id="pool-rows"></tbody></table>
         </section>
@@ -76,7 +77,7 @@
             <li><b>雜訊散戶</b><span>現價附近的日常進出，提供成交量。</span></li>
             <li><b>長線承接</b><span>在 4 小時高低點外 2–6% 掛大階梯單，低槓桿、抱得久。</span></li>
           </ul>
-          <p class="guide-note">另有造市商與基差套利者：價格偏離指數太遠時，套利者會慢慢把它拉回。</p>
+          <p class="guide-note">另有造市商。市場是封閉的：你砸出去的每一顆 BTC 都要由場內的人接走，沒有外部資金把價格拉回。</p>
         </details>
       </aside>
 
@@ -146,7 +147,7 @@
             <div><dt>倉位保證金</dt><dd id="position-margin">$0</dd></div>
             <div><dt>最大回撤</dt><dd id="drawdown">$0</dd></div>
           </dl>
-          <div class="wallet-grid"><div><span>目前部位</span><strong id="position">空倉</strong></div><div><span>進場均價</span><strong id="entry-price">—</strong></div><div><span>槓桿</span><strong id="leverage-value">3×</strong></div><div><span>你的強平價</span><strong id="player-liq">—</strong></div><div><span>風險限額</span><strong id="risk-limit">—</strong></div><div><span>累積成交</span><strong id="volume">0 BTC</strong></div></div></section>
+          <div class="wallet-grid"><div><span>目前部位</span><strong id="position">空倉</strong></div><div><span>進場均價</span><strong id="entry-price">—</strong></div><div><span>槓桿</span><strong id="leverage-value">3×</strong></div><div><span>你的強平價</span><strong id="player-liq">—</strong></div><div><span>累積成交</span><strong id="volume">0 BTC</strong></div></div></section>
         <section class="panel protection-panel"><div class="panel-title"><div><span class="eyebrow">RISK ORDERS</span><h3>止損 / 止盈</h3></div><span>標記價觸發市價平倉</span></div><div class="protection-inputs"><label>止損價<input id="stop-price" inputmode="decimal" placeholder="選填" /></label><label>止盈價<input id="take-price" inputmode="decimal" placeholder="選填" /></label></div><div class="protection-actions"><button id="set-protection" type="button">設定</button><button id="clear-protection" type="button">清除</button></div><p id="protection-status">尚未設定</p></section>
         <section class="panel open-orders"><div class="panel-title"><div><span class="eyebrow">YOUR ORDERS</span><h3>等待中的委託</h3></div><button id="cancel-all" type="button">全部撤單</button></div><div id="player-orders"><p class="empty-state">目前沒有委託</p></div></section>
         <section class="panel shortcut-panel"><div class="panel-title"><span class="eyebrow">KEYS</span><span>快捷鍵</span></div><p>Space 執行／暫停 · Q 買 · E 賣 · F 平倉 · H 平一半 · R 揭曉 · 1–5 切換數量 · 滾輪縮放 K 線數量 · Shift＋滾輪縮放價格</p></section>

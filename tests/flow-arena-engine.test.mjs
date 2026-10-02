@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { OrderBook } from "../public/arena/engine/book.js";
 import { Sandbox } from "../public/arena/engine/market.js";
-import { Player, RISK_LIMITS_BTC } from "../public/arena/engine/player.js";
+import { Player } from "../public/arena/engine/player.js";
 import { Session } from "../public/arena/engine/session.js";
 
 const quick = (seed = 3) => new Sandbox(seed, { synthCandles: 120, warmSeconds: 900 });
@@ -105,14 +105,13 @@ test("crowds leave visible limit orders at levels and hidden stop entries beyond
   assert.equal(reveal.pools.length, 8);
 });
 
-test("risk limits cap the position per leverage, and leverage changes only while flat", () => {
+test("positions have no size cap, and leverage changes only while flat", () => {
   const sim = quick(2);
   const player = new Player(sim);
   assert.equal(player.setLeverage(20), null);
-  const tooBig = player.submitMarket("buy", (RISK_LIMITS_BTC[20] + 1) * 100);
-  assert.equal(tooBig.ok, false);
-  assert.match(tooBig.error, /風險限額/);
-  assert.equal(player.submitMarket("buy", 10000).ok, true);
+  const huge = player.submitMarket("buy", 300000); // 3,000 BTC at 20×
+  assert.equal(huge.ok, true);
+  assert.equal(player.position, 300000);
   assert.match(player.setLeverage(5), /空倉/);
 });
 

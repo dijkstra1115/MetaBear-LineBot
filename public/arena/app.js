@@ -1,5 +1,5 @@
 import { Sandbox } from "./engine/market.js";
-import { DEFAULT_LEVERAGE, LEVERAGES, Player, RISK_LIMITS_BTC } from "./engine/player.js";
+import { DEFAULT_LEVERAGE, LEVERAGES, Player } from "./engine/player.js";
 import { ALERT_KINDS, Session } from "./engine/session.js";
 import { REGIMES } from "./engine/regime.js";
 import { chartGeometry, chartPriceAt, drawChart, gameClock } from "./chart.js";
@@ -299,7 +299,7 @@ function showPause(result) {
       title = `${alert.side === "long" ? "多單" : "空單"}連環強平開始`;
       toneName = alert.side === "long" ? "coral" : "mint";
       stats.push(["第一波", btc(alert.lots)], ["10 秒價格", move], ["OI", signedBtc(alert.oi)]);
-      detail = alert.by === "player" ? "是你推出來的。下一條燃料在哪？什麼時候該走？" : "強平單會繼續推價，直到燃料用完；之後套利者會慢慢把價格拉回指數。";
+      detail = alert.by === "player" ? "是你推出來的。下一條燃料在哪？什麼時候該走？" : "強平單會繼續推價，直到燃料用完；之後價格守不守得住，要看場內有沒有人接手。";
     } else if (alert.kind === "move") {
       title = `回合內價格已移動 ${pct(alert.move)}`;
       stats.push(["回合開始", price(session.turnStartPrice)], ["現價", price(sim.last)], ["CVD 10 秒", signedBtc(alert.cvd)]);
@@ -481,6 +481,7 @@ function renderReveal() {
   if (!view.reveal) return;
   const reveal = sim.reveal();
   $("reveal-regime").textContent = REGIMES[reveal.regime.key] ?? reveal.regime.key;
+  $("reveal-value").textContent = `${price(reveal.fairValue)}（現價 ${pct(sim.last / reveal.fairValue - 1)}）`;
   $("reveal-mood").style.left = `${(reveal.sentiment + 1) * 50}%`;
   $("reveal-mood-text").textContent = reveal.sentiment >= 0 ? `偏多 ${fmt(reveal.sentiment, 2)}` : `偏空 ${fmt(reveal.sentiment, 2)}`;
   $("pool-rows").replaceChildren(...reveal.pools.map((pool) => {
@@ -599,7 +600,6 @@ function render() {
   $("leverage-value").textContent = `${player.leverage}×`;
   const liq = player.liquidationPrice();
   $("player-liq").textContent = liq ? `${price(liq)}（${pct(liq / mark - 1)}）` : "—";
-  $("risk-limit").textContent = Number.isFinite(RISK_LIMITS_BTC[player.leverage]) ? `${fmt(RISK_LIMITS_BTC[player.leverage])} BTC` : "不限";
   $("volume").textContent = btc(player.stats.volume);
   const locked = Boolean(player.position) || player.orders().length > 0 || player.triggers.length > 0 || player.twaps.length > 0;
   document.querySelectorAll("[data-leverage]").forEach((button) => {
@@ -665,7 +665,7 @@ document.querySelectorAll("[data-leverage]").forEach((button) => button.addEvent
   const error = player.setLeverage(Number(button.dataset.leverage));
   if (error) return setMessage(error, true);
   store.set("leverage", player.leverage);
-  setMessage(`槓桿改為 ${player.leverage}×，風險限額 ${Number.isFinite(RISK_LIMITS_BTC[player.leverage]) ? `${fmt(RISK_LIMITS_BTC[player.leverage])} BTC` : "不限"}`);
+  setMessage(`槓桿改為 ${player.leverage}×：部位大小不限，槓桿越高，保證金越少、強平價越近`);
   render();
 }));
 document.querySelectorAll("[data-layer]").forEach((button) => button.addEventListener("click", () => {

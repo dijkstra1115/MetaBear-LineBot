@@ -236,7 +236,7 @@ export const POOLS = [
       const touch = sim.touch(dir > 0 ? "buy" : "sell");
       const price = aggressive ? null : roundPrice(touch * (1 - dir * rng.lognormal(0.00025, 0.9)));
       sim.openCohort({
-        pool: "noise", side: dir, lots: btcLots(rng, 0.25, 1.1), leverage: sim.leverageFor(this),
+        pool: "noise", side: dir, lots: btcLots(rng, 0.35, 1.1), leverage: sim.leverageFor(this),
         entry: aggressive ? { type: "market" } : { type: "limit", price, expireAt: sim.time + rng.int(30, 120) },
         stop: rng.chance(0.2) ? roundPrice(sim.last * (1 - dir * rng.range(0.005, 0.015))) : null,
         hold: rng.int(2, 30) * MIN,
@@ -246,23 +246,36 @@ export const POOLS = [
   {
     key: "value",
     name: "長線承接",
-    rate: 1.2,
+    rate: 2,
     weights: W(0.8, 0.8, 1, 1, 1.5, 1.3),
     leverage: [[1, 0.5], [2, 0.3], [3, 0.2]],
-    // Deep ladders: buyers well under the 4-hour high, sellers well over the 4-hour low.
+    // The further the price strays from the fair value they believe in, the more of them act.
+    boost(sim) {
+      return 1 + 2.5 * Math.min(4, Math.abs(sim.last / sim.fair.value - 1) / 0.01);
+    },
+    // Patient ladders around value, larger the deeper they sit; far from value some step in at market.
     decide(sim) {
-      const { rng, ind } = sim;
-      const dir = leaning(sim, 0.5, 0.2);
-      const anchor = dir > 0 ? ind.high4h : ind.low4h;
-      if (anchor == null) return;
-      const price = roundPrice(anchor * (1 - dir * rng.range(0.02, 0.06)));
-      if (dir > 0 ? price >= sim.last * 0.996 : price <= sim.last * 1.004) return;
+      const { rng } = sim;
+      const fair = sim.fair.value;
+      const gap = sim.last / fair - 1;
+      const stretch = Math.abs(gap) / 0.01;
+      const dir = gap > 0.002 ? -1 : gap < -0.002 ? 1 : leaning(sim, 0.5, 0.2);
+      const take = (entry) => roundPrice(dir > 0 ? Math.max(fair * (1 + rng.range(-0.002, 0.008)), entry * 1.008) : Math.min(fair * (1 - rng.range(-0.002, 0.008)), entry * 0.992));
+      if (stretch > 1 && rng.chance(Math.min(0.6, 0.2 * stretch))) {
+        sim.openCohort({
+          pool: "value", side: dir, lots: btcLots(rng, 3 * Math.min(4, stretch), 0.7), leverage: sim.leverageFor(this),
+          entry: { type: "market" }, take: take(sim.last), takeMode: "limit", hold: rng.int(240, 720) * MIN,
+        });
+        return;
+      }
+      const depth = rng.range(0.005, 0.06);
+      const price = roundPrice(fair * (1 - dir * depth));
+      if (dir > 0 ? price >= sim.last * 0.998 : price <= sim.last * 1.002) return;
       sim.openCohort({
-        pool: "value", side: dir, lots: btcLots(rng, 5, 0.8), leverage: sim.leverageFor(this),
+        pool: "value", side: dir, lots: btcLots(rng, 4 * (1 + depth / 0.02), 0.8), leverage: sim.leverageFor(this),
         entry: { type: "limit", price, expireAt: sim.time + rng.int(60, 180) * MIN },
         stop: rng.chance(0.1) ? roundPrice(price * (1 - dir * rng.range(0.04, 0.06))) : null,
-        take: roundPrice(price * (1 + dir * rng.range(0.015, 0.03))), takeMode: "limit",
-        hold: rng.int(240, 720) * MIN,
+        take: take(price), takeMode: "limit", hold: rng.int(240, 720) * MIN,
       });
     },
   },

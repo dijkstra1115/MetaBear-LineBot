@@ -9,7 +9,7 @@ export const MAKER_LADDER = [
 
 const REFILL = 0.3;
 const TOLERANCE = 0.35;
-const INDEX_LEAN = 0.15;
+const VALUE_LEAN = 0.12;
 const SKEW_PER_LOT = 0.000000008; // 1,000 BTC of inventory leans quotes about 0.08%.
 const MAX_SKEW = 0.0012;
 const MAX_INVENTORY = 600000; // 6,000 BTC
@@ -44,13 +44,16 @@ export class MarketMaker {
     const toxicity = this.toxicity();
     const calm = 1 - clamp(Math.abs(this.forced) / TOXIC_LOTS, 0, 1);
     const inventory = this.account.position;
-    // Quotes lean toward the index the market tracks, and away from the side the inventory is on.
+    // Quotes lean toward the hidden fair value, and away from the side the inventory is on.
     const skew = clamp(inventory * SKEW_PER_LOT, -MAX_SKEW, MAX_SKEW);
-    const center = last + (sim.index.value - last) * INDEX_LEAN * calm - skew * last;
+    const center = last + (sim.fair.value - last) * VALUE_LEAN * calm - skew * last;
     const regimeWiden = sim.regime?.key === "panic" || sim.regime?.key === "euphoria" ? 1.4 : sim.regime?.key === "wild" ? 1.15 : 1;
     for (const side of ["buy", "sell"]) {
       const loaded = side === "buy" ? Math.max(0, inventory) : Math.max(0, -inventory);
-      const room = clamp(1 - loaded / MAX_INVENTORY, 0.15, 1);
+      // A loaded maker quotes smaller and further away, but never leaves the book empty.
+      const share = clamp(loaded / MAX_INVENTORY, 0, 1);
+      const room = 1 - share * 0.55;
+      const stretch = 1 + share * 1.5;
       const opposing = side === "buy" ? book.bestAsk() : book.bestBid();
       MAKER_LADDER.forEach((level, index) => {
         const key = `${side}:${index}`;
@@ -60,7 +63,7 @@ export class MarketMaker {
           this.quotes.set(key, quote);
         }
         const near = level.distance < 0.01;
-        const widen = (near ? 1 + toxicity * 0.9 : 1 + toxicity * 0.25) * regimeWiden;
+        const widen = (near ? 1 + toxicity * 0.9 : 1 + toxicity * 0.25) * regimeWiden * stretch;
         const offset = Math.max(PRICE_TICK, Math.round(center * level.distance * widen * quote.jitter / PRICE_TICK) * PRICE_TICK);
         let target = Math.round((side === "buy" ? center - offset : center + offset) / PRICE_TICK) * PRICE_TICK;
         if (opposing != null) target = side === "buy" ? Math.min(target, opposing - PRICE_TICK) : Math.max(target, opposing + PRICE_TICK);
@@ -100,13 +103,15 @@ export class MarketMaker {
   }
 }
 
-// The spot index the perpetual tracks. It wanders on its own (the hidden mood tilts it) and slowly
-// follows where the perpetual has been trading, so sustained pressure moves it while a spike does not.
-const INDEX_VOL = 0.00006; // per second
-const INDEX_DRIFT = 0.0000025; // per second at full mood
-const PASS_THROUGH = 1 / 400;
+// The hidden fair value: where the crowds believe the price belongs. It wanders on its own, the hidden
+// mood tilts it, and it slowly adopts a price that holds, so a level the market defends for a while
+// becomes the new value while a spike nobody follows does not. It never trades; it only steers the
+// value crowd, the mean reverters and the maker's quotes.
+const VALUE_VOL = 0.0001; // per second
+const VALUE_DRIFT = 0.0000025; // per second at full mood
+const ADOPT = 1 / 900;
 
-export class IndexPrice {
+export class FairValue {
   constructor(sim, price) {
     this.sim = sim;
     this.value = price;
@@ -114,43 +119,8 @@ export class IndexPrice {
   }
   step() {
     const sim = this.sim;
-    this.trail += (sim.last - this.trail) * 0.02;
-    this.value *= Math.exp(sim.sentiment.value * INDEX_DRIFT + INDEX_VOL * sim.rng.normal());
-    this.value += (this.trail - this.value) * PASS_THROUGH;
-  }
-}
-
-// Basis arbitrage: trades the perpetual back toward the index with IOC orders once the gap passes a
-// threshold, and unwinds the inventory when the gap closes. Its capacity is limited, so a big push
-// holds for a while and fades over minutes.
-const ARB_THRESHOLD = 0.0006;
-const ARB_GAIN = 1_000_000; // lots per unit of basis beyond the threshold, per second
-const ARB_MAX_TICK = 4000; // 40 BTC a second
-const ARB_LIMIT = 300000; // 3,000 BTC
-const ARB_UNWIND = 300; // 3 BTC a second
-
-export class ArbDesk {
-  constructor(sim) {
-    this.sim = sim;
-    this.account = sim.addAccount("arb", "arb");
-  }
-  act() {
-    const sim = this.sim;
-    const index = sim.index.value;
-    const basis = sim.last / index - 1;
-    const position = this.account.position;
-    if (Math.abs(basis) > ARB_THRESHOLD) {
-      const side = basis > 0 ? "sell" : "buy";
-      const room = ARB_LIMIT - (side === "buy" ? position : -position);
-      const lots = Math.min(ARB_MAX_TICK, room, Math.round((Math.abs(basis) - ARB_THRESHOLD) * ARB_GAIN));
-      if (lots < 10) return;
-      const limit = Math.round(index * (1 + (side === "sell" ? ARB_THRESHOLD : -ARB_THRESHOLD)) / PRICE_TICK) * PRICE_TICK;
-      sim.book.submit(side, limit, lots, { owner: "arb", acct: "arb", rest: false });
-    } else if (position && Math.abs(basis) < ARB_THRESHOLD / 3) {
-      const side = position > 0 ? "sell" : "buy";
-      const lots = Math.min(Math.abs(position), ARB_UNWIND);
-      const limit = Math.round(index * (1 + (side === "sell" ? -ARB_THRESHOLD / 3 : ARB_THRESHOLD / 3)) / PRICE_TICK) * PRICE_TICK;
-      sim.book.submit(side, limit, lots, { owner: "arb", acct: "arb", rest: false });
-    }
+    this.trail += (sim.last - this.trail) * 0.005;
+    this.value *= Math.exp(sim.sentiment.value * VALUE_DRIFT + VALUE_VOL * sim.rng.normal());
+    this.value += (this.trail - this.value) * ADOPT;
   }
 }

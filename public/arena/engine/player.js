@@ -3,15 +3,14 @@ import { MAINTENANCE, notional, unrealized } from "./ledger.js";
 
 export const LEVERAGES = [1, 3, 5, 10, 20];
 export const DEFAULT_LEVERAGE = 3;
-// Risk limits in BTC: the larger the possible position, the lower the leverage (exchange brackets).
-export const RISK_LIMITS_BTC = { 1: Infinity, 3: 8000, 5: 5000, 10: 2500, 20: 1000 };
 const MAKER_FEE = 0.0002;
 const TAKER_FEE = 0.0005;
 const MARKET_BAND = 0.1;
 const PUSH_LOTS = 5000; // 50 BTC or more counts as a push for liquidation credit
 
-// The sandbox player: unlimited wallet, isolated margin per position, leverage brackets and real
-// liquidation. Equity is the running PnL (realized − fees + unrealized).
+// The sandbox player: unlimited wallet with no size cap, isolated margin per position and real
+// liquidation. Leverage only sets the margin, and with it how far away the liquidation price sits.
+// Equity is the running PnL (realized − fees + unrealized).
 export class Player {
   constructor(sim) {
     this.sim = sim;
@@ -52,11 +51,6 @@ export class Player {
     return price > 0 ? Math.round(price) : null;
   }
 
-  riskLimitLots(leverage = this.leverage) {
-    const btc = RISK_LIMITS_BTC[leverage];
-    return Number.isFinite(btc) ? btc * 100 : Infinity;
-  }
-
   orders() {
     const out = [];
     for (const id of this.orderIds) {
@@ -76,39 +70,11 @@ export class Player {
     return map;
   }
 
-  // The largest position reachable if every opening order filled (resting, trigger and TWAP).
-  worstExposure(side = null, lots = 0) {
-    let buys = side === "buy" ? lots : 0;
-    let sells = side === "sell" ? lots : 0;
-    for (const order of this.orders()) {
-      if (this.reduceOnly.has(order.id)) continue;
-      const total = order.lots + (order.iceberg?.hidden ?? 0);
-      if (order.side === "buy") buys += total;
-      else sells += total;
-    }
-    for (const item of [...this.triggers, ...this.twaps]) {
-      if (item.reduceOnly) continue;
-      if (item.side === "buy") buys += item.remaining ?? item.lots;
-      else sells += item.remaining ?? item.lots;
-    }
-    const position = this.account.position;
-    return Math.max(position + buys, sells - position);
-  }
-
-  opening(side, lots) {
-    const position = this.account.position;
-    if (!position || (position > 0) === (side === "buy")) return lots;
-    return Math.max(0, lots - Math.abs(position));
-  }
-
   validate(side, lots, reduceOnly) {
     if (side !== "buy" && side !== "sell") return "方向無效";
     if (!Number.isSafeInteger(lots) || lots <= 0) return "請輸入有效數量";
     if (reduceOnly) return null;
     if (this.exitIntent && this.account.position && side === (this.account.position > 0 ? "buy" : "sell")) return "平倉等待流動性，暫不能加倉";
-    if (this.opening(side, lots) && this.worstExposure(side, lots) > this.riskLimitLots()) {
-      return `風險限額：${this.leverage}× 最多持有 ${RISK_LIMITS_BTC[this.leverage].toLocaleString("en-US")} BTC（含掛單），降低槓桿才能開更大的部位`;
-    }
     return null;
   }
 
