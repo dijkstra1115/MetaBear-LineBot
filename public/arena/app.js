@@ -2,7 +2,7 @@ import { Sandbox } from "./engine/market.js";
 import { DEFAULT_LEVERAGE, LEVERAGES, Player } from "./engine/player.js";
 import { ALERT_KINDS, Session } from "./engine/session.js";
 import { REGIMES } from "./engine/regime.js";
-import { chartGeometry, chartPriceAt, drawChart, gameClock } from "./chart.js";
+import { MIN_CANDLES, chartGeometry, chartPriceAt, drawChart, gameClock } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
 const TICKS_PER_SECOND = 30;
@@ -35,6 +35,7 @@ let running = false;
 let speed = store.get("speed", 1);
 let orderType = "market";
 let soundEnabled = store.get("sound", true);
+let effectsEnabled = store.get("effects", true);
 let audio = null;
 let seenFeedId = 0;
 let accumulator = 0;
@@ -129,7 +130,7 @@ function chartPoint(cents) {
 }
 
 function particles(x, y, color, count = 14, spread = 260) {
-  if (reducedMotion) return;
+  if (reducedMotion || !effectsEnabled) return;
   const layer = $("particle-layer");
   for (let i = 0; i < count; i++) {
     const particle = document.createElement("i");
@@ -145,6 +146,7 @@ function particles(x, y, color, count = 14, spread = 260) {
 }
 
 function floatLabel(text, x, y, toneName = "mint", big = false) {
+  if (!effectsEnabled) return;
   const layer = $("fx-layer");
   const label = document.createElement("div");
   label.className = `fx-label ${toneName}${big ? " big" : ""}`;
@@ -157,7 +159,7 @@ function floatLabel(text, x, y, toneName = "mint", big = false) {
 }
 
 function ring(x, y, toneName = "mint", strength = 0.5) {
-  if (reducedMotion) return;
+  if (reducedMotion || !effectsEnabled) return;
   const shock = document.createElement("span");
   shock.className = `fx-ring ${toneName}`;
   shock.style.left = `${x}px`;
@@ -168,7 +170,7 @@ function ring(x, y, toneName = "mint", strength = 0.5) {
 }
 
 function shake(level = 1) {
-  if (reducedMotion) return;
+  if (reducedMotion || !effectsEnabled) return;
   const panel = document.querySelector(".market-panel");
   panel.classList.remove("shake-1", "shake-2", "shake-3");
   void panel.offsetWidth;
@@ -176,6 +178,7 @@ function shake(level = 1) {
 }
 
 function flashScreen(toneName = "mint", strength = 0.5) {
+  if (!effectsEnabled) return;
   const overlay = $("flash-overlay");
   overlay.className = `flash-overlay ${toneName}`;
   overlay.style.setProperty("--flash", String(Math.min(0.55, 0.14 + strength * 0.4)));
@@ -184,6 +187,7 @@ function flashScreen(toneName = "mint", strength = 0.5) {
 }
 
 function banner(text, toneName = "gold") {
+  if (!effectsEnabled) return;
   const box = $("combo-banner");
   box.textContent = text;
   box.className = `combo-banner ${toneName}`;
@@ -417,6 +421,8 @@ function toggleReveal(next = !view.reveal) {
 /* ---------- Rendering ---------- */
 
 function renderBook() {
+  // Depth around the mid: right after a sweep the last trade sits at the tip of the wick.
+  const mid = sim.markPrice();
   const asks = sim.book.depth("sell", 12).reverse();
   const bids = sim.book.depth("buy", 12);
   const max = Math.max(1, ...asks.map((level) => level.lots), ...bids.map((level) => level.lots));
@@ -432,7 +438,7 @@ function renderBook() {
   total = 0;
   $("book-bids").replaceChildren(...bids.map((level) => { total += level.lots; return row(level, "bid", total); }));
   $("book-last").textContent = price(sim.last);
-  $("book-depth-label").textContent = `±1% ${btc(sim.book.depthWithin("buy", sim.last, 0.01))} / ${btc(sim.book.depthWithin("sell", sim.last, 0.01))}`;
+  $("book-depth-label").textContent = `±1% ${btc(sim.book.depthWithin("buy", mid, 0.01))} / ${btc(sim.book.depthWithin("sell", mid, 0.01))}`;
   const rows = [];
   for (let i = sim.tape.length - 1; i >= 0 && rows.length < 18; i--) {
     const trade = sim.tape[i];
@@ -540,6 +546,7 @@ function renderPreview() {
 function render() {
   if (!sim) return;
   const mark = sim.markPrice();
+  const mid = mark;
   const equity = player.equity(mark);
   const account = player.account;
   $("turn-label").textContent = `第 ${session.turn} 回合`;
@@ -565,7 +572,7 @@ function render() {
   const bid = sim.book.bestBid();
   const ask = sim.book.bestAsk();
   $("spread").textContent = bid && ask ? `$${fmt((ask - bid) / 100)}` : "—";
-  $("depth").textContent = `${fmt(sim.book.depthWithin("buy", sim.last, 0.01) / 100)} / ${fmt(sim.book.depthWithin("sell", sim.last, 0.01) / 100)}`;
+  $("depth").textContent = `${fmt(sim.book.depthWithin("buy", mid, 0.01) / 100)} / ${fmt(sim.book.depthWithin("sell", mid, 0.01) / 100)}`;
   $("cvd-value").textContent = signedBtc(sim.cvd);
 
   renderFuel();
@@ -681,6 +688,16 @@ document.querySelectorAll("[data-alert]").forEach((input) => {
   });
 });
 $("averages").addEventListener("change", () => { view.averages = $("averages").checked; });
+$("effects").checked = effectsEnabled;
+$("effects").addEventListener("change", () => {
+  effectsEnabled = $("effects").checked;
+  store.set("effects", effectsEnabled);
+  if (!effectsEnabled) {
+    $("fx-layer").replaceChildren();
+    $("particle-layer").replaceChildren();
+    $("combo-banner").hidden = true;
+  }
+});
 $("buy-button").addEventListener("click", () => submit("buy"));
 $("sell-button").addEventListener("click", () => submit("sell"));
 $("close-position").addEventListener("click", () => closeNow(1));
@@ -748,7 +765,11 @@ canvas.addEventListener("click", (event) => {
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
   if (event.shiftKey) view.zoom = Math.max(0.4, Math.min(6, view.zoom * (event.deltaY > 0 ? 0.9 : 1.1)));
-  else view.count = Math.max(30, Math.min(360, view.count + (event.deltaY > 0 ? 10 : -10)));
+  else {
+    // Finer steps when zoomed in close, so the footprint view is easy to reach.
+    const step = view.count <= 40 ? 2 : 10;
+    view.count = Math.max(MIN_CANDLES, Math.min(360, view.count + (event.deltaY > 0 ? step : -step)));
+  }
   view.frame.low = null;
 }, { passive: false });
 canvas.addEventListener("dblclick", () => {

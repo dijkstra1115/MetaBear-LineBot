@@ -11,8 +11,10 @@ const HEAT_HOT = [255, 214, 102];
 const heat = (t, alpha) => `rgba(${HEAT_COLD.map((cold, index) => Math.round(cold + (HEAT_HOT[index] - cold) * t)).join(",")},${alpha.toFixed(3)})`;
 
 export const PRICE_TAG = 70;
-export const LIQ_COLUMN = 84;
 export const FOOTPRINT_COLUMN = 148;
+export const MIN_CANDLES = 8;
+// Zoomed in this far, every candle gets its own footprint.
+const FOOTPRINT_SLOT = 56;
 
 // Simulated wall clock: the round opens at 09:00.
 export function gameClock(time) {
@@ -23,7 +25,7 @@ export function gameClock(time) {
 export function chartGeometry(canvas, sim, view = {}) {
   const rect = canvas.getBoundingClientRect();
   const all = sim.allCandles();
-  const count = clamp(Math.round(view.count ?? 120), 30, 360);
+  const count = clamp(Math.round(view.count ?? 120), MIN_CANDLES, 360);
   const end = all.length;
   const candles = all.slice(Math.max(0, end - count), end);
   const last = sim.last;
@@ -54,9 +56,9 @@ export function chartGeometry(canvas, sim, view = {}) {
   const priceTop = 26;
   const priceBottom = rect.height * 0.7;
   const left = 70;
-  const plotRight = rect.width - PRICE_TAG - LIQ_COLUMN - FOOTPRINT_COLUMN - 8;
+  const plotRight = rect.width - PRICE_TAG - FOOTPRINT_COLUMN - 8;
   const y = (price) => priceTop + (high - price) / span * (priceBottom - priceTop);
-  const slots = Math.max(40, candles.length + 3);
+  const slots = Math.max(MIN_CANDLES + 3, candles.length + 3);
   const xStep = (plotRight - left) / slots;
   const x = (index) => left + (index + 0.5) * xStep;
   return { rect, all, candles, first: end - candles.length, high, low, span, priceTop, priceBottom, left, plotRight, y, x, xStep };
@@ -244,8 +246,10 @@ export function drawChart(canvas, sim, view = {}) {
     ctx.fillText("VWAP 4h", left + 90, 12);
   }
 
+  const perCandle = xStep >= FOOTPRINT_SLOT;
   candles.forEach((candle, index) => {
-    const xx = x(index);
+    // With footprints on, a slim candle sits at the left edge of its slot.
+    const xx = perCandle ? x(index) - xStep * 0.42 : x(index);
     const up = candle.close >= candle.open;
     ctx.strokeStyle = candle.synthetic ? (up ? "#5aa897" : "#b56b78") : up ? "#86edd2" : "#ffa0a9";
     ctx.fillStyle = candle.synthetic ? (up ? "#4f9686" : "#a8606d") : up ? "#75e4c7" : "#f58296";
@@ -254,9 +258,11 @@ export function drawChart(canvas, sim, view = {}) {
     ctx.moveTo(xx, y(candle.high));
     ctx.lineTo(xx, y(candle.low));
     ctx.stroke();
-    const bodyWidth = Math.max(1.5, Math.min(9, xStep * 0.68));
+    const bodyWidth = perCandle ? 4 : Math.max(1.5, Math.min(9, xStep * 0.68));
     ctx.fillRect(xx - bodyWidth / 2, Math.min(y(candle.open), y(candle.close)), bodyWidth, Math.max(1.4, Math.abs(y(candle.open) - y(candle.close))));
   });
+
+  if (perCandle) drawCandleFootprints(ctx, scale, visible);
 
   // The player's fills as dots on their candles.
   if (player) {
@@ -266,7 +272,7 @@ export function drawChart(canvas, sim, view = {}) {
       if (index < 0 || index >= candles.length || !visible(fill.price)) continue;
       ctx.fillStyle = fill.side === "buy" ? "#9ff3dc" : "#ffb3bf";
       ctx.beginPath();
-      ctx.arc(x(index), y(fill.price), 2.8, 0, Math.PI * 2);
+      ctx.arc(perCandle ? x(index) - xStep * 0.42 : x(index), y(fill.price), 2.8, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -423,38 +429,8 @@ export function drawChart(canvas, sim, view = {}) {
     series(candles.map((candle) => candle.oi ?? 0), "#8fd4ffcc");
   }
 
-  // Estimated liquidation map column.
-  const liqX = plotRight + PRICE_TAG + 2;
-  const liqWidth = LIQ_COLUMN - 8;
-  ctx.fillStyle = "#0d202a";
-  ctx.fillRect(liqX - 2, 0, liqWidth + 4, height);
-  ctx.fillStyle = "#c9b27a";
-  ctx.font = "bold 9px Consolas, monospace";
-  ctx.textAlign = "left";
-  ctx.fillText("清算地圖·估", liqX + 3, 14);
-  let labelY = -Infinity;
-  for (const row of estimate) {
-    const lots = row.long + row.short;
-    const t = clamp(lots / maxEstimate, 0, 1);
-    const yy = y(row.price);
-    if (yy < priceTop || yy > priceBottom) continue;
-    const barWidth = Math.max(2, t * (liqWidth - 4));
-    ctx.fillStyle = row.short >= row.long ? `rgba(112,230,201,${(0.3 + t * 0.6).toFixed(3)})` : `rgba(251,127,145,${(0.3 + t * 0.6).toFixed(3)})`;
-    ctx.fillRect(liqX + liqWidth - barWidth, yy - 2, barWidth, 4);
-    if (t > 0.5 && Math.abs(yy - labelY) > 14) {
-      labelY = yy;
-      ctx.fillStyle = "#f7e6b5";
-      ctx.font = "9px Consolas, monospace";
-      ctx.fillText(btc(lots), liqX + 2, yy - 7);
-    }
-  }
-  ctx.fillStyle = "#6f9aa0";
-  ctx.font = "8px Consolas, monospace";
-  ctx.fillText("↑ 空單強平", liqX + 3, priceTop + 8);
-  ctx.fillText("↓ 多單強平", liqX + 3, priceBottom - 4);
-
   // Footprint of the last five minutes.
-  const footprintX = liqX + liqWidth + 8;
+  const footprintX = plotRight + PRICE_TAG + 8;
   const footprintWidth = width - footprintX - 6;
   ctx.fillStyle = "#122b35";
   ctx.fillRect(footprintX, 0, footprintWidth, height);
@@ -489,4 +465,70 @@ export function drawChart(canvas, sim, view = {}) {
     ctx.font = "9px Consolas, monospace";
     ctx.fillText(labelPrice(row.price), footprintX + footprintWidth / 2, yy);
   }
+}
+
+const shortBtc = (lots) => {
+  if (!lots) return "0";
+  const value = lots / 100;
+  return value >= 100 ? String(Math.round(value)) : value >= 10 ? value.toFixed(0) : value.toFixed(1);
+};
+
+// Bid × ask volume per price row inside each candle's slot; rows grow so the text never overlaps.
+// The busiest row (point of control) gets an outline.
+function drawCandleFootprints(ctx, scale, visible) {
+  const { candles, x, y, xStep, span, priceTop, priceBottom } = scale;
+  const rowPixels = 13;
+  const raw = span * rowPixels / (priceBottom - priceTop);
+  const steps = [1000, 2000, 2500, 5000, 10000, 20000, 25000, 50000, 100000];
+  const bin = steps.find((step) => step >= raw) ?? Math.ceil(raw / 100000) * 100000;
+  const rowHeight = Math.abs(y(0) - y(bin));
+  const fontSize = Math.max(8, Math.min(11, rowHeight - 3));
+  candles.forEach((candle, index) => {
+    if (!candle.fp?.size) return;
+    const rows = new Map();
+    for (const [price, cell] of candle.fp) {
+      const key = Math.round(price / bin) * bin;
+      const row = rows.get(key) ?? { buy: 0, sell: 0 };
+      row.buy += cell.buy;
+      row.sell += cell.sell;
+      rows.set(key, row);
+    }
+    let poc = null;
+    let max = 1;
+    for (const [price, row] of rows) {
+      const total = row.buy + row.sell;
+      if (total > max) {
+        max = total;
+        poc = price;
+      }
+    }
+    const left = x(index) - xStep * 0.34;
+    const width = xStep * 0.8;
+    ctx.font = `${fontSize}px Consolas, monospace`;
+    ctx.textBaseline = "middle";
+    for (const [price, row] of rows) {
+      if (!visible(price)) continue;
+      const top = y(price + bin / 2);
+      const total = row.buy + row.sell;
+      const imbalance = row.buy > row.sell * 3 && row.buy >= 100 ? "buy" : row.sell > row.buy * 3 && row.sell >= 100 ? "sell" : null;
+      const alpha = (0.05 + total / max * 0.22).toFixed(3);
+      ctx.fillStyle = imbalance === "buy" ? `rgba(112,230,201,${alpha})` : imbalance === "sell" ? `rgba(251,127,145,${alpha})` : `rgba(150,180,190,${(total / max * 0.16).toFixed(3)})`;
+      ctx.fillRect(left, top, width, rowHeight - 1);
+      if (price === poc) {
+        ctx.strokeStyle = "#f2c575cc";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(left + 0.5, top + 0.5, width - 1, rowHeight - 2);
+      }
+      if (top < priceTop - 2 || top + rowHeight > priceBottom + 2) continue;
+      ctx.fillStyle = "#ffa7b4";
+      ctx.textAlign = "right";
+      ctx.fillText(shortBtc(row.sell), left + width / 2 - 3, top + rowHeight / 2);
+      ctx.fillStyle = "#cfd9dc";
+      ctx.textAlign = "center";
+      ctx.fillText("×", left + width / 2, top + rowHeight / 2);
+      ctx.fillStyle = "#97f0d3";
+      ctx.textAlign = "left";
+      ctx.fillText(shortBtc(row.buy), left + width / 2 + 3, top + rowHeight / 2);
+    }
+  });
 }

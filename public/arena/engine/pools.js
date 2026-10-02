@@ -232,7 +232,7 @@ export const POOLS = [
         return;
       }
       const dir = sim.rng.next() < 0.5 + sim.sentiment.value * 0.08 + sim.noiseHerd ? 1 : -1;
-      const aggressive = rng.chance(0.55);
+      const aggressive = rng.chance(0.75);
       const touch = sim.touch(dir > 0 ? "buy" : "sell");
       const price = aggressive ? null : roundPrice(touch * (1 - dir * rng.lognormal(0.00025, 0.9)));
       sim.openCohort({
