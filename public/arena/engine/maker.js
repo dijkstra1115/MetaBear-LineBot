@@ -2,7 +2,7 @@ import { PRICE_TICK } from "./book.js";
 
 // Near levels answer everyday flow; the backstop keeps a price for every exit. Sizes in BTC.
 export const MAKER_LADDER = [
-  [0.00005, 5], [0.00015, 10], [0.0003, 18], [0.0005, 30], [0.0008, 45], [0.0012, 60],
+  [0.00005, 2], [0.00015, 4], [0.0003, 7], [0.0005, 14], [0.0008, 28], [0.0012, 55],
   [0.0018, 80], [0.0026, 105], [0.0036, 130], [0.005, 160], [0.007, 190], [0.0092, 220],
   [0.012, 300], [0.016, 450], [0.022, 650], [0.03, 900], [0.04, 1100], [0.052, 1400],
 ].map(([distance, btc]) => ({ distance, lots: btc * 100 }));

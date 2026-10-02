@@ -220,7 +220,7 @@ export const POOLS = [
   {
     key: "noise",
     name: "雜訊散戶",
-    rate: 150,
+    rate: 200,
     weights: W(1, 1, 0.8, 1.2, 1.4, 1.4),
     leverage: [[2, 0.2], [5, 0.2], [10, 0.25], [20, 0.2], [50, 0.15]],
     // Everyday flow near the touch. Some decisions open, the rest close an earlier noise position.
@@ -231,12 +231,12 @@ export const POOLS = [
         sim.closeRandom("noise", rng.chance(0.5) ? "market" : "limit");
         return;
       }
-      const dir = leaning(sim, 0.5, 0.08);
-      const aggressive = rng.chance(0.38);
+      const dir = sim.rng.next() < 0.5 + sim.sentiment.value * 0.08 + sim.noiseHerd ? 1 : -1;
+      const aggressive = rng.chance(0.55);
       const touch = sim.touch(dir > 0 ? "buy" : "sell");
       const price = aggressive ? null : roundPrice(touch * (1 - dir * rng.lognormal(0.00025, 0.9)));
       sim.openCohort({
-        pool: "noise", side: dir, lots: btcLots(rng, 0.35, 1.1), leverage: sim.leverageFor(this),
+        pool: "noise", side: dir, lots: btcLots(rng, 0.35, 1.35), leverage: sim.leverageFor(this),
         entry: aggressive ? { type: "market" } : { type: "limit", price, expireAt: sim.time + rng.int(30, 120) },
         stop: rng.chance(0.2) ? roundPrice(sim.last * (1 - dir * rng.range(0.005, 0.015))) : null,
         hold: rng.int(2, 30) * MIN,

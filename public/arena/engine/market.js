@@ -17,6 +17,8 @@ const FOOTPRINT_BIN = 1000; // $10
 const TAPE_KEEP = 4000;
 const FOOTPRINT_KEEP = 240;
 const VIRTUAL_NOISE_PER_MINUTE = 8;
+const NOISE_TEMPO_SPREAD = 0.6;
+const NOISE_HERD = 0.05;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -52,6 +54,9 @@ export class Sandbox {
     this.priceTrail = [];
     this.marketStats = { liquidatedLong: 0, liquidatedShort: 0, exits: {} };
     this.player = null;
+    // Everyday flow comes in waves: a per-minute tempo and a short-lived herd lean.
+    this.noiseTempo = 1;
+    this.noiseHerd = 0;
     this.insurance = this.addAccount("insurance", "insurance");
     this.legacy = this.addAccount("legacy", "legacy");
     this.maker = new MarketMaker(this);
@@ -648,7 +653,9 @@ export class Sandbox {
     this.fair.step();
     this.maker.act();
     const noise = POOL_MAP.get("noise");
-    const flow = this.rng.poisson(noise.rate / 60 * this.activity(noise));
+    if (this.time % CANDLE_SECONDS === 1) this.noiseTempo = this.rng.lognormal(1, NOISE_TEMPO_SPREAD);
+    if (this.time % 15 === 0) this.noiseHerd = Math.max(-NOISE_HERD * 2, Math.min(NOISE_HERD * 2, this.rng.normal() * NOISE_HERD));
+    const flow = this.rng.poisson(noise.rate / 60 * this.activity(noise) * this.noiseTempo);
     for (let i = 0; i < flow; i++) {
       if (i && i % 3 === 0) this.maker.act();
       noise.decide(this);
