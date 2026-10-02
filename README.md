@@ -15,7 +15,7 @@
 | 單課影片與 86 秒 Showreel | motion/；[製作說明](docs/ACADEMY-MOTION.md) |
 | FLOW ARENA 宣傳片（HyperFrames） | motion/flow-arena/；[說明](motion/flow-arena/README.md) |
 
-FLOW ARENA 與 46 秒橫／直式宣傳片保留在各自開發分支，兩者同等優先，尚未合併至本分支。版本與依賴見專案地圖。
+FLOW ARENA 單人沙盤在 flow-arena-sandbox 分支開發（public/arena/，[說明](docs/FLOW-ARENA.md)），尚未合併至本分支；46 秒橫／直式宣傳片仍在自己的分支。版本與依賴見專案地圖。
 
 ## 本機開發
 
@@ -47,7 +47,7 @@ Pages／Worker 拆分已於 2026-09-30 正式上線，GitHub main 的網站修�
 
 ## 暫停與封存
 
-- [流動性實驗](experiments/liquidity/README.md)：暫停；FLOW ARENA 依賴的撮合核心仍須保留。
+- [流動性實驗](experiments/liquidity/README.md)：暫停；FLOW ARENA 沙盤已改用自己的撮合核心。
 - [封存區](archive/README.md)：Python Bot、量化研究／錄製／Jev、現貨沙盒、舊版學院及被替換素材。全部位於 public/ 之外。
 - 舊課程網址轉到現行學院；已合併的突破／撤單網址仍指向現行合併課。
 - quant/.data/ 僅保留原機器的私有資料，不納入 Git、不自動搬移；資料夾存在不表示服務仍在維護。

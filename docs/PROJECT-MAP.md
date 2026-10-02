@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 持續維護 | 網站、圖文教學、19 堂動態課程 | public/、web/ |
 | 持續維護 | LINE Bot、CRM、自動核實、VIP 邀請、行銷與分析師報單 | src/、migrations/ |
-| 繼續開發，同等優先 | FLOW ARENA 單機、電腦與好友對戰 | origin/flow-arena |
+| 繼續開發，同等優先 | FLOW ARENA 單人沙盤（半回合制、策略族群 NPC）；2–3 人 PvP 等沙盤穩定後再開發 | flow-arena-sandbox 分支的 public/arena/；[說明](FLOW-ARENA.md) |
 | 繼續開發，同等優先 | Showreel、單課輸出、橫／直式宣傳片 | motion/；FLOW ARENA 宣傳片在 motion/flow-arena/，學院 46 秒宣傳片在 motion/academy-promo/（見 [motion/README.md](../motion/README.md)） |
 | 暫停 | 流動性、隨機掛單與方向對照實驗 | experiments/liquidity/ |
 | 封存 | 現貨交易沙盒 | archive/2026-09-29/flow-arena/ |
@@ -22,12 +22,13 @@
 
 | 分支 | 固定來源提交 | 內容與接續原則 |
 | --- | --- | --- |
-| origin/flow-arena | 5b968b6 | 11 個 main 尚未合併提交；對戰、實驗、現貨沙盒混在一起。後續整合只帶入 ARENA 與必要依賴，勿直接復活已封存入口。 |
+| origin/flow-arena | 5b968b6 | 舊版 120 秒獵場、電腦對手與好友房（Durable Object）的歷史。2026-10 起改由 flow-arena-sandbox 從 main 重建，舊版不再延續；PvP 之後以新引擎重做時可參考它的 lockstep 架構。 |
+| flow-arena-sandbox | — | 從 main 建立，只含新的沙盤引擎、頁面、測試與平衡實驗；沒有帶入舊版對戰、電腦對手、腳本 NPC 與已封存入口。 |
 | origin/claude/kind-wozniak-8m71aw | 8ad5e19 | 46 秒 promo，16:9／9:16；以此提交接續，避免覆蓋新版 Logo 與封存決策。 |
 
 此次不切換或重寫原開發分支，也不整包合併。已把分支中的沙盒與暫停實驗另存可核對的快照；FLOW ARENA 與 promo 的完整 Git 歷史保留於原分支。
 
-重要依賴：flow-arena-engine.js 匯入 taker-only-engine.js。暫停隨機掛單實驗不代表可刪除這個核心。現役 Canvas 課程與 Showreel 使用 motion/core.js、kit.js 等共用工具；舊 SVG 的 engine.js 並非它們的執行依賴。
+FLOW ARENA 沙盤使用自己的撮合核心（public/arena/engine/book.js），不再依賴 taker-only-engine.js；experiments/liquidity/ 的快照維持暫停。現役 Canvas 課程與 Showreel 使用 motion/core.js、kit.js 等共用工具；舊 SVG 的 engine.js 並非它們的執行依賴。
 
 ## 執行與資料邊界
 
