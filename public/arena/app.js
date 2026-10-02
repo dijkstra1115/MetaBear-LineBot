@@ -67,6 +67,8 @@ function newMarket(seed = randomSeed()) {
     openPrice = sim.last;
     turnOpen = snapshot();
     cascadeFx = null;
+    streak = 0;
+    $("streak").hidden = true;
     milestone = { key: null, reached: 0 };
     lastRealized = 0;
     $("cascade-meter").hidden = true;
@@ -83,8 +85,15 @@ function newMarket(seed = randomSeed()) {
 }
 
 function snapshot() {
-  return { price: sim.last, cvd: sim.cvd, oi: sim.oi, pnl: player.equity(), feed: sim.liquidationFeed.at(-1)?.id ?? 0, time: sim.time };
+  turnPeak = 0;
+  turnStalls = 0;
+  const stats = player.stats;
+  return { price: sim.last, cvd: sim.cvd, oi: sim.oi, pnl: player.equity(), feed: sim.liquidationFeed.at(-1)?.id ?? 0, time: sim.time, ignited: stats.ignited, volume: stats.volume, liquidations: stats.liquidations };
 }
+
+// Best gain reached during the turn, and how many pushes ran into hidden size.
+let turnPeak = 0;
+let turnStalls = 0;
 
 function setRunning(next) {
   if (!sim) return;
@@ -373,6 +382,7 @@ function updateMoneyMoments(floating) {
   // Realized PnL only: opening a big position pays a big fee, which is not a result.
   const banked = account.realized - lastRealized;
   if (Math.abs(banked) >= 100000) showCash(banked);
+  if (Math.abs(banked) >= 10000) registerResult(banked);
   lastRealized = account.realized;
 }
 
@@ -438,6 +448,123 @@ function processEvents(events) {
 
 /* ---------- Turns and pauses ---------- */
 
+// The verdict on a turn, most telling first.
+function judgeTurn({ pnl, ignited, liquidated, traded, peak, stalls }) {
+  if (liquidated) return { text: "💀 被市場反殺", tone: "coral", tip: "你的強平價就是別人眼中的燃料。降低槓桿，或把止損放在強平價前面。" };
+  if (!traded) return { text: "👀 觀望", tone: "amber", tip: "沒出手也是一種選擇。下回合想好要找哪一條燃料、怎麼確認它是真的。" };
+  if (ignited >= 30000 && pnl > 0) return { text: "🔥 完美點火", tone: "gold", tip: "推穿燃料、吃到連環、帶著利潤離場。" };
+  if (ignited > 0 && pnl > 0) return { text: "💥 點火成功", tone: "mint", tip: "連環停下的那一刻就是出場訊號，留意 OI 和 CVD 何時轉向。" };
+  if (pnl > 0 && peak >= 300000 && pnl < peak * 0.5) return { text: "🎢 坐了趟雲霄飛車", tone: "amber", tip: `最高曾賺 ${money(peak)}，最後留不到一半。推完後別等價格自己回頭。` };
+  if (pnl >= 1e6) return { text: "💰 大豐收", tone: "gold", tip: "賺到的單就讓它落袋，別讓它變成下一回合的燃料。" };
+  if (pnl > 0) return { text: "✅ 小有斬獲", tone: "mint", tip: "穩穩賺到。下回合可以找更亮的燃料試試看。" };
+  if (stalls) return { text: "🛡 撞牆了", tone: "coral", tip: "推之前先丟小單試探：價格推不動、Footprint 在同一價位堆量，就是有人在吸收。" };
+  if (ignited > 0) return { text: "🧨 點了火卻燒到自己", tone: "coral", tip: "引爆後沒及時離場，回彈吃掉了利潤。" };
+  return { text: "📉 繳學費", tone: "coral", tip: "看看這回合的 OI 和 CVD：價格動之前，它們有沒有先給訊號？" };
+}
+
+// Numbers on the report count up from zero, one row after another.
+function countUp(element, target, format, delay) {
+  element.textContent = format(0);
+  setTimeout(() => {
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / 550);
+      element.textContent = format(target * (1 - (1 - t) ** 3));
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+    tone(520 + delay / 3, 0.05, "triangle", 0.025);
+  }, delay);
+}
+
+function showReport() {
+  const before = turnOpen;
+  const pnl = player.equity() - before.pnl;
+  const ignited = player.stats.ignited - before.ignited;
+  const liquidated = player.stats.liquidations - before.liquidations;
+  const traded = player.stats.volume - before.volume;
+  const burned = sim.liquidationFeed.filter((item) => item.id > before.feed && !item.warm).reduce((sum, item) => sum + item.lots, 0);
+  const verdict = judgeTurn({ pnl, ignited, liquidated, traded, peak: turnPeak, stalls: turnStalls });
+  const rows = [
+    ["本回合損益", pnl, money, pnl > 0 ? "positive" : pnl < 0 ? "negative" : ""],
+    ["最高浮盈", Math.max(0, turnPeak), money, ""],
+    ["你引爆的強平", ignited, (value) => btc(Math.round(value)), ignited ? "gold" : ""],
+    ["撞牆", turnStalls, (value) => `${Math.round(value)} 次`, turnStalls ? "negative" : ""],
+    ["成交量", traded, (value) => btc(Math.round(value)), ""],
+  ];
+  const market = [
+    ["價格", `${price(before.price)} → ${price(sim.last)}（${pct(sim.last / before.price - 1)}）`],
+    ["CVD／OI", `${signedBtc(sim.cvd - before.cvd)}／${signedBtc(sim.oi - before.oi)}`],
+    ["全場強平", burned ? btc(burned) : "無"],
+  ];
+  const card = $("pause-card");
+  $("pause-kind").textContent = `TURN REPORT · 第 ${session.turn - 1} 回合`;
+  $("pause-title").textContent = verdict.text;
+  const items = [];
+  rows.forEach(([label, value, format, className], index) => {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    if (className) dd.className = className;
+    dt.style.setProperty("--i", String(index));
+    dd.style.setProperty("--i", String(index));
+    items.push(dt, dd);
+    countUp(dd, value, format, 250 + index * 160);
+  });
+  market.forEach(([label, value], index) => {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    dt.className = "market";
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    dd.className = "market";
+    dt.style.setProperty("--i", String(rows.length + index));
+    dd.style.setProperty("--i", String(rows.length + index));
+    items.push(dt, dd);
+  });
+  $("pause-stats").replaceChildren(...items);
+  $("pause-detail").textContent = verdict.tip;
+  card.className = `pause-card report ${verdict.tone}`;
+  card.hidden = false;
+  setTimeout(() => {
+    if (verdict.tone === "gold") {
+      chime(7);
+      const box = card.getBoundingClientRect();
+      const chart = $("market-chart").getBoundingClientRect();
+      particles(box.left - chart.left + box.width / 2, box.top - chart.top + 40, "#f6d78c", 36, 420);
+    } else if (verdict.tone === "coral") tone(180, 0.3, "sawtooth", 0.03, 110);
+    else chime(3);
+  }, 250 + rows.length * 160);
+  turnOpen = snapshot();
+}
+
+// Consecutive profitable closes stack into a streak; a losing close breaks it.
+let streak = 0;
+function registerResult(banked) {
+  const box = $("streak");
+  if (banked > 0) {
+    streak++;
+    if (streak < 2 || !effectsEnabled) return;
+    box.hidden = false;
+    box.className = `streak tier-${streak >= 10 ? 3 : streak >= 5 ? 2 : streak >= 3 ? 1 : 0}`;
+    $("streak-count").textContent = `×${streak}`;
+    void box.offsetWidth;
+    box.classList.add("pop");
+    chime(Math.min(10, streak + 1));
+    if (streak === 3 || streak === 5 || streak === 10 || (streak > 10 && streak % 5 === 0)) banner(`🔥 ${streak} 連勝！`, "gold");
+    return;
+  }
+  if (streak >= 2 && effectsEnabled) {
+    $("streak-count").textContent = `×${streak}`;
+    box.hidden = false;
+    box.className = "streak broken";
+    tone(440, 0.25, "sawtooth", 0.035, 140);
+    clearTimeout(box.hideTimer);
+    box.hideTimer = setTimeout(() => { box.hidden = true; }, 900);
+  }
+  streak = 0;
+}
+
 function showPause(result) {
   const card = $("pause-card");
   const stats = [];
@@ -446,18 +573,8 @@ function showPause(result) {
   let detail = "";
   let toneName = "amber";
   if (result.stop === "turn") {
-    const before = turnOpen;
-    const waves = sim.liquidationFeed.filter((item) => item.id > before.feed && !item.warm);
-    kind = "TURN COMPLETE";
-    title = `第 ${session.turn - 1} 回合結束`;
-    toneName = "mint";
-    stats.push(["價格", `${price(before.price)} → ${price(sim.last)}（${pct(sim.last / before.price - 1)}）`]);
-    stats.push(["CVD", signedBtc(sim.cvd - before.cvd)]);
-    stats.push(["OI", signedBtc(sim.oi - before.oi)]);
-    stats.push(["強平", waves.length ? btc(waves.reduce((sum, item) => sum + item.lots, 0)) : "無"]);
-    stats.push(["你的損益", money(player.equity() - before.pnl)]);
-    detail = "計畫下一回合：價格動了，但 OI 是增加還是減少？CVD 和價格同向嗎？";
-    turnOpen = snapshot();
+    showReport();
+    return;
   } else {
     const alert = result.alert;
     kind = `TACTICAL PAUSE · ${ALERT_KINDS[alert.kind]}`;
@@ -500,6 +617,7 @@ function showPause(result) {
 function handleRun(result) {
   processEvents(result.events);
   processLiquidations();
+  if (turnOpen) turnPeak = Math.max(turnPeak, player.equity() - turnOpen.pnl);
   if (result.stop) {
     running = false;
     showPause(result);
@@ -556,6 +674,7 @@ function submit(side) {
       view.pushes = view.pushes.slice(-4);
     }
     if (stalled) {
+      turnStalls++;
       const wall = chartPoint(reach);
       floatLabel("🛡 撞牆！有人在吸收", wall.x - 40, wall.y + (side === "buy" ? -28 : 28), "amber", true);
       // A dull thud instead of the usual click.

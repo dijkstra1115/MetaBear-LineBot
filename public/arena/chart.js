@@ -592,7 +592,8 @@ function drawFuelOmen(ctx, scale, estimate, maxEstimate, last, now) {
     const distance = Math.abs(row.price / last - 1);
     if (distance > OMEN_RANGE) continue;
     const heat = 1 - distance / OMEN_RANGE;
-    const flicker = 0.55 + 0.45 * Math.sin(now / (260 - heat * 190) + row.price);
+    // A slow breathing glow when far, quickening as the price closes in (about 3.3s down to 1.6s).
+    const flicker = 0.55 + 0.45 * Math.sin(now / (520 - heat * 260) + row.price);
     const yy = y(row.price);
     const band = Math.max(4, 6 + heat * 10);
     const green = Math.round(150 + heat * 90);
