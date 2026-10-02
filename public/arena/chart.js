@@ -609,37 +609,35 @@ function drawCandleFootprints(ctx, scale, visible) {
   });
 }
 
-const OMEN_RANGE = 0.008;
+const OMEN_PERIOD = 260; // ms per radian: one breath about every 1.6s
 
-// The brightest estimated liquidation bands heat up as the price closes in: they pulse deeper,
-// glow hotter and carry a tag with the fuel and the distance, so the chart warns before it blows.
+// The brightest estimated liquidation bands breathe, all on one rhythm whatever the price does;
+// a band with more fuel glows brighter. The two biggest carry a tag with their fuel.
 function drawFuelOmen(ctx, scale, estimate, maxEstimate, last, now) {
   const { left, plotRight, y } = scale;
-  for (const row of estimate) {
-    const lots = row.long + row.short;
-    if (lots / maxEstimate < 0.45 || lots < 3000) continue;
-    const distance = Math.abs(row.price / last - 1);
-    if (distance > OMEN_RANGE) continue;
-    const heat = 1 - distance / OMEN_RANGE;
-    // One steady breath (about 2.8s) for every band; only its depth grows as the price closes in.
-    const flicker = 1 - heat * 0.45 * (0.5 + 0.5 * Math.sin(now / 450));
+  const breath = 0.5 + 0.5 * Math.sin(now / OMEN_PERIOD);
+  const bright = estimate
+    .map((row) => ({ row, lots: row.long + row.short }))
+    .filter(({ lots }) => lots / maxEstimate >= 0.45 && lots >= 3000)
+    .sort((first, second) => second.lots - first.lots);
+  bright.forEach(({ row, lots }, rank) => {
+    const strength = Math.min(1, lots / maxEstimate);
+    const glow = 0.35 + 0.65 * breath;
     const yy = y(row.price);
-    const band = Math.max(4, 6 + heat * 10);
-    const green = Math.round(150 + heat * 90);
-    const blue = Math.round(60 + heat * 150);
+    const band = 5 + strength * 9;
     ctx.save();
-    ctx.shadowColor = `rgba(255,${green},${blue},${(0.6 * heat).toFixed(3)})`;
-    ctx.shadowBlur = 8 + heat * 18;
-    ctx.fillStyle = `rgba(255,${green},${blue},${(0.06 + heat * 0.24 * flicker).toFixed(3)})`;
+    ctx.shadowColor = `rgba(255,190,110,${(0.55 * strength * glow).toFixed(3)})`;
+    ctx.shadowBlur = 6 + strength * 16 * glow;
+    ctx.fillStyle = `rgba(255,180,100,${((0.05 + strength * 0.2) * glow).toFixed(3)})`;
     ctx.fillRect(left, yy - band / 2, plotRight - left, band);
-    ctx.fillStyle = `rgba(255,${green},${blue},${(0.35 + heat * 0.6 * flicker).toFixed(3)})`;
+    ctx.fillStyle = `rgba(255,210,150,${((0.25 + strength * 0.55) * glow).toFixed(3)})`;
     ctx.fillRect(left, yy - 0.75, plotRight - left, 1.5);
     ctx.restore();
-    if (heat > 0.35) {
+    if (rank < 2) {
       const side = row.price < last ? "多單" : "空單";
-      tag(ctx, `🔥 ${side}燃料 ${btc(lots)} · ${(distance * 100).toFixed(2)}%`, left + 150, yy, `rgba(70,30,10,${(0.75 + 0.2 * flicker).toFixed(3)})`, `rgb(255,${green},${blue})`);
+      tag(ctx, `🔥 ${side}燃料 ${btc(lots)}`, left + 150, yy, `rgba(70,30,10,${(0.7 + 0.25 * breath).toFixed(3)})`, "#ffd296");
     }
-  }
+  });
 }
 
 // A market push: a wave front sweeps from where the price was to where the order reached, leaving a

@@ -1211,3 +1211,14 @@ if (!LEVERAGES.includes(store.get("leverage", DEFAULT_LEVERAGE))) store.set("lev
 setOrderType("market");
 newMarket();
 requestAnimationFrame(frame);
+
+// Development hook: with ?debug in the address, the session and the effect functions are reachable
+// from the console, so each effect can be triggered and checked on its own.
+if (new URLSearchParams(location.search).has("debug")) {
+  window.arenaDebug = {
+    get sim() { return sim; },
+    get player() { return player; },
+    get session() { return session; },
+    processLiquidations, processEvents, showPause, registerResult, showCash, updateMoneyMoments, render,
+  };
+}
