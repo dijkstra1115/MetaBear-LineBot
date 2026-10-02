@@ -752,24 +752,48 @@ let dragged = false;
 const zoomBy = (factor) => {
   view.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, view.zoom * factor));
 };
+// Dragging inside the plot pans: sideways through time, up and down through prices. A press that
+// barely moves is still a click that fills the order price.
+let panDrag = null;
 canvas.addEventListener("mousedown", (event) => {
-  if (!sim || !chartOnAxis(canvas, sim, view, event.clientX, event.clientY)) return;
-  axisDrag = { y: event.clientY, zoom: view.zoom };
+  if (!sim || event.button !== 0) return;
   dragged = false;
+  if (chartOnAxis(canvas, sim, view, event.clientX, event.clientY)) {
+    axisDrag = { y: event.clientY, zoom: view.zoom };
+    event.preventDefault();
+    return;
+  }
+  const geometry = chartGeometry(canvas, sim, view);
+  const localY = event.clientY - geometry.rect.top;
+  if (localY > geometry.priceBottom) return;
+  panDrag = { x: event.clientX, y: event.clientY, shift: geometry.shift, offset: view.offset, xStep: geometry.xStep, pricePerPixel: geometry.span / (geometry.priceBottom - geometry.priceTop) };
   event.preventDefault();
 });
 window.addEventListener("mousemove", (event) => {
-  if (!axisDrag) return;
-  const dy = event.clientY - axisDrag.y;
-  if (Math.abs(dy) > 2) dragged = true;
-  view.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, axisDrag.zoom * Math.exp(-dy * 0.008)));
+  if (axisDrag) {
+    const dy = event.clientY - axisDrag.y;
+    if (Math.abs(dy) > 2) dragged = true;
+    view.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, axisDrag.zoom * Math.exp(-dy * 0.008)));
+  } else if (panDrag) {
+    const dx = event.clientX - panDrag.x;
+    const dy = event.clientY - panDrag.y;
+    if (!dragged && Math.abs(dx) + Math.abs(dy) <= 4) return;
+    dragged = true;
+    canvas.style.cursor = "grabbing";
+    view.cursorPrice = null;
+    view.shift = Math.max(0, Math.round(panDrag.shift + dx / panDrag.xStep));
+    view.offset = panDrag.offset + dy * panDrag.pricePerPixel;
+  }
 });
-window.addEventListener("mouseup", () => { axisDrag = null; });
+window.addEventListener("mouseup", () => {
+  axisDrag = null;
+  panDrag = null;
+});
 canvas.addEventListener("mousemove", (event) => {
   if (!sim) return;
   const onAxis = chartOnAxis(canvas, sim, view, event.clientX, event.clientY);
-  canvas.style.cursor = axisDrag || onAxis ? "ns-resize" : "crosshair";
-  if (axisDrag || onAxis) {
+  canvas.style.cursor = axisDrag || onAxis ? "ns-resize" : panDrag && dragged ? "grabbing" : "crosshair";
+  if (axisDrag || onAxis || (panDrag && dragged)) {
     view.cursorPrice = null;
     return;
   }
@@ -781,12 +805,18 @@ canvas.addEventListener("mouseleave", () => {
   view.frame.hold = false;
   view.cursorPrice = null;
 });
+// A click fills the order price after a short wait, so a double-click (reset view) does not.
+let clickTimer = null;
 canvas.addEventListener("click", (event) => {
-  if (!sim || dragged || chartOnAxis(canvas, sim, view, event.clientX, event.clientY)) {
+  if (!sim || dragged || event.detail > 1 || chartOnAxis(canvas, sim, view, event.clientX, event.clientY)) {
     dragged = false;
     return;
   }
   const cents = chartPriceAt(canvas, sim, view, event.clientY);
+  clearTimeout(clickTimer);
+  clickTimer = setTimeout(() => fillPrice(cents), 220);
+});
+function fillPrice(cents) {
   if (cents == null) return;
   if (orderType === "market" || orderType === "twap") setOrderType("limit");
   $("price-input").value = String(cents / 100);
@@ -794,7 +824,7 @@ canvas.addEventListener("click", (event) => {
   setTimeout(() => $("price-field").classList.remove("flash"), 600);
   setMessage(`價格 ${price(cents)} 已填入（${orderType === "trigger" ? "觸價" : orderType === "iceberg" ? "冰山" : "限價"}），按買入或賣出送出。`);
   render();
-});
+}
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
   if (event.shiftKey || chartOnAxis(canvas, sim, view, event.clientX, event.clientY)) zoomBy(event.deltaY > 0 ? 0.9 : 1.1);
@@ -806,8 +836,10 @@ canvas.addEventListener("wheel", (event) => {
   view.frame.low = null;
 }, { passive: false });
 canvas.addEventListener("dblclick", () => {
+  clearTimeout(clickTimer);
   view.zoom = 1;
   view.offset = 0;
+  view.shift = 0;
   view.count = 120;
   view.frame.low = null;
 });

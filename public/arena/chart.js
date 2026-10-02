@@ -27,17 +27,24 @@ export function chartGeometry(canvas, sim, view = {}) {
   const rect = canvas.getBoundingClientRect();
   const all = sim.allCandles();
   const count = clamp(Math.round(view.count ?? 120), MIN_CANDLES, 360);
-  const end = all.length;
+  // shift: how many candles the view has been dragged back from the newest. While looking back,
+  // new candles push the shift up so the same stretch of history stays on screen.
+  if (view.shift > 0 && view.seenLength != null && all.length > view.seenLength) view.shift += all.length - view.seenLength;
+  view.seenLength = all.length;
+  const shift = clamp(Math.round(view.shift ?? 0), 0, Math.max(0, all.length - count));
+  view.shift = shift;
+  const end = all.length - shift;
   const candles = all.slice(Math.max(0, end - count), end);
   const last = sim.last;
-  const rawLow = Math.min(last * 0.994, ...candles.map((candle) => candle.low));
-  const rawHigh = Math.max(last * 1.006, ...candles.map((candle) => candle.high));
+  const live = shift === 0;
+  const rawLow = Math.min(live ? last * 0.994 : Infinity, ...candles.map((candle) => candle.low));
+  const rawHigh = Math.max(live ? last * 1.006 : -Infinity, ...candles.map((candle) => candle.high));
   const padding = (rawHigh - rawLow) * 0.06;
   let baseLow = rawLow - padding;
   let baseHigh = rawHigh + padding;
   // Sticky price axis: widens as soon as the price needs room, narrows only once the range shrank
   // well inside it, and holds while the pointer is over the plot so a click lands where it points.
-  const frame = view.frame;
+  const frame = live ? view.frame : null;
   if (frame) {
     const span = frame.high - frame.low;
     const onScreen = frame.low != null && last > frame.low + span * 0.03 && last < frame.high - span * 0.03;
@@ -62,7 +69,7 @@ export function chartGeometry(canvas, sim, view = {}) {
   const slots = Math.max(MIN_CANDLES + 2, candles.length + 2);
   const xStep = (plotRight - left) / slots;
   const x = (index) => left + (index + 0.5) * xStep;
-  return { rect, all, candles, first: end - candles.length, high, low, span, priceTop, priceBottom, left, plotRight, y, x, xStep };
+  return { rect, all, candles, first: end - candles.length, shift, high, low, span, priceTop, priceBottom, left, plotRight, y, x, xStep };
 }
 
 // True over either price scale: the labels on the left or the last-price column on the right.
@@ -428,6 +435,14 @@ export function drawChart(canvas, sim, view = {}) {
   }
 
   ctx.restore();
+
+  if (scale.shift > 0) {
+    ctx.font = "bold 10px Consolas, \"Noto Sans TC\", monospace";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f2c575";
+    ctx.fillText(`◀ 往回看 ${scale.shift} 根 · 雙擊回到最新`, plotRight - 8, priceTop + 12);
+  }
 
   // Volume, then CVD and open interest.
   const volumeTop = priceBottom + 10;
