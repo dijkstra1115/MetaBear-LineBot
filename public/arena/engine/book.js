@@ -84,9 +84,10 @@ export const roundPrice = (price) => Math.max(PRICE_TICK, Math.round(price / PRI
 // order: { id, side, price, lots, owner, acct, iceberg: { display, hidden } | null, born, meta }
 // owner is the self-trade identity (null for anonymous flow); acct is who the fill is booked to.
 export class OrderBook {
-  constructor({ maxPrice = 1_000_000_000, onTrade = () => {} } = {}) {
+  constructor({ maxPrice = 1_000_000_000, onTrade = () => {}, onTaker = () => {} } = {}) {
     this.maxPrice = maxPrice;
     this.onTrade = onTrade;
+    this.onTaker = onTaker; // after an incoming order has finished matching
     this.levels = new Map(); // price -> { side, lots, queue, head }
     this.bids = []; // ascending
     this.asks = []; // ascending
@@ -220,6 +221,7 @@ export class OrderBook {
       this.addResting(order);
       restingLots = remaining;
     }
+    if (matched) this.onTaker({ side, acct, matched, avgPrice: Math.round(value / matched) });
     return { id, matched, value, avgPrice: matched ? Math.round(value / matched) : null, lastPrice, resting: restingLots, unfilled: rest ? 0 : remaining };
   }
 

@@ -13,6 +13,8 @@ const SKEW_PER_LOT = 0.000000008; // 1,000 BTC of inventory leans quotes about 0
 const MAX_SKEW = 0.0012;
 const MAX_INVENTORY = 600000; // 6,000 BTC
 const TOXIC_LOTS = 30000; // 300 BTC of one-way taker flow, smoothed
+const SWEEP_LOTS = 25000; // one order of 250 BTC or more moves the maker's reference at once
+const FULL_SWEEP_LOTS = 150000; // from 1,500 BTC the reference jumps all the way to its average price
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -30,6 +32,17 @@ export class MarketMaker {
   observe(netFlow, forcedFlow) {
     this.flow = this.flow * 0.95 + netFlow;
     this.forced = this.forced * 0.9 + forcedFlow;
+  }
+
+  // One large order is real money, not a stray print: the reference moves toward the order's
+  // average price at once and the ladder is requoted there before anyone else trades. The swept
+  // levels above the average stay a wick. Liquidations and stops are left to the usual smoothing,
+  // as makers fade forced flow.
+  afterSweep({ acct, matched, avgPrice }) {
+    if (acct === "maker" || acct === "forced" || matched < SWEEP_LOTS || this.reference == null) return;
+    const share = clamp(matched / FULL_SWEEP_LOTS, 0, 1);
+    this.reference += (avgPrice - this.reference) * share;
+    this.act();
   }
 
   toxicity() {

@@ -6,7 +6,7 @@ import { TURN_SECONDS } from "./session.js";
 // change the market. The engine is deterministic, so the seed plus the log replays the whole game;
 // nothing about the market itself needs to be stored.
 export const RANKED_TURNS = 24;
-export const RANKED_VERSION = 1;
+export const RANKED_VERSION = 2; // bump whenever the engine changes what a seed and log replay to
 export const MAX_ACTIONS = 3000;
 
 // Ops and how each is applied. Every action applies at the boundary after tick `t`.

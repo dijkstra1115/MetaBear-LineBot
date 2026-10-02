@@ -31,7 +31,7 @@ export class Sandbox {
     if (!Number.isSafeInteger(seed) || seed < 1 || seed > 0xffffffff) throw Error("Invalid seed");
     this.seed = seed;
     this.rng = new Random((seed ^ 0x9e3779b9) >>> 0);
-    this.book = new OrderBook({ maxPrice: 1_000_000_000, onTrade: (trade) => this.onTrade(trade) });
+    this.book = new OrderBook({ maxPrice: 1_000_000_000, onTrade: (trade) => this.onTrade(trade), onTaker: (taker) => this.maker?.afterSweep(taker) });
     this.book.last = START_PRICE;
     this.accounts = new Map();
     this.cohorts = new Map();
