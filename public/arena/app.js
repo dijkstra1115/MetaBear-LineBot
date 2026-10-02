@@ -2,7 +2,7 @@ import { Sandbox } from "./engine/market.js";
 import { DEFAULT_LEVERAGE, LEVERAGES, Player } from "./engine/player.js";
 import { ALERT_KINDS, Session } from "./engine/session.js";
 import { REGIMES } from "./engine/regime.js";
-import { MIN_CANDLES, chartGeometry, chartPriceAt, drawChart, gameClock } from "./chart.js";
+import { MAX_ZOOM, MIN_CANDLES, MIN_ZOOM, chartGeometry, chartOnAxis, chartPriceAt, drawChart, gameClock } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
 const TICKS_PER_SECOND = 30;
@@ -45,7 +45,7 @@ let openPrice = 0;
 let turnOpen = null;
 let message = { text: "", error: false };
 const alertPrefs = store.get("alerts", { bigFlow: true, cascade: true, own: true, move: true });
-const view = { count: 120, zoom: 1, offset: 0, layer: "liq", averages: true, reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null };
+const view = { count: 120, zoom: 1, offset: 0, layer: "liq", averages: true, fills: store.get("fills", true), reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null };
 
 /* ---------- Market lifecycle ---------- */
 
@@ -688,6 +688,11 @@ document.querySelectorAll("[data-alert]").forEach((input) => {
   });
 });
 $("averages").addEventListener("change", () => { view.averages = $("averages").checked; });
+$("fills").checked = view.fills;
+$("fills").addEventListener("change", () => {
+  view.fills = $("fills").checked;
+  store.set("fills", view.fills);
+});
 $("effects").checked = effectsEnabled;
 $("effects").addEventListener("change", () => {
   effectsEnabled = $("effects").checked;
@@ -741,8 +746,33 @@ $("sound-toggle").addEventListener("click", () => {
 });
 
 const canvas = $("market-chart");
+// Price-scale drag, as on TradingView: drag up to stretch the prices, down to squeeze them.
+let axisDrag = null;
+let dragged = false;
+const zoomBy = (factor) => {
+  view.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, view.zoom * factor));
+};
+canvas.addEventListener("mousedown", (event) => {
+  if (!sim || !chartOnAxis(canvas, sim, view, event.clientX, event.clientY)) return;
+  axisDrag = { y: event.clientY, zoom: view.zoom };
+  dragged = false;
+  event.preventDefault();
+});
+window.addEventListener("mousemove", (event) => {
+  if (!axisDrag) return;
+  const dy = event.clientY - axisDrag.y;
+  if (Math.abs(dy) > 2) dragged = true;
+  view.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, axisDrag.zoom * Math.exp(-dy * 0.008)));
+});
+window.addEventListener("mouseup", () => { axisDrag = null; });
 canvas.addEventListener("mousemove", (event) => {
   if (!sim) return;
+  const onAxis = chartOnAxis(canvas, sim, view, event.clientX, event.clientY);
+  canvas.style.cursor = axisDrag || onAxis ? "ns-resize" : "crosshair";
+  if (axisDrag || onAxis) {
+    view.cursorPrice = null;
+    return;
+  }
   view.frame.hold = true;
   view.cursorPrice = chartPriceAt(canvas, sim, view, event.clientY);
   view.cursorLabel = "點擊填入委託價格";
@@ -752,7 +782,10 @@ canvas.addEventListener("mouseleave", () => {
   view.cursorPrice = null;
 });
 canvas.addEventListener("click", (event) => {
-  if (!sim) return;
+  if (!sim || dragged || chartOnAxis(canvas, sim, view, event.clientX, event.clientY)) {
+    dragged = false;
+    return;
+  }
   const cents = chartPriceAt(canvas, sim, view, event.clientY);
   if (cents == null) return;
   if (orderType === "market" || orderType === "twap") setOrderType("limit");
@@ -764,7 +797,7 @@ canvas.addEventListener("click", (event) => {
 });
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
-  if (event.shiftKey) view.zoom = Math.max(0.4, Math.min(6, view.zoom * (event.deltaY > 0 ? 0.9 : 1.1)));
+  if (event.shiftKey || chartOnAxis(canvas, sim, view, event.clientX, event.clientY)) zoomBy(event.deltaY > 0 ? 0.9 : 1.1);
   else {
     // Finer steps when zoomed in close, so the footprint view is easy to reach.
     const step = view.count <= 40 ? 2 : 10;

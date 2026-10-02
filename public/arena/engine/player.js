@@ -25,6 +25,7 @@ export class Player {
     this.triggers = [];
     this.twaps = [];
     this.nextId = 1;
+    this.takerOrder = 0;
     this.exitIntent = false;
     this.push = null;
     this.events = [];
@@ -85,7 +86,8 @@ export class Player {
   }
 
   // Applied by the market after the ledger moved; keeps isolated margin and fees.
-  onFill(signed, price, taker) {
+  // orderId is the resting order for maker fills; taker fills belong to the order being sent.
+  onFill(signed, price, taker, orderId = null) {
     const position = this.account.position;
     const old = position - signed;
     const lots = Math.abs(signed);
@@ -97,7 +99,7 @@ export class Player {
     const fee = notional(price, lots) * (taker ? TAKER_FEE : MAKER_FEE);
     this.fees += fee;
     this.stats.volume += lots;
-    this.fills.push({ time: this.sim.time, side: signed > 0 ? "buy" : "sell", lots, price, taker });
+    this.fills.push({ time: this.sim.time, side: signed > 0 ? "buy" : "sell", lots, price, taker, order: taker ? `t${this.takerOrder}` : `o${orderId}` });
     if (this.fills.length > 400) this.fills.shift();
     if (!taker) this.events.push({ kind: "fill", side: signed > 0 ? "buy" : "sell", lots, price });
   }
@@ -120,6 +122,7 @@ export class Player {
     const sim = this.sim;
     const before = sim.last;
     const bound = roundPrice(before * (side === "buy" ? 1 + MARKET_BAND : 1 - MARKET_BAND));
+    this.takerOrder++;
     const arrival = sim.book.submit(side, bound, lots, { owner: "player", acct: "player", rest: false });
     const wave = this.afterOwnOrder(arrival.matched, side);
     return { ok: true, matched: arrival.matched, unfilled: arrival.unfilled, avgPrice: arrival.avgPrice, lastPrice: arrival.lastPrice, impact: sim.last / before - 1, wave };
@@ -133,6 +136,7 @@ export class Player {
     const error = this.validate(side, lots, reduceOnly);
     if (error) return { ok: false, error };
     const iceberg = display && display < lots ? { display } : null;
+    this.takerOrder++;
     const arrival = this.sim.book.submit(side, price, lots, { owner: "player", acct: "player", iceberg });
     if (arrival.resting) {
       this.orderIds.add(arrival.id);
@@ -253,6 +257,7 @@ export class Player {
     this.protection = { stop: null, take: null };
     this.exitIntent = false;
     const side = long ? "sell" : "buy";
+    this.takerOrder++;
     sim.book.submit(side, roundPrice(sim.last * (long ? 1 - MARKET_BAND : 1 + MARKET_BAND)), lots, { owner: "player", acct: "player", rest: false });
     if (this.account.position) {
       sim.settleAgainst(this.account, sim.insurance, liq);

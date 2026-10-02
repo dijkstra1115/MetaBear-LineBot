@@ -401,7 +401,7 @@ export class Sandbox {
   onTrade(trade) {
     const signed = trade.side === "buy" ? trade.lots : -trade.lots;
     this.bookFill(trade.takerAcct, signed, trade.price, trade.takerMeta, true);
-    this.bookFill(trade.maker.acct, -signed, trade.price, trade.maker.meta, false);
+    this.bookFill(trade.maker.acct, -signed, trade.price, trade.maker.meta, false, trade.maker.id);
     const candle = this.live;
     candle.high = Math.max(candle.high, trade.price);
     candle.low = Math.min(candle.low, trade.price);
@@ -430,7 +430,7 @@ export class Sandbox {
     else tick.aggressive[trade.side] += trade.lots;
   }
 
-  bookFill(acct, signed, price, meta, taker) {
+  bookFill(acct, signed, price, meta, taker, orderId = null) {
     if (acct === "forced") {
       this.distribute(meta.group, signed, price);
       return;
@@ -441,7 +441,7 @@ export class Sandbox {
     applyFill(account, signed, price);
     this.oi += Math.max(0, account.position);
     if (account.kind === "cohort") this.cohortFilled(account, signed);
-    else if (account.kind === "player") this.player.onFill(signed, price, taker, meta);
+    else if (account.kind === "player") this.player.onFill(signed, price, taker, orderId);
   }
 
   // Hands an account's whole position to a counterparty at one price (liquidation remainder).

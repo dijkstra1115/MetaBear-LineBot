@@ -11,8 +11,9 @@ const HEAT_HOT = [255, 214, 102];
 const heat = (t, alpha) => `rgba(${HEAT_COLD.map((cold, index) => Math.round(cold + (HEAT_HOT[index] - cold) * t)).join(",")},${alpha.toFixed(3)})`;
 
 export const PRICE_TAG = 70;
-export const FOOTPRINT_COLUMN = 148;
-export const MIN_CANDLES = 8;
+export const MIN_CANDLES = 4;
+export const MIN_ZOOM = 0.2;
+export const MAX_ZOOM = 20;
 // Zoomed in this far, every candle gets its own footprint.
 const FOOTPRINT_SLOT = 56;
 
@@ -49,19 +50,28 @@ export function chartGeometry(canvas, sim, view = {}) {
       frame.high = baseHigh;
     }
   }
-  const span = (baseHigh - baseLow) / clamp(view.zoom ?? 1, 0.4, 6);
+  const span = (baseHigh - baseLow) / clamp(view.zoom ?? 1, MIN_ZOOM, MAX_ZOOM);
   const mid = (baseLow + baseHigh) / 2 + (view.offset ?? 0);
   const high = mid + span / 2;
   const low = mid - span / 2;
   const priceTop = 26;
   const priceBottom = rect.height * 0.7;
   const left = 70;
-  const plotRight = rect.width - PRICE_TAG - FOOTPRINT_COLUMN - 8;
+  const plotRight = rect.width - PRICE_TAG - 8;
   const y = (price) => priceTop + (high - price) / span * (priceBottom - priceTop);
-  const slots = Math.max(MIN_CANDLES + 3, candles.length + 3);
+  const slots = Math.max(MIN_CANDLES + 2, candles.length + 2);
   const xStep = (plotRight - left) / slots;
   const x = (index) => left + (index + 0.5) * xStep;
   return { rect, all, candles, first: end - candles.length, high, low, span, priceTop, priceBottom, left, plotRight, y, x, xStep };
+}
+
+// True over either price scale: the labels on the left or the last-price column on the right.
+export function chartOnAxis(canvas, sim, view, clientX, clientY) {
+  const scale = chartGeometry(canvas, sim, view);
+  const localX = clientX - scale.rect.left;
+  const localY = clientY - scale.rect.top;
+  if (localY < scale.priceTop || localY > scale.priceBottom) return false;
+  return localX < scale.left || localX > scale.plotRight;
 }
 
 export function chartPriceAt(canvas, sim, view, clientY) {
@@ -193,6 +203,12 @@ export function drawChart(canvas, sim, view = {}) {
     ctx.fillText("開盤", x(startIndex) - xStep / 2 + 4, priceTop + 8);
   }
 
+  // Everything priced stays inside the price pane, however far the axis is stretched.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, priceTop, width, priceBottom - priceTop);
+  ctx.clip();
+
   // Background: the estimated liquidation heat or the resting book over time.
   const bin = Math.max(5000, Math.round((high - low) / 90 / 5000) * 5000);
   const estimate = sim.estimate.levels(bin).filter((row) => visible(row.price));
@@ -264,16 +280,41 @@ export function drawChart(canvas, sim, view = {}) {
 
   if (perCandle) drawCandleFootprints(ctx, scale, visible);
 
-  // The player's fills as dots on their candles.
-  if (player) {
+  // The player's orders: one hollow circle at the average fill, sized by volume, on a thin line
+  // spanning the prices it filled at.
+  if (player && view.fills !== false) {
     const firstTime = candles[0]?.time ?? 0;
+    const groups = new Map();
     for (const fill of player.fills) {
-      const index = Math.floor((fill.time - firstTime - 1) / 60);
-      if (index < 0 || index >= candles.length || !visible(fill.price)) continue;
-      ctx.fillStyle = fill.side === "buy" ? "#9ff3dc" : "#ffb3bf";
+      const index = Math.floor((fill.time - firstTime) / 60);
+      if (index < 0 || index >= candles.length) continue;
+      const key = `${fill.order}:${index}`;
+      const group = groups.get(key) ?? { index, side: fill.side, lots: 0, value: 0, low: fill.price, high: fill.price };
+      group.lots += fill.lots;
+      group.value += fill.lots * fill.price;
+      group.low = Math.min(group.low, fill.price);
+      group.high = Math.max(group.high, fill.price);
+      groups.set(key, group);
+    }
+    for (const group of groups.values()) {
+      const avg = group.value / group.lots;
+      if (!visible(avg)) continue;
+      const xx = perCandle ? x(group.index) - xStep * 0.42 : x(group.index);
+      const color = group.side === "buy" ? "112,230,201" : "251,127,145";
+      ctx.strokeStyle = `rgba(${color},0.55)`;
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(perCandle ? x(index) - xStep * 0.42 : x(index), y(fill.price), 2.8, 0, Math.PI * 2);
+      ctx.moveTo(xx, y(group.low));
+      ctx.lineTo(xx, y(group.high));
+      ctx.stroke();
+      const radius = clamp(3 + Math.sqrt(group.lots / 100) * 0.3, 3, 14);
+      ctx.fillStyle = `rgba(${color},0.12)`;
+      ctx.strokeStyle = `rgba(${color},0.95)`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(xx, y(avg), radius, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
     }
   }
 
@@ -386,6 +427,8 @@ export function drawChart(canvas, sim, view = {}) {
     ctx.fillText(`${labelPrice(view.cursorPrice)}${view.cursorLabel ? ` · ${view.cursorLabel}` : ""}`, left + 8, clamp(yy - 12, priceTop + 12, priceBottom - 6));
   }
 
+  ctx.restore();
+
   // Volume, then CVD and open interest.
   const volumeTop = priceBottom + 10;
   const volumeBottom = height * 0.8;
@@ -427,43 +470,6 @@ export function drawChart(canvas, sim, view = {}) {
   if (candles.length > 1) {
     series(candles.map((candle) => candle.cvd), "#d5ae73");
     series(candles.map((candle) => candle.oi ?? 0), "#8fd4ffcc");
-  }
-
-  // Footprint of the last five minutes.
-  const footprintX = plotRight + PRICE_TAG + 8;
-  const footprintWidth = width - footprintX - 6;
-  ctx.fillStyle = "#122b35";
-  ctx.fillRect(footprintX, 0, footprintWidth, height);
-  ctx.textAlign = "left";
-  ctx.fillStyle = "#a5c9c3";
-  ctx.font = "bold 10px Consolas, monospace";
-  ctx.fillText("FOOTPRINT 5m", footprintX + 5, 14);
-  ctx.font = "9px Consolas, monospace";
-  ctx.fillStyle = "#77969d";
-  ctx.fillText("SELL", footprintX + 4, 30);
-  ctx.textAlign = "right";
-  ctx.fillText("BUY", width - 10, 30);
-  const footBin = Math.max(1000, Math.round((high - low) / Math.max(8, (priceBottom - priceTop) / 20) / 1000) * 1000);
-  const rows = sim.footprint(sim.time - 300, footBin).filter((row) => visible(row.price));
-  const maxRow = Math.max(100, ...rows.map((row) => row.buy + row.sell));
-  for (const row of rows) {
-    const yy = y(row.price);
-    if (yy < 40 || yy > priceBottom - 5) continue;
-    const total = row.buy + row.sell;
-    const imbalance = row.buy > row.sell * 3 ? "buy" : row.sell > row.buy * 3 ? "sell" : null;
-    ctx.fillStyle = imbalance === "buy" ? `rgba(112,230,201,${(0.08 + total / maxRow * 0.2).toFixed(3)})` : imbalance === "sell" ? `rgba(251,127,145,${(0.08 + total / maxRow * 0.2).toFixed(3)})` : `rgba(160,190,200,${(total / maxRow * 0.14).toFixed(3)})`;
-    ctx.fillRect(footprintX + 2, yy - 8, footprintWidth - 4, 16);
-    ctx.font = "10px Consolas, monospace";
-    ctx.fillStyle = "#ff9aa8";
-    ctx.textAlign = "left";
-    ctx.fillText(btc(row.sell), footprintX + 5, yy);
-    ctx.fillStyle = "#8feccc";
-    ctx.textAlign = "right";
-    ctx.fillText(btc(row.buy), width - 10, yy);
-    ctx.fillStyle = "#a9c1bd";
-    ctx.textAlign = "center";
-    ctx.font = "9px Consolas, monospace";
-    ctx.fillText(labelPrice(row.price), footprintX + footprintWidth / 2, yy);
   }
 }
 

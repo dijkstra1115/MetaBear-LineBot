@@ -11,6 +11,7 @@ const FLOW_WINDOW = 10;
 const BIG_FLOW_MIN = 10000; // 100 BTC in ten seconds
 const BIG_FLOW_MULTIPLE = 6;
 const MOVE_ALERT = 0.008;
+const CASCADE_MIN = 5000; // 50 BTC: a stray small liquidation is not worth a pause
 const DANGER = 0.01;
 
 export class Session {
@@ -97,10 +98,8 @@ export class Session {
       }
     }
     if (stats.waves.length) {
-      if (sim.time - this.lastWave > 30) {
-        const lots = stats.waves.reduce((sum, wave) => sum + wave.lots, 0);
-        raise("cascade", { side: stats.waves[0].side, lots, by: stats.waves[0].by });
-      }
+      const lots = stats.waves.reduce((sum, wave) => sum + wave.lots, 0);
+      if (sim.time - this.lastWave > 30 && lots >= CASCADE_MIN) raise("cascade", { side: stats.waves[0].side, lots, by: stats.waves[0].by });
       this.lastWave = sim.time;
     }
     if (heavy >= threshold && sim.time - this.lastBigFlow > 60) {
