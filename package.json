@@ -17,6 +17,8 @@
     "test": "tsx --test tests/*.test.ts",
     "test:academy": "node --test tests/*.test.mjs",
     "test:all": "npm test && npm run test:academy",
+    "test:flow-arena": "node --test tests/flow-arena-*.test.mjs",
+    "lab:flow-arena": "node scripts/flow-arena-lab.mjs",
     "build": "wrangler deploy --dry-run",
     "build:staging": "wrangler deploy --env staging --dry-run",
     "build:production": "wrangler deploy --env production --dry-run",
