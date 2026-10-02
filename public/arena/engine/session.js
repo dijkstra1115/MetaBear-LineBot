@@ -6,7 +6,10 @@ export const ALERT_KINDS = {
   cascade: "連環強平",
   own: "你的委託",
   move: "價格急動",
+  event: "突發事件",
 };
+// Your own order events worth a pause; a push you just sent is not one of them.
+const OWN_ALERTS = new Set(["fill", "trigger", "stop", "take", "liquidation", "danger", "rejected"]);
 const FLOW_WINDOW = 10;
 const BIG_FLOW_MIN = 10000; // 100 BTC in ten seconds
 const BIG_FLOW_MULTIPLE = 6;
@@ -22,7 +25,7 @@ export class Session {
     this.turnStart = sim.time;
     this.turnStartPrice = sim.last;
     this.phase = "plan";
-    this.alerts = { bigFlow: true, cascade: true, own: true, move: true };
+    this.alerts = { bigFlow: true, cascade: true, own: true, move: true, event: true };
     this.window = [];
     this.baseline = 2000;
     this.lastBigFlow = -Infinity;
@@ -87,7 +90,9 @@ export class Session {
     const raise = (kind, data) => {
       if (!alert && this.alerts[kind]) alert = { kind, title: ALERT_KINDS[kind], ...change, ...data };
     };
-    if (own.length) raise("own", { events: own });
+    if (stats.event) raise("event", { name: stats.event.name, eventKind: stats.event.kind, text: stats.event.text });
+    const worth = own.filter((event) => OWN_ALERTS.has(event.kind));
+    if (worth.length) raise("own", { events: worth });
     const position = sim.player?.position;
     if (position) {
       const liq = sim.player.liquidationPrice();

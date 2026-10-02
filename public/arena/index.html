@@ -52,6 +52,8 @@
           <div class="panel-title"><span class="eyebrow">REVEAL</span><span>練習揭曉 · 市場已暫停</span></div>
           <div class="reveal-regime"><span>盤勢</span><strong id="reveal-regime">—</strong></div>
           <div class="reveal-regime"><span>人群心中的合理價值</span><strong id="reveal-value">—</strong></div>
+          <div class="reveal-regime"><span>突發事件</span><strong id="reveal-event">無</strong></div>
+          <p id="reveal-event-text" class="reveal-event-text" hidden></p>
           <div class="reveal-mood"><span>隱藏情緒</span><div class="mood-bar"><i id="reveal-mood"></i></div><em id="reveal-mood-text">—</em></div>
           <table class="pool-table"><thead><tr><th>族群</th><th>活躍</th><th>多</th><th>空</th><th>待進場</th></tr></thead><tbody id="pool-rows"></tbody></table>
         </section>
@@ -63,6 +65,7 @@
             <label><input type="checkbox" data-alert="cascade" checked /> 連環強平</label>
             <label><input type="checkbox" data-alert="own" checked /> 你的委託</label>
             <label><input type="checkbox" data-alert="move" checked /> 回合內急動 0.8%</label>
+            <label><input type="checkbox" data-alert="event" checked /> 突發事件</label>
           </div>
           <ol id="alert-log" class="alert-log"></ol>
         </section>
@@ -75,9 +78,11 @@
             <li><b>均值回歸</b><span>偏離布林帶或 VWAP 太遠時逆勢掛單，目標回到中軸。</span></li>
             <li><b>情緒追價</b><span>急漲急跌或爆倉時用高槓桿市價追，虧損一深就恐慌砍倉。</span></li>
             <li><b>雜訊散戶</b><span>現價附近的日常進出，提供成交量。</span></li>
-            <li><b>長線承接</b><span>在 4 小時高低點外 2–6% 掛大階梯單，低槓桿、抱得久。</span></li>
+            <li><b>長線承接</b><span>在心中的合理價值上下掛大階梯單，常用冰山單只露一小截，也會在關卡前護盤；偏離越大越積極。</span></li>
+            <li class="maker"><b>造市商</b><span>兩側掛滿階梯報價，賺價差、控管庫存。單邊大單湧入時會縮小近價掛單、拉大價差；庫存一重就把報價往反方向偏，想把貨倒出去。</span></li>
+            <li class="whale"><b>神秘大戶</b><span>偶爾出現，會先用冰山單默默吸收或出貨，之後才主動出手。徵兆藏在吸收、CVD 背離和深度變化裡。</span></li>
           </ul>
-          <p class="guide-note">另有造市商。市場是封閉的：你砸出去的每一顆 BTC 都要由場內的人接走，沒有外部資金把價格拉回。</p>
+          <p class="guide-note">市場是封閉的：你砸出去的每一顆 BTC 都要由場內的人接走，沒有外部資金把價格拉回。</p>
         </details>
       </aside>
 
@@ -112,27 +117,21 @@
               <div class="type-tabs" role="tablist" aria-label="委託類型">
                 <button type="button" data-type="market" class="active">市價</button>
                 <button type="button" data-type="limit">限價</button>
-                <button type="button" data-type="trigger">觸價</button>
-                <button type="button" data-type="twap">TWAP</button>
-                <button type="button" data-type="iceberg">冰山</button>
               </div>
               <div class="quick-size"><span>數量</span><button data-size="10" type="button">10</button><button data-size="50" type="button">50</button><button data-size="250" type="button" class="active">250</button><button data-size="1250" type="button">1,250</button><button data-size="5000" type="button">5,000</button><input id="size-input" inputmode="decimal" value="250" aria-label="數量 BTC" /><span class="unit-suffix">BTC</span></div>
             </div>
             <div class="order-row">
               <label id="price-field" class="order-field" hidden>價格 <input id="price-input" inputmode="decimal" placeholder="點圖表填入" /></label>
-              <label id="display-field" class="order-field" hidden>顯示量 <input id="display-input" inputmode="decimal" placeholder="BTC" /></label>
-              <label id="twap-field" class="order-field" hidden>分散 <select id="twap-select"><option value="300">1 回合（5 分）</option><option value="600">10 分鐘</option><option value="900">15 分鐘</option></select></label>
               <div class="quick-leverage"><span>槓桿</span><div class="leverage-toggle" role="group" aria-label="槓桿倍數"><button data-leverage="1" type="button">1×</button><button data-leverage="3" type="button" class="active">3×</button><button data-leverage="5" type="button">5×</button><button data-leverage="10" type="button">10×</button><button data-leverage="20" type="button">20×</button></div><small id="leverage-hint">空倉時可調整</small></div>
               <label class="reduce-toggle"><input id="reduce-only" type="checkbox" /> 只減倉</label>
             </div>
             <div class="order-row actions">
               <button id="buy-button" class="quick-buy" type="button">▲ 買入 <kbd>Q</kbd></button>
               <button id="sell-button" class="quick-sell" type="button">▼ 賣出 <kbd>E</kbd></button>
-              <button id="close-half" type="button">平 ½ <kbd>H</kbd></button>
-              <button id="close-position" type="button">平倉 <kbd>F</kbd></button>
+              <div class="close-control"><span>平倉</span><input id="close-range" type="range" min="1" max="100" step="1" value="100" aria-label="平倉比例" /><strong id="close-label">100%</strong><div class="close-presets"><button type="button" data-close="25">25%</button><button type="button" data-close="50">50%</button><button type="button" data-close="100" class="active">100%</button></div><button id="close-position" type="button">平倉 <kbd>F</kbd></button></div>
               <span id="order-preview" class="order-preview">—</span>
             </div>
-            <p id="order-message" class="order-message" role="status">計畫階段市場暫停，可以慢慢讀圖、下單。按「執行回合」讓市場跑 5 分鐘；有大事會自動暫停。</p>
+            <p id="order-message" class="order-message" role="status">計畫階段市場暫停，可以慢慢讀圖。這時下的單會先排隊，按「執行」後在第一秒內和其他人的單一起送出。</p>
           </div>
         </section>
 
@@ -156,7 +155,7 @@
           <div class="wallet-grid"><div><span>目前部位</span><strong id="position">空倉</strong></div><div><span>進場均價</span><strong id="entry-price">—</strong></div><div><span>槓桿</span><strong id="leverage-value">3×</strong></div><div><span>你的強平價</span><strong id="player-liq">—</strong></div><div><span>累積成交</span><strong id="volume">0 BTC</strong></div></div></section>
         <section class="panel protection-panel"><div class="panel-title"><div><span class="eyebrow">RISK ORDERS</span><h3>止損 / 止盈</h3></div><span>標記價觸發市價平倉</span></div><div class="protection-inputs"><label>止損價<input id="stop-price" inputmode="decimal" placeholder="選填" /></label><label>止盈價<input id="take-price" inputmode="decimal" placeholder="選填" /></label></div><div class="protection-actions"><button id="set-protection" type="button">設定</button><button id="clear-protection" type="button">清除</button></div><p id="protection-status">尚未設定</p></section>
         <section class="panel open-orders"><div class="panel-title"><div><span class="eyebrow">YOUR ORDERS</span><h3>等待中的委託</h3></div><button id="cancel-all" type="button">全部撤單</button></div><div id="player-orders"><p class="empty-state">目前沒有委託</p></div></section>
-        <section class="panel shortcut-panel"><div class="panel-title"><span class="eyebrow">KEYS</span><span>快捷鍵</span></div><p>Space 執行／暫停 · Q 買 · E 賣 · F 平倉 · H 平一半 · R 揭曉 · 1–5 切換數量 · 滾輪縮放 K 線數量（放大到單根夠寬時，每根 K 旁邊會顯示 Footprint）· 在圖表內拖曳可左右平移 K 線、上下平移價格 · 按住右側價格軸上下拖曳、或在價格軸上滾輪，縮放價格 · 雙擊圖表回到最新並還原</p></section>
+        <section class="panel shortcut-panel"><div class="panel-title"><span class="eyebrow">KEYS</span><span>快捷鍵</span></div><p>Space 執行／暫停 · Q 買 · E 賣 · F 依滑桿比例平倉 · R 揭曉 · 1–5 切換數量 · 滾輪縮放 K 線數量（放大到單根夠寬時，每根 K 旁邊會顯示 Footprint）· 在圖表內拖曳可左右平移 K 線、上下平移價格 · 按住右側價格軸上下拖曳、或在價格軸上滾輪，縮放價格 · 雙擊圖表回到最新並還原</p></section>
       </aside>
     </div>
   </main>

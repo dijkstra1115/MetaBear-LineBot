@@ -22,8 +22,8 @@ export class Player {
     this.protection = { stop: null, take: null };
     this.orderIds = new Set();
     this.reduceOnly = new Set();
-    this.triggers = [];
-    this.twaps = [];
+    // Orders placed while the market is paused wait here and go out during the next run.
+    this.queue = [];
     this.nextId = 1;
     this.takerOrder = 0;
     this.exitIntent = false;
@@ -121,59 +121,77 @@ export class Player {
     if (error) return { ok: false, error };
     const sim = this.sim;
     const before = sim.last;
+    const promised = sim.book.preview(side, lots, side === "buy" ? sim.book.maxPrice : 1, "player");
     const bound = roundPrice(before * (side === "buy" ? 1 + MARKET_BAND : 1 - MARKET_BAND));
     this.takerOrder++;
     const arrival = sim.book.submit(side, bound, lots, { owner: "player", acct: "player", rest: false });
     const wave = this.afterOwnOrder(arrival.matched, side);
-    return { ok: true, matched: arrival.matched, unfilled: arrival.unfilled, avgPrice: arrival.avgPrice, lastPrice: arrival.lastPrice, impact: sim.last / before - 1, wave };
+    const reach = arrival.lastPrice ?? before;
+    const promisedMove = promised.worstPrice ? promised.worstPrice / before - 1 : 0;
+    // Absorbed: the visible book promised a real move and the order stopped well short of it.
+    const stalled = arrival.matched > 0 && Math.abs(promisedMove) >= 0.0015 && Math.abs(reach / before - 1) < Math.abs(promisedMove) * 0.75;
+    const result = { ok: true, side, matched: arrival.matched, unfilled: arrival.unfilled, avgPrice: arrival.avgPrice, lastPrice: arrival.lastPrice, from: before, to: reach, promised: promised.worstPrice, stalled, impact: sim.last / before - 1, wave, reduceOnly };
+    this.events.push({ kind: "push", ...result });
+    return result;
   }
 
-  submitLimit(side, price, lots, { reduceOnly = false, display = null } = {}) {
+  submitLimit(side, price, lots, { reduceOnly = false } = {}) {
     if (!Number.isSafeInteger(price) || price <= 0) return { ok: false, error: "請輸入有效價格" };
     price = roundPrice(price);
     if (reduceOnly) lots = this.clampReduce(side, lots);
     if (reduceOnly && !lots) return { ok: false, error: "只減倉：目前沒有可以減少的部位" };
     const error = this.validate(side, lots, reduceOnly);
     if (error) return { ok: false, error };
-    const iceberg = display && display < lots ? { display } : null;
     this.takerOrder++;
-    const arrival = this.sim.book.submit(side, price, lots, { owner: "player", acct: "player", iceberg });
+    const arrival = this.sim.book.submit(side, price, lots, { owner: "player", acct: "player" });
     if (arrival.resting) {
       this.orderIds.add(arrival.id);
       if (reduceOnly) this.reduceOnly.add(arrival.id);
     }
     const wave = this.afterOwnOrder(arrival.matched, side);
-    return { ok: true, id: arrival.id, matched: arrival.matched, resting: arrival.resting, avgPrice: arrival.avgPrice, wave };
+    const result = { ok: true, side, id: arrival.id, price, lots, matched: arrival.matched, resting: arrival.resting, avgPrice: arrival.avgPrice, wave };
+    this.events.push({ kind: "placed", ...result });
+    return result;
   }
 
-  // A stop (trigger) order: a market order sent when the mark crosses the trigger price.
-  addTrigger(side, price, lots, { reduceOnly = false } = {}) {
-    price = roundPrice(price);
-    const error = this.validate(side, lots, reduceOnly);
-    if (error) return { ok: false, error };
-    const mark = this.sim.markPrice();
-    if (price === mark) return { ok: false, error: "觸發價不能等於目前價格" };
-    const trigger = { id: `t${this.nextId++}`, side, price, lots, reduceOnly, dir: price > mark ? 1 : -1, created: this.sim.time };
-    this.triggers.push(trigger);
-    return { ok: true, id: trigger.id };
+  // Planning-phase orders: { type: "market" | "limit" | "close", side, lots, price, fraction, reduceOnly }.
+  // They are checked now but sent during the first second of the next run, at random points among
+  // everyone else's orders, so a paused book is never yours alone.
+  enqueue(order) {
+    if (order.type === "close") {
+      if (!this.account.position) return { ok: false, error: "目前沒有持倉" };
+    } else {
+      if (order.type === "limit" && !(order.price > 0)) return { ok: false, error: "請輸入有效價格" };
+      if (order.reduceOnly && !this.clampReduce(order.side, order.lots)) return { ok: false, error: "只減倉：目前沒有可以減少的部位" };
+      const error = this.validate(order.side, order.lots, order.reduceOnly);
+      if (error) return { ok: false, error };
+    }
+    const queued = { ...order, id: `q${this.nextId++}` };
+    this.queue.push(queued);
+    return { ok: true, queued: true, id: queued.id };
   }
 
-  // TWAP: equal market slices spread over the given simulated seconds.
-  addTwap(side, lots, seconds = 300, slices = 20, { reduceOnly = false } = {}) {
-    const error = this.validate(side, lots, reduceOnly);
-    if (error) return { ok: false, error };
-    slices = Math.max(1, Math.min(slices, Math.floor(lots / 100) || 1));
-    const twap = { id: `w${this.nextId++}`, side, lots, remaining: lots, slices, left: slices, every: Math.max(1, Math.floor(seconds / slices)), next: this.sim.time + 1, reduceOnly, filled: 0, value: 0 };
-    this.twaps.push(twap);
-    return { ok: true, id: twap.id };
+  takeQueue() {
+    const queue = this.queue;
+    this.queue = [];
+    return queue;
+  }
+
+  execute(order) {
+    const result = order.type === "close"
+      ? (order.fraction >= 1 ? this.close() : this.closePart(order.fraction))
+      : order.type === "limit"
+        ? this.submitLimit(order.side, order.price, order.lots, { reduceOnly: order.reduceOnly })
+        : this.submitMarket(order.side, order.lots, { reduceOnly: order.reduceOnly });
+    if (!result.ok) this.events.push({ kind: "rejected", error: result.error, order });
+    return result;
   }
 
   cancel(id) {
     if (typeof id === "string") {
-      const before = this.triggers.length + this.twaps.length;
-      this.triggers = this.triggers.filter((item) => item.id !== id);
-      this.twaps = this.twaps.filter((item) => item.id !== id);
-      return this.triggers.length + this.twaps.length < before;
+      const before = this.queue.length;
+      this.queue = this.queue.filter((item) => item.id !== id);
+      return this.queue.length < before;
     }
     if (!this.orderIds.has(id)) return false;
     this.orderIds.delete(id);
@@ -182,16 +200,15 @@ export class Player {
   }
 
   cancelAll() {
-    let count = this.triggers.length + this.twaps.length;
-    this.triggers = [];
-    this.twaps = [];
+    let count = this.queue.length;
+    this.queue = [];
     for (const order of this.orders()) count += this.cancel(order.id) ? 1 : 0;
     return count;
   }
 
   setLeverage(leverage) {
     if (!LEVERAGES.includes(leverage)) return "不支援這個槓桿倍數";
-    if (this.account.position || this.orders().some((order) => !this.reduceOnly.has(order.id)) || this.triggers.some((item) => !item.reduceOnly) || this.twaps.length) return "空倉且沒有開倉委託時才能調整槓桿";
+    if (this.account.position || this.queue.length || this.orders().some((order) => !this.reduceOnly.has(order.id))) return "空倉且沒有開倉委託時才能調整槓桿";
     this.leverage = leverage;
     return null;
   }
@@ -289,28 +306,6 @@ export class Player {
         this.protection = { stop: null, take: null };
         this.events.push({ kind: stopHit ? "stop" : "take", price: mark });
         this.close();
-      }
-    }
-    for (const trigger of [...this.triggers]) {
-      if (trigger.dir > 0 ? mark < trigger.price : mark > trigger.price) continue;
-      this.triggers = this.triggers.filter((item) => item !== trigger);
-      const result = this.submitMarket(trigger.side, trigger.lots, { reduceOnly: trigger.reduceOnly });
-      this.events.push({ kind: "trigger", side: trigger.side, lots: result.matched ?? 0, price: trigger.price, error: result.error ?? null });
-    }
-    for (const twap of [...this.twaps]) {
-      if (sim.time < twap.next) continue;
-      const lots = twap.left <= 1 ? twap.remaining : Math.round(twap.lots / twap.slices);
-      const result = this.submitMarket(twap.side, Math.min(lots, twap.remaining), { reduceOnly: twap.reduceOnly });
-      twap.left--;
-      twap.remaining -= Math.min(lots, twap.remaining);
-      if (result.ok) {
-        twap.filled += result.matched;
-        twap.value += (result.avgPrice ?? 0) * result.matched;
-      }
-      twap.next = sim.time + twap.every;
-      if (!result.ok || twap.left <= 0 || twap.remaining <= 0) {
-        this.twaps = this.twaps.filter((item) => item !== twap);
-        this.events.push({ kind: "twap", side: twap.side, lots: twap.filled, avgPrice: twap.filled ? Math.round(twap.value / twap.filled) : null, error: result.error ?? null });
       }
     }
     this.pruneReduceOnly();

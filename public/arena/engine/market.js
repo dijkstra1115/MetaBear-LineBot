@@ -5,6 +5,7 @@ import { readRegime, Sentiment } from "./regime.js";
 import { ANCHOR, FairValue, MarketMaker } from "./maker.js";
 import { POOLS, POOL_MAP } from "./pools.js";
 import { LiquidationEstimate } from "./estimate.js";
+import { EVENT_KINDS, EventDirector } from "./events.js";
 
 export const CANDLE_SECONDS = 60;
 export const START_PRICE = 10_000_000; // $100,000 in cents
@@ -61,6 +62,7 @@ export class Sandbox {
     this.legacy = this.addAccount("legacy", "legacy");
     this.maker = new MarketMaker(this);
     this.fair = new FairValue(this, START_PRICE);
+    this.events = new EventDirector(this);
     this.virtual = [];
     this.virtualMode = false;
     this.time = -(synthCandles * CANDLE_SECONDS + warmSeconds);
@@ -69,6 +71,7 @@ export class Sandbox {
     this.buildHistory(synthCandles);
     while (this.time < 0) this.tick();
     this.warming = false;
+    this.events.arm();
   }
 
   get last() {
@@ -630,7 +633,7 @@ export class Sandbox {
   }
 
   resetTick() {
-    this.tickStats = { net: 0, forced: 0, aggressive: { buy: 0, sell: 0 }, player: { buy: 0, sell: 0 }, low: Infinity, high: -Infinity, waves: [] };
+    this.tickStats = { event: null, net: 0, forced: 0, aggressive: { buy: 0, sell: 0 }, player: { buy: 0, sell: 0 }, low: Infinity, high: -Infinity, waves: [] };
   }
 
   tick() {
@@ -649,6 +652,9 @@ export class Sandbox {
     }
     this.sentiment.step(this.time);
     this.fair.step();
+    this.events.step();
+    const started = this.events.started;
+    this.tickStats.event = started ? { kind: started.kind, name: EVENT_KINDS[started.kind].name, text: EVENT_KINDS[started.kind].main } : null;
     this.maker.act(true);
     const noise = POOL_MAP.get("noise");
     if (this.time % CANDLE_SECONDS === 1) this.noiseTempo = this.rng.lognormal(1, NOISE_TEMPO_SPREAD);
@@ -657,10 +663,17 @@ export class Sandbox {
     this.noiseHerd += -this.noiseHerd / memory + ANCHOR.herd * Math.sqrt(2 / memory) * this.rng.normal();
     this.noiseHerd = Math.max(-ANCHOR.herd * 2.5, Math.min(ANCHOR.herd * 2.5, this.noiseHerd));
     const flow = this.rng.poisson(noise.rate / 60 * this.activity(noise) * this.noiseTempo);
+    // Orders the player queued while paused go out at random points among this second's flow.
+    const queued = (this.player?.takeQueue() ?? []).map((order) => ({ order, slot: this.rng.int(0, flow) }));
+    const sendQueued = (slot) => {
+      for (const item of queued) if (item.slot === slot) this.player.execute(item.order);
+    };
     for (let i = 0; i < flow; i++) {
+      sendQueued(i);
       if (i && i % 3 === 0) this.maker.act();
       noise.decide(this);
     }
+    sendQueued(flow);
     for (const pool of POOLS) {
       if (pool === noise) continue;
       const decisions = this.rng.poisson(pool.rate / 60 * this.activity(pool));
@@ -770,6 +783,7 @@ export class Sandbox {
       regime: this.regime,
       sentiment: this.sentiment.value,
       fairValue: Math.round(this.fair.value),
+      event: this.events.describe(),
       pools: Object.values(pools),
       levels: [...rows.values()].sort((a, b) => b.price - a.price),
     };

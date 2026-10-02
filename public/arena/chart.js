@@ -12,6 +12,7 @@ const heat = (t, alpha) => `rgba(${HEAT_COLD.map((cold, index) => Math.round(col
 
 export const PRICE_TAG = 70;
 export const MIN_CANDLES = 4;
+const HEAT_BINS = [5000, 10000, 20000, 25000, 50000, 100000, 200000];
 export const MIN_ZOOM = 0.2;
 export const MAX_ZOOM = 20;
 // Zoomed in this far, every candle gets its own footprint.
@@ -217,9 +218,13 @@ export function drawChart(canvas, sim, view = {}) {
   ctx.clip();
 
   // Background: the estimated liquidation heat or the resting book over time.
-  const bin = Math.max(5000, Math.round((high - low) / 90 / 5000) * 5000);
+  // Fixed bin steps and a slowly moving brightness scale, so the heat does not reshuffle and blink
+  // every second as the price range and the estimate change.
+  const bin = HEAT_BINS.find((step) => step >= (high - low) / 90) ?? HEAT_BINS.at(-1);
   const estimate = sim.estimate.levels(bin).filter((row) => visible(row.price));
-  const maxEstimate = Math.max(2000, ...estimate.map((row) => row.long + row.short));
+  const peak = Math.max(2000, ...estimate.map((row) => row.long + row.short));
+  view.heatMax = view.heatMax ? view.heatMax + (peak - view.heatMax) * 0.04 : peak;
+  const maxEstimate = Math.max(2000, view.heatMax);
   const heatRight = plotRight + PRICE_TAG;
   ctx.save();
   ctx.beginPath();
@@ -402,13 +407,13 @@ export function drawChart(canvas, sim, view = {}) {
       if (!visible(order.price)) continue;
       const buy = order.side === "buy";
       horizontal(ctx, left, plotRight, y(order.price), buy ? "#70e6c9aa" : "#fb7f91aa", [3, 3]);
-      const hidden = order.iceberg?.hidden ? ` +冰山 ${btc(order.iceberg.hidden)}` : "";
-      tag(ctx, `掛${buy ? "買" : "賣"} ${btc(order.lots)}${hidden}`, plotRight - 4, y(order.price), "#12242de6", buy ? "#9ff3dc" : "#ffb3bf", "right");
+      tag(ctx, `掛${buy ? "買" : "賣"} ${btc(order.lots)}`, plotRight - 4, y(order.price), "#12242de6", buy ? "#9ff3dc" : "#ffb3bf", "right");
     }
-    for (const trigger of player.triggers) {
-      if (!visible(trigger.price)) continue;
-      horizontal(ctx, left, plotRight, y(trigger.price), "#c8a0ffaa", [6, 3]);
-      tag(ctx, `觸價${trigger.side === "buy" ? "買" : "賣"} ${btc(trigger.lots)}`, plotRight - 4, y(trigger.price), "#21173ae6", "#d9c6ff", "right");
+    // Limit orders still waiting to be sent when the market resumes.
+    for (const order of player.queue) {
+      if (order.type !== "limit" || !visible(order.price)) continue;
+      horizontal(ctx, left, plotRight, y(order.price), "#f2c575aa", [2, 4]);
+      tag(ctx, `⏳ 待送出 ${order.side === "buy" ? "買" : "賣"} ${btc(order.lots)}`, plotRight - 4, y(order.price), "#2a2412e6", "#f6d78c", "right");
     }
   }
 
@@ -582,7 +587,7 @@ function drawCandleFootprints(ctx, scale, visible) {
 
 const OMEN_RANGE = 0.008;
 
-// The brightest estimated liquidation bands heat up as the price closes in: they flicker faster,
+// The brightest estimated liquidation bands heat up as the price closes in: they pulse deeper,
 // glow hotter and carry a tag with the fuel and the distance, so the chart warns before it blows.
 function drawFuelOmen(ctx, scale, estimate, maxEstimate, last, now) {
   const { left, plotRight, y } = scale;
@@ -592,8 +597,8 @@ function drawFuelOmen(ctx, scale, estimate, maxEstimate, last, now) {
     const distance = Math.abs(row.price / last - 1);
     if (distance > OMEN_RANGE) continue;
     const heat = 1 - distance / OMEN_RANGE;
-    // A slow breathing glow when far, quickening as the price closes in (about 3.3s down to 1.6s).
-    const flicker = 0.55 + 0.45 * Math.sin(now / (520 - heat * 260) + row.price);
+    // One steady breath (about 2.8s) for every band; only its depth grows as the price closes in.
+    const flicker = 1 - heat * 0.45 * (0.5 + 0.5 * Math.sin(now / 450));
     const yy = y(row.price);
     const band = Math.max(4, 6 + heat * 10);
     const green = Math.round(150 + heat * 90);

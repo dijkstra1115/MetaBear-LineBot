@@ -44,7 +44,7 @@ let lastRender = 0;
 let openPrice = 0;
 let turnOpen = null;
 let message = { text: "", error: false };
-const alertPrefs = store.get("alerts", { bigFlow: true, cascade: true, own: true, move: true });
+const alertPrefs = { bigFlow: true, cascade: true, own: true, move: true, event: true, ...store.get("alerts", {}) };
 const view = { count: 120, zoom: 1, offset: 0, layer: "liq", averages: true, fills: store.get("fills", true), pushes: [], now: 0, reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null };
 
 /* ---------- Market lifecycle ---------- */
@@ -417,20 +417,56 @@ function describeEvent(event) {
   const side = event.side === "buy" ? "買" : "賣";
   switch (event.kind) {
     case "fill": return `掛單成交：${side} ${btc(event.lots)} @ ${price(event.price)}`;
-    case "trigger": return event.error ? `觸價單觸發但被拒絕：${event.error}` : `觸價單在 ${price(event.price)} 觸發：市價${side} ${btc(event.lots)}`;
     case "stop": return `止損觸發（標記價 ${price(event.price)}），市價平倉`;
     case "take": return `止盈觸發（標記價 ${price(event.price)}），市價平倉`;
-    case "twap": return event.error ? `TWAP 停止：${event.error}` : `TWAP 完成：${side} ${btc(event.lots)}，均價 ${event.avgPrice ? price(event.avgPrice) : "—"}`;
     case "liquidation": return `你的${event.side === "long" ? "多單" : "空單"} ${btc(event.lots)} 在 ${price(event.price)} 被強平，賠掉保證金 ${plain(event.lost)}`;
     case "danger": return `你的強平價 ${price(event.price)} 距離標記價不到 1%`;
+    case "rejected": return `委託沒有送出：${event.error}`;
     default: return "";
   }
 }
 
+// A market order (or a close) went out: report it, and show the push or the wall it hit.
+function showPush(event) {
+  const word = event.side === "buy" ? "買入" : "賣出";
+  const label = event.reduceOnly ? "平倉" : `市價${word}`;
+  const move = event.to / event.from - 1;
+  if (event.stalled) {
+    turnStalls++;
+    const promisedMove = event.promised / event.from - 1;
+    setMessage(`${label} ${btc(event.matched)}：簿上看得到的掛單應該推到 ${price(event.promised)}（${pct(promisedMove)}），實際只到 ${price(event.to)}（${pct(move)}）。看不見的掛單在吸收你的單。`, true);
+  } else {
+    setMessage(`${label} ${btc(event.matched)}，均價 ${price(event.avgPrice ?? event.from)}，價格 ${pct(move)}${event.unfilled ? `；${btc(event.unfilled)} 超出 10% 保護價未成交` : ""}${event.wave ? `；引爆強平 ${btc(event.wave.lots)}` : ""}`);
+  }
+  if (event.reduceOnly && !event.stalled) return;
+  if (effectsEnabled && event.matched >= 5000) {
+    view.pushes.push({ from: event.from, to: event.to, expected: event.stalled ? event.promised : null, side: event.side, stalled: event.stalled, born: performance.now() });
+    view.pushes = view.pushes.slice(-4);
+  }
+  const point = chartPoint(event.to);
+  if (event.stalled) {
+    floatLabel("🛡 撞牆！有人在吸收", point.x - 40, point.y + (event.side === "buy" ? -28 : 28), "amber", true);
+    // A dull thud instead of the usual click.
+    tone(78, 0.3, "square", 0.07, 48);
+    boom(0.35);
+    shake(2);
+    return;
+  }
+  if (Math.abs(move) >= 0.0015) {
+    floatLabel(`推動 ${pct(move)}`, point.x - 40, point.y + (move > 0 ? 26 : -26), move > 0 ? "mint" : "coral", Math.abs(move) >= 0.01);
+    ring(point.x, point.y, move > 0 ? "mint" : "coral", Math.min(1, Math.abs(move) * 50));
+  }
+  if (event.matched >= 125000) shake(event.matched >= 500000 ? 2 : 1);
+  tone(event.side === "buy" ? 680 : 420, 0.1, "triangle", 0.04);
+}
+
 function processEvents(events) {
   for (const event of events) {
-    const point = chartPoint(event.price ?? sim.last);
-    if (event.kind === "liquidation") {
+    const point = chartPoint(event.price ?? event.to ?? sim.last);
+    if (event.kind === "push") showPush(event);
+    else if (event.kind === "placed") {
+      setMessage(`限價${event.side === "buy" ? "買入" : "賣出"} ${btc(event.lots)} @ ${price(event.price)}${event.matched ? `，立即成交 ${btc(event.matched)}` : ""}${event.resting ? `，掛單 ${btc(event.resting)}` : ""}`);
+    } else if (event.kind === "liquidation") {
       flashScreen("danger", 1);
       shake(3);
       boom(1);
@@ -589,6 +625,13 @@ function showPause(result) {
       toneName = alert.side === "long" ? "coral" : "mint";
       stats.push(["第一波", btc(alert.lots)], ["10 秒價格", move], ["OI", signedBtc(alert.oi)]);
       detail = alert.by === "player" ? "是你推出來的。下一條燃料在哪？什麼時候該走？" : "強平單會繼續推價，直到燃料用完；之後價格守不守得住，要看場內有沒有人接手。";
+    } else if (alert.kind === "event") {
+      title = `⚡ ${alert.name}`;
+      toneName = alert.eventKind === "squeeze" || alert.eventKind === "accumulate" ? "mint" : "coral";
+      stats.push(["10 秒價格", move], ["CVD", signedBtc(alert.cvd)], ["OI", signedBtc(alert.oi)]);
+      detail = alert.text;
+      shake(2);
+      boom(0.6);
     } else if (alert.kind === "move") {
       title = `回合內價格已移動 ${pct(alert.move)}`;
       stats.push(["回合開始", price(session.turnStartPrice)], ["現價", price(sim.last)], ["CVD 10 秒", signedBtc(alert.cvd)]);
@@ -637,79 +680,55 @@ function priceCents() {
   return Number.isFinite(value) && value > 0 ? Math.round(value * 100) : null;
 }
 
-function submit(side) {
+// While the market runs an order goes straight in; while paused it waits in the queue and is sent at
+// a random point in the first second of the next run.
+function place(order) {
   if (!sim) return;
-  const lots = sizeLots();
-  if (!lots) return setMessage("請輸入數量", true);
-  const reduceOnly = $("reduce-only").checked;
-  let result;
-  const before = sim.last;
-  // What the visible book says a market order should reach, to tell when hidden size absorbed it.
-  const promised = orderType === "market" ? sim.book.preview(side, lots, side === "buy" ? sim.book.maxPrice : 1, "player") : null;
-  if (orderType === "market") result = player.submitMarket(side, lots, { reduceOnly });
-  else if (orderType === "twap") result = player.addTwap(side, lots, Number($("twap-select").value), 20, { reduceOnly });
-  else {
-    const cents = priceCents();
-    if (!cents) return setMessage("請輸入價格，或直接點圖表填入", true);
-    if (orderType === "trigger") result = player.addTrigger(side, cents, lots, { reduceOnly });
-    else {
-      const display = orderType === "iceberg" ? Math.round(Number($("display-input").value || lots / 1000) * 100) : null;
-      if (orderType === "iceberg" && !(display > 0 && display < lots)) return setMessage("冰山顯示量要大於 0 且小於總量", true);
-      result = player.submitLimit(side, cents, lots, { reduceOnly, display });
-    }
+  if (running) {
+    const result = player.execute(order);
+    processEvents(player.drainEvents());
+    if (!result.ok) setMessage(result.error, true);
+  } else {
+    const result = player.enqueue(order);
+    if (!result.ok) return setMessage(result.error, true);
+    setMessage(`${describeOrder(order)} 已排入待送出：按「執行」後，會在第一秒內和其他人的單一起送出。`);
+    tone(560, 0.06, "triangle", 0.03);
   }
-  if (!result.ok) return setMessage(result.error, true);
-  const word = side === "buy" ? "買入" : "賣出";
-  if (orderType === "market") {
-    const move = sim.last / before - 1;
-    setMessage(`市價${word} ${btc(result.matched)}，均價 ${price(result.avgPrice ?? before)}，價格 ${pct(move)}${result.unfilled ? `；${btc(result.unfilled)} 超出 10% 保護價未成交` : ""}${result.wave ? `；引爆強平 ${btc(result.wave.lots)}` : ""}`);
-    const point = chartPoint(sim.last);
-    const reach = result.lastPrice ?? before;
-    const promisedMove = promised?.worstPrice ? promised.worstPrice / before - 1 : 0;
-    const reachMove = reach / before - 1;
-    // Absorbed: the visible book promised a real move and the order stopped well short of it.
-    const stalled = result.matched > 0 && Math.abs(promisedMove) >= 0.0015 && Math.abs(reachMove) < Math.abs(promisedMove) * 0.75;
-    if (effectsEnabled && result.matched >= 5000) {
-      view.pushes.push({ from: before, to: reach, expected: stalled ? promised.worstPrice : null, side, stalled, born: performance.now() });
-      view.pushes = view.pushes.slice(-4);
-    }
-    if (stalled) {
-      turnStalls++;
-      const wall = chartPoint(reach);
-      floatLabel("🛡 撞牆！有人在吸收", wall.x - 40, wall.y + (side === "buy" ? -28 : 28), "amber", true);
-      // A dull thud instead of the usual click.
-      tone(78, 0.3, "square", 0.07, 48);
-      boom(0.35);
-      shake(2);
-      setMessage(`市價${word} ${btc(result.matched)}：簿上看得到的掛單應該推到 ${price(promised.worstPrice)}（${pct(promisedMove)}），實際只到 ${price(reach)}（${pct(reachMove)}）。看不見的掛單在吸收你的單。`, true);
-    } else if (Math.abs(move) >= 0.0015) {
-      floatLabel(`推動 ${pct(move)}`, point.x - 40, point.y + (move > 0 ? 26 : -26), move > 0 ? "mint" : "coral", Math.abs(move) >= 0.01);
-      ring(point.x, point.y, move > 0 ? "mint" : "coral", Math.min(1, Math.abs(move) * 50));
-    }
-    if (lots >= 125000) shake(lots >= 500000 ? 2 : 1);
-    if (!stalled) tone(side === "buy" ? 680 : 420, 0.1, "triangle", 0.04);
-  } else if (orderType === "twap") setMessage(`TWAP ${word} ${btc(lots)}，分 ${Math.min(20, Math.floor(lots / 100) || 1)} 筆在 ${Number($("twap-select").value) / 60} 分鐘內送出`);
-  else if (orderType === "trigger") setMessage(`觸價${word} ${btc(lots)} @ ${price(priceCents())}：標記價穿過時送出市價單`);
-  else setMessage(`${orderType === "iceberg" ? "冰山" : "限價"}${word} ${btc(lots)} @ ${price(priceCents())}${result.matched ? `，立即成交 ${btc(result.matched)}` : ""}${result.resting ? `，掛單 ${btc(result.resting)}` : ""}`);
   processLiquidations();
   render();
 }
 
-function closeNow(fraction = 1) {
-  if (!player) return;
-  const result = fraction >= 1 ? player.close() : player.closePart(fraction);
-  if (!result.ok) return setMessage(result.error, true);
-  setMessage(result.pending ? "部分平倉，剩餘部位下一秒繼續出場" : `已平倉 ${btc(result.matched)}，均價 ${price(result.avgPrice ?? sim.last)}`);
-  processLiquidations();
-  render();
+function describeOrder(order) {
+  if (order.type === "close") return `平倉 ${Math.round(order.fraction * 100)}%`;
+  const word = order.side === "buy" ? "買" : "賣";
+  return order.type === "limit" ? `限價${word} ${btc(order.lots)} @ ${price(order.price)}` : `市價${word} ${btc(order.lots)}`;
+}
+
+function submit(side) {
+  const lots = sizeLots();
+  if (!lots) return setMessage("請輸入數量", true);
+  const reduceOnly = $("reduce-only").checked;
+  if (orderType === "limit") {
+    const cents = priceCents();
+    if (!cents) return setMessage("請輸入價格，或直接點圖表填入", true);
+    return place({ type: "limit", side, lots, price: cents, reduceOnly });
+  }
+  place({ type: "market", side, lots, reduceOnly });
+}
+
+function closeFraction() {
+  return Math.max(0.01, Math.min(1, Number($("close-range").value) / 100));
+}
+
+function closeNow(fraction = closeFraction()) {
+  if (!player?.position) return setMessage("目前沒有持倉", true);
+  place({ type: "close", fraction });
 }
 
 function setOrderType(type) {
   orderType = type;
   document.querySelectorAll("[data-type]").forEach((button) => button.classList.toggle("active", button.dataset.type === type));
-  $("price-field").hidden = !["limit", "trigger", "iceberg"].includes(type);
-  $("display-field").hidden = type !== "iceberg";
-  $("twap-field").hidden = type !== "twap";
+  $("price-field").hidden = type !== "limit";
   render();
 }
 
@@ -794,6 +813,10 @@ function renderReveal() {
   const reveal = sim.reveal();
   $("reveal-regime").textContent = REGIMES[reveal.regime.key] ?? reveal.regime.key;
   $("reveal-value").textContent = `${price(reveal.fairValue)}（現價 ${pct(sim.last / reveal.fairValue - 1)}）`;
+  const phases = { omen: "徵兆中", main: "爆發中", after: "餘波" };
+  $("reveal-event").textContent = reveal.event ? `${reveal.event.name}（${phases[reveal.event.phase]}）` : "無";
+  $("reveal-event-text").hidden = !reveal.event;
+  $("reveal-event-text").textContent = reveal.event?.text ?? "";
   $("reveal-mood").style.left = `${(reveal.sentiment + 1) * 50}%`;
   $("reveal-mood-text").textContent = reveal.sentiment >= 0 ? `偏多 ${fmt(reveal.sentiment, 2)}` : `偏空 ${fmt(reveal.sentiment, 2)}`;
   $("pool-rows").replaceChildren(...reveal.pools.map((pool) => {
@@ -817,12 +840,8 @@ function renderOrders() {
     row.append(span, button);
     items.push(row);
   };
-  for (const order of player.orders()) {
-    const hidden = order.iceberg?.hidden ? `（冰山，隱藏 ${btc(order.iceberg.hidden)}）` : "";
-    add(`限價${order.side === "buy" ? "買" : "賣"} ${btc(order.lots)} @ ${price(order.price)}${hidden}${player.reduceOnly.has(order.id) ? " · 只減倉" : ""}`, order.id);
-  }
-  for (const trigger of player.triggers) add(`觸價${trigger.side === "buy" ? "買" : "賣"} ${btc(trigger.lots)} @ ${price(trigger.price)}`, trigger.id);
-  for (const twap of player.twaps) add(`TWAP ${twap.side === "buy" ? "買" : "賣"} 剩 ${btc(twap.remaining)}（${twap.left} 筆）`, twap.id);
+  for (const order of player.queue) add(`⏳ 待送出：${describeOrder(order)}`, order.id);
+  for (const order of player.orders()) add(`限價${order.side === "buy" ? "買" : "賣"} ${btc(order.lots)} @ ${price(order.price)}${player.reduceOnly.has(order.id) ? " · 只減倉" : ""}`, order.id);
   if (!items.length) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
@@ -838,11 +857,11 @@ function renderPreview() {
     $("order-preview").textContent = "—";
     return;
   }
-  if (orderType === "market" || orderType === "twap") {
+  if (orderType === "market") {
     const buy = sim.book.preview("buy", lots, sim.book.maxPrice, "player");
     const sell = sim.book.preview("sell", lots, 1, "player");
     const reach = (result) => result.worstPrice ? `${price(result.worstPrice)}（${pct(result.worstPrice / sim.last - 1)}）` : "簿面不足";
-    $("order-preview").textContent = `依可見掛單：買推到 ${reach(buy)} · 賣推到 ${reach(sell)}`;
+    $("order-preview").textContent = `${running ? "依可見掛單" : "依暫停時的簿面估計"}：買推到 ${reach(buy)} · 賣推到 ${reach(sell)}`;
   } else {
     const cents = priceCents();
     $("order-preview").textContent = cents ? `${price(cents)}（距現價 ${pct(cents / sim.last - 1)}）` : "點圖表填入價格";
@@ -916,7 +935,7 @@ function render() {
   const liq = player.liquidationPrice();
   $("player-liq").textContent = liq ? `${price(liq)}（${pct(liq / mark - 1)}）` : "—";
   $("volume").textContent = btc(player.stats.volume);
-  const locked = Boolean(player.position) || player.orders().length > 0 || player.triggers.length > 0 || player.twaps.length > 0;
+  const locked = Boolean(player.position) || player.orders().length > 0 || player.queue.length > 0;
   document.querySelectorAll("[data-leverage]").forEach((button) => {
     button.classList.toggle("active", Number(button.dataset.leverage) === player.leverage);
     button.disabled = locked && Number(button.dataset.leverage) !== player.leverage;
@@ -1021,8 +1040,15 @@ $("effects").addEventListener("change", () => {
 });
 $("buy-button").addEventListener("click", () => submit("buy"));
 $("sell-button").addEventListener("click", () => submit("sell"));
-$("close-position").addEventListener("click", () => closeNow(1));
-$("close-half").addEventListener("click", () => closeNow(0.5));
+$("close-position").addEventListener("click", () => closeNow());
+$("close-range").addEventListener("input", () => {
+  $("close-label").textContent = `${$("close-range").value}%`;
+  document.querySelectorAll("[data-close]").forEach((button) => button.classList.toggle("active", button.dataset.close === $("close-range").value));
+});
+document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => {
+  $("close-range").value = button.dataset.close;
+  $("close-range").dispatchEvent(new Event("input"));
+}));
 $("cancel-all").addEventListener("click", () => {
   const count = player.cancelAll();
   setMessage(count ? `已撤掉 ${count} 筆委託` : "沒有可撤的委託");
@@ -1134,11 +1160,11 @@ canvas.addEventListener("click", (event) => {
 });
 function fillPrice(cents) {
   if (cents == null) return;
-  if (orderType === "market" || orderType === "twap") setOrderType("limit");
+  if (orderType === "market") setOrderType("limit");
   $("price-input").value = String(cents / 100);
   $("price-field").classList.add("flash");
   setTimeout(() => $("price-field").classList.remove("flash"), 600);
-  setMessage(`價格 ${price(cents)} 已填入（${orderType === "trigger" ? "觸價" : orderType === "iceberg" ? "冰山" : "限價"}），按買入或賣出送出。`);
+  setMessage(`價格 ${price(cents)} 已填入限價單，按買入或賣出送出。`);
   render();
 }
 canvas.addEventListener("wheel", (event) => {
@@ -1168,8 +1194,7 @@ document.addEventListener("keydown", (event) => {
     setRunning(!running);
   } else if (key === "q") submit("buy");
   else if (key === "e") submit("sell");
-  else if (key === "f") closeNow(1);
-  else if (key === "h") closeNow(0.5);
+  else if (key === "f") closeNow();
   else if (key === "r") toggleReveal();
   else if (/^[1-5]$/.test(key)) document.querySelectorAll("[data-size]")[Number(key) - 1]?.click();
 });

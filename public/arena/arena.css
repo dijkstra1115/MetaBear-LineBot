@@ -269,3 +269,16 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 @keyframes verdict-in{0%{opacity:0;transform:scale(.6)}100%{opacity:1;transform:scale(1)}}
 @keyframes row-in{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
 @keyframes streak-break{0%{transform:none;opacity:1}20%{transform:translateX(-4px) rotate(-3deg)}40%{transform:translateX(4px) rotate(3deg)}100%{transform:translateY(24px) rotate(8deg) scale(.8);opacity:0;filter:blur(2px)}}
+
+/* Close slider, maker and whale in the crowd list */
+.close-control{display:flex;align-items:center;gap:8px;padding:3px 4px 3px 10px;border:1px solid #6f6045;border-radius:7px;background:#1e1b14}
+.close-control>span{color:#e9cf93;font-size:11px;font-weight:700}
+.close-control input[type=range]{width:110px;accent-color:#e2b866}
+.close-control strong{min-width:40px;color:#f4d497;font:800 12px Consolas,monospace;text-align:right}
+.close-presets{display:flex;gap:2px}
+.order-panel .close-presets button{height:26px;padding:0 7px;border:1px solid #5d523b;background:transparent;color:#cdb98a;font:700 10px Consolas,monospace}
+.order-panel .close-presets button.active{background:#4a3a1c;color:var(--gold);border-color:#c9a45a}
+.actor-list li.maker{border-left-color:#7fb8ff}.actor-list li.maker b{color:#a9d0ff}
+.actor-list li.whale{border-left-color:#b79cff}.actor-list li.whale b{color:#d6c6ff}
+.player-order span{white-space:normal}
+.reveal-event-text{margin:-2px 0 8px;color:#d9c79b;font-size:10px;line-height:1.5}

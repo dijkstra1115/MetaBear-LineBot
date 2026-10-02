@@ -137,26 +137,47 @@ test("a liquidation loses at most the position margin", () => {
   assert.equal(sim.ledgerBalance(), 0);
 });
 
-test("trigger orders fire on the mark, TWAP slices over time, icebergs show their display size", () => {
+test("orders placed while paused wait, then go out during the first second of the next run", () => {
   const sim = quick(8);
   const player = new Player(sim);
-  player.setLeverage(1);
-  const trigger = player.addTrigger("buy", sim.markPrice() - 30000, 1000);
-  assert.equal(trigger.ok, true);
-  sim.addAccount("bot", "test");
-  sim.book.submit("sell", Math.round(sim.last * 0.985), 400000, { owner: "bot", acct: "bot", rest: false });
-  player.onTick();
-  assert.equal(player.triggers.length, 0);
-  assert.ok(player.position > 0);
-  const before = player.position;
-  player.addTwap("buy", 4000, 40, 4);
-  for (let t = 0; t < 45; t++) sim.tick();
-  assert.equal(player.twaps.length, 0);
-  assert.ok(player.position - before > 3000);
-  const ice = player.submitLimit("sell", sim.last + 300000, 5000, { display: 500 });
-  const order = sim.book.orders.get(ice.id);
-  assert.equal(order.lots, 500);
-  assert.equal(order.iceberg.hidden, 4500);
+  const queued = player.enqueue({ type: "market", side: "buy", lots: 50000 });
+  assert.equal(queued.ok, true);
+  assert.equal(player.position, 0, "nothing trades while paused");
+  assert.equal(player.queue.length, 1);
+  const time = sim.time;
+  sim.tick();
+  assert.equal(sim.time, time + 1);
+  assert.equal(player.queue.length, 0);
+  assert.equal(player.position, 50000);
+  const pushes = player.drainEvents().filter((event) => event.kind === "push");
+  assert.equal(pushes.length, 1);
+  assert.ok(pushes[0].to >= pushes[0].from);
+  player.enqueue({ type: "close", fraction: 0.5 });
+  sim.tick();
+  assert.equal(player.position, 25000);
+  assert.equal(player.cancel(player.enqueue({ type: "limit", side: "buy", lots: 100, price: sim.last - 50000 }).id), true);
+  assert.equal(player.queue.length, 0);
+  assert.equal(sim.ledgerBalance(), 0);
+});
+
+test("a sudden event shows omens first, then announces itself and trades through the book", () => {
+  const sim = quick(12);
+  const session = new Session(sim);
+  session.alerts = { bigFlow: false, cascade: false, own: false, move: false, event: true };
+  sim.events.next = sim.time + 1;
+  let alert = null;
+  for (let turn = 0; turn < 20 && !alert; turn++) {
+    const run = session.advance(300);
+    if (run.stop === "alert") alert = run.alert;
+  }
+  assert.ok(alert, "the event raised a pause");
+  assert.equal(alert.kind, "event");
+  const event = sim.events.history.at(-1);
+  assert.ok(alert.name.length > 0);
+  assert.ok(sim.time - event.start >= 10 * 60, "an omen phase came first");
+  for (let t = 0; t < 1800; t++) sim.tick();
+  if (event.kind !== "drought") assert.ok(sim.events.whale.volume > 0, "the whale traded");
+  assert.equal(sim.ledgerBalance(), 0);
 });
 
 test("a turn runs five simulated minutes, and a filled resting order pauses it early", () => {
