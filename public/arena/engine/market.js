@@ -15,7 +15,8 @@ const EXIT_BAND = 0.008;
 const CASCADE_BAND = 0.01;
 const FOOTPRINT_BIN = 1000; // $10
 const TAPE_KEEP = 4000;
-const FOOTPRINT_KEEP = 240;
+const FOOTPRINT_KEEP = 1440; // candles that keep their footprint
+const BOOK_KEEP = 480; // candles that keep a resting-book snapshot
 const VIRTUAL_NOISE_PER_MINUTE = 8;
 const NOISE_TEMPO_SPREAD = 0.6;
 const NOISE_HERD = 0.05;
@@ -640,11 +641,8 @@ export class Sandbox {
       this.live.oi = this.oi;
       this.live.book = { bids: this.book.depth("buy", 80), asks: this.book.depth("sell", 80) };
       this.candles.push(this.live);
-      if (this.candles.length > FOOTPRINT_KEEP) {
-        const old = this.candles[this.candles.length - FOOTPRINT_KEEP];
-        old.fp = null;
-        old.book = null;
-      }
+      if (this.candles.length > FOOTPRINT_KEEP) this.candles[this.candles.length - FOOTPRINT_KEEP].fp = null;
+      if (this.candles.length > BOOK_KEEP) this.candles[this.candles.length - BOOK_KEEP].book = null;
       this.closeCandleReadings();
       this.signalExits();
       this.live = this.newCandle();

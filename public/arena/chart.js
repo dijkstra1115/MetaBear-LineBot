@@ -63,7 +63,7 @@ export function chartGeometry(canvas, sim, view = {}) {
   const low = mid - span / 2;
   const priceTop = 26;
   const priceBottom = rect.height * 0.7;
-  const left = 70;
+  const left = 8;
   const plotRight = rect.width - PRICE_TAG - 8;
   const y = (price) => priceTop + (high - price) / span * (priceBottom - priceTop);
   const slots = Math.max(MIN_CANDLES + 2, candles.length + 2);
@@ -72,13 +72,13 @@ export function chartGeometry(canvas, sim, view = {}) {
   return { rect, all, candles, first: end - candles.length, shift, high, low, span, priceTop, priceBottom, left, plotRight, y, x, xStep };
 }
 
-// True over either price scale: the labels on the left or the last-price column on the right.
+// True over the price scale on the right.
 export function chartOnAxis(canvas, sim, view, clientX, clientY) {
   const scale = chartGeometry(canvas, sim, view);
   const localX = clientX - scale.rect.left;
   const localY = clientY - scale.rect.top;
   if (localY < scale.priceTop || localY > scale.priceBottom) return false;
-  return localX < scale.left || localX > scale.plotRight;
+  return localX > scale.plotRight;
 }
 
 export function chartPriceAt(canvas, sim, view, clientY) {
@@ -181,9 +181,6 @@ export function drawChart(canvas, sim, view = {}) {
   for (let i = 0; i <= 6; i++) {
     const value = high - (high - low) * i / 6;
     horizontal(ctx, left, plotRight, Math.round(y(value)) + 0.5, "#1f3640");
-    ctx.fillStyle = "#77949d";
-    ctx.textAlign = "right";
-    ctx.fillText(labelPrice(value), left - 8, y(value));
   }
   ctx.textAlign = "center";
   candles.forEach((candle, index) => {
@@ -206,8 +203,11 @@ export function drawChart(canvas, sim, view = {}) {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#c9a45a";
-    ctx.textAlign = "left";
-    ctx.fillText("開盤", x(startIndex) - xStep / 2 + 4, priceTop + 8);
+    // Near the price scale the label goes on the left of the line.
+    const openX = x(startIndex) - xStep / 2;
+    const nearScale = openX > plotRight - 40;
+    ctx.textAlign = nearScale ? "right" : "left";
+    ctx.fillText("開盤", openX + (nearScale ? -4 : 4), priceTop + 8);
   }
 
   // Everything priced stays inside the price pane, however far the axis is stretched.
@@ -414,6 +414,22 @@ export function drawChart(canvas, sim, view = {}) {
     tag(ctx, `吸收 ${btc(signal.traded)} BTC`, plotRight - 4, y(signal.price), "#3a2f17ee", "#f6d78c", "right");
   }
 
+  // Price scale on the right; the last price and the cursor sit on it as tags.
+  ctx.fillStyle = "#091923d9";
+  ctx.fillRect(plotRight, priceTop, PRICE_TAG, priceBottom - priceTop);
+  ctx.strokeStyle = "#29424b";
+  ctx.beginPath();
+  ctx.moveTo(plotRight + 0.5, priceTop);
+  ctx.lineTo(plotRight + 0.5, priceBottom);
+  ctx.stroke();
+  ctx.font = "10px Consolas, monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#77949d";
+  for (let i = 0; i <= 6; i++) {
+    const value = high - (high - low) * i / 6;
+    ctx.fillText(labelPrice(value), plotRight + 7, clamp(y(value), priceTop + 6, priceBottom - 6));
+  }
   const lastY = y(last);
   if (lastY >= priceTop && lastY <= priceBottom) {
     horizontal(ctx, left, plotRight, lastY, "#f3c577", [5, 4]);
@@ -431,7 +447,13 @@ export function drawChart(canvas, sim, view = {}) {
     ctx.textAlign = "left";
     ctx.fillStyle = "#e7f6ee";
     ctx.font = "bold 11px Consolas, monospace";
-    ctx.fillText(`${labelPrice(view.cursorPrice)}${view.cursorLabel ? ` · ${view.cursorLabel}` : ""}`, left + 8, clamp(yy - 12, priceTop + 12, priceBottom - 6));
+    if (view.cursorLabel) ctx.fillText(view.cursorLabel, left + 8, clamp(yy - 12, priceTop + 12, priceBottom - 6));
+    ctx.fillStyle = "#d9e8e4";
+    ctx.fillRect(plotRight + 1, yy - 9, 68, 18);
+    ctx.fillStyle = "#142630";
+    ctx.font = "bold 10px Consolas, monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(labelPrice(view.cursorPrice), plotRight + 35, yy);
   }
 
   ctx.restore();
@@ -459,11 +481,11 @@ export function drawChart(canvas, sim, view = {}) {
   ctx.font = "9px Consolas, monospace";
   ctx.textAlign = "left";
   ctx.fillStyle = "#7597a0";
-  ctx.fillText("VOL", 10, volumeTop + 8);
+  ctx.fillText("VOL", left + 4, volumeTop + 8);
   ctx.fillStyle = "#d5ae73";
-  ctx.fillText("CVD", 10, cvdTop + 8);
+  ctx.fillText("CVD", left + 4, cvdTop + 8);
   ctx.fillStyle = "#8fd4ff";
-  ctx.fillText("OI", 36, cvdTop + 8);
+  ctx.fillText("OI", left + 30, cvdTop + 8);
   const maxVolume = Math.max(1, ...candles.map((candle) => candle.volume));
   candles.forEach((candle, index) => {
     const barHeight = candle.volume / maxVolume * (volumeBottom - volumeTop);
