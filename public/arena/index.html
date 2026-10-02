@@ -84,12 +84,24 @@
           </ul>
           <p class="guide-note">市場是封閉的：你砸出去的每一顆 BTC 都要由場內的人接走，沒有外部資金把價格拉回。</p>
         </details>
+        <section class="panel shortcut-panel"><div class="panel-title"><span class="eyebrow">KEYS</span><span>快捷鍵</span></div><p>Space 執行／暫停 · Q 買 · E 賣 · F 依滑桿比例平倉 · R 揭曉 · 1–5 切換數量 · 滾輪縮放 K 線數量（放大到單根夠寬時，每根 K 旁邊會顯示 Footprint）· 在圖表內拖曳可左右平移 K 線、上下平移價格 · 按住右側價格軸上下拖曳、或在價格軸上滾輪，縮放價格 · 雙擊圖表回到最新並還原</p></section>
       </aside>
 
       <div class="market-column">
         <section class="market-panel panel">
           <div class="market-head"><div class="asset-identity"><span class="asset-symbol">₿</span><div><strong>BTC <small>/ USDT 永續</small></strong><span>SIMULATED · 1 lot = 0.01 BTC</span></div></div><div class="last-price-block"><strong id="last-price">—</strong><span id="price-change">+0.00%</span></div><div class="market-head-metrics"><div><span>MARK</span><strong id="mark-price">—</strong></div><div><span>SPREAD</span><strong id="spread">—</strong></div><div><span>±1% 深度</span><strong id="depth">—</strong></div><div><span>累積 CVD</span><strong id="cvd-value">+0</strong></div></div></div>
-          <div class="chart-head"><span>PRICE × LIQUIDATION MAP · 1m</span><div class="chart-tools"><label class="overlay-toggle"><input id="averages" type="checkbox" checked /> 均線／VWAP</label><label class="overlay-toggle"><input id="fills" type="checkbox" checked /> 我的成交</label><label class="overlay-toggle"><input id="effects" type="checkbox" checked /> 特效標籤</label><div class="layer-toggle" role="group" aria-label="圖表背景"><button type="button" class="active" data-layer="liq">清算熱圖（估）</button><button type="button" data-layer="book">掛單熱圖</button><button type="button" data-layer="none">無</button></div></div></div>
+          <div class="chart-head"><span>PRICE × LIQUIDATION MAP · 1m</span><div class="chart-tools"><details class="indicator-menu"><summary>指標 ▾</summary><div class="indicator-list">
+                <label><input type="checkbox" data-ind="ema20" /> EMA20</label>
+                <label><input type="checkbox" data-ind="ema50" /> EMA50</label>
+                <label><input type="checkbox" data-ind="vwap" /> VWAP 4h</label>
+                <label><input type="checkbox" data-ind="volume" /> 成交量</label>
+                <label><input type="checkbox" data-ind="cvd" /> CVD</label>
+                <label><input type="checkbox" data-ind="oi" /> OI</label>
+                <label><input type="checkbox" data-ind="footprint" /> 每根 K 的 Footprint</label>
+                <label><input type="checkbox" data-ind="absorb" /> 吸收標記</label>
+                <label><input type="checkbox" data-ind="omen" /> 燃料預兆</label>
+                <label><input type="checkbox" data-ind="fills" /> 我的成交</label>
+              </div></details><label class="overlay-toggle"><input id="effects" type="checkbox" checked /> 特效標籤</label><div class="layer-toggle" role="group" aria-label="圖表背景"><button type="button" class="active" data-layer="liq">清算熱圖（估）</button><button type="button" data-layer="book">掛單熱圖</button><button type="button" data-layer="none">無</button></div></div></div>
           <div class="chart-wrap">
             <canvas id="market-chart" role="img" aria-label="1 分 K 線、清算熱圖、成交量、CVD、OI、清算地圖與 Footprint；點圖表可填入委託價格"></canvas>
             <div id="flash-overlay" class="flash-overlay" aria-hidden="true"></div>
@@ -112,25 +124,55 @@
             <div id="fx-layer" class="fx-layer" aria-hidden="true"></div>
             <div id="particle-layer" class="particle-layer" aria-hidden="true"></div>
           </div>
-          <div class="order-panel">
-            <div class="order-row">
-              <div class="type-tabs" role="tablist" aria-label="委託類型">
-                <button type="button" data-type="market" class="active">市價</button>
-                <button type="button" data-type="limit">限價</button>
+          <div class="order-panel dock">
+            <section class="dock-block order-block" aria-label="下單">
+              <div class="dock-title"><span class="eyebrow">ORDER</span><span>下單</span></div>
+              <div class="order-row">
+                <div class="type-tabs" role="tablist" aria-label="委託類型">
+                  <button type="button" data-type="market" class="active">市價</button>
+                  <button type="button" data-type="limit">限價</button>
+                </div>
+                <label id="price-field" class="order-field" hidden>價格 <input id="price-input" inputmode="decimal" placeholder="點圖表填入" /></label>
               </div>
               <div class="quick-size"><span>數量</span><button data-size="10" type="button">10</button><button data-size="50" type="button">50</button><button data-size="250" type="button" class="active">250</button><button data-size="1250" type="button">1,250</button><button data-size="5000" type="button">5,000</button><input id="size-input" inputmode="decimal" value="250" aria-label="數量 BTC" /><span class="unit-suffix">BTC</span></div>
-            </div>
-            <div class="order-row">
-              <label id="price-field" class="order-field" hidden>價格 <input id="price-input" inputmode="decimal" placeholder="點圖表填入" /></label>
-              <div class="quick-leverage"><span>槓桿</span><div class="leverage-toggle" role="group" aria-label="槓桿倍數"><button data-leverage="1" type="button">1×</button><button data-leverage="3" type="button" class="active">3×</button><button data-leverage="5" type="button">5×</button><button data-leverage="10" type="button">10×</button><button data-leverage="20" type="button">20×</button></div><small id="leverage-hint">空倉時可調整</small></div>
-              <label class="reduce-toggle"><input id="reduce-only" type="checkbox" /> 只減倉</label>
-            </div>
-            <div class="order-row actions">
-              <button id="buy-button" class="quick-buy" type="button">▲ 買入 <kbd>Q</kbd></button>
-              <button id="sell-button" class="quick-sell" type="button">▼ 賣出 <kbd>E</kbd></button>
-              <div class="close-control"><span>平倉</span><input id="close-range" type="range" min="1" max="100" step="1" value="100" aria-label="平倉比例" /><strong id="close-label">100%</strong><div class="close-presets"><button type="button" data-close="25">25%</button><button type="button" data-close="50">50%</button><button type="button" data-close="100" class="active">100%</button></div><button id="close-position" type="button">平倉 <kbd>F</kbd></button></div>
+              <div class="order-row">
+                <div class="quick-leverage"><span>槓桿</span><div class="leverage-toggle" role="group" aria-label="槓桿倍數"><button data-leverage="1" type="button">1×</button><button data-leverage="3" type="button" class="active">3×</button><button data-leverage="5" type="button">5×</button><button data-leverage="10" type="button">10×</button><button data-leverage="20" type="button">20×</button></div></div>
+                <label class="reduce-toggle"><input id="reduce-only" type="checkbox" /> 只減倉</label>
+              </div>
+              <small id="leverage-hint" class="leverage-hint">空倉時可調整</small>
+              <div class="order-row actions">
+                <button id="buy-button" class="quick-buy" type="button">▲ 買入 <kbd>Q</kbd></button>
+                <button id="sell-button" class="quick-sell" type="button">▼ 賣出 <kbd>E</kbd></button>
+              </div>
               <span id="order-preview" class="order-preview">—</span>
-            </div>
+            </section>
+            <section class="dock-block position-block" aria-label="持倉">
+              <div class="dock-title"><span class="eyebrow">POSITION</span><strong id="position">空倉</strong></div>
+              <dl class="position-grid">
+                <div><dt>進場均價</dt><dd id="entry-price">—</dd></div>
+                <div><dt>未實現損益</dt><dd id="floating-pnl">+$0</dd></div>
+                <div><dt>你的強平價</dt><dd id="player-liq">—</dd></div>
+                <div><dt>倉位保證金</dt><dd id="position-margin">$0</dd></div>
+              </dl>
+              <div class="close-control"><span>平倉</span><input id="close-range" type="range" min="1" max="100" step="1" value="100" aria-label="平倉比例" /><strong id="close-label">100%</strong><div class="close-presets"><button type="button" data-close="25">25%</button><button type="button" data-close="50">50%</button><button type="button" data-close="100" class="active">100%</button></div><button id="close-position" type="button">平倉 <kbd>F</kbd></button></div>
+              <div class="protection">
+                <label class="protection-row stop"><span>止損</span><input id="stop-price" inputmode="decimal" placeholder="價格" /><input id="stop-share" type="range" min="1" max="100" value="100" aria-label="止損平倉比例" /><b id="stop-share-label">100%</b></label>
+                <label class="protection-row take"><span>止盈</span><input id="take-price" inputmode="decimal" placeholder="價格" /><input id="take-share" type="range" min="1" max="100" value="100" aria-label="止盈平倉比例" /><b id="take-share-label">100%</b></label>
+                <div class="protection-actions"><button id="set-protection" type="button">設定止損止盈</button><button id="clear-protection" type="button">清除</button><span id="protection-status">尚未設定</span></div>
+              </div>
+            </section>
+            <section class="dock-block account-block" aria-label="帳戶">
+              <div class="dock-title"><span class="eyebrow">ACCOUNT</span><span>資金無上限 · 逐倉 · <b id="leverage-value">3×</b></span></div>
+              <div class="account-total"><span>總損益</span><strong id="equity">+$0</strong></div>
+              <dl class="ledger">
+                <div><dt>已實現</dt><dd id="realized">+$0</dd></div>
+                <div><dt>手續費</dt><dd id="fees">$0</dd></div>
+                <div><dt>最大回撤</dt><dd id="drawdown">$0</dd></div>
+                <div><dt>累積成交</dt><dd id="volume">0 BTC</dd></div>
+              </dl>
+              <div class="orders-head"><span>委託</span><button id="cancel-all" type="button">全部撤單</button></div>
+              <div id="player-orders" class="orders-list"><p class="empty-state">目前沒有委託</p></div>
+            </section>
             <p id="order-message" class="order-message" role="status">計畫階段市場暫停，可以慢慢讀圖。這時下的單會先排隊，按「執行」後在第一秒內和其他人的單一起送出。</p>
           </div>
         </section>
@@ -141,22 +183,6 @@
         </div></details>
       </div>
 
-      <aside class="trade-column">
-        <section class="panel wallet-panel"><div class="panel-title"><span class="eyebrow">YOUR ACCOUNT</span><span class="wallet-status">資金無上限 · 逐倉</span></div>
-          <span class="equity-label">總損益 <small>＝ 已實現 − 手續費 ＋ 未實現</small></span>
-          <div class="wallet-balance"><strong id="equity">+0</strong><span>USDT</span></div>
-          <div id="floating-pnl" class="floating-pnl">+0 <span>未實現</span></div>
-          <dl class="ledger">
-            <div><dt>已實現損益</dt><dd id="realized">+$0</dd></div>
-            <div><dt>手續費</dt><dd id="fees">$0</dd></div>
-            <div><dt>倉位保證金</dt><dd id="position-margin">$0</dd></div>
-            <div><dt>最大回撤</dt><dd id="drawdown">$0</dd></div>
-          </dl>
-          <div class="wallet-grid"><div><span>目前部位</span><strong id="position">空倉</strong></div><div><span>進場均價</span><strong id="entry-price">—</strong></div><div><span>槓桿</span><strong id="leverage-value">3×</strong></div><div><span>你的強平價</span><strong id="player-liq">—</strong></div><div><span>累積成交</span><strong id="volume">0 BTC</strong></div></div></section>
-        <section class="panel protection-panel"><div class="panel-title"><div><span class="eyebrow">RISK ORDERS</span><h3>止損 / 止盈</h3></div><span>標記價觸發市價平倉</span></div><div class="protection-inputs"><label>止損價<input id="stop-price" inputmode="decimal" placeholder="選填" /></label><label>止盈價<input id="take-price" inputmode="decimal" placeholder="選填" /></label></div><div class="protection-actions"><button id="set-protection" type="button">設定</button><button id="clear-protection" type="button">清除</button></div><p id="protection-status">尚未設定</p></section>
-        <section class="panel open-orders"><div class="panel-title"><div><span class="eyebrow">YOUR ORDERS</span><h3>等待中的委託</h3></div><button id="cancel-all" type="button">全部撤單</button></div><div id="player-orders"><p class="empty-state">目前沒有委託</p></div></section>
-        <section class="panel shortcut-panel"><div class="panel-title"><span class="eyebrow">KEYS</span><span>快捷鍵</span></div><p>Space 執行／暫停 · Q 買 · E 賣 · F 依滑桿比例平倉 · R 揭曉 · 1–5 切換數量 · 滾輪縮放 K 線數量（放大到單根夠寬時，每根 K 旁邊會顯示 Footprint）· 在圖表內拖曳可左右平移 K 線、上下平移價格 · 按住右側價格軸上下拖曳、或在價格軸上滾輪，縮放價格 · 雙擊圖表回到最新並還原</p></section>
-      </aside>
     </div>
   </main>
   <footer class="page-footer"><span>METABEAR / FLOW ARENA SANDBOX</span><span>虛構市場 · 模擬合約 · 無真實資金</span></footer>

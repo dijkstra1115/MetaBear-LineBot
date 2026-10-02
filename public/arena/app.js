@@ -45,7 +45,9 @@ let openPrice = 0;
 let turnOpen = null;
 let message = { text: "", error: false };
 const alertPrefs = { bigFlow: true, cascade: true, own: true, move: true, event: true, ...store.get("alerts", {}) };
-const view = { count: 120, zoom: 1, offset: 0, layer: "liq", averages: true, fills: store.get("fills", true), pushes: [], now: 0, reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null };
+// Chart indicators the player can switch on and off.
+const INDICATOR_DEFAULTS = { ema20: true, ema50: true, vwap: true, volume: true, cvd: true, oi: true, footprint: true, absorb: true, omen: true, fills: true };
+const view = { count: 120, zoom: 1, offset: 0, layer: "liq", ind: { ...INDICATOR_DEFAULTS, ...store.get("indicators", {}) }, pushes: [], now: 0, reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null };
 
 /* ---------- Market lifecycle ---------- */
 
@@ -417,8 +419,8 @@ function describeEvent(event) {
   const side = event.side === "buy" ? "買" : "賣";
   switch (event.kind) {
     case "fill": return `掛單成交：${side} ${btc(event.lots)} @ ${price(event.price)}`;
-    case "stop": return `止損觸發（標記價 ${price(event.price)}），市價平倉`;
-    case "take": return `止盈觸發（標記價 ${price(event.price)}），市價平倉`;
+    case "stop": return `止損觸發（標記價 ${price(event.price)}），市價平倉 ${Math.round((event.fraction ?? 1) * 100)}%`;
+    case "take": return `止盈觸發（標記價 ${price(event.price)}），市價平倉 ${Math.round((event.fraction ?? 1) * 100)}%`;
     case "liquidation": return `你的${event.side === "long" ? "多單" : "空單"} ${btc(event.lots)} 在 ${price(event.price)} 被強平，賠掉保證金 ${plain(event.lost)}`;
     case "danger": return `你的強平價 ${price(event.price)} 距離標記價不到 1%`;
     case "rejected": return `委託沒有送出：${event.error}`;
@@ -922,8 +924,8 @@ function render() {
   const floating = player.position ? account.position * (mark - account.entry) / 10000 : 0;
   updateDanger(performance.now(), mark);
   updateMoneyMoments(floating);
-  $("floating-pnl").innerHTML = `${money(floating)} <span>未實現</span>`;
-  $("floating-pnl").className = `floating-pnl ${floating > 0 ? "positive" : floating < 0 ? "negative" : ""}`;
+  $("floating-pnl").textContent = money(floating);
+  $("floating-pnl").className = floating > 0 ? "positive" : floating < 0 ? "negative" : "";
   $("realized").textContent = money(account.realized);
   $("fees").textContent = plain(player.fees);
   $("position-margin").textContent = plain(player.margin);
@@ -942,7 +944,8 @@ function render() {
   });
   $("leverage-hint").textContent = locked ? "有部位或委託時鎖定" : "空倉時可調整";
   const { stop, take } = player.protection;
-  $("protection-status").textContent = stop || take ? `止損 ${stop ? price(stop) : "—"} · 止盈 ${take ? price(take) : "—"}` : "尚未設定";
+  const share = (value) => (value < 1 ? ` 平 ${Math.round(value * 100)}%` : "");
+  $("protection-status").textContent = stop || take ? `止損 ${stop ? price(stop) + share(player.protection.stopFraction) : "—"} · 止盈 ${take ? price(take) + share(player.protection.takeFraction) : "—"}` : "尚未設定";
   renderOrders();
   renderPreview();
 
@@ -1018,11 +1021,13 @@ document.querySelectorAll("[data-alert]").forEach((input) => {
     if (session) session.alerts = { ...alertPrefs };
   });
 });
-$("averages").addEventListener("change", () => { view.averages = $("averages").checked; });
-$("fills").checked = view.fills;
-$("fills").addEventListener("change", () => {
-  view.fills = $("fills").checked;
-  store.set("fills", view.fills);
+document.querySelectorAll("[data-ind]").forEach((input) => {
+  input.checked = view.ind[input.dataset.ind] !== false;
+  input.addEventListener("change", () => {
+    view.ind[input.dataset.ind] = input.checked;
+    store.set("indicators", view.ind);
+    view.frame.low = null;
+  });
 });
 $("effects").checked = effectsEnabled;
 $("effects").addEventListener("change", () => {
@@ -1059,16 +1064,19 @@ $("set-protection").addEventListener("click", () => {
     const value = Number(String($(id).value).replace(/,/g, ""));
     return $(id).value && Number.isFinite(value) && value > 0 ? Math.round(value * 100) : null;
   };
-  const error = player.setProtection(read("stop-price"), read("take-price"));
+  const error = player.setProtection(read("stop-price"), read("take-price"), Number($("stop-share").value) / 100, Number($("take-share").value) / 100);
   setMessage(error ?? "止損止盈已設定", Boolean(error));
   render();
 });
 $("clear-protection").addEventListener("click", () => {
-  player.protection = { stop: null, take: null };
+  player.clearProtection();
   $("stop-price").value = "";
   $("take-price").value = "";
   render();
 });
+for (const key of ["stop", "take"]) {
+  $(`${key}-share`).addEventListener("input", () => { $(`${key}-share-label`).textContent = `${$(`${key}-share`).value}%`; });
+}
 $("run-button").addEventListener("click", () => setRunning(!running));
 $("pause-continue").addEventListener("click", () => setRunning(true));
 $("reveal-button").addEventListener("click", () => toggleReveal());

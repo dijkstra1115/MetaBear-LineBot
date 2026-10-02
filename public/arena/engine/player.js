@@ -19,7 +19,8 @@ export class Player {
     this.leverage = DEFAULT_LEVERAGE;
     this.margin = 0;
     this.fees = 0;
-    this.protection = { stop: null, take: null };
+    // Stop and take each close their own share of the position when the mark reaches them.
+    this.protection = { stop: null, take: null, stopFraction: 1, takeFraction: 1 };
     this.orderIds = new Set();
     this.reduceOnly = new Set();
     // Orders placed while the market is paused wait here and go out during the next run.
@@ -213,14 +214,15 @@ export class Player {
     return null;
   }
 
-  setProtection(stop, take) {
+  setProtection(stop, take, stopFraction = 1, takeFraction = 1) {
     const position = this.account.position;
     if (!position) return "先建立部位再設定止損止盈";
     const mark = this.sim.markPrice();
     const long = position > 0;
     if (stop != null && (long ? stop >= mark : stop <= mark)) return "止損價須在目前價格的不利方向";
     if (take != null && (long ? take <= mark : take >= mark)) return "止盈價須在目前價格的有利方向";
-    this.protection = { stop, take };
+    const share = (value) => Math.max(0.01, Math.min(1, Number(value) || 1));
+    this.protection = { stop, take, stopFraction: share(stopFraction), takeFraction: share(takeFraction) };
     return null;
   }
 
@@ -271,7 +273,7 @@ export class Player {
     const margin = this.margin;
     const before = this.account.realized - this.fees;
     this.cancelAll();
-    this.protection = { stop: null, take: null };
+    this.clearProtection();
     this.exitIntent = false;
     const side = long ? "sell" : "buy";
     this.takerOrder++;
@@ -296,16 +298,20 @@ export class Player {
     this.checkLiquidation(mark);
     if (this.exitIntent) this.close();
     const position = this.account.position;
-    if (!position) this.protection = { stop: null, take: null };
-    const { stop, take } = this.protection;
+    if (!position) this.clearProtection();
+    const { stop, take, stopFraction, takeFraction } = this.protection;
     if (position && (stop != null || take != null)) {
       const long = position > 0;
       const stopHit = stop != null && (long ? mark <= stop : mark >= stop);
-      const takeHit = take != null && (long ? mark >= take : mark <= take);
+      const takeHit = !stopHit && take != null && (long ? mark >= take : mark <= take);
+      // A partial stop or take spends only its own order; the other one keeps guarding what is left.
       if (stopHit || takeHit) {
-        this.protection = { stop: null, take: null };
-        this.events.push({ kind: stopHit ? "stop" : "take", price: mark });
-        this.close();
+        const fraction = stopHit ? stopFraction : takeFraction;
+        this.protection = stopHit ? { ...this.protection, stop: null } : { ...this.protection, take: null };
+        if (fraction >= 1) this.clearProtection();
+        this.events.push({ kind: stopHit ? "stop" : "take", price: mark, fraction });
+        if (fraction >= 1) this.close();
+        else this.closePart(fraction);
       }
     }
     this.pruneReduceOnly();
@@ -314,6 +320,10 @@ export class Player {
       this.equityPath.push({ time: sim.time, equity: this.equity(mark) });
       if (this.equityPath.length > 5000) this.equityPath.shift();
     }
+  }
+
+  clearProtection() {
+    this.protection = { stop: null, take: null, stopFraction: 1, takeFraction: 1 };
   }
 
   drainEvents() {

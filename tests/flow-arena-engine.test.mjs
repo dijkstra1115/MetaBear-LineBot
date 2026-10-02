@@ -160,6 +160,23 @@ test("orders placed while paused wait, then go out during the first second of th
   assert.equal(sim.ledgerBalance(), 0);
 });
 
+test("a partial take-profit closes its share and leaves the stop guarding the rest", () => {
+  const sim = quick(14);
+  const player = new Player(sim);
+  player.setLeverage(1);
+  player.submitMarket("buy", 100000);
+  const mark = sim.markPrice();
+  assert.equal(player.setProtection(mark - 200000, mark + 2000, 1, 0.4), null);
+  sim.addAccount("bot", "test");
+  for (let t = 0; t < 20 && player.protection.take != null; t++) {
+    sim.book.submit("buy", Math.round(sim.last * 1.003), 20000, { owner: "bot", acct: "bot", rest: false });
+    sim.tick();
+  }
+  assert.equal(player.protection.take, null);
+  assert.equal(player.position, 60000);
+  assert.equal(player.protection.stop, mark - 200000);
+});
+
 test("a sudden event shows omens first, then announces itself and trades through the book", () => {
   const sim = quick(12);
   const session = new Session(sim);

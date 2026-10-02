@@ -63,14 +63,18 @@ export function chartGeometry(canvas, sim, view = {}) {
   const high = mid + span / 2;
   const low = mid - span / 2;
   const priceTop = 26;
-  const priceBottom = rect.height * 0.7;
+  // Lower panes collapse when their indicators are off, giving the room back to the candles.
+  const ind = view.ind ?? {};
+  const showVolume = ind.volume !== false;
+  const showFlow = ind.cvd !== false || ind.oi !== false;
+  const priceBottom = rect.height * (showVolume && showFlow ? 0.7 : showVolume || showFlow ? 0.8 : 0.94);
   const left = 8;
   const plotRight = rect.width - PRICE_TAG - 8;
   const y = (price) => priceTop + (high - price) / span * (priceBottom - priceTop);
   const slots = Math.max(MIN_CANDLES + 2, candles.length + 2);
   const xStep = (plotRight - left) / slots;
   const x = (index) => left + (index + 0.5) * xStep;
-  return { rect, all, candles, first: end - candles.length, shift, high, low, span, priceTop, priceBottom, left, plotRight, y, x, xStep };
+  return { rect, all, candles, first: end - candles.length, shift, high, low, span, priceTop, priceBottom, left, plotRight, y, x, xStep, ind, showVolume, showFlow };
 }
 
 // True over the price scale on the right.
@@ -259,24 +263,28 @@ export function drawChart(canvas, sim, view = {}) {
   }
   ctx.restore();
 
-  if (view.effects !== false) drawFuelOmen(ctx, scale, estimate, maxEstimate, last, view.now ?? 0);
+  const ind = scale.ind;
+  if (view.effects !== false && ind.omen !== false) drawFuelOmen(ctx, scale, estimate, maxEstimate, last, view.now ?? 0);
 
-  if (view.averages !== false) {
+  const averages = [
+    ["vwap", "VWAP 4h", "#7fb8ff", [5, 4]],
+    ["ema50", "EMA50", "#b79cff", []],
+    ["ema20", "EMA20", "#f2c575", []],
+  ].filter(([key]) => ind[key] !== false);
+  if (averages.length) {
     const lines = overlays(scale.all, scale.first);
-    line(ctx, lines.vwap, x, y, "#7fb8ffaa", [5, 4]);
-    line(ctx, lines.ema50, x, y, "#b79cffaa");
-    line(ctx, lines.ema20, x, y, "#f2c575aa");
     ctx.font = "9px Consolas, monospace";
     ctx.textAlign = "left";
-    ctx.fillStyle = "#f2c575";
-    ctx.fillText("EMA20", left + 6, 12);
-    ctx.fillStyle = "#b79cff";
-    ctx.fillText("EMA50", left + 48, 12);
-    ctx.fillStyle = "#7fb8ff";
-    ctx.fillText("VWAP 4h", left + 90, 12);
+    let legendX = left + 6;
+    for (const [key, label, color, dash] of averages) {
+      line(ctx, lines[key], x, y, `${color}aa`, dash);
+      ctx.fillStyle = color;
+      ctx.fillText(label, legendX, 12);
+      legendX += ctx.measureText(label).width + 12;
+    }
   }
 
-  const perCandle = xStep >= FOOTPRINT_SLOT;
+  const perCandle = xStep >= FOOTPRINT_SLOT && ind.footprint !== false;
   candles.forEach((candle, index) => {
     // With footprints on, a slim candle sits at the left edge of its slot.
     const xx = perCandle ? x(index) - xStep * 0.42 : x(index);
@@ -296,7 +304,7 @@ export function drawChart(canvas, sim, view = {}) {
 
   // The player's orders: one hollow circle at the average fill, sized by volume, on a thin line
   // spanning the prices it filled at.
-  if (player && view.fills !== false) {
+  if (player && ind.fills !== false) {
     const firstTime = candles[0]?.time ?? 0;
     const groups = new Map();
     for (const fill of player.fills) {
@@ -417,7 +425,7 @@ export function drawChart(canvas, sim, view = {}) {
     }
   }
 
-  for (const signal of sim.icebergSignals()) {
+  for (const signal of ind.absorb !== false ? sim.icebergSignals() : []) {
     if (!visible(signal.price)) continue;
     horizontal(ctx, left, plotRight, y(signal.price), "#f2c575cc", [1, 3], 2);
     tag(ctx, `吸收 ${btc(signal.traded)} BTC`, plotRight - 4, y(signal.price), "#3a2f17ee", "#f6d78c", "right");
@@ -475,47 +483,63 @@ export function drawChart(canvas, sim, view = {}) {
     ctx.fillText(`◀ 往回看 ${scale.shift} 根 · 雙擊回到最新`, plotRight - 8, priceTop + 12);
   }
 
-  // Volume, then CVD and open interest.
-  const volumeTop = priceBottom + 10;
-  const volumeBottom = height * 0.8;
-  const cvdTop = height * 0.83;
-  const cvdBottom = height - 22;
+  // Volume, then CVD and open interest, each only when switched on.
+  const lowerTop = priceBottom + 10;
+  const lowerBottom = height - 22;
+  let volumeTop = lowerTop;
+  let volumeBottom = lowerBottom;
+  let cvdTop = lowerTop;
+  const cvdBottom = lowerBottom;
+  if (scale.showVolume && scale.showFlow) {
+    volumeBottom = lowerTop + (lowerBottom - lowerTop) * 0.45;
+    cvdTop = volumeBottom + 12;
+  }
   ctx.strokeStyle = "#29424b";
   ctx.beginPath();
   ctx.moveTo(left, priceBottom + 1);
   ctx.lineTo(plotRight, priceBottom + 1);
-  ctx.moveTo(left, cvdTop - 5);
-  ctx.lineTo(plotRight, cvdTop - 5);
+  if (scale.showVolume && scale.showFlow) {
+    ctx.moveTo(left, cvdTop - 5);
+    ctx.lineTo(plotRight, cvdTop - 5);
+  }
   ctx.stroke();
   ctx.font = "9px Consolas, monospace";
   ctx.textAlign = "left";
-  ctx.fillStyle = "#7597a0";
-  ctx.fillText("VOL", left + 4, volumeTop + 8);
-  ctx.fillStyle = "#d5ae73";
-  ctx.fillText("CVD", left + 4, cvdTop + 8);
-  ctx.fillStyle = "#8fd4ff";
-  ctx.fillText("OI", left + 30, cvdTop + 8);
-  const maxVolume = Math.max(1, ...candles.map((candle) => candle.volume));
-  candles.forEach((candle, index) => {
-    const barHeight = candle.volume / maxVolume * (volumeBottom - volumeTop);
-    ctx.fillStyle = candle.delta >= 0 ? "#48ad9e9c" : "#ca6a7e9c";
-    ctx.fillRect(x(index) - Math.max(1, xStep * 0.32), volumeBottom - barHeight, Math.max(1.5, xStep * 0.64), barHeight);
-    const liq = (candle.liq?.long ?? 0) + (candle.liq?.short ?? 0);
-    if (liq) {
-      ctx.fillStyle = "#f6d78c";
-      ctx.fillRect(x(index) - 1.5, volumeTop, 3, 3);
+  if (scale.showVolume) {
+    ctx.fillStyle = "#7597a0";
+    ctx.fillText("VOL", left + 4, volumeTop + 8);
+    const maxVolume = Math.max(1, ...candles.map((candle) => candle.volume));
+    candles.forEach((candle, index) => {
+      const barHeight = candle.volume / maxVolume * (volumeBottom - volumeTop);
+      ctx.fillStyle = candle.delta >= 0 ? "#48ad9e9c" : "#ca6a7e9c";
+      ctx.fillRect(x(index) - Math.max(1, xStep * 0.32), volumeBottom - barHeight, Math.max(1.5, xStep * 0.64), barHeight);
+      const liq = (candle.liq?.long ?? 0) + (candle.liq?.short ?? 0);
+      if (liq) {
+        ctx.fillStyle = "#f6d78c";
+        ctx.fillRect(x(index) - 1.5, volumeTop, 3, 3);
+      }
+    });
+  }
+  if (scale.showFlow && candles.length > 1) {
+    const series = (values, color) => {
+      let lowValue = Math.min(...values);
+      let highValue = Math.max(...values);
+      if (lowValue === highValue) { lowValue--; highValue++; }
+      const yy = (value) => cvdTop + (highValue - value) / (highValue - lowValue) * (cvdBottom - cvdTop);
+      line(ctx, values, x, yy, color, [], 1.4);
+    };
+    let labelX = left + 4;
+    if (ind.cvd !== false) {
+      series(candles.map((candle) => candle.cvd), "#d5ae73");
+      ctx.fillStyle = "#d5ae73";
+      ctx.fillText("CVD", labelX, cvdTop + 8);
+      labelX += 26;
     }
-  });
-  const series = (values, color) => {
-    let lowValue = Math.min(...values);
-    let highValue = Math.max(...values);
-    if (lowValue === highValue) { lowValue--; highValue++; }
-    const yy = (value) => cvdTop + (highValue - value) / (highValue - lowValue) * (cvdBottom - cvdTop);
-    line(ctx, values, x, yy, color, [], 1.4);
-  };
-  if (candles.length > 1) {
-    series(candles.map((candle) => candle.cvd), "#d5ae73");
-    series(candles.map((candle) => candle.oi ?? 0), "#8fd4ffcc");
+    if (ind.oi !== false) {
+      series(candles.map((candle) => candle.oi ?? 0), "#8fd4ffcc");
+      ctx.fillStyle = "#8fd4ff";
+      ctx.fillText("OI", labelX, cvdTop + 8);
+    }
   }
 }
 

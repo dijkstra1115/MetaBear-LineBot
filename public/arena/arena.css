@@ -36,7 +36,7 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 .speed-select{color:#8ca7ad;font-size:10px;white-space:nowrap}.speed-select select{margin-left:4px;color:#d8eeea;background:#1c313e;border:1px solid #395761;border-radius:4px;padding:4px 6px}
 #run-status{display:flex;align-items:center;gap:6px;color:#8ca7ad;font-size:10px;white-space:nowrap}
 /* Workbench */
-.workbench{display:grid;grid-template-columns:228px minmax(0,1fr) 262px;gap:10px;align-items:start}
+.workbench{display:grid;grid-template-columns:228px minmax(0,1fr);gap:10px;align-items:start}
 .intel-column,.market-column,.trade-column{display:grid;gap:10px;min-width:0}
 .panel{min-width:0;overflow:hidden;border:1px solid var(--edge);border-radius:10px;background:var(--panel);box-shadow:0 12px 33px #0003}
 .intel-column .panel,.trade-column .panel{padding:13px 14px}
@@ -282,3 +282,42 @@ kbd{display:inline-block;min-width:16px;margin-left:6px;padding:1px 4px;border:1
 .actor-list li.whale{border-left-color:#b79cff}.actor-list li.whale b{color:#d6c6ff}
 .player-order span{white-space:normal}
 .reveal-event-text{margin:-2px 0 8px;color:#d9c79b;font-size:10px;line-height:1.5}
+
+/* Order, position and account docked under the chart */
+.order-panel.dock{display:grid;grid-template-columns:minmax(330px,1.15fr) minmax(320px,1fr) minmax(260px,.9fr);gap:10px;align-items:start}
+.dock-block{display:grid;gap:8px;align-content:start;min-width:0;padding:10px 12px;border:1px solid #2d4a52;border-radius:9px;background:#0d222bcc}
+.dock-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;color:#8fa9ae;font-size:11px}
+.dock-title strong{font:800 14px Consolas,"Noto Sans TC",monospace}
+.dock .order-message{grid-column:1/-1}
+.dock .quick-size{margin-left:0;flex-wrap:wrap}
+.dock .order-row.actions button{flex:1}
+.dock .order-preview{max-width:none;margin-left:0}
+.leverage-hint{color:#6f8d93;font-size:10px;margin-top:-4px}
+.position-grid,.dock .ledger{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:0}
+.position-grid div,.dock .ledger div{display:grid;gap:2px}
+.position-grid dt,.dock .ledger dt{color:#80a0a3;font-size:10px}
+.position-grid dd,.dock .ledger dd{margin:0;color:#e4f6ed;font:700 12px Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dock .ledger{padding:0;border:0}
+.dock .close-control{flex-wrap:wrap}
+.protection{display:grid;gap:6px;padding-top:8px;border-top:1px dashed #2f4a52}
+.protection-row{display:grid;grid-template-columns:34px minmax(80px,1fr) minmax(70px,1fr) 38px;align-items:center;gap:6px;color:#b9cfcc;font-size:11px}
+.protection-row.stop span{color:var(--coral)}.protection-row.take span{color:var(--mint)}
+.protection-row input[type=text],.protection-row input:not([type]){height:28px;min-width:0;border:1px solid #3b5962;border-radius:5px;background:#0d1f2a;color:#e6f3ec;padding:0 7px;font:600 11px Consolas,monospace}
+.protection-row input[type=range]{min-width:0}.protection-row.stop input[type=range]{accent-color:#fb7f91}.protection-row.take input[type=range]{accent-color:#70e6c9}
+.protection-row b{color:#d8e6e2;font:700 11px Consolas,monospace;text-align:right}
+.dock .protection-actions{display:flex;align-items:center;gap:6px;margin:0}
+.dock .protection-actions button{height:28px;padding:0 10px;font-size:11px}
+.dock .protection-actions span{color:#8fa9ae;font-size:10px}
+.account-total{display:flex;justify-content:space-between;align-items:baseline}.account-total span{color:#9fc3bf;font-size:11px}
+.account-total strong{font:800 22px Consolas,monospace;letter-spacing:-.04em}
+.orders-head{display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px dashed #2f4a52;color:#8fa9ae;font-size:11px}
+.dock .orders-head button{height:24px;padding:0 8px;font-size:10px}
+.orders-list{max-height:120px;overflow:auto}
+.indicator-menu{position:relative}
+.indicator-menu summary{list-style:none;cursor:pointer;height:26px;display:flex;align-items:center;padding:0 10px;border:1px solid #33505a;border-radius:6px;background:#0f222c;color:#bcd6d2;font:11px "Noto Sans TC",sans-serif;letter-spacing:0}
+.indicator-menu summary::-webkit-details-marker{display:none}
+.indicator-menu[open] summary{border-color:var(--mint);color:var(--mint)}
+.indicator-list{position:absolute;z-index:20;top:30px;right:0;display:grid;gap:6px;min-width:170px;padding:10px 12px;border:1px solid #3a5760;border-radius:8px;background:#0e1f28f5;box-shadow:0 12px 30px #0008}
+.indicator-list label{display:flex;align-items:center;gap:7px;color:#cfe3df;font:11px "Noto Sans TC",sans-serif;letter-spacing:0;white-space:nowrap}
+.indicator-list input{accent-color:var(--mint)}
+@media(max-width:1500px){.order-panel.dock{grid-template-columns:minmax(300px,1fr) minmax(300px,1fr)}.account-block{grid-column:1/-1}}
