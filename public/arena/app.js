@@ -66,6 +66,11 @@ function newMarket(seed = randomSeed()) {
     seenFeedId = sim.liquidationFeed.at(-1)?.id ?? 0;
     openPrice = sim.last;
     turnOpen = snapshot();
+    cascadeFx = null;
+    milestone = { key: null, reached: 0 };
+    lastRealized = 0;
+    $("cascade-meter").hidden = true;
+    $("edge-glow").className = "edge-glow";
     view.frame = { low: null, high: null, hold: false };
     view.flashes = [];
     view.offset = 0;
@@ -205,34 +210,197 @@ function setMessage(text, error = false) {
   $("order-message").classList.toggle("error", error);
 }
 
-// Every new liquidation wave: a label at its price, a shock bar on the chart and a thump.
+// A cascade is a run of liquidation waves on one side with no more than two simulated seconds
+// between them. Its tier (1–5) grows with the number of waves and the size burned, and every
+// effect scales with it: labels, particles, shake, the edge glow, the chain meter and the sound.
+let cascadeFx = null;
+const CASCADE_GAP = 2;
+const TIER_TITLES = ["", "強平", "連環強平", "連環爆倉！", "MEGA CASCADE", "LIQUIDATION STORM"];
+
+// A long chain of tiny waves is not a storm: the tier needs both length and size, except that a
+// truly huge burn (1,000+ BTC) earns its tier on size alone.
+function cascadeTier(cascade) {
+  const btcBurned = cascade.lots / 100;
+  const byWaves = cascade.waves >= 9 ? 5 : cascade.waves >= 6 ? 4 : cascade.waves >= 4 ? 3 : cascade.waves >= 2 ? 2 : 1;
+  const bySize = btcBurned >= 800 ? 5 : btcBurned >= 300 ? 4 : btcBurned >= 100 ? 3 : btcBurned >= 20 ? 2 : 1;
+  let tier = Math.min(byWaves, bySize);
+  if (btcBurned >= 1000) tier = Math.max(tier, 4);
+  if (btcBurned >= 3000) tier = 5;
+  return tier;
+}
+
 function processLiquidations() {
   const fresh = sim.liquidationFeed.filter((item) => item.id > seenFeedId && !item.warm);
   if (!fresh.length) return;
   seenFeedId = fresh.at(-1).id;
   const now = performance.now();
-  let wave = 0;
-  let mine = 0;
-  let chain = 0;
   for (const item of fresh) {
-    wave += item.lots;
-    chain = Math.max(chain, item.chain);
-    if (item.by === "player") mine += item.lots;
+    if (!cascadeFx || cascadeFx.ended || cascadeFx.side !== item.side || item.time - cascadeFx.lastTime > CASCADE_GAP) {
+      if (cascadeFx && !cascadeFx.ended) endCascade();
+      cascadeFx = { side: item.side, waves: 0, lots: 0, mine: 0, from: item.from, to: item.to, lastTime: item.time, lastReal: now, tier: 0, ended: false };
+    }
+    const cascade = cascadeFx;
+    cascade.waves++;
+    cascade.lots += item.lots;
+    cascade.to = item.to;
+    cascade.lastTime = item.time;
+    cascade.lastReal = now;
+    if (item.by === "player") cascade.mine += item.lots;
+    const tier = cascadeTier(cascade);
     view.flashes.push({ from: item.from, to: item.to, side: item.side, born: now, age: 0 });
     const point = chartPoint(item.to);
     const toneName = item.side === "short" ? "mint" : "coral";
-    const strength = Math.min(1, item.lots / 50000);
-    floatLabel(`💥 ${item.side === "short" ? "空單" : "多單"}強平 ${btc(item.lots)}`, point.x - 12, point.y, toneName, item.lots >= 30000);
-    ring(point.x, point.y, toneName, strength);
-    particles(point.x, point.y, item.side === "short" ? "#8bf2c8" : "#ff879d", Math.round(6 + strength * 24), 160 + strength * 260);
+    const color = item.side === "short" ? "#8bf2c8" : "#ff879d";
+    floatLabel(`💥 ${item.side === "short" ? "空單" : "多單"}強平 ${btc(item.lots)}`, point.x - 12, point.y, `${toneName} t${tier}`, tier >= 3);
+    ring(point.x, point.y, toneName, Math.min(1, 0.25 + tier * 0.18));
+    if (tier >= 4) setTimeout(() => ring(point.x, point.y, toneName, 1), 140);
+    particles(point.x, point.y, color, 6 + tier * 12, 140 + tier * 90);
+    if (tier >= 3) particles(point.x, point.y, "#f6d78c", tier * 6, 200 + tier * 80);
+    if (tier > cascade.tier) escalate(cascade, tier);
   }
-  view.flashes = view.flashes.slice(-8);
-  const strength = Math.min(1, wave / 60000);
-  shake(wave >= 50000 ? 3 : wave >= 15000 ? 2 : 1);
-  flashScreen(fresh.at(-1).side === "short" ? "mint" : "coral", strength);
-  boom(strength);
-  if (chain >= 2) banner(`連環強平 ×${chain}`, fresh.at(-1).side === "short" ? "mint" : "coral");
-  if (mine) banner(`🔥 你引爆了 ${btc(mine)} 強平`, "gold");
+  view.flashes = view.flashes.slice(-10);
+  const cascade = cascadeFx;
+  const tier = cascade.tier;
+  shake(Math.min(3, tier));
+  flashScreen(cascade.side === "short" ? "mint" : "coral", Math.min(1, tier / 4));
+  boom(Math.min(1, 0.2 + tier * 0.18));
+  // The pitch climbs with every wave of the chain.
+  if (cascade.waves >= 2) setTimeout(() => tone(330 * 2 ** (Math.min(cascade.waves, 14) / 12), 0.12, "square", 0.025), 80);
+  updateCascadeMeter(true);
+}
+
+// Crossing into a new tier: a banner for each step, the storm treatment at the top.
+function escalate(cascade, tier) {
+  cascade.tier = tier;
+  const toneName = cascade.side === "short" ? "mint" : "coral";
+  const glow = $("edge-glow");
+  glow.className = `edge-glow ${cascade.side} on`;
+  glow.style.setProperty("--tier", String(tier));
+  if (!effectsEnabled) glow.className = "edge-glow";
+  if (tier === 2) banner(`連環強平 ×${cascade.waves}`, toneName);
+  if (tier === 3) banner(`連環爆倉 ×${cascade.waves}！`, toneName);
+  if (tier === 4) {
+    banner("MEGA CASCADE", "gold");
+    chime(6);
+  }
+  if (tier === 5 && effectsEnabled) {
+    const storm = $("storm-text");
+    storm.className = `storm-text ${cascade.side}`;
+    storm.hidden = false;
+    storm.style.animation = "none";
+    void storm.offsetWidth;
+    storm.style.animation = "";
+    clearTimeout(storm.hideTimer);
+    storm.hideTimer = setTimeout(() => { storm.hidden = true; }, 1700);
+    const wrap = document.querySelector(".chart-wrap");
+    wrap.classList.remove("glitch");
+    void wrap.offsetWidth;
+    if (!reducedMotion) wrap.classList.add("glitch");
+    boom(1);
+    setTimeout(() => boom(0.8), 180);
+  }
+  if (cascade.mine && tier >= 2) setTimeout(() => banner(`🔥 你點燃了${TIER_TITLES[tier]}`, "gold"), 500);
+}
+
+function updateCascadeMeter(pop = false) {
+  const meter = $("cascade-meter");
+  const cascade = cascadeFx;
+  if (!cascade || !effectsEnabled || cascade.waves < 2) {
+    if (!cascade?.ended) meter.hidden = true;
+    return;
+  }
+  meter.hidden = false;
+  meter.className = `cascade-meter ${cascade.side} tier-${cascade.tier}${cascade.ended ? " ended" : ""}${pop ? " pop" : ""}`;
+  meter.style.setProperty("--tier", String(cascade.tier));
+  $("cascade-title").textContent = cascade.ended ? "連環結束" : TIER_TITLES[cascade.tier];
+  $("cascade-count").textContent = `×${cascade.waves}`;
+  $("cascade-detail").textContent = `${btc(cascade.lots)} · ${pct(cascade.to / cascade.from - 1)}${cascade.mine ? ` · 你引爆 ${btc(cascade.mine)}` : ""}`;
+  if (pop) {
+    void meter.offsetWidth;
+    meter.classList.add("pop");
+  }
+}
+
+function endCascade() {
+  const cascade = cascadeFx;
+  if (!cascade || cascade.ended) return;
+  cascade.ended = true;
+  $("edge-glow").className = "edge-glow";
+  updateCascadeMeter();
+  const meter = $("cascade-meter");
+  clearTimeout(meter.hideTimer);
+  meter.hideTimer = setTimeout(() => { if (cascadeFx === cascade) meter.hidden = true; }, 2600);
+  if (cascade.mine && cascade.waves >= 2) banner(`🔥 你引爆的連環：${btc(cascade.lots)}`, "gold");
+}
+
+// A cascade ends once no wave follows within two simulated seconds, or five real seconds while paused.
+function checkCascadeEnd(now) {
+  if (!cascadeFx || cascadeFx.ended) return;
+  if (sim.time - cascadeFx.lastTime > CASCADE_GAP + 1 || now - cascadeFx.lastReal > 5000) endCascade();
+}
+
+// Danger glow and heartbeat while your liquidation price is close to the mark.
+let heartbeatAt = 0;
+function updateDanger(now, mark) {
+  const glow = $("danger-glow");
+  const liq = player?.position ? player.liquidationPrice() : null;
+  const distance = liq ? Math.abs(liq / mark - 1) : Infinity;
+  const level = distance < 0.004 ? 2 : distance < 0.01 ? 1 : 0;
+  glow.className = level && effectsEnabled ? `danger-glow on${level === 2 ? " critical" : ""}` : "danger-glow";
+  if (level && running && now > heartbeatAt) {
+    heartbeatAt = now + (level === 2 ? 520 : 950);
+    tone(62, 0.11, "sine", 0.14);
+    setTimeout(() => tone(52, 0.13, "sine", 0.11), 150);
+  }
+}
+
+// Floating-profit milestones on the open position, and a cash burst when a big result is banked.
+const MILESTONES = [1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8];
+let milestone = { key: null, reached: 0 };
+let lastRealized = 0;
+function updateMoneyMoments(floating) {
+  const account = player.account;
+  const key = account.position ? `${Math.sign(account.position)}:${account.entry}` : null;
+  if (key !== milestone.key) milestone = { key, reached: 0 };
+  const next = MILESTONES[milestone.reached];
+  if (key && next != null && floating >= next) {
+    milestone.reached = MILESTONES.filter((value) => floating >= value).length;
+    const point = chartPoint(sim.last);
+    banner(`💰 浮盈 +$${fmt(MILESTONES[milestone.reached - 1] / 1e6, 1)}M`, "gold");
+    particles(point.x, point.y, "#f6d78c", 20 + milestone.reached * 8, 260 + milestone.reached * 40);
+    chime(milestone.reached + 2);
+  }
+  // Realized PnL only: opening a big position pays a big fee, which is not a result.
+  const banked = account.realized - lastRealized;
+  if (Math.abs(banked) >= 100000) showCash(banked);
+  lastRealized = account.realized;
+}
+
+function showCash(value) {
+  if (!effectsEnabled) return;
+  const box = $("pnl-burst");
+  box.textContent = money(value);
+  box.className = `pnl-burst ${value >= 0 ? "gain" : "loss"}`;
+  box.hidden = false;
+  box.style.animation = "none";
+  void box.offsetWidth;
+  box.style.animation = "";
+  clearTimeout(box.hideTimer);
+  box.hideTimer = setTimeout(() => { box.hidden = true; }, 1400);
+  const chart = $("market-chart").getBoundingClientRect();
+  if (value > 0) {
+    particles(chart.width * 0.45, chart.height * 0.34, "#f6d78c", Math.min(60, 16 + Math.log10(value) * 6), 420);
+    chime(Math.min(8, Math.round(Math.log10(value))));
+  } else {
+    particles(chart.width * 0.45, chart.height * 0.34, "#ff879d", 10, 220);
+    tone(200, 0.22, "sawtooth", 0.035, 120);
+  }
+}
+
+function chime(step = 0) {
+  const base = 660 * 2 ** (Math.min(step, 10) / 12);
+  tone(base, 0.12, "triangle", 0.045);
+  setTimeout(() => tone(base * 1.5, 0.16, "triangle", 0.04), 70);
 }
 
 function describeEvent(event) {
@@ -595,6 +763,8 @@ function render() {
   $("equity").textContent = money(equity);
   $("equity").className = equity > 0 ? "positive" : equity < 0 ? "negative" : "";
   const floating = player.position ? account.position * (mark - account.entry) / 10000 : 0;
+  updateDanger(performance.now(), mark);
+  updateMoneyMoments(floating);
   $("floating-pnl").innerHTML = `${money(floating)} <span>未實現</span>`;
   $("floating-pnl").className = `floating-pnl ${floating > 0 ? "positive" : floating < 0 ? "negative" : ""}`;
   $("realized").textContent = money(account.realized);
@@ -646,6 +816,7 @@ function frame(now) {
   if (sim) {
     for (const flash of view.flashes) flash.age = (now - flash.born) / 1600;
     view.flashes = view.flashes.filter((flash) => flash.age < 1);
+    checkCascadeEnd(now);
     drawChart($("market-chart"), sim, view);
     if (now - lastRender > 120) {
       lastRender = now;
@@ -701,6 +872,10 @@ $("effects").addEventListener("change", () => {
     $("fx-layer").replaceChildren();
     $("particle-layer").replaceChildren();
     $("combo-banner").hidden = true;
+    $("cascade-meter").hidden = true;
+    $("edge-glow").className = "edge-glow";
+    $("danger-glow").className = "danger-glow";
+    $("storm-text").hidden = true;
   }
 });
 $("buy-button").addEventListener("click", () => submit("buy"));
