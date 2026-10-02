@@ -3,8 +3,10 @@ import { getRate } from "./rates";
 import { json } from "./http";
 import { siteSecurityHeaders } from "./site-security";
 import { isLessonAudio, serveLessonAudio } from "./lesson-audio";
+import { type ArenaEnv, handleArenaScores } from "./arena-scores";
 
-// The public-site preview has only ASSETS: no CRM database, queues or credentials.
+// The public-site preview has only ASSETS and the FLOW ARENA leaderboard database: no CRM
+// database, queues or credentials.
 export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
@@ -17,6 +19,9 @@ export default {
     } catch {
       return finish(new Response("Bad request", { status: 400 }));
     }
+    // The leaderboard API is the one route that takes a POST.
+    if (path === "/arena/api/scores")
+      return finish(await handleArenaScores(request, env));
     if (!["GET", "HEAD"].includes(request.method))
       return finish(
         new Response("Method not allowed", {
@@ -47,7 +52,7 @@ export default {
         json({ business: BUSINESS, steps: STEPS, lessons: LESSONS }),
       );
     if (path === "/rates/usdt-twd") return finish(await getRate());
-    if (["/orderflow", "/orderflow/legacy"].includes(path)) {
+    if (["/orderflow", "/orderflow/legacy", "/arena"].includes(path)) {
       url.pathname = path + "/";
       return finish(Response.redirect(url.href, 308));
     }
@@ -55,6 +60,7 @@ export default {
     if (["/learn", "/learn/"].includes(path)) path = "/guide.html";
     if (path === "/orderflow/") path = "/orderflow/index.html";
     if (path === "/orderflow/legacy/") path = "/orderflow/legacy/index.html";
+    if (path === "/arena/") path = "/arena/index.html";
     url.pathname = path;
     return finish(
       isLessonAudio(path)
@@ -64,7 +70,7 @@ export default {
       url.origin,
     );
   },
-} satisfies ExportedHandler<Pick<Env, "ASSETS">>;
+} satisfies ExportedHandler<Pick<Env, "ASSETS"> & ArenaEnv>;
 
 function finish(response: Response, path = "", origin = ""): Response {
   const headers = new Headers(response.headers);

@@ -178,6 +178,23 @@
 
 調整前的拉回來自兩件事：合理價值在 15 分鐘內就接受任何守住的價格，等於變成價格自己的移動平均，承接族群和造市商一直把價格拉回近期均價；造市商又直接以最新一筆成交為報價中心，一筆穿過薄簿面的尖刺就成為新價位，隨即被反向拉回。改成合理價值分段移動、約 3 小時才接受新價位，造市商以平滑價格為中心之後，價格會有持續數小時的趨勢，也會有盤整。
 
+## 排名賽
+
+按「排名賽」開一局：隨機種子、24 回合、資金不限，槓桿與強平照常，揭曉停用。第 24 回合結束的那一刻遊戲鎖定並計分（未平倉以標記價計入），成績是總損益。之後可以填名稱上傳。
+
+引擎是確定性的，同一個種子加上同一串操作，一定重演出同一局。所以上傳只帶種子和操作紀錄：每個會影響市場的操作（下單、排隊、撤單、全撤、槓桿、止損止盈設定與取消）都記成 `{t, op, args}`，`t` 是開局後第幾秒、在那一秒的邊界套用。`replayRanked` 照紀錄重跑就能得到同一個損益。
+
+### 後端
+
+- `GET /arena/api/scores`：前 50 名。
+- `POST /arena/api/scores`：上傳一局。只在預覽站（`metabear-site-preview`）開放，資料在獨立的 D1 `metabear-arena`（`migrations-arena/`），和 CRM 分開。
+- 重跑一局約需 1.4 秒 CPU，超過 Workers 免費方案每次請求的上限，所以伺服器現在只做合理性檢查：版本、回合數、種子範圍、損益上限、操作紀錄格式（時間遞增、操作種類、數量上限 3,000），以及沒有下單就不能有損益。名稱會正規化並去掉控制字元，每個 IP（加鹽雜湊）每小時最多上傳 20 次。
+- 每筆成績都保存種子與完整操作紀錄，`verified` 先為 0。之後改用付費方案或離線工作時，可以逐筆重跑，把對得上的標成已驗證、對不上的移除。
+
+### 舊的好友房
+
+預覽站之前有一個 `ArenaRoom` Durable Object（好友房）。現在已沒有程式使用它，`wrangler.jsonc` 的 staging 遷移 v2 會刪除這個類別和它保存的房間。v1、v2 兩筆都要留著，之後的部署才看得到歷史。
+
 ## 程式
 
 | 檔案 | 內容 |
@@ -192,6 +209,8 @@
 | `public/arena/engine/market.js` | `Sandbox`：歷史生成、cohort 生命週期、觸發與連環、主動出場、揭曉資料 |
 | `public/arena/engine/player.js` | 玩家帳戶與委託 |
 | `public/arena/engine/session.js` | 回合與戰術暫停 |
+| `public/arena/engine/ranked.js` | 排名賽：操作紀錄、計分、重跑、格式檢查 |
+| `src/arena-scores.ts` | 排行榜 API |
 | `public/arena/tutorial.js` | 玩法教學（聚光燈導覽） |
 | `public/arena/chart.js`、`app.js`、`index.html`、`arena.css` | 畫面 |
 | `tests/flow-arena-engine.test.mjs` | `npm run test:flow-arena` |

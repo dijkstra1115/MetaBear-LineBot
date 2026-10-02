@@ -148,7 +148,21 @@
         "html_handling": "none",
       },
       "vars": { "ENVIRONMENT": "preview", "LINE_DELIVERY_MODE": "disabled" },
-      "d1_databases": [],
+      // FLOW ARENA leaderboard, kept apart from the CRM data.
+      "d1_databases": [
+        {
+          "binding": "ARENA_DB",
+          "database_name": "metabear-arena",
+          "database_id": "5973dcad-2b5b-43c1-bad0-1ebf32f01c8d",
+          "migrations_dir": "migrations-arena",
+        },
+      ],
+      // The old FLOW ARENA friend rooms ran a Durable Object here (v1). v2 deletes the class and
+      // its stored rooms; keep both entries so later deploys see the history.
+      "migrations": [
+        { "tag": "v1", "new_sqlite_classes": ["ArenaRoom"] },
+        { "tag": "v2", "deleted_classes": ["ArenaRoom"] },
+      ],
       "queues": { "producers": [], "consumers": [] },
       "triggers": { "crons": [] },
     },

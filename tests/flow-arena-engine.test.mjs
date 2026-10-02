@@ -213,3 +213,29 @@ test("a turn runs five simulated minutes, and a filled resting order pauses it e
   assert.equal(paused.stop, "alert");
   assert.equal(paused.alert.kind, "own");
 });
+
+test("a ranked game replays exactly from its seed and action log", async () => {
+  const { ActionLog, replayRanked, rankedResult, checkActions } = await import("../public/arena/engine/ranked.js");
+  const turns = 3;
+  const seed = 4242;
+  const sim = new Sandbox(seed);
+  const player = new Player(sim);
+  const session = new Session(sim);
+  session.alerts = { bigFlow: true, cascade: true, own: true, move: true, event: true };
+  const log = new ActionLog(sim);
+  log.apply(player, "leverage", { leverage: 10 });
+  log.apply(player, "enqueue", { type: "market", side: "buy", lots: 60000 });
+  session.advance(37);
+  log.apply(player, "execute", { type: "limit", side: "sell", lots: 20000, price: sim.last + 40000 });
+  log.apply(player, "protect", { stop: sim.markPrice() - 150000, take: null, stopFraction: 0.5, takeFraction: 1 });
+  session.advance(120);
+  log.apply(player, "enqueue", { type: "close", fraction: 0.5 });
+  log.apply(player, "cancelAll");
+  // Run to the end of the last turn, pausing wherever the session pauses, like the page does.
+  while (sim.time - log.start < turns * 300) session.advance(turns * 300 - (sim.time - log.start));
+  const live = rankedResult(sim, player);
+  assert.equal(checkActions(log.actions, turns), null);
+  const replayed = replayRanked({ seed, actions: JSON.parse(JSON.stringify(log.actions)), turns });
+  assert.deepEqual(replayed, live);
+  assert.notEqual(live.pnl, 0);
+});

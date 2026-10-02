@@ -3,6 +3,7 @@ import { DEFAULT_LEVERAGE, LEVERAGES, Player } from "./engine/player.js";
 import { ALERT_KINDS, Session } from "./engine/session.js";
 import { REGIMES } from "./engine/regime.js";
 import { Tour, askForTour } from "./tutorial.js";
+import { ActionLog, RANKED_TURNS, RANKED_VERSION, applyAction, rankedResult } from "./engine/ranked.js";
 import { MAX_ZOOM, MIN_CANDLES, MIN_ZOOM, chartGeometry, chartOnAxis, chartPriceAt, drawChart, gameClock } from "./chart.js";
 
 const $ = (id) => document.getElementById(id);
@@ -69,14 +70,26 @@ function randomSeed() {
   return 1 + Math.floor(Math.random() * 0xfffffffe);
 }
 
-function newMarket(seed = randomSeed()) {
+// Ranked games log every action that can move the market, so the server can replay them later.
+let ranked = null; // { log, over, result }
+
+// Every market-changing player action goes through here.
+function act(op, args = {}) {
+  if (ranked?.over) return op === "leverage" || op === "protect" ? "這局排名賽已經結束" : { ok: false, error: "這局排名賽已經結束" };
+  return ranked ? ranked.log.apply(player, op, args) : applyAction(player, { op, args });
+}
+
+function newMarket(seed = randomSeed(), { rankedGame = false } = {}) {
   running = false;
   $("loading").hidden = false;
   $("pause-card").hidden = true;
   setTimeout(() => {
     sim = new Sandbox(seed);
     player = new Player(sim);
-    player.setLeverage(store.get("leverage", DEFAULT_LEVERAGE));
+    ranked = rankedGame ? { log: new ActionLog(sim), over: false, result: null } : null;
+    act("leverage", { leverage: store.get("leverage", DEFAULT_LEVERAGE) });
+    document.body.classList.toggle("ranked", Boolean(ranked));
+    $("ranked-final").hidden = true;
     session = new Session(sim);
     session.alerts = { ...alertPrefs };
     seenFeedId = sim.liquidationFeed.at(-1)?.id ?? 0;
@@ -95,7 +108,7 @@ function newMarket(seed = randomSeed()) {
     view.zoom = 1;
     $("seed-label").textContent = String(seed);
     $("loading").hidden = true;
-    setMessage("新市場已建立。計畫階段市場暫停：先讀圖、推測人群的停損與強平在哪，再按「執行回合」。");
+    setMessage(ranked ? `排名賽開始：${RANKED_TURNS} 回合，比最後的總損益。揭曉在排名賽中停用。` : "新市場已建立。計畫階段市場暫停：先讀圖、推測人群的停損與強平在哪，再按「執行回合」。");
     // First visit: offer the walkthrough once the page is filled in.
     if (!store.get("tourSeen", false)) {
       store.set("tourSeen", true);
@@ -117,7 +130,7 @@ let turnPeak = 0;
 let turnStalls = 0;
 
 function setRunning(next) {
-  if (!sim) return;
+  if (!sim || (next && ranked?.over)) return;
   if (next && view.reveal) toggleReveal(false);
   running = next;
   if (running) $("pause-card").hidden = true;
@@ -534,6 +547,69 @@ function countUp(element, target, format, delay) {
   }, delay);
 }
 
+function showRankedFinal() {
+  const result = ranked.result;
+  $("ranked-pnl").textContent = money(result.pnl);
+  $("ranked-pnl").className = result.pnl > 0 ? "positive" : result.pnl < 0 ? "negative" : "";
+  $("ranked-stats").textContent = `成交 ${btc(result.volume)} · 引爆強平 ${btc(result.ignited)} · 被強平 ${result.liquidations} 次 · 種子 ${sim.seed}`;
+  $("ranked-name").value = store.get("rankedName", "");
+  $("ranked-status").textContent = "";
+  $("ranked-upload").disabled = false;
+  $("ranked-final").hidden = false;
+  if (result.pnl > 0) chime(8);
+}
+
+async function uploadRanked() {
+  const name = $("ranked-name").value.trim().slice(0, 18);
+  if (!name) return ($("ranked-status").textContent = "請輸入名稱");
+  store.set("rankedName", name);
+  $("ranked-upload").disabled = true;
+  $("ranked-status").textContent = "上傳中…";
+  try {
+    const response = await fetch("/arena/api/scores", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version: RANKED_VERSION, seed: sim.seed, turns: RANKED_TURNS, name, pnl: ranked.result.pnl, stats: ranked.result, actions: ranked.log.actions }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw Error(body.error ?? `伺服器回應 ${response.status}`);
+    $("ranked-status").textContent = `已上傳，目前第 ${body.rank} 名。`;
+    showLeaderboard(body.id);
+  } catch (error) {
+    $("ranked-upload").disabled = false;
+    $("ranked-status").textContent = `上傳失敗：${error.message}`;
+  }
+}
+
+async function showLeaderboard(highlight = null) {
+  const dialog = $("leaderboard");
+  const list = $("leaderboard-rows");
+  list.replaceChildren();
+  $("leaderboard-status").textContent = "讀取中…";
+  if (!dialog.open) dialog.showModal();
+  try {
+    const response = await fetch("/arena/api/scores");
+    const body = await response.json();
+    if (!response.ok) throw Error(body.error ?? `伺服器回應 ${response.status}`);
+    $("leaderboard-status").textContent = body.scores.length ? "" : "還沒有成績，成為第一個吧。";
+    list.replaceChildren(...body.scores.map((row, index) => {
+      const tr = document.createElement("tr");
+      if (row.id === highlight) tr.className = "you";
+      const cells = [index + 1, row.name, money(row.pnl), row.seed, new Date(row.createdAt).toLocaleDateString("zh-TW")];
+      for (const value of cells) {
+        const td = document.createElement("td");
+        td.textContent = String(value);
+        tr.append(td);
+      }
+      if (row.pnl < 0) tr.children[2].className = "negative";
+      else if (row.pnl > 0) tr.children[2].className = "positive";
+      return tr;
+    }));
+  } catch (error) {
+    $("leaderboard-status").textContent = `讀取失敗：${error.message}（本機預覽伺服器沒有排行榜 API）`;
+  }
+}
+
 function showReport() {
   const before = turnOpen;
   const pnl = player.equity() - before.pnl;
@@ -593,6 +669,14 @@ function showReport() {
     else chime(3);
   }, 250 + rows.length * 160);
   turnOpen = snapshot();
+  // The game ends the moment the last turn does: lock it and take the score now, then let the
+  // report play before the final card.
+  if (ranked && !ranked.over && session.turn > RANKED_TURNS) {
+    ranked.over = true;
+    ranked.result = rankedResult(sim, player);
+    running = false;
+    setTimeout(showRankedFinal, 1400);
+  }
 }
 
 // Consecutive profitable closes stack into a streak; a losing close breaks it.
@@ -706,11 +790,11 @@ function priceCents() {
 function place(order) {
   if (!sim) return;
   if (running) {
-    const result = player.execute(order);
+    const result = act("execute", order);
     processEvents(player.drainEvents());
     if (!result.ok) setMessage(result.error, true);
   } else {
-    const result = player.enqueue(order);
+    const result = act("enqueue", order);
     if (!result.ok) return setMessage(result.error, true);
     setMessage(`${describeOrder(order)} 已排入待送出：按「執行」後，會在第一秒內和其他人的單一起送出。`);
     tone(560, 0.06, "triangle", 0.03);
@@ -754,6 +838,7 @@ function setOrderType(type) {
 }
 
 function toggleReveal(next = !view.reveal) {
+  if (next && ranked) return setMessage("排名賽中不能揭曉。", true);
   view.reveal = next;
   if (next) {
     running = false;
@@ -857,7 +942,7 @@ function renderOrders() {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = "撤單";
-    button.addEventListener("click", () => { player.cancel(id); render(); });
+    button.addEventListener("click", () => { act("cancel", { id }); render(); });
     row.append(span, button);
     items.push(row);
   };
@@ -895,7 +980,7 @@ function render() {
   const mid = mark;
   const equity = player.equity(mark);
   const account = player.account;
-  $("turn-label").textContent = `第 ${session.turn} 回合`;
+  $("turn-label").textContent = ranked ? `排名賽 ${Math.min(session.turn, RANKED_TURNS)} / ${RANKED_TURNS}` : `第 ${session.turn} 回合`;
   $("clock-label").textContent = `${gameClock(sim.time)} · 剩 ${mmss(Math.max(0, session.secondsLeft))}`;
   $("turn-fill").style.width = `${(1 - session.secondsLeft / session.turnSeconds) * 100}%`;
   $("hud-pnl").textContent = money(equity);
@@ -1022,7 +1107,7 @@ $("size-input").addEventListener("input", () => {
 });
 $("price-input").addEventListener("input", render);
 document.querySelectorAll("[data-leverage]").forEach((button) => button.addEventListener("click", () => {
-  const error = player.setLeverage(Number(button.dataset.leverage));
+  const error = act("leverage", { leverage: Number(button.dataset.leverage) });
   if (error) return setMessage(error, true);
   store.set("leverage", player.leverage);
   setMessage(`槓桿改為 ${player.leverage}×：部位大小不限，槓桿越高，保證金越少、強平價越近`);
@@ -1074,7 +1159,7 @@ document.querySelectorAll("[data-close]").forEach((button) => button.addEventLis
   $("close-range").dispatchEvent(new Event("input"));
 }));
 $("cancel-all").addEventListener("click", () => {
-  const count = player.cancelAll();
+  const count = act("cancelAll");
   setMessage(count ? `已撤掉 ${count} 筆委託` : "沒有可撤的委託");
   render();
 });
@@ -1083,12 +1168,12 @@ $("set-protection").addEventListener("click", () => {
     const value = Number(String($(id).value).replace(/,/g, ""));
     return $(id).value && Number.isFinite(value) && value > 0 ? Math.round(value * 100) : null;
   };
-  const error = player.setProtection(read("stop-price"), read("take-price"), Number($("stop-share").value) / 100, Number($("take-share").value) / 100);
+  const error = act("protect", { stop: read("stop-price"), take: read("take-price"), stopFraction: Number($("stop-share").value) / 100, takeFraction: Number($("take-share").value) / 100 });
   setMessage(error ?? "止損止盈已設定", Boolean(error));
   render();
 });
 $("clear-protection").addEventListener("click", () => {
-  player.clearProtection();
+  act("unprotect");
   $("stop-price").value = "";
   $("take-price").value = "";
   render();
@@ -1097,10 +1182,20 @@ for (const key of ["stop", "take"]) {
   $(`${key}-share`).addEventListener("input", () => { $(`${key}-share-label`).textContent = `${$(`${key}-share`).value}%`; });
 }
 $("tour-button").addEventListener("click", () => startTour());
+$("ranked-button").addEventListener("click", () => {
+  if (ranked && !ranked.over && !confirm("放棄目前這局排名賽，重新開一局？")) return;
+  newMarket(randomSeed(), { rankedGame: true });
+});
+$("board-button").addEventListener("click", () => showLeaderboard());
+$("ranked-upload").addEventListener("click", uploadRanked);
+$("ranked-again").addEventListener("click", () => newMarket(randomSeed(), { rankedGame: true }));
+$("ranked-sandbox").addEventListener("click", () => newMarket());
+$("leaderboard-close").addEventListener("click", () => $("leaderboard").close());
 $("run-button").addEventListener("click", () => setRunning(!running));
 $("pause-continue").addEventListener("click", () => setRunning(true));
 $("reveal-button").addEventListener("click", () => toggleReveal());
 $("new-button").addEventListener("click", () => {
+  if (ranked && !ranked.over && !confirm("放棄目前這局排名賽，回到沙盤？")) return;
   const typed = Number($("seed-input").value);
   newMarket(Number.isSafeInteger(typed) && typed >= 1 && typed <= 0xffffffff ? typed : randomSeed());
 });

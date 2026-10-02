@@ -33,6 +33,8 @@
         <button id="reveal-button" class="button-outline button-reveal" type="button" aria-pressed="false" title="暫停並顯示真實的強平、止損、止盈分布">◉ 揭曉 <kbd>R</kbd></button>
         <button id="new-button" class="button-outline" type="button">↻ 新市場</button>
         <label class="seed-input">種子 <input id="seed-input" inputmode="numeric" maxlength="10" placeholder="隨機" /></label>
+        <button id="ranked-button" class="button-outline button-ranked" type="button" title="24 回合，比最後的總損益">🏆 排名賽</button>
+        <button id="board-button" class="button-outline" type="button">排行榜</button>
         <button id="tour-button" class="button-outline" type="button" title="玩法教學">? 教學</button>
         <button id="sound-toggle" class="button-outline" type="button" aria-pressed="true">♫ 開</button>
         <span id="run-status"><i></i> 計畫中</span>
@@ -114,6 +116,16 @@
               <p id="pause-detail"></p>
               <button id="pause-continue" type="button">繼續 ▶ <kbd>Space</kbd></button>
             </div>
+            <div id="ranked-final" class="ranked-final" hidden>
+              <span class="tour-count">RANKED · 24 回合結束</span>
+              <strong>最終損益</strong>
+              <b id="ranked-pnl">+$0</b>
+              <p id="ranked-stats"></p>
+              <label class="ranked-name">名稱 <input id="ranked-name" maxlength="18" placeholder="匿名交易者" autocomplete="nickname" /></label>
+              <div class="tour-actions"><button id="ranked-upload" type="button" class="tour-next">上傳成績</button><span></span><button id="ranked-again" type="button">再來一局</button><button id="ranked-sandbox" type="button">回到沙盤</button></div>
+              <p id="ranked-status" class="ranked-status" role="status"></p>
+              <small>成績先以格式與合理性檢查收錄，操作紀錄會保存下來，之後可以由伺服器重跑驗證。</small>
+            </div>
             <div id="loading" class="loading" hidden><span>建立市場中…</span><small>模擬 6 小時的歷史與人群持倉</small></div>
             <div id="edge-glow" class="edge-glow" aria-hidden="true"></div>
             <div id="danger-glow" class="danger-glow" aria-hidden="true"></div>
@@ -186,6 +198,12 @@
 
     </div>
   </main>
+  <dialog id="leaderboard" class="leaderboard">
+    <div class="leaderboard-head"><span class="tour-count">LEADERBOARD</span><strong>排名賽 · 24 回合總損益</strong><button id="leaderboard-close" type="button" aria-label="關閉">✕</button></div>
+    <table><thead><tr><th>#</th><th>名稱</th><th>損益</th><th>種子</th><th>日期</th></tr></thead><tbody id="leaderboard-rows"></tbody></table>
+    <p id="leaderboard-status" class="ranked-status"></p>
+    <small>尚未經伺服器重跑驗證；名稱請勿使用不雅字眼。</small>
+  </dialog>
   <footer class="page-footer"><span>METABEAR / FLOW ARENA SANDBOX</span><span>虛構市場 · 模擬合約 · 無真實資金</span></footer>
 </body>
 </html>
