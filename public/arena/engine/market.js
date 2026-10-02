@@ -632,8 +632,13 @@ export class Sandbox {
     this.book.time = this.time;
     if (this.time % CANDLE_SECONDS === 0) {
       this.live.oi = this.oi;
+      this.live.book = { bids: this.book.depth("buy", 80), asks: this.book.depth("sell", 80) };
       this.candles.push(this.live);
-      if (this.candles.length > FOOTPRINT_KEEP) this.candles[this.candles.length - FOOTPRINT_KEEP].fp = null;
+      if (this.candles.length > FOOTPRINT_KEEP) {
+        const old = this.candles[this.candles.length - FOOTPRINT_KEEP];
+        old.fp = null;
+        old.book = null;
+      }
       this.closeCandleReadings();
       this.signalExits();
       this.live = this.newCandle();

@@ -1,0 +1,778 @@
+import { Sandbox } from "./engine/market.js";
+import { DEFAULT_LEVERAGE, LEVERAGES, Player, RISK_LIMITS_BTC } from "./engine/player.js";
+import { ALERT_KINDS, Session } from "./engine/session.js";
+import { REGIMES } from "./engine/regime.js";
+import { chartGeometry, chartPriceAt, drawChart, gameClock } from "./chart.js";
+
+const $ = (id) => document.getElementById(id);
+const TICKS_PER_SECOND = 30;
+const fmt = (value, digits = 0) => Number(value).toLocaleString("zh-TW", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const money = (value) => `${value >= 0 ? "+" : "−"}$${fmt(Math.abs(value))}`;
+const plain = (value) => `$${fmt(Math.abs(value))}`;
+const price = (cents) => fmt(cents / 100, 0);
+const btc = (lots) => `${fmt(lots / 100, lots >= 1000 ? 0 : 1)} BTC`;
+const signedBtc = (lots) => `${lots >= 0 ? "+" : "−"}${fmt(Math.abs(lots) / 100, Math.abs(lots) >= 1000 ? 0 : 1)} BTC`;
+const pct = (value, digits = 2) => `${value >= 0 ? "+" : "−"}${fmt(Math.abs(value) * 100, digits)}%`;
+const mmss = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const store = {
+  get(key, fallback) {
+    try {
+      const value = localStorage.getItem(`flow-arena-sandbox:${key}`);
+      return value == null ? fallback : JSON.parse(value);
+    } catch { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem(`flow-arena-sandbox:${key}`, JSON.stringify(value)); } catch { /* storage is optional */ }
+  },
+};
+
+let sim = null;
+let player = null;
+let session = null;
+let running = false;
+let speed = store.get("speed", 1);
+let orderType = "market";
+let soundEnabled = store.get("sound", true);
+let audio = null;
+let seenFeedId = 0;
+let accumulator = 0;
+let lastFrame = null;
+let lastRender = 0;
+let openPrice = 0;
+let turnOpen = null;
+let message = { text: "", error: false };
+const alertPrefs = store.get("alerts", { bigFlow: true, cascade: true, own: true, move: true });
+const view = { count: 120, zoom: 1, offset: 0, layer: "liq", averages: true, reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null };
+
+/* ---------- Market lifecycle ---------- */
+
+function randomSeed() {
+  return 1 + Math.floor(Math.random() * 0xfffffffe);
+}
+
+function newMarket(seed = randomSeed()) {
+  running = false;
+  $("loading").hidden = false;
+  $("pause-card").hidden = true;
+  setTimeout(() => {
+    sim = new Sandbox(seed);
+    player = new Player(sim);
+    player.setLeverage(store.get("leverage", DEFAULT_LEVERAGE));
+    session = new Session(sim);
+    session.alerts = { ...alertPrefs };
+    seenFeedId = sim.liquidationFeed.at(-1)?.id ?? 0;
+    openPrice = sim.last;
+    turnOpen = snapshot();
+    view.frame = { low: null, high: null, hold: false };
+    view.flashes = [];
+    view.offset = 0;
+    view.zoom = 1;
+    $("seed-label").textContent = String(seed);
+    $("loading").hidden = true;
+    setMessage("新市場已建立。計畫階段市場暫停：先讀圖、推測人群的停損與強平在哪，再按「執行回合」。");
+    render();
+  }, 30);
+}
+
+function snapshot() {
+  return { price: sim.last, cvd: sim.cvd, oi: sim.oi, pnl: player.equity(), feed: sim.liquidationFeed.at(-1)?.id ?? 0, time: sim.time };
+}
+
+function setRunning(next) {
+  if (!sim) return;
+  if (next && view.reveal) toggleReveal(false);
+  running = next;
+  if (running) $("pause-card").hidden = true;
+  accumulator = 0;
+  render();
+}
+
+/* ---------- Sound and effects ---------- */
+
+function audioContext() {
+  if (!soundEnabled) return null;
+  try {
+    audio ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === "suspended") audio.resume();
+    return audio;
+  } catch { return null; }
+}
+
+function tone(frequency = 520, duration = 0.1, wave = "sine", volume = 0.05, slideTo = null) {
+  const context = audioContext();
+  if (!context) return;
+  try {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const now = context.currentTime;
+    oscillator.type = wave;
+    oscillator.frequency.setValueAtTime(frequency, now);
+    if (slideTo) oscillator.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.0008, now + duration);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + duration + 0.02);
+  } catch { /* audio is optional */ }
+}
+
+function boom(strength = 0.5) {
+  tone(110 + strength * 40, 0.18 + strength * 0.35, "sine", 0.09 + strength * 0.08, 38);
+}
+
+function chartPoint(cents) {
+  const geometry = chartGeometry($("market-chart"), sim, view);
+  const yy = Math.max(geometry.priceTop + 14, Math.min(geometry.priceBottom - 14, geometry.y(cents)));
+  return { x: geometry.x(Math.max(0, geometry.candles.length - 1)), y: yy };
+}
+
+function particles(x, y, color, count = 14, spread = 260) {
+  if (reducedMotion) return;
+  const layer = $("particle-layer");
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement("i");
+    particle.style.left = `${x}px`;
+    particle.style.top = `${y}px`;
+    particle.style.setProperty("--dx", `${(Math.random() - 0.5) * spread}px`);
+    particle.style.setProperty("--dy", `${(Math.random() - 0.7) * spread * 0.7}px`);
+    particle.style.background = color;
+    particle.style.color = color;
+    layer.append(particle);
+    particle.addEventListener("animationend", () => particle.remove(), { once: true });
+  }
+}
+
+function floatLabel(text, x, y, toneName = "mint", big = false) {
+  const layer = $("fx-layer");
+  const label = document.createElement("div");
+  label.className = `fx-label ${toneName}${big ? " big" : ""}`;
+  label.textContent = text;
+  label.style.left = `${x}px`;
+  label.style.top = `${y}px`;
+  layer.append(label);
+  label.addEventListener("animationend", () => label.remove(), { once: true });
+  while (layer.children.length > 14) layer.firstChild.remove();
+}
+
+function ring(x, y, toneName = "mint", strength = 0.5) {
+  if (reducedMotion) return;
+  const shock = document.createElement("span");
+  shock.className = `fx-ring ${toneName}`;
+  shock.style.left = `${x}px`;
+  shock.style.top = `${y}px`;
+  shock.style.setProperty("--ring", `${120 + strength * 260}px`);
+  $("fx-layer").append(shock);
+  shock.addEventListener("animationend", () => shock.remove(), { once: true });
+}
+
+function shake(level = 1) {
+  if (reducedMotion) return;
+  const panel = document.querySelector(".market-panel");
+  panel.classList.remove("shake-1", "shake-2", "shake-3");
+  void panel.offsetWidth;
+  panel.classList.add(`shake-${Math.max(1, Math.min(3, level))}`);
+}
+
+function flashScreen(toneName = "mint", strength = 0.5) {
+  const overlay = $("flash-overlay");
+  overlay.className = `flash-overlay ${toneName}`;
+  overlay.style.setProperty("--flash", String(Math.min(0.55, 0.14 + strength * 0.4)));
+  void overlay.offsetWidth;
+  overlay.classList.add("on");
+}
+
+function banner(text, toneName = "gold") {
+  const box = $("combo-banner");
+  box.textContent = text;
+  box.className = `combo-banner ${toneName}`;
+  box.hidden = false;
+  box.style.animation = "none";
+  void box.offsetWidth;
+  box.style.animation = "";
+  clearTimeout(box.hideTimer);
+  box.hideTimer = setTimeout(() => { box.hidden = true; }, 1700);
+}
+
+function setMessage(text, error = false) {
+  message = { text, error };
+  $("order-message").textContent = text;
+  $("order-message").classList.toggle("error", error);
+}
+
+// Every new liquidation wave: a label at its price, a shock bar on the chart and a thump.
+function processLiquidations() {
+  const fresh = sim.liquidationFeed.filter((item) => item.id > seenFeedId && !item.warm);
+  if (!fresh.length) return;
+  seenFeedId = fresh.at(-1).id;
+  const now = performance.now();
+  let wave = 0;
+  let mine = 0;
+  let chain = 0;
+  for (const item of fresh) {
+    wave += item.lots;
+    chain = Math.max(chain, item.chain);
+    if (item.by === "player") mine += item.lots;
+    view.flashes.push({ from: item.from, to: item.to, side: item.side, born: now, age: 0 });
+    const point = chartPoint(item.to);
+    const toneName = item.side === "short" ? "mint" : "coral";
+    const strength = Math.min(1, item.lots / 50000);
+    floatLabel(`💥 ${item.side === "short" ? "空單" : "多單"}強平 ${btc(item.lots)}`, point.x - 12, point.y, toneName, item.lots >= 30000);
+    ring(point.x, point.y, toneName, strength);
+    particles(point.x, point.y, item.side === "short" ? "#8bf2c8" : "#ff879d", Math.round(6 + strength * 24), 160 + strength * 260);
+  }
+  view.flashes = view.flashes.slice(-8);
+  const strength = Math.min(1, wave / 60000);
+  shake(wave >= 50000 ? 3 : wave >= 15000 ? 2 : 1);
+  flashScreen(fresh.at(-1).side === "short" ? "mint" : "coral", strength);
+  boom(strength);
+  if (chain >= 2) banner(`連環強平 ×${chain}`, fresh.at(-1).side === "short" ? "mint" : "coral");
+  if (mine) banner(`🔥 你引爆了 ${btc(mine)} 強平`, "gold");
+}
+
+function describeEvent(event) {
+  const side = event.side === "buy" ? "買" : "賣";
+  switch (event.kind) {
+    case "fill": return `掛單成交：${side} ${btc(event.lots)} @ ${price(event.price)}`;
+    case "trigger": return event.error ? `觸價單觸發但被拒絕：${event.error}` : `觸價單在 ${price(event.price)} 觸發：市價${side} ${btc(event.lots)}`;
+    case "stop": return `止損觸發（標記價 ${price(event.price)}），市價平倉`;
+    case "take": return `止盈觸發（標記價 ${price(event.price)}），市價平倉`;
+    case "twap": return event.error ? `TWAP 停止：${event.error}` : `TWAP 完成：${side} ${btc(event.lots)}，均價 ${event.avgPrice ? price(event.avgPrice) : "—"}`;
+    case "liquidation": return `你的${event.side === "long" ? "多單" : "空單"} ${btc(event.lots)} 在 ${price(event.price)} 被強平，賠掉保證金 ${plain(event.lost)}`;
+    case "danger": return `你的強平價 ${price(event.price)} 距離標記價不到 1%`;
+    default: return "";
+  }
+}
+
+function processEvents(events) {
+  for (const event of events) {
+    const point = chartPoint(event.price ?? sim.last);
+    if (event.kind === "liquidation") {
+      flashScreen("danger", 1);
+      shake(3);
+      boom(1);
+      floatLabel(`💥 你的${event.side === "long" ? "多單" : "空單"}被強平`, point.x - 12, point.y, "coral", true);
+      banner(`你被強平了 ${money(-event.lost)}`, "coral");
+      setMessage(describeEvent(event), true);
+    } else if (event.kind === "fill") {
+      floatLabel(`◆ ${event.side === "buy" ? "買" : "賣"} ${btc(event.lots)}`, point.x - 12, point.y, event.side === "buy" ? "mint" : "coral");
+      tone(event.side === "buy" ? 720 : 520, 0.08, "triangle", 0.03);
+    } else {
+      setMessage(describeEvent(event), Boolean(event.error));
+    }
+  }
+}
+
+/* ---------- Turns and pauses ---------- */
+
+function showPause(result) {
+  const card = $("pause-card");
+  const stats = [];
+  let title = "";
+  let kind = "";
+  let detail = "";
+  let toneName = "amber";
+  if (result.stop === "turn") {
+    const before = turnOpen;
+    const waves = sim.liquidationFeed.filter((item) => item.id > before.feed && !item.warm);
+    kind = "TURN COMPLETE";
+    title = `第 ${session.turn - 1} 回合結束`;
+    toneName = "mint";
+    stats.push(["價格", `${price(before.price)} → ${price(sim.last)}（${pct(sim.last / before.price - 1)}）`]);
+    stats.push(["CVD", signedBtc(sim.cvd - before.cvd)]);
+    stats.push(["OI", signedBtc(sim.oi - before.oi)]);
+    stats.push(["強平", waves.length ? btc(waves.reduce((sum, item) => sum + item.lots, 0)) : "無"]);
+    stats.push(["你的損益", money(player.equity() - before.pnl)]);
+    detail = "計畫下一回合：價格動了，但 OI 是增加還是減少？CVD 和價格同向嗎？";
+    turnOpen = snapshot();
+  } else {
+    const alert = result.alert;
+    kind = `TACTICAL PAUSE · ${ALERT_KINDS[alert.kind]}`;
+    const move = `${price(alert.from)} → ${price(alert.to)}（${pct(alert.to / alert.from - 1)}）`;
+    if (alert.kind === "bigFlow") {
+      title = `大額主動${alert.side === "buy" ? "買" : "賣"}單：${btc(alert.lots)}`;
+      toneName = alert.side === "buy" ? "mint" : "coral";
+      stats.push(["10 秒價格", move], ["CVD", signedBtc(alert.cvd)], ["OI", signedBtc(alert.oi)]);
+      detail = alert.oi > 0 ? "OI 增加：有人在開新倉。跟上、接住，還是等它力竭？" : "OI 減少：這是平倉或停損潮，燃料用掉後動能可能衰退。";
+    } else if (alert.kind === "cascade") {
+      title = `${alert.side === "long" ? "多單" : "空單"}連環強平開始`;
+      toneName = alert.side === "long" ? "coral" : "mint";
+      stats.push(["第一波", btc(alert.lots)], ["10 秒價格", move], ["OI", signedBtc(alert.oi)]);
+      detail = alert.by === "player" ? "是你推出來的。下一條燃料在哪？什麼時候該走？" : "強平單會繼續推價，直到燃料用完；之後套利者會慢慢把價格拉回指數。";
+    } else if (alert.kind === "move") {
+      title = `回合內價格已移動 ${pct(alert.move)}`;
+      stats.push(["回合開始", price(session.turnStartPrice)], ["現價", price(sim.last)], ["CVD 10 秒", signedBtc(alert.cvd)]);
+    } else {
+      title = "你的委託有動靜";
+      toneName = "mint";
+      detail = alert.events.map(describeEvent).join("；");
+      if (alert.events.some((event) => event.kind === "liquidation" || event.kind === "danger")) toneName = "coral";
+    }
+  }
+  $("pause-kind").textContent = kind;
+  $("pause-title").textContent = title;
+  $("pause-stats").replaceChildren(...stats.flatMap(([label, value]) => {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    return [dt, dd];
+  }));
+  $("pause-detail").textContent = detail;
+  card.className = `pause-card ${toneName}`;
+  card.hidden = false;
+  tone(toneName === "coral" ? 260 : 600, 0.18, "triangle", 0.04);
+}
+
+function handleRun(result) {
+  processEvents(result.events);
+  processLiquidations();
+  if (result.stop) {
+    running = false;
+    showPause(result);
+    render();
+  }
+}
+
+/* ---------- Orders ---------- */
+
+function sizeLots() {
+  const value = Number($("size-input").value);
+  return Number.isFinite(value) && value > 0 ? Math.round(value * 100) : 0;
+}
+
+function priceCents() {
+  const value = Number(String($("price-input").value).replace(/,/g, ""));
+  return Number.isFinite(value) && value > 0 ? Math.round(value * 100) : null;
+}
+
+function submit(side) {
+  if (!sim) return;
+  const lots = sizeLots();
+  if (!lots) return setMessage("請輸入數量", true);
+  const reduceOnly = $("reduce-only").checked;
+  let result;
+  const before = sim.last;
+  if (orderType === "market") result = player.submitMarket(side, lots, { reduceOnly });
+  else if (orderType === "twap") result = player.addTwap(side, lots, Number($("twap-select").value), 20, { reduceOnly });
+  else {
+    const cents = priceCents();
+    if (!cents) return setMessage("請輸入價格，或直接點圖表填入", true);
+    if (orderType === "trigger") result = player.addTrigger(side, cents, lots, { reduceOnly });
+    else {
+      const display = orderType === "iceberg" ? Math.round(Number($("display-input").value || lots / 1000) * 100) : null;
+      if (orderType === "iceberg" && !(display > 0 && display < lots)) return setMessage("冰山顯示量要大於 0 且小於總量", true);
+      result = player.submitLimit(side, cents, lots, { reduceOnly, display });
+    }
+  }
+  if (!result.ok) return setMessage(result.error, true);
+  const word = side === "buy" ? "買入" : "賣出";
+  if (orderType === "market") {
+    const move = sim.last / before - 1;
+    setMessage(`市價${word} ${btc(result.matched)}，均價 ${price(result.avgPrice ?? before)}，價格 ${pct(move)}${result.unfilled ? `；${btc(result.unfilled)} 超出 10% 保護價未成交` : ""}${result.wave ? `；引爆強平 ${btc(result.wave.lots)}` : ""}`);
+    const point = chartPoint(sim.last);
+    if (Math.abs(move) >= 0.0015) {
+      floatLabel(`推動 ${pct(move)}`, point.x - 40, point.y + (move > 0 ? 26 : -26), move > 0 ? "mint" : "coral", Math.abs(move) >= 0.01);
+      ring(point.x, point.y, move > 0 ? "mint" : "coral", Math.min(1, Math.abs(move) * 50));
+    }
+    if (lots >= 125000) shake(lots >= 500000 ? 2 : 1);
+    tone(side === "buy" ? 680 : 420, 0.1, "triangle", 0.04);
+  } else if (orderType === "twap") setMessage(`TWAP ${word} ${btc(lots)}，分 ${Math.min(20, Math.floor(lots / 100) || 1)} 筆在 ${Number($("twap-select").value) / 60} 分鐘內送出`);
+  else if (orderType === "trigger") setMessage(`觸價${word} ${btc(lots)} @ ${price(priceCents())}：標記價穿過時送出市價單`);
+  else setMessage(`${orderType === "iceberg" ? "冰山" : "限價"}${word} ${btc(lots)} @ ${price(priceCents())}${result.matched ? `，立即成交 ${btc(result.matched)}` : ""}${result.resting ? `，掛單 ${btc(result.resting)}` : ""}`);
+  processLiquidations();
+  render();
+}
+
+function closeNow(fraction = 1) {
+  if (!player) return;
+  const result = fraction >= 1 ? player.close() : player.closePart(fraction);
+  if (!result.ok) return setMessage(result.error, true);
+  setMessage(result.pending ? "部分平倉，剩餘部位下一秒繼續出場" : `已平倉 ${btc(result.matched)}，均價 ${price(result.avgPrice ?? sim.last)}`);
+  processLiquidations();
+  render();
+}
+
+function setOrderType(type) {
+  orderType = type;
+  document.querySelectorAll("[data-type]").forEach((button) => button.classList.toggle("active", button.dataset.type === type));
+  $("price-field").hidden = !["limit", "trigger", "iceberg"].includes(type);
+  $("display-field").hidden = type !== "iceberg";
+  $("twap-field").hidden = type !== "twap";
+  render();
+}
+
+function toggleReveal(next = !view.reveal) {
+  view.reveal = next;
+  if (next) {
+    running = false;
+    $("pause-card").hidden = true;
+  }
+  $("reveal-button").setAttribute("aria-pressed", String(next));
+  $("reveal-panel").hidden = !next;
+  render();
+}
+
+/* ---------- Rendering ---------- */
+
+function renderBook() {
+  const asks = sim.book.depth("sell", 12).reverse();
+  const bids = sim.book.depth("buy", 12);
+  const max = Math.max(1, ...asks.map((level) => level.lots), ...bids.map((level) => level.lots));
+  const row = (level, side, total) => {
+    const div = document.createElement("div");
+    div.className = `book-row ${side}`;
+    div.style.setProperty("--bar", `${level.lots / max * 100}%`);
+    div.innerHTML = `<span>${price(level.price)}</span><span>${fmt(level.lots / 100, 2)}</span><span>${fmt(total / 100, 1)}</span>`;
+    return div;
+  };
+  let total = asks.reduce((sum, level) => sum + level.lots, 0);
+  $("book-asks").replaceChildren(...asks.map((level) => { const div = row(level, "ask", total); total -= level.lots; return div; }));
+  total = 0;
+  $("book-bids").replaceChildren(...bids.map((level) => { total += level.lots; return row(level, "bid", total); }));
+  $("book-last").textContent = price(sim.last);
+  $("book-depth-label").textContent = `±1% ${btc(sim.book.depthWithin("buy", sim.last, 0.01))} / ${btc(sim.book.depthWithin("sell", sim.last, 0.01))}`;
+  const rows = [];
+  for (let i = sim.tape.length - 1; i >= 0 && rows.length < 18; i--) {
+    const trade = sim.tape[i];
+    if (trade.lots < 100 && trade.tag === "npc") continue;
+    const div = document.createElement("div");
+    const own = trade.tag === "player" || trade.tag === "player-maker";
+    div.className = `tape-row ${trade.side}${own ? " own" : ""}${trade.tag === "liquidation" ? " forced" : ""}${trade.tag === "stop" ? " stop" : ""}`;
+    const mark = own ? "◆ " : trade.tag === "liquidation" ? "⚡ " : trade.tag === "stop" ? "▼ " : "";
+    div.innerHTML = `<span>${gameClock(trade.time)}:${String(((trade.time % 60) + 60) % 60).padStart(2, "0")}</span><span>${mark}${price(trade.price)}</span><span>${fmt(trade.lots / 100, 2)}</span>`;
+    rows.push(div);
+  }
+  $("tape-rows").replaceChildren(...rows);
+}
+
+function renderFuel() {
+  const last = sim.last;
+  let long = 0;
+  let short = 0;
+  let longPeak = null;
+  let shortPeak = null;
+  for (const row of sim.estimate.levels(25000)) {
+    if (row.long && row.price <= last && row.price >= last * 0.97) {
+      long += row.long;
+      if (!longPeak || row.long > longPeak.lots) longPeak = { price: row.price, lots: row.long };
+    }
+    if (row.short && row.price >= last && row.price <= last * 1.03) {
+      short += row.short;
+      if (!shortPeak || row.short > shortPeak.lots) shortPeak = { price: row.price, lots: row.short };
+    }
+  }
+  const max = Math.max(long, short, 50000);
+  $("fuel-long").textContent = btc(long);
+  $("fuel-short").textContent = btc(short);
+  $("fuel-long-bar").style.width = `${long / max * 100}%`;
+  $("fuel-short-bar").style.width = `${short / max * 100}%`;
+  $("fuel-long-peak").textContent = longPeak ? `最亮 ${price(longPeak.price)} · ${btc(longPeak.lots)}` : "—";
+  $("fuel-short-peak").textContent = shortPeak ? `最亮 ${price(shortPeak.price)} · ${btc(shortPeak.lots)}` : "—";
+  $("open-interest").textContent = btc(sim.oi);
+  const past = sim.allCandles().findLast((candle) => candle.time <= sim.time - 300);
+  const change = past ? sim.oi - past.oi : 0;
+  $("oi-change").textContent = signedBtc(change);
+  $("oi-change").className = change > 0 ? "positive" : change < 0 ? "negative" : "";
+}
+
+function renderReveal() {
+  if (!view.reveal) return;
+  const reveal = sim.reveal();
+  $("reveal-regime").textContent = REGIMES[reveal.regime.key] ?? reveal.regime.key;
+  $("reveal-mood").style.left = `${(reveal.sentiment + 1) * 50}%`;
+  $("reveal-mood-text").textContent = reveal.sentiment >= 0 ? `偏多 ${fmt(reveal.sentiment, 2)}` : `偏空 ${fmt(reveal.sentiment, 2)}`;
+  $("pool-rows").replaceChildren(...reveal.pools.map((pool) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${pool.name}</td><td>${fmt(pool.activity, 1)}</td><td>${fmt(pool.long / 100)}</td><td>${fmt(pool.short / 100)}</td><td>${fmt(pool.pending / 100)}</td>`;
+    return tr;
+  }));
+}
+
+function renderOrders() {
+  const items = [];
+  const add = (text, id) => {
+    const row = document.createElement("div");
+    row.className = "player-order";
+    const span = document.createElement("span");
+    span.textContent = text;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "撤單";
+    button.addEventListener("click", () => { player.cancel(id); render(); });
+    row.append(span, button);
+    items.push(row);
+  };
+  for (const order of player.orders()) {
+    const hidden = order.iceberg?.hidden ? `（冰山，隱藏 ${btc(order.iceberg.hidden)}）` : "";
+    add(`限價${order.side === "buy" ? "買" : "賣"} ${btc(order.lots)} @ ${price(order.price)}${hidden}${player.reduceOnly.has(order.id) ? " · 只減倉" : ""}`, order.id);
+  }
+  for (const trigger of player.triggers) add(`觸價${trigger.side === "buy" ? "買" : "賣"} ${btc(trigger.lots)} @ ${price(trigger.price)}`, trigger.id);
+  for (const twap of player.twaps) add(`TWAP ${twap.side === "buy" ? "買" : "賣"} 剩 ${btc(twap.remaining)}（${twap.left} 筆）`, twap.id);
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "目前沒有委託";
+    items.push(empty);
+  }
+  $("player-orders").replaceChildren(...items);
+}
+
+function renderPreview() {
+  const lots = sizeLots();
+  if (!lots) {
+    $("order-preview").textContent = "—";
+    return;
+  }
+  if (orderType === "market" || orderType === "twap") {
+    const buy = sim.book.preview("buy", lots, sim.book.maxPrice, "player");
+    const sell = sim.book.preview("sell", lots, 1, "player");
+    const reach = (result) => result.worstPrice ? `${price(result.worstPrice)}（${pct(result.worstPrice / sim.last - 1)}）` : "簿面不足";
+    $("order-preview").textContent = `依可見掛單：買推到 ${reach(buy)} · 賣推到 ${reach(sell)}`;
+  } else {
+    const cents = priceCents();
+    $("order-preview").textContent = cents ? `${price(cents)}（距現價 ${pct(cents / sim.last - 1)}）` : "點圖表填入價格";
+  }
+}
+
+function render() {
+  if (!sim) return;
+  const mark = sim.markPrice();
+  const equity = player.equity(mark);
+  const account = player.account;
+  $("turn-label").textContent = `第 ${session.turn} 回合`;
+  $("clock-label").textContent = `${gameClock(sim.time)} · 剩 ${mmss(Math.max(0, session.secondsLeft))}`;
+  $("turn-fill").style.width = `${(1 - session.secondsLeft / session.turnSeconds) * 100}%`;
+  $("hud-pnl").textContent = money(equity);
+  $("hud-pnl").className = equity > 0 ? "positive" : equity < 0 ? "negative" : "";
+  $("hud-pnl-detail").textContent = `已實現 ${money(account.realized)} · 手續費 ${plain(player.fees)}`;
+  $("ignited-total").textContent = btc(player.stats.ignited);
+  $("liq-count").textContent = `被強平 ${player.stats.liquidations} 次`;
+  const fresh = session.secondsLeft === session.turnSeconds;
+  $("run-button").innerHTML = running ? "⏸ 暫停 <kbd>Space</kbd>" : `▶ ${fresh ? "執行回合" : "繼續回合"} <kbd>Space</kbd>`;
+  $("run-status").innerHTML = `<i></i> ${running ? "執行中" : view.reveal ? "揭曉中（暫停）" : "計畫中"}`;
+  $("run-status").className = running ? "running" : "planning";
+  $("speed").value = String(speed);
+  $("sound-toggle").textContent = soundEnabled ? "♫ 開" : "♫ 關";
+
+  $("last-price").textContent = fmt(sim.last / 100, 0);
+  const change = sim.last / openPrice - 1;
+  $("price-change").textContent = `${pct(change)} 自開盤`;
+  $("price-change").className = change >= 0 ? "positive" : "negative";
+  $("mark-price").textContent = price(mark);
+  const bid = sim.book.bestBid();
+  const ask = sim.book.bestAsk();
+  $("spread").textContent = bid && ask ? `$${fmt((ask - bid) / 100)}` : "—";
+  $("depth").textContent = `${fmt(sim.book.depthWithin("buy", sim.last, 0.01) / 100)} / ${fmt(sim.book.depthWithin("sell", sim.last, 0.01) / 100)}`;
+  $("cvd-value").textContent = signedBtc(sim.cvd);
+
+  renderFuel();
+  renderReveal();
+  const feed = sim.liquidationFeed.filter((item) => !item.warm).slice(-8).reverse();
+  if (feed.length) {
+    $("liq-feed").replaceChildren(...feed.map((item) => {
+      const row = document.createElement("div");
+      row.className = `liq-row ${item.side}${item.by === "player" ? " ignited" : ""}`;
+      row.innerHTML = `<span>${gameClock(item.time)}</span><strong>${item.side === "long" ? "多單" : "空單"} ${btc(item.lots)}</strong><em>×${item.chain}</em>${item.by === "player" ? "<b>你引爆的</b>" : ""}`;
+      return row;
+    }));
+  }
+  $("alert-log").replaceChildren(...session.log.slice(0, 12).map((alert) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${gameClock(alert.time)}</span>${ALERT_KINDS[alert.kind]}${alert.lots ? ` ${btc(alert.lots)}` : ""}`;
+    return li;
+  }));
+
+  $("equity").textContent = money(equity);
+  $("equity").className = equity > 0 ? "positive" : equity < 0 ? "negative" : "";
+  const floating = player.position ? account.position * (mark - account.entry) / 10000 : 0;
+  $("floating-pnl").innerHTML = `${money(floating)} <span>未實現</span>`;
+  $("floating-pnl").className = `floating-pnl ${floating > 0 ? "positive" : floating < 0 ? "negative" : ""}`;
+  $("realized").textContent = money(account.realized);
+  $("fees").textContent = plain(player.fees);
+  $("position-margin").textContent = plain(player.margin);
+  $("drawdown").textContent = plain(player.stats.maxDrawdown);
+  $("position").textContent = player.position ? `${player.position > 0 ? "多" : "空"} ${btc(Math.abs(player.position))}` : "空倉";
+  $("position").className = player.position > 0 ? "positive" : player.position < 0 ? "negative" : "";
+  $("entry-price").textContent = player.position ? price(account.entry) : "—";
+  $("leverage-value").textContent = `${player.leverage}×`;
+  const liq = player.liquidationPrice();
+  $("player-liq").textContent = liq ? `${price(liq)}（${pct(liq / mark - 1)}）` : "—";
+  $("risk-limit").textContent = Number.isFinite(RISK_LIMITS_BTC[player.leverage]) ? `${fmt(RISK_LIMITS_BTC[player.leverage])} BTC` : "不限";
+  $("volume").textContent = btc(player.stats.volume);
+  const locked = Boolean(player.position) || player.orders().length > 0 || player.triggers.length > 0 || player.twaps.length > 0;
+  document.querySelectorAll("[data-leverage]").forEach((button) => {
+    button.classList.toggle("active", Number(button.dataset.leverage) === player.leverage);
+    button.disabled = locked && Number(button.dataset.leverage) !== player.leverage;
+  });
+  $("leverage-hint").textContent = locked ? "有部位或委託時鎖定" : "空倉時可調整";
+  const { stop, take } = player.protection;
+  $("protection-status").textContent = stop || take ? `止損 ${stop ? price(stop) : "—"} · 止盈 ${take ? price(take) : "—"}` : "尚未設定";
+  renderOrders();
+  renderPreview();
+
+  const hud = $("position-hud");
+  hud.hidden = !player.position;
+  if (player.position) {
+    $("position-hud-side").textContent = `${player.position > 0 ? "多" : "空"} ${btc(Math.abs(player.position))} @ ${price(account.entry)}`;
+    $("position-hud-pnl").textContent = money(floating);
+    $("position-hud-roe").textContent = player.margin ? `保證金報酬 ${pct(floating / player.margin)}` : "";
+    hud.classList.toggle("loss", floating < 0);
+  }
+  if (document.querySelector(".market-details").open) renderBook();
+}
+
+/* ---------- Loop ---------- */
+
+function frame(now) {
+  const dt = lastFrame == null ? 0 : Math.min(0.1, (now - lastFrame) / 1000);
+  lastFrame = now;
+  if (running && sim) {
+    accumulator += dt * TICKS_PER_SECOND * speed;
+    const ticks = Math.floor(accumulator);
+    if (ticks > 0) {
+      accumulator -= ticks;
+      handleRun(session.advance(ticks));
+    }
+  }
+  if (sim) {
+    for (const flash of view.flashes) flash.age = (now - flash.born) / 1600;
+    view.flashes = view.flashes.filter((flash) => flash.age < 1);
+    drawChart($("market-chart"), sim, view);
+    if (now - lastRender > 120) {
+      lastRender = now;
+      render();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Input ---------- */
+
+document.querySelectorAll("[data-type]").forEach((button) => button.addEventListener("click", () => setOrderType(button.dataset.type)));
+document.querySelectorAll("[data-size]").forEach((button) => button.addEventListener("click", () => {
+  $("size-input").value = button.dataset.size;
+  document.querySelectorAll("[data-size]").forEach((item) => item.classList.toggle("active", item === button));
+  render();
+}));
+$("size-input").addEventListener("input", () => {
+  document.querySelectorAll("[data-size]").forEach((item) => item.classList.toggle("active", item.dataset.size === $("size-input").value));
+  render();
+});
+$("price-input").addEventListener("input", render);
+document.querySelectorAll("[data-leverage]").forEach((button) => button.addEventListener("click", () => {
+  const error = player.setLeverage(Number(button.dataset.leverage));
+  if (error) return setMessage(error, true);
+  store.set("leverage", player.leverage);
+  setMessage(`槓桿改為 ${player.leverage}×，風險限額 ${Number.isFinite(RISK_LIMITS_BTC[player.leverage]) ? `${fmt(RISK_LIMITS_BTC[player.leverage])} BTC` : "不限"}`);
+  render();
+}));
+document.querySelectorAll("[data-layer]").forEach((button) => button.addEventListener("click", () => {
+  view.layer = button.dataset.layer;
+  document.querySelectorAll("[data-layer]").forEach((item) => item.classList.toggle("active", item === button));
+}));
+document.querySelectorAll("[data-alert]").forEach((input) => {
+  input.checked = alertPrefs[input.dataset.alert] !== false;
+  input.addEventListener("change", () => {
+    alertPrefs[input.dataset.alert] = input.checked;
+    store.set("alerts", alertPrefs);
+    if (session) session.alerts = { ...alertPrefs };
+  });
+});
+$("averages").addEventListener("change", () => { view.averages = $("averages").checked; });
+$("buy-button").addEventListener("click", () => submit("buy"));
+$("sell-button").addEventListener("click", () => submit("sell"));
+$("close-position").addEventListener("click", () => closeNow(1));
+$("close-half").addEventListener("click", () => closeNow(0.5));
+$("cancel-all").addEventListener("click", () => {
+  const count = player.cancelAll();
+  setMessage(count ? `已撤掉 ${count} 筆委託` : "沒有可撤的委託");
+  render();
+});
+$("set-protection").addEventListener("click", () => {
+  const read = (id) => {
+    const value = Number(String($(id).value).replace(/,/g, ""));
+    return $(id).value && Number.isFinite(value) && value > 0 ? Math.round(value * 100) : null;
+  };
+  const error = player.setProtection(read("stop-price"), read("take-price"));
+  setMessage(error ?? "止損止盈已設定", Boolean(error));
+  render();
+});
+$("clear-protection").addEventListener("click", () => {
+  player.protection = { stop: null, take: null };
+  $("stop-price").value = "";
+  $("take-price").value = "";
+  render();
+});
+$("run-button").addEventListener("click", () => setRunning(!running));
+$("pause-continue").addEventListener("click", () => setRunning(true));
+$("reveal-button").addEventListener("click", () => toggleReveal());
+$("new-button").addEventListener("click", () => {
+  const typed = Number($("seed-input").value);
+  newMarket(Number.isSafeInteger(typed) && typed >= 1 && typed <= 0xffffffff ? typed : randomSeed());
+});
+$("speed").addEventListener("change", () => {
+  speed = Number($("speed").value) || 1;
+  store.set("speed", speed);
+});
+$("sound-toggle").addEventListener("click", () => {
+  soundEnabled = !soundEnabled;
+  store.set("sound", soundEnabled);
+  $("sound-toggle").setAttribute("aria-pressed", String(soundEnabled));
+  render();
+});
+
+const canvas = $("market-chart");
+canvas.addEventListener("mousemove", (event) => {
+  if (!sim) return;
+  view.frame.hold = true;
+  view.cursorPrice = chartPriceAt(canvas, sim, view, event.clientY);
+  view.cursorLabel = "點擊填入委託價格";
+});
+canvas.addEventListener("mouseleave", () => {
+  view.frame.hold = false;
+  view.cursorPrice = null;
+});
+canvas.addEventListener("click", (event) => {
+  if (!sim) return;
+  const cents = chartPriceAt(canvas, sim, view, event.clientY);
+  if (cents == null) return;
+  if (orderType === "market" || orderType === "twap") setOrderType("limit");
+  $("price-input").value = String(cents / 100);
+  $("price-field").classList.add("flash");
+  setTimeout(() => $("price-field").classList.remove("flash"), 600);
+  setMessage(`價格 ${price(cents)} 已填入（${orderType === "trigger" ? "觸價" : orderType === "iceberg" ? "冰山" : "限價"}），按買入或賣出送出。`);
+  render();
+});
+canvas.addEventListener("wheel", (event) => {
+  event.preventDefault();
+  if (event.shiftKey) view.zoom = Math.max(0.4, Math.min(6, view.zoom * (event.deltaY > 0 ? 0.9 : 1.1)));
+  else view.count = Math.max(30, Math.min(360, view.count + (event.deltaY > 0 ? 10 : -10)));
+  view.frame.low = null;
+}, { passive: false });
+canvas.addEventListener("dblclick", () => {
+  view.zoom = 1;
+  view.offset = 0;
+  view.count = 120;
+  view.frame.low = null;
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.target.closest?.("input, select, textarea") || event.metaKey || event.ctrlKey || event.altKey) return;
+  const key = event.key.toLowerCase();
+  if (key === " ") {
+    event.preventDefault();
+    setRunning(!running);
+  } else if (key === "q") submit("buy");
+  else if (key === "e") submit("sell");
+  else if (key === "f") closeNow(1);
+  else if (key === "h") closeNow(0.5);
+  else if (key === "r") toggleReveal();
+  else if (/^[1-5]$/.test(key)) document.querySelectorAll("[data-size]")[Number(key) - 1]?.click();
+});
+
+if (!LEVERAGES.includes(store.get("leverage", DEFAULT_LEVERAGE))) store.set("leverage", DEFAULT_LEVERAGE);
+setOrderType("market");
+newMarket();
+requestAnimationFrame(frame);

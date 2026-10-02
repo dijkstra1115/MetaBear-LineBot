@@ -35,6 +35,9 @@ function pickLevel(rng, levels) {
   return levels[index];
 }
 
+// Not everyone sets a stop; those who do not are left to their liquidation price.
+const maybe = (sim, share, stop) => (sim.rng.chance(share) ? stop : null);
+
 const leaning = (sim, base = 0.5, mood = 0.12) => sim.rng.next() < base + sim.sentiment.value * mood ? 1 : -1;
 
 export const POOLS = [
@@ -58,7 +61,7 @@ export const POOLS = [
       sim.openCohort({
         pool: "breakout", side: dir, lots: btcLots(rng, 1.1), leverage: sim.leverageFor(this),
         entry: { type: "trigger", price: trigger, expireAt: sim.time + rng.int(10, 40) * MIN },
-        stop, trail, take: target, takeMode: rng.chance(0.4) ? "limit" : "trigger",
+        stop: maybe(sim, 0.75, stop), trail: rng.chance(0.8) ? trail : null, take: target, takeMode: rng.chance(0.4) ? "limit" : "trigger",
         hold: rng.int(60, 240) * MIN, signal: "reversal3",
       });
     },
@@ -68,7 +71,7 @@ export const POOLS = [
     name: "支撐壓力",
     rate: 7,
     weights: W(0.8, 0.8, 1.5, 1.2, 0.6, 0.6),
-    leverage: [[10, 0.35], [20, 0.4], [25, 0.25]],
+    leverage: [[10, 0.25], [20, 0.35], [25, 0.2], [50, 0.2]],
     // Resting limit orders just in front of support and resistance, stops just beyond them.
     decide(sim) {
       const { rng } = sim;
@@ -84,7 +87,7 @@ export const POOLS = [
       sim.openCohort({
         pool: "sr", side: dir, lots: btcLots(rng, 1.4), leverage: sim.leverageFor(this),
         entry: { type: "limit", price, expireAt: sim.time + rng.int(15, 60) * MIN },
-        stop, take, takeMode: rng.chance(0.6) ? "limit" : "trigger",
+        stop: maybe(sim, 0.7, stop), take, takeMode: rng.chance(0.6) ? "limit" : "trigger",
         hold: rng.int(90, 480) * MIN, breakeven: rng.chance(0.5),
       });
     },
@@ -112,7 +115,7 @@ export const POOLS = [
         sim.openCohort({
           pool: "ict", side: dir, lots: btcLots(rng, 1), leverage: sim.leverageFor(this),
           entry: market ? { type: "market" } : { type: "limit", price, expireAt: sim.time + rng.int(5, 20) * MIN },
-          stop, take, takeMode: rng.chance(0.5) ? "limit" : "trigger", hold: rng.int(60, 300) * MIN,
+          stop: maybe(sim, 0.85, stop), take, takeMode: rng.chance(0.5) ? "limit" : "trigger", hold: rng.int(60, 300) * MIN,
         });
         return;
       }
@@ -134,7 +137,7 @@ export const POOLS = [
     name: "均線／MACD",
     rate: 14,
     weights: W(1.4, 1.4, 0.6, 0.8, 1.0, 1.2),
-    leverage: [[5, 0.3], [10, 0.4], [20, 0.3]],
+    leverage: [[5, 0.2], [10, 0.35], [20, 0.3], [50, 0.15]],
     // Market entries right after a MACD cross; out on the opposite cross.
     decide(sim) {
       const { rng, ind } = sim;
@@ -148,7 +151,7 @@ export const POOLS = [
       const take = rng.chance(0.4) ? roundPrice(sim.last * (1 + dir * rng.range(0.012, 0.03))) : null;
       sim.openCohort({
         pool: "trend", side: dir, lots: btcLots(rng, 1.3), leverage: sim.leverageFor(this),
-        entry: { type: "market" }, stop, take, takeMode: "trigger",
+        entry: { type: "market" }, stop: maybe(sim, 0.7, stop), take, takeMode: "trigger",
         hold: rng.int(60, 480) * MIN, signal: `macd:${set.key}`,
       });
     },
@@ -158,7 +161,7 @@ export const POOLS = [
     name: "均值回歸",
     rate: 7,
     weights: W(0.4, 0.4, 1.6, 1.3, 0.7, 0.5),
-    leverage: [[5, 0.3], [10, 0.4], [20, 0.3]],
+    leverage: [[5, 0.2], [10, 0.3], [20, 0.3], [50, 0.2]],
     // Fade a stretch outside the Bollinger band or far from VWAP; target the middle.
     decide(sim) {
       const { rng, ind } = sim;
@@ -180,7 +183,7 @@ export const POOLS = [
       sim.openCohort({
         pool: "meanrev", side: dir, lots: btcLots(rng, 1.1), leverage: sim.leverageFor(this),
         entry: { type: "limit", price, expireAt: sim.time + rng.int(10, 30) * MIN },
-        stop, take: roundPrice(target), takeMode: "limit", hold: rng.int(60, 240) * MIN,
+        stop: maybe(sim, 0.75, stop), take: roundPrice(target), takeMode: "limit", hold: rng.int(60, 240) * MIN,
       });
     },
   },
