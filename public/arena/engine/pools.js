@@ -1,5 +1,6 @@
 import { MACD_SETS } from "./indicators.js";
 import { roundPrice } from "./book.js";
+import { ANCHOR } from "./maker.js";
 
 // Strategy crowds. Each pool decides at a Poisson rate scaled by the regime and the hidden mood;
 // every decision draws its own parameters, so stops and targets spread around the chart levels
@@ -251,20 +252,23 @@ export const POOLS = [
     leverage: [[1, 0.5], [2, 0.3], [3, 0.2]],
     // The further the price strays from the fair value they believe in, the more of them act.
     boost(sim) {
-      return 1 + 2.5 * Math.min(4, Math.abs(sim.last / sim.fair.value - 1) / 0.01);
+      const gap = Math.max(0, Math.abs(sim.last / sim.fair.value - 1) - ANCHOR.valueDeadZone);
+      return 1 + ANCHOR.valueBoost * Math.min(4, gap / 0.01);
     },
     // Patient ladders around value, larger the deeper they sit; far from value some step in at market.
     decide(sim) {
       const { rng } = sim;
       const fair = sim.fair.value;
       const gap = sim.last / fair - 1;
-      const stretch = Math.abs(gap) / 0.01;
+      const stretch = Math.max(0, Math.abs(gap) - ANCHOR.valueDeadZone) / 0.01;
       const dir = gap > 0.002 ? -1 : gap < -0.002 ? 1 : leaning(sim, 0.5, 0.2);
       const take = (entry) => roundPrice(dir > 0 ? Math.max(fair * (1 + rng.range(-0.002, 0.008)), entry * 1.008) : Math.min(fair * (1 - rng.range(-0.002, 0.008)), entry * 0.992));
       if (stretch > 1 && rng.chance(Math.min(0.6, 0.2 * stretch))) {
         sim.openCohort({
           pool: "value", side: dir, lots: btcLots(rng, 3 * Math.min(4, stretch), 0.7), leverage: sim.leverageFor(this),
-          entry: { type: "market" }, take: take(sim.last), takeMode: "limit", hold: rng.int(240, 720) * MIN,
+          // A marketable limit a little through the price: they take what is offered nearby but never sweep a thin book.
+          entry: { type: "limit", price: roundPrice(sim.last * (1 + dir * 0.002)), expireAt: sim.time + 60 },
+          take: take(sim.last), takeMode: "limit", hold: rng.int(240, 720) * MIN,
         });
         return;
       }

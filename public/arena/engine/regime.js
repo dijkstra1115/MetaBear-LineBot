@@ -29,7 +29,7 @@ export function readRegime(candles, recentLiquidations) {
   let key;
   if (recentLiquidations.long > 60000 && shortMove < -0.006) key = "panic";
   else if (recentLiquidations.short > 60000 && shortMove > 0.006) key = "euphoria";
-  else if (efficiency > 0.3 && Math.abs(move) > 0.004) key = move > 0 ? "bull" : "bear";
+  else if (efficiency > 0.2 && Math.abs(move) > 0.004) key = move > 0 ? "bull" : "bear";
   else key = volatility > 0.0011 ? "wild" : "quiet";
   return { key, trend: move, efficiency, volatility };
 }

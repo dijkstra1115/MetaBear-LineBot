@@ -9,7 +9,6 @@ export const MAKER_LADDER = [
 
 const REFILL = 0.3;
 const TOLERANCE = 0.35;
-const VALUE_LEAN = 0.12;
 const SKEW_PER_LOT = 0.000000008; // 1,000 BTC of inventory leans quotes about 0.08%.
 const MAX_SKEW = 0.0012;
 const MAX_INVENTORY = 600000; // 6,000 BTC
@@ -37,16 +36,21 @@ export class MarketMaker {
     return clamp(Math.abs(this.flow) / TOXIC_LOTS, 0, 2.5);
   }
 
-  act() {
+  // newSecond: the first refresh of a simulated second, when the reference price steps forward.
+  act(newSecond = false) {
     const sim = this.sim;
     const book = sim.book;
-    const last = book.last;
+    // Quotes center on a reference that follows trades over a few seconds, so one print through a
+    // thin book does not drag the whole ladder with it.
+    if (this.reference == null) this.reference = book.last;
+    if (newSecond) this.reference += (book.last - this.reference) * ANCHOR.makerFollow;
+    const last = this.reference;
     const toxicity = this.toxicity();
     const calm = 1 - clamp(Math.abs(this.forced) / TOXIC_LOTS, 0, 1);
     const inventory = this.account.position;
     // Quotes lean toward the hidden fair value, and away from the side the inventory is on.
     const skew = clamp(inventory * SKEW_PER_LOT, -MAX_SKEW, MAX_SKEW);
-    const center = last + (sim.fair.value - last) * VALUE_LEAN * calm - skew * last;
+    const center = last + (sim.fair.value - last) * ANCHOR.makerLean * calm - skew * last;
     const regimeWiden = sim.regime?.key === "panic" || sim.regime?.key === "euphoria" ? 1.4 : sim.regime?.key === "wild" ? 1.15 : 1;
     for (const side of ["buy", "sell"]) {
       const loaded = side === "buy" ? Math.max(0, inventory) : Math.max(0, -inventory);
@@ -103,24 +107,51 @@ export class MarketMaker {
   }
 }
 
-// The hidden fair value: where the crowds believe the price belongs. It wanders on its own, the hidden
-// mood tilts it, and it slowly adopts a price that holds, so a level the market defends for a while
-// becomes the new value while a spike nobody follows does not. It never trades; it only steers the
-// value crowd, the mean reverters and the maker's quotes.
-const VALUE_VOL = 0.0001; // per second
-const VALUE_DRIFT = 0.0000025; // per second at full mood
-const ADOPT = 1 / 900;
+// How firmly the market is tied to its fair value, and how that value moves. One place so the
+// balance lab can try other settings.
+export const ANCHOR = {
+  makerLean: 0.12, // share of the gap to fair value the maker's quote center closes
+  valueDeadZone: 0.002, // gap to fair value the value crowd ignores
+  valueBoost: 2.5, // extra value-crowd activity per 1% of gap beyond the dead zone
+  valueVol: 0.00005, // per-second noise of the fair value
+  moodDrift: 0.0000025, // per-second drift at full mood
+  adopt: 1 / 10800, // per-second pull of the fair value toward the price that holds (about three hours)
+  trendChance: 0.5, // share of fair-value episodes that carry a direction
+  trendPerHour: [0.006, 0.02], // size of a directional episode's move per hour
+  trendMinutes: [30, 150],
+  calmMinutes: [30, 180],
+  makerFollow: 0.3, // share of the move to the last trade the maker's reference takes each second
+  herd: 0, // typical lean of the noise crowd toward one side
+  herdMinutes: 0.25, // how long that lean persists
+};
 
+// The hidden fair value: where the crowds believe the price belongs. It moves in episodes: calm
+// stretches where it only wanders, and directional ones where it keeps moving one way (the mood picks
+// the side more often than not). It also slowly adopts a price that holds, so a level the market
+// defends for a while becomes the new value while a spike nobody follows does not. It never trades;
+// it only steers the value crowd and the maker's quotes.
 export class FairValue {
   constructor(sim, price) {
     this.sim = sim;
     this.value = price;
     this.trail = price;
+    this.episode = { drift: 0, until: -Infinity };
+    this.episodes = [];
   }
   step() {
     const sim = this.sim;
+    const rng = sim.rng;
+    if (sim.time >= this.episode.until) {
+      const trending = rng.chance(ANCHOR.trendChance);
+      const minutes = rng.int(...(trending ? ANCHOR.trendMinutes : ANCHOR.calmMinutes));
+      const side = rng.chance(0.5 + sim.sentiment.value * 0.3) ? 1 : -1;
+      const drift = trending ? side * rng.range(...ANCHOR.trendPerHour) / 3600 : 0;
+      this.episode = { drift, until: sim.time + minutes * 60, start: sim.time };
+      this.episodes.push(this.episode);
+      if (this.episodes.length > 40) this.episodes.shift();
+    }
     this.trail += (sim.last - this.trail) * 0.005;
-    this.value *= Math.exp(sim.sentiment.value * VALUE_DRIFT + VALUE_VOL * sim.rng.normal());
-    this.value += (this.trail - this.value) * ADOPT;
+    this.value *= Math.exp(this.episode.drift + sim.sentiment.value * ANCHOR.moodDrift + ANCHOR.valueVol * rng.normal());
+    this.value += (this.trail - this.value) * ANCHOR.adopt;
   }
 }

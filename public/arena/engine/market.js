@@ -2,7 +2,7 @@ import { OrderBook, Random, roundPrice, PRICE_TICK } from "./book.js";
 import { applyFill, liquidationPrice, newAccount } from "./ledger.js";
 import { Indicators } from "./indicators.js";
 import { readRegime, Sentiment } from "./regime.js";
-import { FairValue, MarketMaker } from "./maker.js";
+import { ANCHOR, FairValue, MarketMaker } from "./maker.js";
 import { POOLS, POOL_MAP } from "./pools.js";
 import { LiquidationEstimate } from "./estimate.js";
 
@@ -12,14 +12,13 @@ const SYNTH_CANDLES = 300; // five hours of quick history before the order book 
 const WARM_SECONDS = 3600; // one hour of full simulation before the player arrives
 const MARKET_BAND = 0.006;
 const EXIT_BAND = 0.008;
-const CASCADE_BAND = 0.01;
+const CASCADE_BAND = 0.005; // a forced wave sweeps at most this far per second
 const FOOTPRINT_BIN = 1000; // $10
 const TAPE_KEEP = 4000;
 const FOOTPRINT_KEEP = 1440; // candles that keep their footprint
 const BOOK_KEEP = 480; // candles that keep a resting-book snapshot
 const VIRTUAL_NOISE_PER_MINUTE = 8;
 const NOISE_TEMPO_SPREAD = 0.6;
-const NOISE_HERD = 0.05;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -224,7 +223,6 @@ export class Sandbox {
 
   leverageFor(pool) {
     const table = pool.leverage;
-    if ((this.regime.key === "panic" || this.regime.key === "euphoria") && this.rng.chance(0.3)) return table.at(-1)[0];
     return this.rng.pick(table);
   }
 
@@ -649,10 +647,13 @@ export class Sandbox {
     }
     this.sentiment.step(this.time);
     this.fair.step();
-    this.maker.act();
+    this.maker.act(true);
     const noise = POOL_MAP.get("noise");
     if (this.time % CANDLE_SECONDS === 1) this.noiseTempo = this.rng.lognormal(1, NOISE_TEMPO_SPREAD);
-    if (this.time % 15 === 0) this.noiseHerd = Math.max(-NOISE_HERD * 2, Math.min(NOISE_HERD * 2, this.rng.normal() * NOISE_HERD));
+    // The herd lean drifts rather than flips: buying tends to follow buying for a while, as order flow does.
+    const memory = ANCHOR.herdMinutes * 60;
+    this.noiseHerd += -this.noiseHerd / memory + ANCHOR.herd * Math.sqrt(2 / memory) * this.rng.normal();
+    this.noiseHerd = Math.max(-ANCHOR.herd * 2.5, Math.min(ANCHOR.herd * 2.5, this.noiseHerd));
     const flow = this.rng.poisson(noise.rate / 60 * this.activity(noise) * this.noiseTempo);
     for (let i = 0; i < flow; i++) {
       if (i && i % 3 === 0) this.maker.act();

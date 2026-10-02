@@ -19,6 +19,7 @@
     "test:all": "npm test && npm run test:academy",
     "test:flow-arena": "node --test tests/flow-arena-*.test.mjs",
     "lab:flow-arena": "node scripts/flow-arena-lab.mjs",
+    "lab:flow-arena:long": "node scripts/flow-arena-longrun.mjs",
     "build": "wrangler deploy --dry-run",
     "build:staging": "wrangler deploy --env staging --dry-run",
     "build:production": "wrangler deploy --env production --dry-run",
