@@ -125,8 +125,9 @@ test("a liquidation loses at most the position margin", () => {
   const liq = player.liquidationPrice();
   assert.ok(liq < sim.last);
   const bot = sim.addAccount("bot", "test");
+  // Quotes reprice on the next second, so the mark follows the sweep within a tick or two.
   sim.book.submit("sell", Math.round(liq * 0.97), 900000, { owner: "bot", acct: "bot", rest: false });
-  player.onTick();
+  for (let t = 0; t < 5 && player.position; t++) sim.tick();
   assert.equal(player.position, 0);
   assert.equal(player.stats.liquidations, 1);
   assert.ok(player.stats.marginLost <= margin + 1e-6);
