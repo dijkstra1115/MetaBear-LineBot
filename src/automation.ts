@@ -629,9 +629,18 @@ export async function processVip(message: CrmMessage, env: Env) {
 export async function dispatchCrm(env: Env) {
   const team = await getTeam(env.DB);
   if (!configured(env) || !team.automation_enabled) return;
-  // Bounded, oldest-first daily refresh. Repeated ticks work through larger teams.
+  // Completed full checks also count when the account is not an invitee and
+  // has no metric coverage. Keep the timestamp scoped to the current UID.
   const due = await env.DB.prepare(
-    `SELECT a.line_user_id FROM exchange_accounts a JOIN customers c ON c.line_user_id=a.line_user_id LEFT JOIN metric_coverage m ON m.uid=a.uid AND m.business_type='all' WHERE c.blocked=0 AND (m.synced_at IS NULL OR m.synced_at<?) AND NOT EXISTS (SELECT 1 FROM crm_jobs j WHERE j.line_user_id=a.line_user_id AND (j.status IN ('pending','running') OR (j.status='failed' AND j.created_at>?))) ORDER BY COALESCE(m.synced_at,''),a.line_user_id LIMIT 20`,
+    `WITH refresh AS (
+      SELECT a.line_user_id,
+        COALESCE((SELECT max(j.finished_at) FROM crm_jobs j
+          WHERE j.line_user_id=a.line_user_id AND j.uid=a.uid AND j.kind='full' AND j.status='done'), m.synced_at, '') AS checked_at
+      FROM exchange_accounts a JOIN customers c ON c.line_user_id=a.line_user_id
+      LEFT JOIN metric_coverage m ON m.uid=a.uid AND m.business_type='all'
+      WHERE c.blocked=0 AND NOT EXISTS (SELECT 1 FROM crm_jobs j WHERE j.line_user_id=a.line_user_id
+        AND (j.status IN ('pending','running') OR (j.status='failed' AND j.created_at>?)))
+    ) SELECT line_user_id FROM refresh WHERE checked_at<? ORDER BY checked_at,line_user_id LIMIT 20`,
   )
     .bind(
       new Date(Date.now() - DAY).toISOString(),

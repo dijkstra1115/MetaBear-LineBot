@@ -41,6 +41,8 @@ npm run build:production
 
 test:all 包含後端整合與現役課程、轉址、封存完整性檢查。封存測試不再混入日常套件，復原與驗證方式見 [封存說明](archive/README.md)。build:production 只做 dry-run，npm run deploy 才發布正式站。
 
+部署包含 `0015_delivery_recovery.sql` 的後端版本前，先執行 `npm run db:migrate:production`，再執行 `npm run deploy`。此 migration 新增完整同步查詢索引與客服通知租約欄位；既有卡在 processing 的通知可由新版排程重新接手。只更新程式而未套用 migration，客服通知會因缺少欄位而失敗。
+
 正式站 metabear.io 的公開網站使用 Pages `metabear-site`，後端使用 env.production 的 Worker `metabear-backend`。預覽站 preview.metabear.io 使用新版 FLOW ARENA 與獨立的 D1 排行榜；main 的 staging 設定已與新版對齊，舊好友房已退役。見 [沙盤說明](docs/FLOW-ARENA.md) 與 [部署文件](docs/PAGES-WORKER-SPLIT.md)。
 
 Pages／Worker 拆分已於 2026-09-30 正式上線，GitHub main 的網站修改 push 後自動建置與發布，已實測成功。網站建置使用 `npm run build:pages`；`npm run deploy` 僅更新後端與後台資產。完整設定見 [Pages／Worker 部署](docs/PAGES-WORKER-SPLIT.md)。

@@ -25,6 +25,16 @@ type Delivery = {
 };
 const MAX_AUDIENCE = 500;
 const apiBase = "https://api.line.me/v2/bot/message";
+export async function reservedLineMessages(env: Env): Promise<number> {
+  const row = await env.DB.prepare(
+    `SELECT
+      (SELECT count(*) FROM campaign_deliveries d JOIN campaign_runs r ON r.id=d.run_id WHERE r.status='queued' AND d.status IN ('pending','sending'))
+      + (SELECT count(*) FROM signal_deliveries d JOIN signals s ON s.id=d.signal_id WHERE s.status='queued' AND d.status IN ('pending','sending'))
+      AS n`,
+  ).first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
 export async function lineQuota(env: Env) {
   if (env.LINE_DELIVERY_MODE !== "live")
     return { remaining: 0, used: 0, limit: 0, disabled: true };
@@ -157,12 +167,10 @@ export async function campaignApi(
   if (env.LINE_DELIVERY_MODE !== "live")
     throw new HttpError(409, "本機不會發送 LINE 訊息");
   const quota = await lineQuota(env);
-  const reserved = await env.DB.prepare(
-    "SELECT count(*) AS n FROM campaign_deliveries d JOIN campaign_runs r ON r.id=d.run_id WHERE r.status='queued' AND d.status IN ('pending','sending')",
-  ).first<{ n: number }>();
+  const reserved = await reservedLineMessages(env);
   if (
     quota.remaining !== null &&
-    quota.remaining - (reserved?.n ?? 0) < run.audience_count
+    quota.remaining - reserved < run.audience_count
   )
     throw new HttpError(409, "LINE 本月可用額度不足，請先調整受眾或帳戶額度");
   const changed = await env.DB.prepare(

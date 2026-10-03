@@ -1,7 +1,7 @@
 import { choice, HttpError, json, readJson, textField } from "./http";
 import { recordOutgoing, setOutgoingStatus } from "./conversations";
 import { audit, now } from "./db";
-import { lineQuota } from "./campaigns";
+import { lineQuota, reservedLineMessages } from "./campaigns";
 import { rateLimit } from "./native-auth";
 import { staffIdentity, type AdminIdentity } from "./auth";
 import {
@@ -355,15 +355,10 @@ async function createSignal(
   if (env.LINE_DELIVERY_MODE !== "live")
     throw new HttpError(409, "本機不會發送 LINE 訊息");
   const quota = await lineQuota(env);
-  const reserved = await env.DB.prepare(
-    `SELECT
-      (SELECT count(*) FROM campaign_deliveries d JOIN campaign_runs r ON r.id=d.run_id WHERE r.status='queued' AND d.status IN ('pending','sending'))
-      + (SELECT count(*) FROM signal_deliveries d JOIN signals s ON s.id=d.signal_id WHERE s.status='queued' AND d.status IN ('pending','sending'))
-      AS n`,
-  ).first<{ n: number }>();
+  const reserved = await reservedLineMessages(env);
   if (
     quota.remaining !== null &&
-    quota.remaining - (reserved?.n ?? 0) < rows.length
+    quota.remaining - reserved < rows.length
   )
     throw new HttpError(409, "LINE 本月可用額度不足，請稍後再試或聯絡管理員");
   const id = crypto.randomUUID();

@@ -1,5 +1,7 @@
 import { now } from "./db";
 
+const NOTIFICATION_LEASE_MS = 60_000;
+
 export type SupportCase = {
   id: string;
   line_user_id: string;
@@ -154,8 +156,13 @@ export async function resumeBot(db: D1Database, userId: string) {
 
 export async function dispatchSupportNotifications(env: Env) {
   const rows = await env.DB.prepare(
-    "SELECT id FROM support_cases WHERE notification_status IN ('pending','failed') AND status<>'resolved' ORDER BY requested_at LIMIT 50",
-  ).all<{ id: string }>();
+    `SELECT id FROM support_cases WHERE status<>'resolved' AND
+      (notification_status IN ('pending','failed') OR
+       (notification_status='processing' AND notification_lease_until<=?))
+      ORDER BY requested_at LIMIT 50`,
+  )
+    .bind(Date.now())
+    .all<{ id: string }>();
   for (const row of rows.results)
     await env.CAMPAIGN_EVENTS.send({
       kind: "support-notification",
@@ -167,19 +174,28 @@ export async function processSupportNotification(
   message: SupportNotificationMessage,
   env: Env,
 ) {
+  const time = Date.now();
+  const leaseToken = crypto.randomUUID();
   const support = await env.DB.prepare(
-    `UPDATE support_cases SET notification_status='processing',updated_at=? WHERE id=?
-     AND notification_status IN ('pending','failed') RETURNING *`,
+    `UPDATE support_cases SET notification_status='processing',updated_at=?,
+      notification_lease_until=?,notification_lease_token=? WHERE id=? AND status<>'resolved'
+      AND (notification_status IN ('pending','failed') OR
+        (notification_status='processing' AND notification_lease_until<=?)) RETURNING *`,
   )
-    .bind(Date.now(), message.id)
+    .bind(time, time + NOTIFICATION_LEASE_MS, leaseToken, message.id, time)
     .first<SupportCase & { notification_key: string }>();
   if (!support) {
     const existing = await env.DB.prepare(
-      "SELECT notification_status FROM support_cases WHERE id=?",
+      "SELECT notification_status,status FROM support_cases WHERE id=?",
     )
       .bind(message.id)
-      .first<{ notification_status: string }>();
-    if (!existing || existing.notification_status === "sent") return;
+      .first<{ notification_status: string; status: string }>();
+    if (
+      !existing ||
+      existing.notification_status === "sent" ||
+      existing.status === "resolved"
+    )
+      return;
     throw new Error("Support notification is processing");
   }
   try {
@@ -217,15 +233,17 @@ export async function processSupportNotification(
     if (!accepted)
       throw new Error(`LINE support notification HTTP ${response.status}`);
     await env.DB.prepare(
-      "UPDATE support_cases SET notification_status='sent',updated_at=? WHERE id=?",
+      `UPDATE support_cases SET notification_status='sent',updated_at=?,notification_lease_until=0,notification_lease_token=''
+       WHERE id=? AND notification_status='processing' AND notification_lease_token=?`,
     )
-      .bind(Date.now(), support.id)
+      .bind(Date.now(), support.id, leaseToken)
       .run();
   } catch (error) {
     await env.DB.prepare(
-      "UPDATE support_cases SET notification_status='failed',updated_at=? WHERE id=?",
+      `UPDATE support_cases SET notification_status='failed',updated_at=?,notification_lease_until=0,notification_lease_token=''
+       WHERE id=? AND notification_status='processing' AND notification_lease_token=?`,
     )
-      .bind(Date.now(), support.id)
+      .bind(Date.now(), support.id, leaseToken)
       .run();
     throw error;
   }
