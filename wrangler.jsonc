@@ -76,6 +76,7 @@
         { "pattern": "metabear.io/app.js*", "zone_name": "metabear.io" },
         { "pattern": "metabear.io/crm-automation.js*", "zone_name": "metabear.io" },
         { "pattern": "metabear.io/crm-knowledge.js*", "zone_name": "metabear.io" },
+        { "pattern": "metabear.io/arena/api/*", "zone_name": "metabear.io" },
         { "pattern": "www.metabear.io", "custom_domain": true },
       ],
       "triggers": { "crons": ["*/5 * * * *"] },
@@ -92,6 +93,13 @@
           "database_name": "metabear-crm-staging",
           "database_id": "60f13265-4f4d-4086-9851-ed027c968ee6",
           "migrations_dir": "migrations",
+        },
+        // FLOW ARENA leaderboard: its own database, separate from the CRM and from the preview's.
+        {
+          "binding": "ARENA_DB",
+          "database_name": "metabear-arena-production",
+          "database_id": "5150f2ca-3584-4333-af2f-2507a5b8e334",
+          "migrations_dir": "migrations-arena",
         },
       ],
       "vars": {

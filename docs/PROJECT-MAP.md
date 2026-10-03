@@ -36,7 +36,7 @@ FLOW ARENA 沙盤使用自己的撮合核心（public/arena/engine/book.js），
 ## 執行與資料邊界
 
 - 正式網站、LINE 與 CRM：Cloudflare Workers、D1、Queues；此整理不做資料庫 migration。
-- ARENA：preview.metabear.io 使用新版沙盤與獨立 D1 metabear-arena；舊 ArenaRoom 已經由 v2 migration 刪除，Cloudflare 無剩餘 Durable Object namespace。本次只核對資源，未部署或刪除新版資料。
+- ARENA：正式站 metabear.io/arena/ 由 Pages 提供，排行榜 API 走後端 Worker 與獨立 D1 metabear-arena-production（2026-10-03 新增）。preview.metabear.io 使用新版沙盤與獨立 D1 metabear-arena；舊 ArenaRoom 已經由 v2 migration 刪除，Cloudflare 無剩餘 Durable Object namespace。本次只核對資源，未部署或刪除新版資料。
 - 影片：本機渲染工具；輸出不隨 Git 保存。
 - 已封存量化服務：不再出現在根目錄 npm 指令；原本機 quant/.data/ 保留，未停止任何既有背景程序，也未搬移 SQLite/WAL 檔。
 - 暫停與封存快照均在 public/ 之外，不會被現有 Static Assets 建置發布。

@@ -1,5 +1,6 @@
 import worker from "./index";
 import { backendAssets } from "../scripts/deployment-layout.mjs";
+import { handleArenaScores } from "./arena-scores";
 
 // Public website traffic never needs the CRM Worker. Keep old workers.dev
 // links usable after removing the public website from its asset bundle.
@@ -15,6 +16,9 @@ export default {
     } catch {
       return new Response("Bad request", { status: 400 });
     }
+    // The FLOW ARENA leaderboard lives in its own database, apart from the CRM.
+    if (path === "/arena/api/scores")
+      return handleArenaScores(request, env);
     if (/^\/(?:api|auth|webhook|media|rates)(?:\/|$)/.test(path) ||
         /^\/(?:admin|desk|login)(?:[/.\-]|$)/.test(path) ||
         ["/content.json", "/health"].includes(path) ||

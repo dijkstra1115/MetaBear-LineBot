@@ -34,7 +34,7 @@
         <span></span>
       </button>
       <nav class="mb-nav" id="site-nav" aria-label="主導覽">
-        <a href="/orderflow/">互動學院</a><a href="/learn">新手教學</a><a href="#start">開戶入金</a
+        <a href="/orderflow/">互動學院</a><a class="nav-arena" href="#arena">FLOW ARENA<sup>NEW</sup></a><a href="/learn">新手教學</a><a href="#start">開戶入金</a
         ><a href="#lab">合約實驗室</a
         ><a class="mb-btn small" href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer"
           >在 LINE 問我 <span class="arrow" aria-hidden="true">↗</span></a
@@ -83,7 +83,7 @@
       <!-- ============ TICKER ============ -->
       <div class="ticker" aria-label="行情快照與重點資訊">
         <div class="ticker-track" data-ticker>
-          <span>邀請碼 <b>ZD0CQ0</b> · 手續費 25% 返現</span><span>19 堂動態課程 · 免費・免登入</span
+          <span>邀請碼 <b>ZD0CQ0</b> · 手續費 25% 返現</span><span>FLOW ARENA 交易競技場 · <b>24 回合排名賽</b></span><span>19 堂動態課程 · 免費・免登入</span
           ><span>台幣入金 · 信用卡買幣 · 圖文教學</span><span>LINE 小幫手 · 傳送 UID 自動核實</span>
         </div>
       </div>
@@ -162,11 +162,68 @@
         </div>
       </section>
 
+      <!-- ============ FLOW ARENA ============ -->
+      <section class="mb-section arena" id="arena" aria-labelledby="arena-title">
+        <div class="arena-embers" aria-hidden="true"></div>
+        <div class="mb-wrap">
+          <div class="arena-grid">
+            <div class="arena-copy">
+              <p class="mb-eyebrow arena-eyebrow" data-reveal><b>02</b> FLOW ARENA · 交易競技場</p>
+              <h2 class="mb-h2" id="arena-title" data-reveal>你的資金，<br />大到能<span class="t-fire">推動市場</span>。</h2>
+              <p class="mb-lead" data-reveal>
+                讀清算熱圖找燃料，推過去，引爆連環強平。<br />小心，你的強平價也是別人眼中的燃料。
+              </p>
+              <ul class="arena-tags" data-reveal>
+                <li><b>半回合制</b><span>每回合 5 分鐘，暫停時慢慢讀圖</span></li>
+                <li><b>8 種散戶策略</b><span>突破、ICT、均值回歸，各有停損</span></li>
+                <li><b>24 回合排名賽</b><span>同一套撮合引擎，比最後總損益</span></li>
+              </ul>
+              <div class="arena-actions arena-desktop" data-reveal>
+                <a class="mb-btn fire" href="/arena/">進入競技場 <span class="arrow" aria-hidden="true">↗</span></a
+                ><a class="mb-btn ghost" href="/arena/?ranked">直接挑戰排名賽 <span class="arrow" aria-hidden="true">→</span></a>
+              </div>
+              <div class="arena-mobile" data-reveal>
+                <p><b>這是電腦版遊戲。</b>把連結存起來，用電腦打開就能玩。</p>
+                <div class="arena-actions">
+                  <button class="mb-btn fire" type="button" data-arena-copy>複製遊戲連結</button
+                  ><a class="mb-btn ghost" href="https://line.me/R/share?text=MetaBear%20FLOW%20ARENA%20%E4%BA%A4%E6%98%93%E7%AB%B6%E6%8A%80%E5%A0%B4%EF%BC%88%E9%9B%BB%E8%85%A6%E7%89%88%EF%BC%89%0Ahttps%3A%2F%2Fmetabear.io%2Farena%2F" target="_blank" rel="noopener noreferrer"
+                    >傳到 LINE <span class="arrow" aria-hidden="true">↗</span></a
+                  >
+                </div>
+                <p class="mb-small" data-arena-copied role="status"></p>
+              </div>
+              <p class="mb-small arena-note" data-reveal>免費・免登入・虛構市場，沒有真實資金。</p>
+            </div>
+
+            <figure class="arena-screen mb-panel" data-arena-screen data-reveal>
+              <div class="arena-bar">
+                <span class="arena-live"><i></i>LIVE DEMO</span>
+                <span>BTC / USDT 永續 · 1m</span>
+                <span class="screen-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              </div>
+              <div class="arena-view" data-arena-shake>
+                <canvas data-arena-canvas role="img" aria-label="FLOW ARENA 示範：在清算熱圖找到空單燃料，市價推價引爆連環強平，再平倉獲利"></canvas>
+                <canvas class="arena-fx" data-arena-fx aria-hidden="true"></canvas>
+              </div>
+            </figure>
+          </div>
+
+          <div class="arena-board" data-arena-board hidden>
+            <header>
+              <p class="mb-eyebrow plain">LEADERBOARD · 排名賽 TOP 3</p>
+              <a class="mb-link" href="/arena/#board">看完整排行榜 →</a>
+            </header>
+            <ol class="arena-podium" data-arena-podium></ol>
+            <p class="mb-small arena-board-empty" data-arena-empty hidden>還沒有人上榜。打完一場 24 回合排名賽，你就是第一名。</p>
+          </div>
+        </div>
+      </section>
+
       <!-- ============ START: 3 STEPS ============ -->
       <section class="start" id="start" aria-labelledby="start-title">
         <div class="start-pin">
           <div class="start-head mb-wrap">
-            <p class="mb-eyebrow"><b>02</b> GET STARTED</p>
+            <p class="mb-eyebrow"><b>03</b> GET STARTED</p>
             <h2 class="mb-h2" id="start-title">三步，<br />從開戶到<span class="t-grad">入群</span>。</h2>
             <div class="start-rail" aria-hidden="true"><i data-start-progress></i></div>
           </div>
@@ -241,7 +298,7 @@
       <section class="mb-section market" id="market" aria-labelledby="market-title">
         <div class="mb-wrap market-grid">
           <div class="market-copy">
-            <p class="mb-eyebrow" data-reveal><b>03</b> MARKET SNAPSHOT</p>
+            <p class="mb-eyebrow" data-reveal><b>04</b> MARKET SNAPSHOT</p>
             <h2 class="mb-h2" id="market-title" data-reveal>換個市場，<br />看價格的<span class="t-grad">節奏</span>。</h2>
             <p class="mb-lead" data-reveal>BTC、ETH 與美股 QQQ 的十日 K 線。先別急著猜方向，看看每根 K 線的開高低收。</p>
             <div class="market-switch" role="group" aria-label="切換美元行情" data-reveal>
@@ -271,7 +328,7 @@
         <div class="mb-wrap">
           <div class="section-head split">
             <div>
-              <p class="mb-eyebrow" data-reveal><b>04</b> RISK LAB · 合約概念實驗室</p>
+              <p class="mb-eyebrow" data-reveal><b>05</b> RISK LAB · 合約概念實驗室</p>
               <h2 class="mb-h2" id="lab-title" data-reveal>動一個數字，<br />看懂<span class="t-grad">損益怎麼變</span>。</h2>
             </div>
             <p class="mb-lead" data-reveal>固定投入的保證金，改變槓桿、方向與價格變動，看名義倉位和簡化損益。所有計算只在這一頁進行。</p>
@@ -328,7 +385,7 @@
       <section class="mb-section ask" id="ask" aria-labelledby="ask-title">
         <div class="mb-wrap ask-grid">
           <div class="ask-copy">
-            <p class="mb-eyebrow" data-reveal><b>05</b> ASK METABEAR</p>
+            <p class="mb-eyebrow" data-reveal><b>06</b> ASK METABEAR</p>
             <h2 class="mb-h2" id="ask-title" data-reveal>操作卡住了？<br /><span class="t-grad">LINE 問我</span>。</h2>
             <p class="mb-lead" data-reveal>
               「邀請碼要填哪裡？」「BitoPro 怎麼入金？」<br />MetaBear 小幫手會接著你的問題，給你文字和對應的教學圖片。
@@ -384,7 +441,7 @@
           <div>
             <h2>LEARN</h2>
             <nav aria-label="學習">
-              <a href="/orderflow/">互動學院</a><a href="/learn">新手教學</a><a href="#lab">合約實驗室</a>
+              <a href="/orderflow/">互動學院</a><a class="nav-arena" href="#arena">FLOW ARENA<sup>NEW</sup></a><a href="/learn">新手教學</a><a href="#lab">合約實驗室</a>
             </nav>
           </div>
           <div>

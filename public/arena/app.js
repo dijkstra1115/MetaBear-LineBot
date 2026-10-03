@@ -585,6 +585,7 @@ function showRankedFinal() {
   $("ranked-upload").textContent = "上傳成績";
   $("ranked-upload").disabled = false;
   $("ranked-final").hidden = false;
+  updateShare();
   if (result.pnl > 0) {
     setTimeout(() => {
       const { width, height } = chartSize();
@@ -593,6 +594,19 @@ function showRankedFinal() {
       sound.fanfare();
     }, 950);
   } else sound.stamp();
+}
+
+// The result as a LINE message: score, rank once uploaded, and a link to practise the same market.
+function rankedShareText() {
+  const result = ranked.result;
+  const rank = ranked.rank ? `（排行榜第 ${ranked.rank} 名）` : "";
+  return `🔥 我在 MetaBear FLOW ARENA 排名賽拿下 ${money(result.pnl)}${rank}
+24 回合 · 引爆強平 ${btc(result.ignited)}
+同一個市場，你玩得比我好嗎？👉 ${location.origin}/arena/?seed=${sim.seed}`;
+}
+
+function updateShare() {
+  $("ranked-share").href = `https://line.me/R/share?text=${encodeURIComponent(rankedShareText())}`;
 }
 
 async function uploadRanked() {
@@ -611,7 +625,9 @@ async function uploadRanked() {
     if (!response.ok) throw Error(body.error ?? `伺服器回應 ${response.status}`);
     // Stay on the card; the button turns into the way to the board.
     ranked.uploadedId = body.id;
-    $("ranked-status").textContent = `已上傳，目前第 ${body.rank} 名。`;
+    ranked.rank = body.rank;
+    updateShare();
+    $("ranked-status").textContent = `已上傳，目前第 ${body.rank} 名。分享給 LINE 社群的朋友，看誰能超越你。`;
     $("ranked-name").disabled = true;
     $("ranked-upload").textContent = "查看排行榜";
     $("ranked-upload").disabled = false;
@@ -1411,6 +1427,15 @@ $("ranked-button").addEventListener("click", () => {
 $("board-button").addEventListener("click", () => showLeaderboard());
 $("ranked-upload").addEventListener("click", () => (ranked?.uploadedId ? showLeaderboard(ranked.uploadedId) : uploadRanked()));
 $("ranked-again").addEventListener("click", () => newMarket(randomSeed(), { rankedGame: true }));
+$("ranked-share").addEventListener("click", () => sound.chime(5));
+$("ranked-copy").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(rankedShareText());
+    $("ranked-status").textContent = "已複製戰績，貼到 LINE 社群就能分享。";
+  } catch {
+    $("ranked-status").textContent = "無法自動複製，請改用「分享戰績到 LINE」。";
+  }
+});
 $("ranked-sandbox").addEventListener("click", () => newMarket());
 $("leaderboard-close").addEventListener("click", () => $("leaderboard").close());
 $("leaderboard").addEventListener("click", (event) => { if (event.target === $("leaderboard")) $("leaderboard").close(); });
@@ -1553,8 +1578,14 @@ document.fonts?.load('500 10px "JetBrains Mono Variable"').catch(() => {});
 document.fonts?.load('700 10px "Noto Sans TC Variable"', "你的均價強平止損止盈掛買賣待送出吸收燃料多單空單開盤揭曉觸價進場往回看根雙擊回到最新應推到點擊填入限價").catch(() => {});
 
 if (!LEVERAGES.includes(store.get("leverage", DEFAULT_LEVERAGE))) store.set("leverage", DEFAULT_LEVERAGE);
+// Links from the homepage and shared results: ?ranked starts a ranked game, ?seed=N replays that
+// market in the sandbox, #board opens the leaderboard.
+const params = new URLSearchParams(location.search);
+const linkedSeed = Number(params.get("seed"));
 setOrderType("market");
-newMarket();
+if (params.has("ranked")) newMarket(randomSeed(), { rankedGame: true });
+else newMarket(Number.isSafeInteger(linkedSeed) && linkedSeed >= 1 && linkedSeed <= 0xffffffff ? linkedSeed : randomSeed());
+if (location.hash === "#board") showLeaderboard();
 requestAnimationFrame(frame);
 
 // Development hook: with ?debug in the address, the session and the effect functions are reachable

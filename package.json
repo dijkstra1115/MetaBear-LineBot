@@ -24,6 +24,7 @@
     "build:staging": "wrangler deploy --env staging --dry-run",
     "build:production": "wrangler deploy --env production --dry-run",
     "db:migrate:production": "wrangler d1 migrations apply metabear-crm-staging --env production --remote",
+    "db:migrate:arena:production": "wrangler d1 migrations apply metabear-arena-production --env production --remote",
     "deploy": "wrangler deploy --env production",
     "deploy:staging": "wrangler deploy --env staging",
     "build:site": "node scripts/build-site.mjs",

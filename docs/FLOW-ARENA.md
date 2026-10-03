@@ -2,7 +2,11 @@
 
 單人、半回合制的 BTC 永續合約市場模擬。玩家的資金大到能推動市場，要靠讀 CVD、Footprint、OI 和掛單，推測散戶策略族群的止損與強平落在哪裡，再決定要推、要接，還是等。
 
-本機執行：`npm run preview:academy`，開啟 `http://127.0.0.1:8790/arena/`。這是桌面版（最小寬度 1180px）。正式網站的 Worker 路由還沒有加入 `/arena/`，上線前要補上。
+本機執行：`npm run preview:academy`，開啟 `http://127.0.0.1:8790/arena/`。這是桌面版（最小寬度 1180px）。正式網站由 Pages 提供 `https://metabear.io/arena/`，排行榜 API 由後端 Worker 提供。
+
+網址參數：`?seed=N` 用指定種子開沙盤（分享戰績的「挑戰同一個市場」連結）；`?ranked` 直接開一局排名賽；`#board` 開啟排行榜。
+
+首頁的「02 FLOW ARENA」區塊是入口：左邊是說明與按鈕，右邊是 14 秒循環的示範動畫（`web/arena-demo.js`，價格是時間的純函數，特效沿用 `public/arena/fx.js`，不載入引擎；離開畫面就暫停，關閉動態時顯示靜止畫面），下方是排名賽前三名（讀 `GET /arena/api/scores`，讀不到就整塊隱藏）。寬度 1023px 以下改成「複製遊戲連結」與「傳到 LINE」，讓手機訪客之後用電腦打開。
 
 新版實作於 2026-10-03 整合至 main。2～3 人 PvP 會等單人版穩定之後，用同一套引擎另外開發。舊版（120 秒獵場、電腦對手、好友房）保存在 [Legacy](../legacy/flow-arena-v7/README.md)，完整歷史由 `legacy/flow-arena-v7-2026-10-03` 標籤固定。
 
@@ -196,7 +200,10 @@
 ### 後端
 
 - `GET /arena/api/scores`：前 50 名。
-- `POST /arena/api/scores`：上傳一局。只在預覽站（`metabear-site-preview`）開放，資料在獨立的 D1 `metabear-arena`（`migrations-arena/`），和 CRM 分開。
+- `POST /arena/api/scores`：上傳一局。
+- 正式站：後端 Worker（`metabear-backend`）的 `metabear.io/arena/api/*` 路由，資料在 D1 `metabear-arena-production`（`npm run db:migrate:arena:production`）。
+- 預覽站：`metabear-site-preview`，資料在 D1 `metabear-arena`。兩個資料庫分開，預覽站的測試成績不會出現在正式排行榜；兩邊都和 CRM 分開，共用 `migrations-arena/`。
+- 排名賽結算卡可以「分享戰績到 LINE」（`line.me/R/share`，由玩家自己選要傳到哪個聊天室或社群）或複製戰績文字。訊息帶有總損益、上傳後的名次，以及用同一個種子開沙盤的連結。
 - 重跑一局約需 1.4 秒 CPU，超過 Workers 免費方案每次請求的上限，所以伺服器現在只做合理性檢查：版本、回合數、種子範圍、損益上限、操作紀錄格式（時間遞增、操作種類、數量上限 3,000），以及沒有下單就不能有損益。名稱會正規化並去掉控制字元，每個 IP（加鹽雜湊）每小時最多上傳 20 次。
 - 每筆成績都保存種子與完整操作紀錄，`verified` 先為 0。之後改用付費方案或離線工作時，可以逐筆重跑，把對得上的標成已驗證、對不上的移除。
 

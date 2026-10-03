@@ -15,4 +15,5 @@ export const backendRoutePaths = [
   "/api/*", "/auth/*", "/webhook/*", "/media/*", "/rates/*",
   "/content.json*", "/health*", "/admin*", "/desk*", "/login*",
   "/app.js*", "/crm-automation.js*", "/crm-knowledge.js*",
+  "/arena/api/*",
 ];

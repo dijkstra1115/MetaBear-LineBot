@@ -1478,3 +1478,383 @@ input[type="range"]::-moz-range-thumb {
 .bingx-logo {
   filter: brightness(0) invert(0.92);
 }
+
+/* ================= FLOW ARENA ================= */
+/* The game's own palette: fuel amber and gold, mint for longs, coral for shorts. */
+.arena {
+  --fire: #ffad42;
+  --fire-2: #ffd77a;
+  --arena-long: #2de2a6;
+  --arena-short: #ff4f6e;
+  overflow: hidden;
+  background:
+    radial-gradient(55% 40% at 82% 32%, rgba(255, 140, 50, 0.12), transparent 70%),
+    radial-gradient(35% 30% at 8% 45%, rgba(169, 139, 255, 0.07), transparent 70%);
+}
+.arena-embers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 12% 80%, rgba(255, 173, 66, 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 32% 60%, rgba(255, 215, 122, 0.6), transparent),
+    radial-gradient(2px 2px at 58% 90%, rgba(255, 173, 66, 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 76% 70%, rgba(255, 215, 122, 0.5), transparent),
+    radial-gradient(2px 2px at 92% 85%, rgba(255, 173, 66, 0.6), transparent);
+  animation: embers-rise 9s linear infinite;
+}
+@keyframes embers-rise {
+  from {
+    transform: translateY(10%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  to {
+    transform: translateY(-30%);
+    opacity: 0;
+  }
+}
+.motion-off .arena-embers {
+  animation: none;
+  opacity: 0.5;
+}
+.arena-eyebrow b {
+  color: var(--fire);
+}
+.arena-eyebrow::before {
+  background: linear-gradient(90deg, var(--fire), transparent);
+}
+.t-fire {
+  background: linear-gradient(100deg, var(--fire) 10%, #ffe9b8 50%, var(--fire-2) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 22px rgba(255, 150, 50, 0.35));
+}
+.arena-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(32px, 5vw, 72px);
+  align-items: center;
+}
+.arena-copy {
+  display: grid;
+  gap: 26px;
+  align-content: start;
+}
+.arena-tags {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.arena-tags li {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--r-s);
+  background: linear-gradient(90deg, rgba(255, 173, 66, 0.08), transparent 80%);
+  box-shadow: inset 2px 0 0 var(--fire);
+}
+.arena-tags b {
+  flex: none;
+  min-width: 7.5em;
+  color: var(--fire-2);
+  font-weight: 800;
+}
+.arena-tags span {
+  color: var(--text-2);
+  font-size: 15px;
+}
+.arena-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.mb-btn.fire {
+  --bg-btn: linear-gradient(180deg, #ffe39a, #ffb03f 55%, #f08a20);
+  color: #2b1600;
+  box-shadow: 0 14px 44px -12px rgba(255, 150, 40, 0.8);
+}
+.mb-btn.fire:hover {
+  box-shadow: 0 20px 56px -12px rgba(255, 150, 40, 0.95);
+}
+.mb-btn.fire .arrow {
+  background: rgba(43, 22, 0, 0.14);
+}
+.arena .mb-btn.ghost .arrow {
+  background: rgba(255, 173, 66, 0.14);
+  color: var(--fire);
+}
+.arena .mb-btn.ghost:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 173, 66, 0.55),
+    0 18px 50px -20px rgba(255, 150, 40, 0.5);
+}
+.arena-note {
+  margin: 0;
+}
+.arena-mobile {
+  display: none;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--r-m);
+  background: rgba(255, 173, 66, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 173, 66, 0.3);
+}
+.arena-mobile p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 15px;
+}
+.arena-mobile b {
+  color: var(--fire-2);
+}
+.arena-mobile [data-arena-copied]:empty {
+  display: none;
+}
+
+/* The demo screen */
+.arena-screen {
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--r-xl);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 173, 66, 0.22),
+    0 0 80px -20px rgba(255, 140, 40, 0.35),
+    0 40px 90px -40px rgba(0, 0, 0, 0.95);
+}
+.arena-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 8px 12px;
+  color: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+.arena-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fire-2);
+}
+.arena-live i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fire);
+  box-shadow: 0 0 10px var(--fire);
+  animation: hud-pulse 1.4s infinite;
+}
+.arena-view {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--r-l);
+  background: #05080d;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.arena-view canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+.arena-fx {
+  pointer-events: none;
+}
+
+/* Top three */
+.arena-board {
+  margin-top: clamp(48px, 6vw, 80px);
+}
+.arena-board header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.arena-board .mb-link {
+  color: var(--fire-2);
+}
+.arena-podium {
+  display: grid;
+  grid-template-columns: 1fr 1.12fr 1fr;
+  align-items: end;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.arena-podium li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 26px 16px 22px;
+  overflow: hidden;
+  border-radius: var(--r-l);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  text-align: center;
+}
+.arena-podium .rank {
+  font-family: var(--f-display);
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+}
+.arena-podium .name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arena-podium .pnl {
+  font-family: var(--f-mono);
+  font-size: clamp(18px, 2vw, 26px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.arena-podium .pnl.up {
+  color: var(--arena-long);
+}
+.arena-podium .pnl.down {
+  color: var(--arena-short);
+}
+.arena-podium small {
+  color: var(--dim);
+  font-family: var(--f-mono);
+  font-size: 11px;
+}
+.arena-podium .p1 {
+  order: 2;
+  padding-top: 40px;
+  background: linear-gradient(180deg, rgba(255, 215, 122, 0.18), rgba(255, 173, 66, 0.02));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 215, 122, 0.55),
+    0 0 60px -14px rgba(255, 173, 66, 0.55);
+}
+.arena-podium .p1 .rank {
+  color: var(--fire-2);
+  font-size: 56px;
+  text-shadow: 0 0 24px rgba(255, 150, 40, 0.8);
+}
+.arena-podium .p1::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 240, 200, 0.18) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: podium-sheen 4s ease-in-out infinite;
+}
+.arena-podium .p2 {
+  order: 1;
+  box-shadow: inset 0 0 0 1px rgba(200, 214, 230, 0.35);
+}
+.arena-podium .p2 .rank {
+  color: #d8e2ee;
+}
+.arena-podium .p3 {
+  order: 3;
+  box-shadow: inset 0 0 0 1px rgba(214, 140, 80, 0.4);
+}
+.arena-podium .p3 .rank {
+  color: #e0a070;
+}
+@keyframes podium-sheen {
+  0%,
+  60% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+.motion-off .arena-podium .p1::after {
+  animation: none;
+}
+.arena-board-empty {
+  margin: 0;
+  padding: 18px;
+  border-radius: var(--r-m);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  text-align: center;
+}
+
+/* Nav badge */
+.nav-arena sup {
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffd77a, #ffad42);
+  color: #2b1600;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  vertical-align: 2px;
+}
+
+@media (max-width: 1023px) {
+  .arena-grid {
+    grid-template-columns: 1fr;
+  }
+  .arena-desktop {
+    display: none;
+  }
+  .arena-mobile {
+    display: grid;
+  }
+  .arena-board .mb-link {
+    display: none;
+  }
+}
+@media (max-width: 620px) {
+  .arena-tags li {
+    display: grid;
+    gap: 2px;
+  }
+  .arena-podium {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .arena-podium li,
+  .arena-podium .p1 {
+    order: 0;
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    justify-items: start;
+    align-items: center;
+    gap: 2px 12px;
+    padding: 14px 16px;
+    text-align: left;
+  }
+  .arena-podium .rank,
+  .arena-podium .p1 .rank {
+    grid-row: span 2;
+    font-size: 30px;
+  }
+  .arena-podium .name {
+    font-size: 16px;
+  }
+  .arena-podium .pnl {
+    grid-row: span 2;
+    font-size: 17px;
+  }
+  .arena-podium small {
+    grid-column: 2;
+  }
+  .arena-view {
+    aspect-ratio: 4 / 3;
+  }
+}

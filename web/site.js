@@ -229,6 +229,76 @@ if (showcase) {
   ).observe(showcase);
 }
 
+// ---------------- FLOW ARENA ----------------
+const arena = $("#arena");
+if (arena) {
+  const gameUrl = `${location.origin}/arena/`;
+  let demo = null;
+  let visible = false;
+  let booted = false;
+  new IntersectionObserver(
+    ([e]) => {
+      visible = e.isIntersecting;
+      if (visible && !booted) {
+        booted = true;
+        import("./arena-demo.js").then(({ mountArenaDemo }) => {
+          demo = mountArenaDemo($("[data-arena-canvas]", arena), $("[data-arena-fx]", arena), $("[data-arena-shake]", arena), {
+            still: motionOff(),
+          });
+          if (motionOff()) demo.poster();
+          else if (visible) demo.play();
+          onMotion((on) => {
+            demo.setStill(!on);
+            if (on && visible) demo.play();
+          });
+        });
+      } else if (demo && !motionOff()) visible ? demo.play() : demo.stop();
+    },
+    { rootMargin: "120px 0px" },
+  ).observe($("[data-arena-screen]", arena));
+
+  // Phones get the link to keep for a computer instead of a cramped game.
+  const share = $(".arena-mobile a[href^='https://line.me/R/share']", arena);
+  if (share) share.href = `https://line.me/R/share?text=${encodeURIComponent(`MetaBear FLOW ARENA 交易競技場（電腦版）
+${gameUrl}`)}`;
+  $("[data-arena-copy]", arena)?.addEventListener("click", async () => {
+    const status = $("[data-arena-copied]", arena);
+    try {
+      await navigator.clipboard.writeText(gameUrl);
+      status.textContent = `已複製：${gameUrl}，用電腦打開就能玩。`;
+    } catch {
+      status.textContent = `請手動複製：${gameUrl}`;
+    }
+  });
+
+  // Top three of the ranked leaderboard. Without the API (local or branch previews) the block stays hidden.
+  const board = $("[data-arena-board]", arena);
+  fetch("/arena/api/scores", { headers: { Accept: "application/json" } })
+    .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+    .then(({ scores }) => {
+      const top = (scores ?? []).slice(0, 3);
+      $("[data-arena-empty]", arena).hidden = top.length > 0;
+      $("[data-arena-podium]", arena).replaceChildren(
+        ...top.map((row, i) => {
+          const li = document.createElement("li");
+          li.className = `p${i + 1}`;
+          const cell = (tag, className, text) => Object.assign(document.createElement(tag), { className, textContent: text });
+          const pnl = Number(row.pnl) || 0;
+          li.append(
+            cell("span", "rank", ["1ST", "2ND", "3RD"][i]),
+            cell("span", "name", row.name),
+            cell("span", `pnl ${pnl >= 0 ? "up" : "down"}`, `${pnl >= 0 ? "+" : "−"}$${Math.round(Math.abs(pnl)).toLocaleString("en-US")}`),
+            cell("small", "", `種子 #${row.seed}`),
+          );
+          return li;
+        }),
+      );
+      board.hidden = false;
+      ScrollTrigger.refresh();
+    })
+    .catch(() => {});
+}
+
 // Count-up stats.
 $$("[data-count]").forEach((el) => {
   const to = Number(el.dataset.count);
