@@ -1,0 +1,12 @@
+{
+  "name": "flow-arena-flagship",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node render.mjs",
+    "audio": "node audio/score.mjs",
+    "sheet": "node render.mjs --sheet 0:60:2",
+    "serve": "node render.mjs --serve",
+    "capture": "node capture.mjs"
+  }
+}
