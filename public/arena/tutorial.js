@@ -2,14 +2,14 @@
 // block is for. Steps run in order with back, next and skip.
 export const TOUR_STEPS = [
   {
-    target: ".hud-clock",
+    target: ".hud-turn",
     title: "回合制：有時間思考",
     text: "每個回合是 5 分鐘遊戲時間（5 根 1 分 K）。回合之間市場暫停，可以慢慢讀圖、規劃；回合中有大事會自動暫停。",
   },
   {
     target: "#run-button",
     title: "執行與暫停",
-    text: "按這裡（或 Space）讓市場跑起來。暫停時下的單不會馬上成交，會先排隊，按執行後在第一秒內和其他人的單一起送出。",
+    text: "按這顆金色按鈕（或 Space）讓市場跑起來。暫停時下的單不會馬上成交，會先排隊，按執行後在第一秒內和其他人的單一起送出。",
   },
   {
     target: ".chart-wrap",
@@ -22,12 +22,12 @@ export const TOUR_STEPS = [
     text: "EMA、VWAP、成交量、CVD、OI、Footprint、吸收標記、燃料預兆都可以在這裡個別開關。",
   },
   {
-    target: ".fuel-panel",
+    target: ".fuel-card",
     title: "燃料雷達與 OI",
     text: "上下 3% 內估算的強平量。熱圖會騙人，要對照 OI（真實的未平倉量）和 CVD：放量時 OI 跟著漲，才是真的有人開新倉。",
   },
   {
-    target: ".guide-panel",
+    target: ".crowd-card",
     title: "市場裡的人群",
     text: "八種策略散戶、造市商和偶爾出現的神秘大戶。知道他們會在哪裡進場、停損設在哪，就能推測燃料藏在哪裡。",
   },
@@ -47,7 +47,7 @@ export const TOUR_STEPS = [
     text: "總損益、手續費、最大回撤，以及還在等待的委託（包含暫停時排隊的單），都可以在這裡撤銷。",
   },
   {
-    target: ".alert-panel",
+    target: ".alert-card",
     title: "戰術暫停",
     text: "大單湧入、連環強平、你的委託有動靜、價格急動、突發事件發生時，市場會自動暫停讓你決定。每一種都可以關掉。",
   },
@@ -109,7 +109,8 @@ export class Tour {
     target.scrollIntoView({ block: "center", behavior: "smooth" });
     const last = index === this.steps.length - 1;
     this.card.innerHTML = `
-      <span class="tour-count">${index + 1} / ${this.steps.length}</span>
+      <div class="tour-progress" aria-hidden="true">${this.steps.map((_, i) => `<i class="${i <= index ? "done" : ""}"></i>`).join("")}</div>
+      <span class="tour-count">STEP ${index + 1} / ${this.steps.length}</span>
       <strong>${step.title}</strong>
       <p>${step.text}</p>
       <div class="tour-actions">
@@ -168,7 +169,7 @@ export function askForTour({ onYes, onNo }) {
   box.setAttribute("role", "dialog");
   box.innerHTML = `
     <div class="tour-ask-card">
-      <span class="tour-count">FIRST TIME?</span>
+      <span class="tour-count">WELCOME TO THE ARENA</span>
       <strong>第一次來 FLOW ARENA？</strong>
       <p>花兩分鐘看一下玩法教學：每個區塊是做什麼的、怎麼讀燃料、怎麼下單。之後也可以從上方的「教學」按鈕重看。</p>
       <div class="tour-actions"><button type="button" data-ask="no">先不用</button><span></span><button type="button" data-ask="yes" class="tour-next">開始教學</button></div>
