@@ -17,6 +17,7 @@ test("preview serves public lessons without any database, queue, or secret bindi
     ["/", "/index.html"],
     ["/learn?step=code", "/guide.html"],
     ["/orderflow/?lesson=liquidation", "/orderflow/index.html"],
+    ["/arena/", "/arena/index.html"],
   ]) {
     const response = await preview.fetch(
       new Request("https://preview.metabear.io" + path),
@@ -45,6 +46,14 @@ test("preview serves public lessons without any database, queue, or secret bindi
     env,
   );
   assert.equal(await robots.text(), "User-agent: *\nDisallow: /\n");
+});
+
+test("arena scores require their separate database and cannot fall through to assets", async () => {
+  const env = { ASSETS: { fetch: async () => { throw new Error("Scores reached assets"); } } };
+  const response = await preview.fetch(new Request("https://preview.metabear.io/arena/api/scores"), env);
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "排行榜尚未啟用" });
+  assert.equal(response.headers.get("X-Robots-Tag"), "noindex, nofollow, noarchive");
 });
 
 test("preview cannot expose staff pages, APIs or LINE actions, including encoded paths", async () => {

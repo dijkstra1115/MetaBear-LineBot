@@ -29,13 +29,16 @@ Chinese (zh-Hant, Taiwan)**. Code identifiers and code comments are English.
   `archive/2026-09-29/manifest.json`, so any byte change there fails tests.
   `.gitattributes` marks `archive/**` and `experiments/liquidity/**` as `-text`
   to keep bytes stable.
-- `experiments/liquidity/` is paused. Do not delete it: the FLOW ARENA branch's
-  `flow-arena-engine.js` imports its `taker-only-engine.js`.
+- `legacy/flow-arena-v7/` is a frozen, byte-verified snapshot of the retired
+  arena. Its code and deploy configs are historical records, not active inputs.
+  The full old repository is pinned by tag `legacy/flow-arena-v7-2026-10-03`.
+- `experiments/liquidity/` is paused. Keep its existing snapshots intact; the
+  active arena has its own matching engine and no longer imports this code.
 - Do not revive retired academy content (old 15 lessons, six-part journey, long
   SVG lessons, live workbench). Old URLs only redirect.
-- FLOW ARENA gameplay lives on `origin/flow-arena` (not merged). Never overwrite
-  `preview.metabear.io` with this branch's preview config; it hosts the arena
-  backend there.
+- FLOW ARENA gameplay is merged into main at `public/arena/`, using the newer
+  sandbox engine. Preview uses `src/preview.ts` and its separate `ARENA_DB` D1
+  binding. Old friend rooms are retired; retain staging migration history v1/v2.
 - Only deploy (`npm run deploy`, `deploy:staging`, remote migrations) when the
   task explicitly asks for a release.
 
@@ -46,7 +49,8 @@ src/                 Worker backend (TypeScript)
   index.ts           Full Worker: fetch router, queue consumer, cron (scheduled)
   backend.ts         Production entry: wraps index.ts, only serves backend paths,
                      308-redirects public paths to PUBLIC_BASE_URL
-  preview.ts         Assets-only Worker for preview.metabear.io (env.staging)
+  preview.ts         Public assets and arena leaderboard for preview.metabear.io (env.staging)
+  arena-scores.ts    Arena leaderboard API, isolated from the CRM database
   webhook.ts         LINE signature check → enqueue to LINE_EVENTS → processLineEvent
   bot.ts             Reply composition for LINE events
   assistant.ts       Routing: direct command → knowledge → rule → OpenAI (choose among candidates)
@@ -73,6 +77,7 @@ data/bingx-faq.json  FAQ seed data (also used by tests)
 motion/              tools/ (render/audio), showreel/, academy-promo/, flow-arena/{launch,gameplay,promo}
 docs/                Design, deployment and per-lesson plans (zh-Hant)
 archive/, experiments/   Frozen / paused, see scope rules
+legacy/              Retired FLOW ARENA V7 snapshot and recovery instructions
 ```
 
 ## Commands
@@ -143,7 +148,7 @@ Not committed: `pages/dist/`, `dist/backend/`, `motion/out/`, `.wrangler/`,
   recreate them. Migrations are never applied automatically by deploys.
 - Environments: default (local dev, `LINE_DELIVERY_MODE=disabled`,
   `AUTH_MODE=cloudflare`), `production` (`live`, `native` auth), `staging`
-  (public-site preview only; no DB, queues or secrets).
+  (public-site/arena preview with ARENA_DB; no CRM DB, queues or secrets).
 
 ## Backend conventions
 

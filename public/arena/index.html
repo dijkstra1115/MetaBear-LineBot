@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#08121b" />
+  <meta name="description" content="MetaBear FLOW ARENA 沙盤：半回合制的 BTC 永續合約市場模擬，讀 CVD、Footprint、OI，推測散戶策略族群的清算與止損位置。" />
+  <title>FLOW ARENA 沙盤 · MetaBear</title>
+  <link rel="icon" href="/metabear-logo-transparent-64.png" />
+  <link rel="stylesheet" href="./arena.css" />
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到遊戲</a>
+  <div class="page-glow" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="/orderflow/"><img src="/metabear-logo-transparent-64.png" width="28" height="28" alt="" />MetaBear<span>互動學院</span></a>
+    <div class="top-divider"></div>
+    <div class="top-product"><span class="live-dot"></span> FLOW ARENA <em>/</em> SANDBOX</div>
+    <div class="top-links"><span class="test-badge">DESKTOP PLAYTEST · 單人沙盤</span><a href="/orderflow/">返回學院 ↗</a></div>
+  </header>
+
+  <main id="main" class="app-shell">
+    <p class="mobile-notice">FLOW ARENA 沙盤目前是桌面版，手機上畫面會很擠，建議用電腦遊玩。</p>
+    <section class="hud" aria-label="市場狀態">
+      <div class="hud-title"><span class="eyebrow"><i></i> BTC 永續 · 1 分 K · 半回合制</span><strong>讀懂人群，<em>找出燃料。</em></strong><small>種子 <span id="seed-label">—</span></small></div>
+      <div class="hud-cell hud-clock"><span id="turn-title">回合</span><strong id="turn-label">第 1 回合</strong><em id="clock-label">09:00 · 剩 05:00</em><i id="turn-fill"></i></div>
+      <div class="hud-cell hud-equity"><span>總損益 USDT</span><strong id="hud-pnl">+$0</strong><em id="hud-pnl-detail">已實現 +$0 · 手續費 $0</em></div>
+      <div class="hud-cell hud-ignite"><span>你引爆的強平</span><strong id="ignited-total">0 BTC</strong><em id="liq-count">被強平 0 次</em></div>
+      <div class="hud-controls">
+        <button id="run-button" class="button-primary" type="button">▶ 執行回合 <kbd>Space</kbd></button>
+        <label class="speed-select">速度 <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+        <button id="reveal-button" class="button-outline button-reveal" type="button" aria-pressed="false" title="暫停並顯示真實的強平、止損、止盈分布">◉ 揭曉 <kbd>R</kbd></button>
+        <button id="new-button" class="button-outline" type="button">↻ 新市場</button>
+        <label class="seed-input">種子 <input id="seed-input" inputmode="numeric" maxlength="10" placeholder="隨機" /></label>
+        <button id="ranked-button" class="button-outline button-ranked" type="button" title="24 回合，比最後的總損益">🏆 排名賽</button>
+        <button id="board-button" class="button-outline" type="button">排行榜</button>
+        <button id="tour-button" class="button-outline" type="button" title="玩法教學">? 教學</button>
+        <button id="sound-toggle" class="button-outline" type="button" aria-pressed="true">♫ 開</button>
+        <span id="run-status"><i></i> 計畫中</span>
+      </div>
+    </section>
+
+    <div class="workbench">
+      <aside class="intel-column">
+        <section class="panel fuel-panel">
+          <div class="panel-title"><span class="eyebrow">FUEL RADAR</span><span>3% 內強平（第三方估算）</span></div>
+          <div class="fuel-side short"><span>上方 · 空單強平</span><strong id="fuel-short">0 BTC</strong><div class="fuel-bar"><i id="fuel-short-bar"></i></div><small id="fuel-short-peak">—</small></div>
+          <div class="fuel-side long"><span>下方 · 多單強平</span><strong id="fuel-long">0 BTC</strong><div class="fuel-bar"><i id="fuel-long-bar"></i></div><small id="fuel-long-peak">—</small></div>
+          <div class="fuel-oi"><span>未平倉量（OI）</span><strong id="open-interest">0 BTC</strong></div>
+          <div class="fuel-oi"><span>OI 近 5 分鐘</span><strong id="oi-change">+0</strong></div>
+          <p>熱圖用固定的槓桿假設把主動成交推算成強平價，不知道止損，也會把平倉量當成新倉。對照 OI 與 CVD 判斷真假。</p>
+        </section>
+        <section id="reveal-panel" class="panel reveal-panel" hidden>
+          <div class="panel-title"><span class="eyebrow">REVEAL</span><span>練習揭曉 · 市場已暫停</span></div>
+          <div class="reveal-regime"><span>盤勢</span><strong id="reveal-regime">—</strong></div>
+          <div class="reveal-regime"><span>人群心中的合理價值</span><strong id="reveal-value">—</strong></div>
+          <div class="reveal-regime"><span>突發事件</span><strong id="reveal-event">無</strong></div>
+          <p id="reveal-event-text" class="reveal-event-text" hidden></p>
+          <div class="reveal-mood"><span>隱藏情緒</span><div class="mood-bar"><i id="reveal-mood"></i></div><em id="reveal-mood-text">—</em></div>
+          <table class="pool-table"><thead><tr><th>族群</th><th>活躍</th><th>多</th><th>空</th><th>待進場</th></tr></thead><tbody id="pool-rows"></tbody></table>
+        </section>
+        <section class="panel feed-panel"><div class="panel-title"><span class="eyebrow">LIQUIDATION TAPE</span><span class="mini-indicator">● LIVE</span></div><div id="liq-feed" class="liq-feed"><p class="empty-state">還沒有強平</p></div></section>
+        <section class="panel alert-panel">
+          <div class="panel-title"><span class="eyebrow">TACTICAL PAUSE</span><span>自動暫停</span></div>
+          <div class="alert-toggles">
+            <label><input type="checkbox" data-alert="bigFlow" checked /> 大單偵測</label>
+            <label><input type="checkbox" data-alert="cascade" checked /> 連環強平</label>
+            <label><input type="checkbox" data-alert="own" checked /> 你的委託</label>
+            <label><input type="checkbox" data-alert="move" checked /> 回合內急動 0.8%</label>
+            <label><input type="checkbox" data-alert="event" checked /> 突發事件</label>
+          </div>
+          <ol id="alert-log" class="alert-log"></ol>
+        </section>
+        <details class="panel guide-panel" open><summary><span class="eyebrow">CROWDS</span><span>市場裡的人群</span></summary>
+          <ul class="actor-list">
+            <li><b>突破動能</b><span>在前高之上、前低之下掛觸價單追突破，停損放回區間內。</span></li>
+            <li><b>支撐壓力</b><span>在擺盪點與整數關卡前掛限價單，停損就在關卡外。</span></li>
+            <li><b>ICT／SMC</b><span>等前高前低被掃後反手，或回補 FVG；停損在掃單極值外。</span></li>
+            <li><b>均線／MACD</b><span>交叉時市價進場，反向交叉就市價出場。</span></li>
+            <li><b>均值回歸</b><span>偏離布林帶或 VWAP 太遠時逆勢掛單，目標回到中軸。</span></li>
+            <li><b>情緒追價</b><span>急漲急跌或爆倉時用高槓桿市價追，虧損一深就恐慌砍倉。</span></li>
+            <li><b>雜訊散戶</b><span>現價附近的日常進出，提供成交量。</span></li>
+            <li><b>長線承接</b><span>在心中的合理價值上下掛大階梯單，常用冰山單只露一小截，也會在關卡前護盤；偏離越大越積極。</span></li>
+            <li class="maker"><b>造市商</b><span>兩側掛滿階梯報價，賺價差、控管庫存。單邊大單湧入時會縮小近價掛單、拉大價差；庫存一重就把報價往反方向偏，想把貨倒出去。</span></li>
+            <li class="whale"><b>神秘大戶</b><span>偶爾出現，會先用冰山單默默吸收或出貨，之後才主動出手。徵兆藏在吸收、CVD 背離和深度變化裡。</span></li>
+          </ul>
+          <p class="guide-note">市場是封閉的：你砸出去的每一顆 BTC 都要由場內的人接走，沒有外部資金把價格拉回。</p>
+        </details>
+        <section class="panel shortcut-panel"><div class="panel-title"><span class="eyebrow">KEYS</span><span>快捷鍵</span></div><p>Space 執行／暫停 · Q 買 · E 賣 · F 依滑桿比例平倉 · R 揭曉 · 1–5 切換數量 · 滾輪縮放 K 線數量（放大到單根夠寬時，每根 K 旁邊會顯示 Footprint）· 在圖表內拖曳可左右平移 K 線、上下平移價格 · 按住右側價格軸上下拖曳、或在價格軸上滾輪，縮放價格 · 雙擊圖表回到最新並還原</p></section>
+      </aside>
+
+      <div class="market-column">
+        <section class="market-panel panel">
+          <div class="market-head"><div class="asset-identity"><span class="asset-symbol">₿</span><div><strong>BTC <small>/ USDT 永續</small></strong><span>SIMULATED · 1 lot = 0.01 BTC</span></div></div><div class="last-price-block"><strong id="last-price">—</strong><span id="price-change">+0.00%</span></div><div class="market-head-metrics"><div><span>MARK</span><strong id="mark-price">—</strong></div><div><span>SPREAD</span><strong id="spread">—</strong></div><div><span>±1% 深度</span><strong id="depth">—</strong></div><div><span>累積 CVD</span><strong id="cvd-value">+0</strong></div></div></div>
+          <div class="chart-head"><span>PRICE × LIQUIDATION MAP · 1m</span><div class="chart-tools"><details class="indicator-menu"><summary>指標 ▾</summary><div class="indicator-list">
+                <label><input type="checkbox" data-ind="ema20" /> EMA20</label>
+                <label><input type="checkbox" data-ind="ema50" /> EMA50</label>
+                <label><input type="checkbox" data-ind="vwap" /> VWAP 4h</label>
+                <label><input type="checkbox" data-ind="volume" /> 成交量</label>
+                <label><input type="checkbox" data-ind="cvd" /> CVD</label>
+                <label><input type="checkbox" data-ind="oi" /> OI</label>
+                <label><input type="checkbox" data-ind="footprint" /> 每根 K 的 Footprint</label>
+                <label><input type="checkbox" data-ind="absorb" /> 吸收標記</label>
+                <label><input type="checkbox" data-ind="omen" /> 燃料預兆</label>
+                <label><input type="checkbox" data-ind="fills" /> 我的成交</label>
+              </div></details><label class="overlay-toggle"><input id="effects" type="checkbox" checked /> 特效標籤</label><div class="layer-toggle" role="group" aria-label="圖表背景"><button type="button" class="active" data-layer="liq">清算熱圖（估）</button><button type="button" data-layer="book">掛單熱圖</button><button type="button" data-layer="none">無</button></div></div></div>
+          <div class="chart-wrap">
+            <canvas id="market-chart" role="img" aria-label="1 分 K 線、清算熱圖、成交量、CVD、OI、清算地圖與 Footprint；點圖表可填入委託價格"></canvas>
+            <div id="flash-overlay" class="flash-overlay" aria-hidden="true"></div>
+            <div id="position-hud" class="position-hud" hidden><span id="position-hud-side">多 1,250 BTC</span><strong id="position-hud-pnl">+$0</strong><em id="position-hud-roe">+0.00%</em></div>
+            <div id="pause-card" class="pause-card" hidden>
+              <span id="pause-kind">TACTICAL PAUSE</span>
+              <strong id="pause-title"></strong>
+              <dl id="pause-stats" class="pause-stats"></dl>
+              <p id="pause-detail"></p>
+              <button id="pause-continue" type="button">繼續 ▶ <kbd>Space</kbd></button>
+            </div>
+            <div id="ranked-final" class="ranked-final" hidden>
+              <span class="tour-count">RANKED · 24 回合結束</span>
+              <strong>最終損益</strong>
+              <b id="ranked-pnl">+$0</b>
+              <p id="ranked-stats"></p>
+              <label class="ranked-name">名稱 <input id="ranked-name" maxlength="18" placeholder="匿名交易者" autocomplete="nickname" /></label>
+              <div class="tour-actions"><button id="ranked-upload" type="button" class="tour-next">上傳成績</button><span></span><button id="ranked-again" type="button">再來一局</button><button id="ranked-sandbox" type="button">回到沙盤</button></div>
+              <p id="ranked-status" class="ranked-status" role="status"></p>
+              <small>成績先以格式與合理性檢查收錄，操作紀錄會保存下來，之後可以由伺服器重跑驗證。</small>
+            </div>
+            <div id="loading" class="loading" hidden><span>建立市場中…</span><small>模擬 6 小時的歷史與人群持倉</small></div>
+            <div id="edge-glow" class="edge-glow" aria-hidden="true"></div>
+            <div id="danger-glow" class="danger-glow" aria-hidden="true"></div>
+            <div id="streak" class="streak" hidden><strong id="streak-count">×2</strong><span>連續獲利</span></div>
+            <div id="cascade-meter" class="cascade-meter" hidden aria-live="polite"><span id="cascade-title">連環強平</span><strong id="cascade-count">×2</strong><em id="cascade-detail"></em></div>
+            <div id="storm-text" class="storm-text" hidden aria-hidden="true">LIQUIDATION STORM</div>
+            <div id="pnl-burst" class="pnl-burst" hidden></div>
+            <div id="combo-banner" class="combo-banner" hidden></div>
+            <div id="fx-layer" class="fx-layer" aria-hidden="true"></div>
+            <div id="particle-layer" class="particle-layer" aria-hidden="true"></div>
+          </div>
+          <div class="order-panel dock">
+            <section class="dock-block order-block" aria-label="下單">
+              <div class="dock-title"><span class="eyebrow">ORDER</span><span>下單</span></div>
+              <div class="order-row">
+                <div class="type-tabs" role="tablist" aria-label="委託類型">
+                  <button type="button" data-type="market" class="active">市價</button>
+                  <button type="button" data-type="limit">限價</button>
+                </div>
+                <label id="price-field" class="order-field" hidden>價格 <input id="price-input" inputmode="decimal" placeholder="點圖表填入" /></label>
+              </div>
+              <div class="quick-size"><span>數量</span><button data-size="10" type="button">10</button><button data-size="50" type="button">50</button><button data-size="250" type="button" class="active">250</button><button data-size="1250" type="button">1,250</button><button data-size="5000" type="button">5,000</button><input id="size-input" inputmode="decimal" value="250" aria-label="數量 BTC" /><span class="unit-suffix">BTC</span></div>
+              <div class="order-row">
+                <div class="quick-leverage"><span>槓桿</span><div class="leverage-toggle" role="group" aria-label="槓桿倍數"><button data-leverage="1" type="button">1×</button><button data-leverage="3" type="button" class="active">3×</button><button data-leverage="5" type="button">5×</button><button data-leverage="10" type="button">10×</button><button data-leverage="20" type="button">20×</button></div></div>
+                <label class="reduce-toggle"><input id="reduce-only" type="checkbox" /> 只減倉</label>
+              </div>
+              <small id="leverage-hint" class="leverage-hint">空倉時可調整</small>
+              <div class="order-row actions">
+                <button id="buy-button" class="quick-buy" type="button">▲ 買入 <kbd>Q</kbd></button>
+                <button id="sell-button" class="quick-sell" type="button">▼ 賣出 <kbd>E</kbd></button>
+              </div>
+              <span id="order-preview" class="order-preview">—</span>
+            </section>
+            <section class="dock-block position-block" aria-label="持倉">
+              <div class="dock-title"><span class="eyebrow">POSITION</span><strong id="position">空倉</strong></div>
+              <dl class="position-grid">
+                <div><dt>進場均價</dt><dd id="entry-price">—</dd></div>
+                <div><dt>未實現損益</dt><dd id="floating-pnl">+$0</dd></div>
+                <div><dt>你的強平價</dt><dd id="player-liq">—</dd></div>
+                <div><dt>倉位保證金</dt><dd id="position-margin">$0</dd></div>
+              </dl>
+              <div class="close-control"><span>平倉</span><input id="close-range" type="range" min="1" max="100" step="1" value="100" aria-label="平倉比例" /><strong id="close-label">100%</strong><div class="close-presets"><button type="button" data-close="25">25%</button><button type="button" data-close="50">50%</button><button type="button" data-close="100" class="active">100%</button></div><button id="close-position" type="button">平倉 <kbd>F</kbd></button></div>
+              <div class="protection">
+                <label class="protection-row stop"><span>止損</span><input id="stop-price" inputmode="decimal" placeholder="價格" /><input id="stop-share" type="range" min="1" max="100" value="100" aria-label="止損平倉比例" /><b id="stop-share-label">100%</b></label>
+                <label class="protection-row take"><span>止盈</span><input id="take-price" inputmode="decimal" placeholder="價格" /><input id="take-share" type="range" min="1" max="100" value="100" aria-label="止盈平倉比例" /><b id="take-share-label">100%</b></label>
+                <div class="protection-actions"><button id="set-protection" type="button">設定止損止盈</button><button id="clear-protection" type="button">清除</button><span id="protection-status">尚未設定</span></div>
+              </div>
+            </section>
+            <section class="dock-block account-block" aria-label="帳戶">
+              <div class="dock-title"><span class="eyebrow">ACCOUNT</span><span>資金無上限 · 逐倉 · <b id="leverage-value">3×</b></span></div>
+              <div class="account-total"><span>總損益</span><strong id="equity">+$0</strong></div>
+              <dl class="ledger">
+                <div><dt>已實現</dt><dd id="realized">+$0</dd></div>
+                <div><dt>手續費</dt><dd id="fees">$0</dd></div>
+                <div><dt>最大回撤</dt><dd id="drawdown">$0</dd></div>
+                <div><dt>累積成交</dt><dd id="volume">0 BTC</dd></div>
+              </dl>
+              <div class="orders-head"><span>委託</span><button id="cancel-all" type="button">全部撤單</button></div>
+              <div id="player-orders" class="orders-list"><p class="empty-state">目前沒有委託</p></div>
+            </section>
+            <p id="order-message" class="order-message" role="status">計畫階段市場暫停，可以慢慢讀圖。這時下的單會先排隊，按「執行」後在第一秒內和其他人的單一起送出。</p>
+          </div>
+        </section>
+
+        <details class="market-details"><summary>展開即時委託簿與逐筆成交 <span>輔助資料 ↗</span></summary><div class="data-grid">
+          <section class="panel book-panel"><div class="panel-title"><div><span class="eyebrow">DEPTH / NOW</span><h3>即時委託簿</h3></div><span id="book-depth-label">—</span></div><div class="table-head"><span>價格</span><span>數量 BTC</span><span>累計</span></div><div id="book-asks" class="book-rows"></div><div class="book-mid"><span>LAST TRADE</span><strong id="book-last">—</strong></div><div id="book-bids" class="book-rows"></div></section>
+          <section class="panel tape-panel"><div class="panel-title"><div><span class="eyebrow">TIME & SALES</span><h3>逐筆成交（≥ 1 BTC）</h3></div><span class="mini-indicator">● LIVE</span></div><div class="table-head"><span>時間</span><span>價格</span><span>數量 BTC</span></div><div id="tape-rows" class="tape-rows"></div><div class="footprint-note">青色是主動買入，珊瑚色是主動賣出；◆ 是你的成交，⚡ 是強平單，▼ 是止損單。</div></section>
+        </div></details>
+      </div>
+
+    </div>
+  </main>
+  <dialog id="leaderboard" class="leaderboard">
+    <div class="leaderboard-head"><span class="tour-count">LEADERBOARD</span><strong>排名賽 · 24 回合總損益</strong><button id="leaderboard-close" type="button" aria-label="關閉">✕</button></div>
+    <table><thead><tr><th>#</th><th>名稱</th><th>損益</th><th>種子</th><th>日期</th></tr></thead><tbody id="leaderboard-rows"></tbody></table>
+    <p id="leaderboard-status" class="ranked-status"></p>
+    <small>尚未經伺服器重跑驗證；名稱請勿使用不雅字眼。</small>
+  </dialog>
+  <footer class="page-footer"><span>METABEAR / FLOW ARENA SANDBOX</span><span>虛構市場 · 模擬合約 · 無真實資金</span></footer>
+</body>
+</html>

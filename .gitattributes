@@ -1,3 +1,5 @@
 # Preserve snapshot bytes across platforms so manifest SHA-256 stays valid.
 archive/** -text
 experiments/liquidity/** -text
+# Historical whitespace is part of the verified original bytes.
+legacy/** -text -whitespace

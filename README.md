@@ -15,7 +15,7 @@
 | 單課影片與 86 秒 Showreel | motion/；[製作說明](docs/ACADEMY-MOTION.md) |
 | FLOW ARENA 宣傳片（HyperFrames） | motion/flow-arena/；[說明](motion/flow-arena/README.md) |
 
-FLOW ARENA 與 46 秒橫／直式宣傳片保留在各自開發分支，兩者同等優先，尚未合併至本分支。版本與依賴見專案地圖。
+FLOW ARENA 已整合至 main，保留 sandbox 的單人沙盤、半回合制引擎與排行榜（public/arena/，[說明](docs/FLOW-ARENA.md)）。舊版 120 秒獵場、電腦對手與好友房保存在 [Legacy](legacy/flow-arena-v7/README.md)。
 
 ## 本機開發
 
@@ -41,14 +41,15 @@ npm run build:production
 
 test:all 包含後端整合與現役課程、轉址、封存完整性檢查。封存測試不再混入日常套件，復原與驗證方式見 [封存說明](archive/README.md)。build:production 只做 dry-run，npm run deploy 才發布正式站。
 
-正式站 metabear.io 的公開網站使用 Pages `metabear-site`，後端使用 env.production 的 Worker `metabear-backend`。預覽站 preview.metabear.io 在 flow-arena 分支還有對戰後端；不要用 main 的純網站預覽設定覆蓋它。見 [部署文件](docs/DOMAIN-DEPLOYMENT.md)。
+正式站 metabear.io 的公開網站使用 Pages `metabear-site`，後端使用 env.production 的 Worker `metabear-backend`。預覽站 preview.metabear.io 使用新版 FLOW ARENA 與獨立的 D1 排行榜；main 的 staging 設定已與新版對齊，舊好友房已退役。見 [沙盤說明](docs/FLOW-ARENA.md) 與 [部署文件](docs/PAGES-WORKER-SPLIT.md)。
 
 Pages／Worker 拆分已於 2026-09-30 正式上線，GitHub main 的網站修改 push 後自動建置與發布，已實測成功。網站建置使用 `npm run build:pages`；`npm run deploy` 僅更新後端與後台資產。完整設定見 [Pages／Worker 部署](docs/PAGES-WORKER-SPLIT.md)。
 
 ## 暫停與封存
 
-- [流動性實驗](experiments/liquidity/README.md)：暫停；FLOW ARENA 依賴的撮合核心仍須保留。
+- [流動性實驗](experiments/liquidity/README.md)：暫停；FLOW ARENA 沙盤已改用自己的撮合核心。
 - [封存區](archive/README.md)：Python Bot、量化研究／錄製／Jev、現貨沙盒、舊版學院及被替換素材。全部位於 public/ 之外。
+- [Legacy](legacy/README.md)：FLOW ARENA V7 原始檔案、測試與部署設定；完整歷史由固定 Git 標籤保存。
 - 舊課程網址轉到現行學院；已合併的突破／撤單網址仍指向現行合併課。
 - quant/.data/ 僅保留原機器的私有資料，不納入 Git、不自動搬移；資料夾存在不表示服務仍在維護。
 

@@ -1,0 +1,194 @@
+{
+  "sourceCommit": "5b968b6278d3e71d2a675b708f0c71354bf92228",
+  "sourceBranch": "flow-arena",
+  "recoveryTag": "legacy/flow-arena-v7-2026-10-03",
+  "archivedOn": "2026-10-03",
+  "files": [
+    {
+      "source": ".dev.vars.example",
+      "snapshot": "snapshot/.dev.vars.example",
+      "size": 256,
+      "sha256": "bfb7b5fdc9969b053d74d3cbfd8547e85ccd41fc1e656dcb4b1697f5210b67d5"
+    },
+    {
+      "source": "docs/CHALLENGE-ARENA.md",
+      "snapshot": "snapshot/docs/CHALLENGE-ARENA.md",
+      "size": 17074,
+      "sha256": "08145e1b995fe7dc7760615a6160e65684731f3237d6862aad2d68edee4a9304"
+    },
+    {
+      "source": "docs/FLOW-ARENA-PVP.md",
+      "snapshot": "snapshot/docs/FLOW-ARENA-PVP.md",
+      "size": 13835,
+      "sha256": "9cb2690cbd44bc42d4eebe225ad4d69279ae2ce29fa7d8cc5e630c175bf3e2b3"
+    },
+    {
+      "source": "docs/LIQUIDITY-LAB.md",
+      "snapshot": "snapshot/docs/LIQUIDITY-LAB.md",
+      "size": 6524,
+      "sha256": "93a7de87b205dd9347eea281b8652e03e1e43980142c200723177c31db97d863"
+    },
+    {
+      "source": "package-lock.json",
+      "snapshot": "snapshot/package-lock.json",
+      "size": 79263,
+      "sha256": "f7ec9c9e845bb81ff419e3458ae3ada44094ae9cb888263fc29e178fe38a5c67"
+    },
+    {
+      "source": "package.json",
+      "snapshot": "snapshot/package.json",
+      "size": 2101,
+      "sha256": "67afd095a0a719a602c18a7e435a43747813a36698fdabe67881c36ac660b8fe"
+    },
+    {
+      "source": "public/orderflow/arena-online.js",
+      "snapshot": "snapshot/public/orderflow/arena-online.js",
+      "size": 7624,
+      "sha256": "3c51aa9c5bfedc264b7d44664b6f551cb1c3f475fdbf3cd129c8e5069653dfba"
+    },
+    {
+      "source": "public/orderflow/arena-protocol.js",
+      "snapshot": "snapshot/public/orderflow/arena-protocol.js",
+      "size": 4228,
+      "sha256": "4802edbc97000e9e9016cd890f8aae59b744cb43b5b6f2f6a2009a4ef1fb912b"
+    },
+    {
+      "source": "public/orderflow/arena-redirect.js",
+      "snapshot": "snapshot/public/orderflow/arena-redirect.js",
+      "size": 142,
+      "sha256": "c2bab9849fececc592d9314307b7487b2b771f2bb301983771006988a3fc22ce"
+    },
+    {
+      "source": "public/orderflow/arena-replica.js",
+      "snapshot": "snapshot/public/orderflow/arena-replica.js",
+      "size": 1275,
+      "sha256": "0b9120121ad899f05bcb8a6d18ecfe8c77f32f05275f6cce80fcd8975a6613a9"
+    },
+    {
+      "source": "public/orderflow/arena.html",
+      "snapshot": "snapshot/public/orderflow/arena.html",
+      "size": 345,
+      "sha256": "632536158b12cb8546b0a79a3a115a330f4baf09d121d0b5c54ea0e0b403ca35"
+    },
+    {
+      "source": "public/orderflow/challenge-engine.js",
+      "snapshot": "snapshot/public/orderflow/challenge-engine.js",
+      "size": 27974,
+      "sha256": "c9379c7e91e5920f362220054fee937626421cfdf4c30290406c14ee34d3eb20"
+    },
+    {
+      "source": "public/orderflow/challenge.css",
+      "snapshot": "snapshot/public/orderflow/challenge.css",
+      "size": 40217,
+      "sha256": "5c2d2b86fe584792449e4a89eff72e86f622cdf2bf2777352204804f649727a7"
+    },
+    {
+      "source": "public/orderflow/challenge.html",
+      "snapshot": "snapshot/public/orderflow/challenge.html",
+      "size": 20706,
+      "sha256": "0c8e74f380fd1363f51b463b0797f4467caef752e3720f80763c7ade2161d3bc"
+    },
+    {
+      "source": "public/orderflow/challenge.js",
+      "snapshot": "snapshot/public/orderflow/challenge.js",
+      "size": 70442,
+      "sha256": "cf9755d92aea9a3194c6eb7d0ec46b856c7eaa46cb84982fc55c7e5e95157de4"
+    },
+    {
+      "source": "public/orderflow/flow-arena-bots.js",
+      "snapshot": "snapshot/public/orderflow/flow-arena-bots.js",
+      "size": 11002,
+      "sha256": "30df4810452722dde7ea51c02af79a1aa016d72e6f8aafcf299f1501844b9b07"
+    },
+    {
+      "source": "public/orderflow/flow-arena-chart.js",
+      "snapshot": "snapshot/public/orderflow/flow-arena-chart.js",
+      "size": 20164,
+      "sha256": "7f835467b92d1a5d3142315206f0535e80edc1f6f9865c8823638fac640a2d45"
+    },
+    {
+      "source": "public/orderflow/flow-arena-engine.js",
+      "snapshot": "snapshot/public/orderflow/flow-arena-engine.js",
+      "size": 88385,
+      "sha256": "d30395496baba99d5b17c7776811efdc1bc8372074ecb7259b70843ed3e3601c"
+    },
+    {
+      "source": "public/orderflow/taker-only-engine.js",
+      "snapshot": "snapshot/public/orderflow/taker-only-engine.js",
+      "size": 9252,
+      "sha256": "9f6e2a6fedc14a219fa1d8b95140aa3725f0d9da7ce2645dfca46ce076f5dca4"
+    },
+    {
+      "source": "scripts/flow-arena-lab.mjs",
+      "snapshot": "snapshot/scripts/flow-arena-lab.mjs",
+      "size": 3218,
+      "sha256": "75fcef9a23f59637dbd3d8017722be451e988808ddb2463191cda220f18282f5"
+    },
+    {
+      "source": "src/arena-env.d.ts",
+      "snapshot": "snapshot/src/arena-env.d.ts",
+      "size": 169,
+      "sha256": "d007562743f6492a282fe1466711676db4c0833f6429042099791452e3ef562a"
+    },
+    {
+      "source": "src/arena-room.js",
+      "snapshot": "snapshot/src/arena-room.js",
+      "size": 11946,
+      "sha256": "5cf4329f9a675dd27602b0d4ef1f7a27e5dfb75dde793f042a6fdf417af22da7"
+    },
+    {
+      "source": "src/arena.ts",
+      "snapshot": "snapshot/src/arena.ts",
+      "size": 4326,
+      "sha256": "0f1495635735d5ca1e11fb17107f352f091e58484e06ede97fa4e243e2ce6f8f"
+    },
+    {
+      "source": "src/preview.ts",
+      "snapshot": "snapshot/src/preview.ts",
+      "size": 2990,
+      "sha256": "fe0b83c6797871003c1874adaa043164ae0489ae1b2bcc1472a946a4ea312ef4"
+    },
+    {
+      "source": "tests/arena-room.test.mjs",
+      "snapshot": "snapshot/tests/arena-room.test.mjs",
+      "size": 7536,
+      "sha256": "4c2786427ef0a2711c070aaa1ada286c47176b1d015d1dc21966fb6bcc5a596b"
+    },
+    {
+      "source": "tests/challenge.test.mjs",
+      "snapshot": "snapshot/tests/challenge.test.mjs",
+      "size": 7197,
+      "sha256": "e10e3a1ece8371cbc757de44fbab41c3e11977c24b5711652ad67a868cb0a299"
+    },
+    {
+      "source": "tests/flow-arena.test.mjs",
+      "snapshot": "snapshot/tests/flow-arena.test.mjs",
+      "size": 38203,
+      "sha256": "c3507800bcd84a169e6666749c444c204b3d3385414cea9fb6166dc5199020a8"
+    },
+    {
+      "source": "tests/taker-only.test.mjs",
+      "snapshot": "snapshot/tests/taker-only.test.mjs",
+      "size": 6274,
+      "sha256": "8220bc984eafd9df1df65bb0489313cb11cfbd2fef2ad5791d07333e166f0cfb"
+    },
+    {
+      "source": "tsconfig.json",
+      "snapshot": "snapshot/tsconfig.json",
+      "size": 388,
+      "sha256": "61d433d9df02d35c22f34c4990eb35a8e3e68cdd149ca0e17a373f417759e2d7"
+    },
+    {
+      "source": "worker-configuration.d.ts",
+      "snapshot": "snapshot/worker-configuration.d.ts",
+      "size": 592522,
+      "sha256": "758b036c4a7383fffcd4a856c4b42df44706e32465e8a32b45e9f875a3bb5334"
+    },
+    {
+      "source": "wrangler.jsonc",
+      "snapshot": "snapshot/wrangler.jsonc",
+      "size": 4842,
+      "sha256": "08c7a8313fedf3b0ca644bf0124e01c0963b3df8260b771490c014e50a6d58e3"
+    }
+  ]
+}

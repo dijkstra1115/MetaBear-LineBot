@@ -10,6 +10,7 @@ const backend = new URL("../dist/backend/", import.meta.url);
 const files = await readdir(pages);
 for (const file of privateAssets) assert.ok(!files.includes(file), `Private asset leaked into Pages: ${file}`);
 assert.ok(!files.includes("_worker.js") && !files.includes("functions"), "Website must remain static");
+assert.ok(!files.includes("legacy") && !files.includes("archive"), "Legacy snapshots must not be deployed");
 const routes = JSON.parse(await readFile(new URL("_routes.json", pages), "utf8"));
 assert.deepEqual(routes.include, ["/orderflow/motion/audio/*"]);
 for (const file of backendAssets) assert.ok((await stat(new URL(file, backend))).isFile(), file);
@@ -36,13 +37,16 @@ try {
     assert.ok(csp.includes("cloudflareinsights.com"), path);
     assert.equal(csp.includes("wss://stream.bybit.com"), path === "/orderflow/", path);
   }
-  for (const path of ["/admin", "/admin.html", "/desk", "/login", "/api/customers", "/missing-page"]) {
+  for (const path of ["/admin", "/admin.html", "/desk", "/login", "/api/customers", "/arena/api/scores", "/orderflow/challenge", "/orderflow/flow-arena-engine.js", "/missing-page"]) {
     const response = await serve(new Request("https://metabear-site.pages.dev" + path));
     assert.equal(response.status, 404, path);
   }
   const preview = await serve(new Request("https://branch.metabear-site.pages.dev/"));
   assert.ok(preview.headers.get("X-Robots-Tag").includes("noindex"));
   assert.ok(!preview.headers.get("Content-Security-Policy").includes("cloudflareinsights"));
+  const arena = await serve(new Request("https://branch.metabear-site.pages.dev/arena/"));
+  assert.equal(arena.status, 200);
+  assert.ok((await arena.text()).includes("FLOW ARENA"));
   const audio = await serve(new Request("https://metabear.io/orderflow/motion/audio/btc-wall.m4a"));
   assert.equal(audio.status, 200);
   assert.ok((await audio.arrayBuffer()).byteLength > 32);

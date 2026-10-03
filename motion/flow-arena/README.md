@@ -23,7 +23,7 @@ promo 另有：
 - `node scripts/audio.mjs`：依各場景的 cue 重新合成配樂與音效（assets/audio/soundtrack.wav）。
 - `python scripts/build-index.py`：依場景清單重寫 index.html 時間軸。
 - `python scripts/subset-font.py`：改文字後重新裁切 Noto Sans TC（完整字型放在被忽略的 scripts/font-src/）。
-- `node scripts/capture-gameplay.mjs <dir>`：重錄實機玩法影片與結算畫面（需 `npm run preview:academy`）。
+- `node scripts/capture-gameplay.mjs <dir>`：重錄實機玩法影片與結算畫面（需 `npm run preview:academy`）。錄的是舊版 120 秒獵場（origin/flow-arena 的 challenge.html）；新的沙盤在 /arena/，畫面與玩法不同。
 
 ## 不進 Git
 

@@ -56,35 +56,30 @@
     ],
   },
   "triggers": { "crons": ["*/5 * * * *"] },
+  // Flow Arena rooms. Bindings are per environment; the migration below applies to all of them.
+  "durable_objects": {
+    "bindings": [{ "name": "ARENA_ROOM", "class_name": "ArenaRoom" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ArenaRoom"] }],
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "env": {
     "production": {
-      "name": "metabear-backend",
-      "main": "src/backend.ts",
+      "name": "metabear-line-crm-staging",
       "workers_dev": true,
       "routes": [
-        { "pattern": "metabear.io/api/*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/auth/*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/webhook/*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/media/*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/rates/*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/content.json*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/health*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/admin*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/desk*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/login*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/app.js*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/crm-automation.js*", "zone_name": "metabear.io" },
-        { "pattern": "metabear.io/crm-knowledge.js*", "zone_name": "metabear.io" },
+        { "pattern": "metabear.io", "custom_domain": true },
         { "pattern": "www.metabear.io", "custom_domain": true },
       ],
       "triggers": { "crons": ["*/5 * * * *"] },
       "preview_urls": false,
       "assets": {
-        "directory": "./dist/backend",
+        "directory": "./public",
         "binding": "ASSETS",
         "run_worker_first": true,
         "html_handling": "none",
+      },
+      "durable_objects": {
+        "bindings": [{ "name": "ARENA_ROOM", "class_name": "ArenaRoom" }],
       },
       "d1_databases": [
         {
@@ -148,21 +143,10 @@
         "html_handling": "none",
       },
       "vars": { "ENVIRONMENT": "preview", "LINE_DELIVERY_MODE": "disabled" },
-      // FLOW ARENA leaderboard, kept apart from the CRM data.
-      "d1_databases": [
-        {
-          "binding": "ARENA_DB",
-          "database_name": "metabear-arena",
-          "database_id": "5973dcad-2b5b-43c1-bad0-1ebf32f01c8d",
-          "migrations_dir": "migrations-arena",
-        },
-      ],
-      // The old FLOW ARENA friend rooms ran a Durable Object here (v1). v2 deletes the class and
-      // its stored rooms; keep both entries so later deploys see the history.
-      "migrations": [
-        { "tag": "v1", "new_sqlite_classes": ["ArenaRoom"] },
-        { "tag": "v2", "deleted_classes": ["ArenaRoom"] },
-      ],
+      "durable_objects": {
+        "bindings": [{ "name": "ARENA_ROOM", "class_name": "ArenaRoom" }],
+      },
+      "d1_databases": [],
       "queues": { "producers": [], "consumers": [] },
       "triggers": { "crons": [] },
     },
