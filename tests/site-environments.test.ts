@@ -1,7 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { runInNewContext } from "node:vm";
 import preview from "../src/preview";
 import worker from "../src/index";
 
@@ -141,34 +139,4 @@ test("analytics CSP is limited to production public HTML; private and preview pa
     response.headers.get("Content-Security-Policy")!,
     /wss:\/\/stream\.bybit\.com/,
   );
-});
-
-test("analytics loader sends no telemetry from localhost, legacy URLs, or preview", () => {
-  const source = readFileSync(
-    new URL("../public/analytics.js", import.meta.url),
-    "utf8",
-  );
-  for (const origin of [
-    "https://preview.metabear.io",
-    "http://127.0.0.1:8790",
-    "https://metabear-line-crm-staging.style78432.workers.dev",
-  ]) {
-    runInNewContext(source, {
-      location: { origin },
-      document: {
-        createElement() {
-          throw new Error("Unexpected analytics request");
-        },
-      },
-    });
-  }
-  const appended: unknown[] = [];
-  runInNewContext(source, {
-    location: { origin: "https://metabear.io" },
-    document: {
-      createElement: () => ({ dataset: {} }),
-      head: { append: (el: unknown) => appended.push(el) },
-    },
-  });
-  assert.equal(appended.length, 1);
 });

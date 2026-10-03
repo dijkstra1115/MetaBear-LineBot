@@ -6,6 +6,12 @@ Pages 網址：https://metabear-site.pages.dev 。第二次 push（commit `93246
 
 ## 分工
 
+2026-10-03 Cloudflare 整理：正式網站統一使用 Cloudflare 自動注入的 Web Analytics，移除首頁與圖文教學的手動 loader。既有 CSP 保留對版本化 beacon 的允許，預覽站仍禁止追蹤。手動 Web Analytics site 的歷史統計先保留，不再注入其追蹤器。
+
+Pages 部署保留目前正式版本與最近兩個成功的正式版本供回退；已合併分支的預覽、未完成建置的 idle 紀錄與更早部署可清除。這是本次清理的保留規則，尚未設定排程自動刪除。舊版 ARENA 原始碼與歷史仍由 Git legacy 標籤保存。
+
+CRM／ARENA D1、四個 Queues（含兩個 dead-letter queue）、preview Worker、正式網域與郵件設定維持。原生登入目前不讀取舊 Access 參數，但 Access 備援復原流程仍存在；登入設定與 secrets 本次保留，見 [LOGIN.md](LOGIN.md)。
+
 | 流量 | 部署位置 |
 | --- | --- |
 | 首頁、/learn、/orderflow/、JS、CSS、圖片 | Pages `metabear-site`，`pages/dist/` |
