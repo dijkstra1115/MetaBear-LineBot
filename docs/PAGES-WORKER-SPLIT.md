@@ -81,3 +81,7 @@ npm run build:production
 - [Workers Routes](https://developers.cloudflare.com/workers/configuration/routing/routes/)
 - [Pages headers](https://developers.cloudflare.com/pages/configuration/headers/)
 - [Pages redirects](https://developers.cloudflare.com/pages/configuration/redirects/)
+
+## 快取版本
+
+Pages 對 HTML 每次重新驗證，CSS 與 JS 則讓瀏覽器保留 4 小時。若不處理，部署後回訪的人會拿到新 HTML 配舊 CSS／JS，畫面錯亂。`scripts/build-pages.mjs` 在匯出時替每個頁面的樣式表與一般 script 加上內容雜湊 `?v=`；`/arena/` 與 `/js/` 底下的 ES module 連同彼此的 import 一起加版本。學院（`/orderflow/`）的 module 不加，因為有些 module 同時由 HTML 與動態 import 載入，兩種網址會讓同一個 module 載入兩次。原始檔不變，只改 `pages/dist/`。
