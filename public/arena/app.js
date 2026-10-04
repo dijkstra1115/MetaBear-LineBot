@@ -458,7 +458,7 @@ function showCash(value) {
 function describeEvent(event) {
   const side = event.side === "buy" ? "買" : "賣";
   switch (event.kind) {
-    case "fill": return `掛單成交：${side} ${btc(event.lots)} @ ${price(event.price)}`;
+    case "filled": return `掛單全部成交：${side} ${btc(event.lots)}，均價 ${price(event.price)}`;
     case "stop": return `止損觸發（標記價 ${price(event.price)}），市價平倉 ${Math.round((event.fraction ?? 1) * 100)}%`;
     case "take": return `止盈觸發（標記價 ${price(event.price)}），市價平倉 ${Math.round((event.fraction ?? 1) * 100)}%`;
     case "liquidation": return `你的${event.side === "long" ? "多單" : "空單"} ${btc(event.lots)} 在 ${price(event.price)} 被強平，賠掉保證金 ${plain(event.lost)}`;
