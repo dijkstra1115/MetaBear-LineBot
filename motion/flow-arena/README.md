@@ -1,6 +1,6 @@
 # FLOW ARENA 宣傳片（HyperFrames）
 
-四支 FLOW ARENA 宣傳影片的 HyperFrames 原始專案。每個資料夾都能獨立預覽與渲染；需要 Node.js 22+。
+FLOW ARENA 宣傳影片的原始專案。launch／gameplay／promo／trailer 是 HyperFrames 專案；flagship 是自己的程式化管線（Canvas 2D + CPU 後製 + 合成配樂）。每個資料夾都能獨立預覽與渲染；需要 Node.js 22+。
 
 | 專案 | 內容 | 規格 |
 | --- | --- | --- |
@@ -8,10 +8,11 @@
 | gameplay/ | 第二版玩法 reel：下大單、假突破、連環爆倉、冰山試探、反手，含 3D 翻轉與實機結算（英文） | 16:9，60 秒 |
 | promo/ | 第三版繁中宣傳片：限價吸收、薄簿突破、連環爆倉、好友對戰，加實機玩法錄影與結算 | 16:9，67.5 秒 |
 | trailer/ | 第四版高能預告：現役沙盤（/arena/）逐格實機錄影為主，5,000 BTC 推價引爆 MEGA CASCADE、變速、三分割、動態字與 UI 標註（繁中＋英文） | 16:9，45 秒，60fps |
+| [flagship/](flagship/README.md) | 正式上線旗艦廣告（現行沙盤）：人群與燃料、推價與冰山、計畫／揭曉／執行、五級連環強平、帳本守恆、排名賽（英文主標、繁中副標） | 16:9，60 秒，60 fps |
 
 各專案的意圖與分鏡在自己的 BRIEF.md、STORYBOARD.md。專案內的 `id`／`name`（meta.json、package.json）仍是原本的 `flow-arena-launch` 等。
 
-## 常用指令（在專案資料夾內）
+## 常用指令（launch／gameplay／promo／trailer，在專案資料夾內；flagship 見它的 README）
 
 ```powershell
 npm run dev      # Studio 預覽

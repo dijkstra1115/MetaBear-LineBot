@@ -7,7 +7,7 @@
 | [tools/](tools/) | 輸出與配樂工具：`render.mjs`（逐格截圖 → ffmpeg MP4）、`audio.mjs` + `synth.mjs`（依 cues 合成配樂）、`export.*`（單課輸出頁） | Playwright + ffmpeg |
 | [showreel/](showreel/README.md) | 86 秒學院 Showreel | 學院 Canvas 引擎 |
 | [academy-promo/](academy-promo/README.md) | 46 秒學院宣傳片，16:9／9:16 | 學院 Canvas 引擎 |
-| [flow-arena/](flow-arena/README.md) | 三支 FLOW ARENA 宣傳片：launch、gameplay、promo | HyperFrames |
+| [flow-arena/](flow-arena/README.md) | FLOW ARENA 宣傳片：launch、gameplay、promo，與 60 秒旗艦廣告 flagship | HyperFrames；flagship 用自己的 Canvas + CPU 後製管線 |
 | out/ | 所有輸出的 MP4、PNG 與暫存（不進 Git） | — |
 
 ## 常用指令（在 repo 根目錄）

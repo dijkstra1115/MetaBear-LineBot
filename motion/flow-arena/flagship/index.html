@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FLOW ARENA — Flagship</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/public/orderflow/motion/fonts/fonts.css" />
+    <style>
+      html, body { margin: 0; background: #000; color: #a6b6c7; font: 13px/1.4 "JetBrains Mono Variable", monospace; }
+      #stage { display: block; width: 1920px; height: 1080px; }
+      body.render #stage { display: none; } /* rendering reads pixels; skip compositing */
+      body.preview #stage { width: min(100vw, calc((100vh - 56px) * 16 / 9)); height: auto; aspect-ratio: 16 / 9; margin: 0 auto; }
+      #bar { display: none; gap: 12px; align-items: center; padding: 12px 16px; }
+      body.preview #bar { display: flex; }
+      #bar input[type="range"] { flex: 1; }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage" width="1920" height="1080"></canvas>
+    <div id="bar">
+      <button id="play" type="button">Play</button>
+      <input id="scrub" type="range" min="0" max="60" step="0.0166667" value="0" />
+      <span id="clock">0.00</span>
+    </div>
+    <script type="module">
+      import { boot } from "./src/film.js";
+      import { TOTAL } from "./src/cues.js";
+
+      window.TOTAL = TOTAL;
+      window.ready = boot(document.getElementById("stage")).then((render) => {
+        window.renderFrame = render;
+        const params = new URLSearchParams(location.search);
+        if (params.has("render")) {
+          document.body.classList.add("render");
+          return;
+        }
+        // Preview: scrub or play against the rendered score (motion/out/flow-arena-flagship.wav).
+        document.body.classList.add("preview");
+        const scrub = document.getElementById("scrub");
+        const clock = document.getElementById("clock");
+        const audio = new Audio("/motion/out/flow-arena-flagship.wav");
+        let playing = false;
+        const show = (t) => {
+          render(t);
+          scrub.value = String(t);
+          clock.textContent = t.toFixed(2);
+        };
+        const loop = () => {
+          if (!playing) return;
+          show(audio.currentTime);
+          if (audio.ended) playing = false;
+          requestAnimationFrame(loop);
+        };
+        document.getElementById("play").onclick = () => {
+          playing = !playing;
+          if (playing) {
+            audio.currentTime = Number(scrub.value);
+            audio.play().catch(() => {});
+            loop();
+          } else audio.pause();
+        };
+        scrub.oninput = () => {
+          audio.currentTime = Number(scrub.value);
+          show(Number(scrub.value));
+        };
+        show(Number(params.get("t") ?? 0));
+      });
+    </script>
+  </body>
+</html>
