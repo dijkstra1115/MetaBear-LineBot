@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #0b0d10;
+      }
+      @font-face {
+        font-family: "Noto Sans TC";
+        src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+        font-weight: 100 900;
+        font-display: block;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0b0d10;
+      }
+      #paper {
+        position: absolute;
+        inset: 0;
+        background-color: #ece8de;
+        background-image: linear-gradient(rgba(20, 20, 20, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(20, 20, 20, 0.06) 1px, transparent 1px);
+        background-size: 135px 135px;
+        background-position: -1px -1px;
+        opacity: 0;
+      }
+      #ink {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at 50% 50%, #15181d 0%, #07080a 100%);
+        opacity: 0;
+      }
+      #rig {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        perspective: 1800px;
+      }
+      #rig-shake {
+        position: absolute;
+        inset: 0;
+        transform-style: preserve-3d;
+      }
+      .cam {
+        position: absolute;
+        overflow: hidden;
+        isolation: isolate;
+        visibility: hidden;
+      }
+      .cam.screen {
+        border-radius: 18px;
+        box-shadow: 0 50px 90px rgba(10, 12, 16, 0.42), 0 10px 26px rgba(10, 12, 16, 0.35), 0 0 0 1px rgba(10, 12, 16, 0.25);
+      }
+      .cam-fit {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        transform-origin: 0 0;
+      }
+      .cam-in {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        transform-origin: 0 0;
+      }
+      video.shot {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        object-fit: cover;
+        filter: contrast(1.08) saturate(1.2);
+      }
+      .cam.gray video.shot {
+        filter: grayscale(1) contrast(1.15) brightness(0.8);
+      }
+      /* under a knockout, keep every channel below the paper so only the letters show footage */
+      .cam.knocked video.shot {
+        filter: contrast(1.05) saturate(1.1) brightness(0.78);
+      }
+      .cam.violet video.shot {
+        filter: grayscale(0.75) contrast(1.15) brightness(0.9) hue-rotate(10deg);
+      }
+      .knock {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1080px;
+        height: 1920px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ece8de;
+        mix-blend-mode: lighten;
+      }
+      .knock span {
+        display: block;
+        font: 900 410px "Noto Sans TC", sans-serif;
+        letter-spacing: -0.06em;
+        line-height: 1;
+        color: #000;
+        white-space: nowrap;
+      }
+      .cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 30px;
+        height: 30px;
+        transform-origin: 6px 3px;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+      }
+      .cursor::before,
+      .cursor::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 30px;
+        height: 30px;
+        clip-path: polygon(20% 9%, 20% 78%, 38% 61%, 50% 89%, 61% 84%, 49% 57%, 73% 57%);
+      }
+      .cursor::before {
+        background: #0a0f16;
+        transform: scale(1.28);
+        transform-origin: 20% 9%;
+      }
+      .cursor::after {
+        background: #fdfaf2;
+      }
+      .ripple {
+        position: absolute;
+        width: 0;
+        height: 0;
+        opacity: 0;
+      }
+      .ripple::before {
+        content: "";
+        position: absolute;
+        left: -44px;
+        top: -44px;
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        border: 4px solid #2de2a6;
+        box-shadow: 0 0 18px #2de2a6;
+      }
+      .layer {
+        position: absolute;
+        inset: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="53.5" data-width="1080" data-height="1920">
+      <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+        <filter id="rgb-split" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+          <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
+          <feOffset id="rgb-r" in="r" dx="0" dy="0" result="ro" />
+          <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" result="gb" />
+          <feOffset id="rgb-gb" in="gb" dx="0" dy="0" result="gbo" />
+          <feBlend in="ro" in2="gbo" mode="screen" />
+        </filter>
+      </svg>
+      <div id="paper" data-layout-ignore></div>
+      <div id="ink" data-layout-ignore></div>
+      <div id="rig">
+        <div id="rig-shake">
+        <div class="cam" id="cam-a0" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-a0" data-layout-allow-overflow>
+              <video id="v-a0" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="0" data-duration="0.5" data-media-start="10.35" data-playback-rate="0.5" data-track-index="1"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-a1" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-a1" data-layout-allow-overflow>
+              <video id="v-a1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="0.5" data-duration="1.0296" data-media-start="10.6" data-playback-rate="0.55" data-track-index="3"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-a2" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-a2" data-layout-allow-overflow>
+              <video id="v-a2" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="1.5296" data-duration="1.0296" data-media-start="12.9" data-playback-rate="0.5" data-track-index="5"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-b1" style="left:40px;top:470px;width:1000px;height:563px;">
+          <div class="cam-fit" style="transform: scale(0.52083)">
+            <div class="cam-in" id="camin-b1" data-layout-allow-overflow>
+              <video id="v-b1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="2.5592" data-duration="2.0592" data-media-start="11.2" data-playback-rate="0.35" data-track-index="7"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-g1" style="left:90px;top:250px;width:900px;height:506px;">
+          <div class="cam-fit" style="transform: scale(0.46875)">
+            <div class="cam-in" id="camin-g1" data-layout-allow-overflow>
+              <video id="v-g1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="4.6184" data-duration="4.1184" data-media-start="0.6" data-playback-rate="0.6" data-track-index="9"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-g2" style="left:90px;top:560px;width:900px;height:506px;">
+          <div class="cam-fit" style="transform: scale(0.46875)">
+            <div class="cam-in" id="camin-g2" data-layout-allow-overflow>
+              <video id="v-g2" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="5.1332" data-duration="3.6036" data-media-start="4.3" data-playback-rate="0.6" data-track-index="11"></video>
+              <div id="cur-g2" class="clip cursor" data-start="5.1332" data-duration="3.6036" data-track-index="12"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-g3" style="left:90px;top:870px;width:900px;height:506px;">
+          <div class="cam-fit" style="transform: scale(0.46875)">
+            <div class="cam-in" id="camin-g3" data-layout-allow-overflow>
+              <video id="v-g3" class="clip shot" src="assets/video/reveal.mp4" muted playsinline data-start="5.648" data-duration="3.0888" data-media-start="0.9" data-playback-rate="0.6" data-track-index="13"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-g4" style="left:90px;top:1180px;width:900px;height:506px;">
+          <div class="cam-fit" style="transform: scale(0.46875)">
+            <div class="cam-in" id="camin-g4" data-layout-allow-overflow>
+              <video id="v-g4" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="6.1628" data-duration="2.574" data-media-start="10.9" data-playback-rate="0.4" data-track-index="15"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-r1" style="left:50px;top:900px;width:980px;height:551px;">
+          <div class="cam-fit" style="transform: scale(0.51042)">
+            <div class="cam-in" id="camin-r1" data-layout-allow-overflow>
+              <video id="v-r1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="8.7368" data-duration="4.1184" data-media-start="0.15" data-playback-rate="0.8256" data-track-index="17"></video>
+              <div id="cur-r1" class="clip cursor" data-start="8.7368" data-duration="4.1184" data-track-index="18"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam knocked" id="cam-s1" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-s1" data-layout-allow-overflow>
+              <video id="v-s1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="12.8552" data-duration="2.0592" data-media-start="4.2" data-playback-rate="0.6799" data-track-index="19"></video>
+              <div id="cur-s1" class="clip cursor" data-start="12.8552" data-duration="2.0592" data-track-index="20"></div>
+            </div>
+          </div>
+          <div class="clip knock" data-layout-allow-overlap id="knock-s1" data-start="12.8552" data-duration="2.0592" data-track-index="20"><span data-layout-allow-overlap>5,000</span></div>
+        </div>
+        <div class="cam screen" id="cam-s2" style="left:50px;top:330px;width:980px;height:551px;">
+          <div class="cam-fit" style="transform: scale(0.51042)">
+            <div class="cam-in" id="camin-s2" data-layout-allow-overflow>
+              <video id="v-s2" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="14.9144" data-duration="2.0592" data-media-start="5.6" data-playback-rate="1.0684" data-track-index="21"></video>
+              <div id="cur-s2" class="clip cursor" data-start="14.9144" data-duration="2.0592" data-track-index="22"></div>
+              <div id="rip-s2-0" class="ripple" style="left:1864px;top:277px"></div>
+              <div id="rip-s2-1" class="ripple" style="left:1791px;top:316px"></div>
+              <div id="rip-s2-2" class="ripple" style="left:1661.5px;top:473.1px"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-w1" style="left:40px;top:560px;width:1000px;height:563px;">
+          <div class="cam-fit" style="transform: scale(0.52083)">
+            <div class="cam-in" id="camin-w1" data-layout-allow-overflow>
+              <video id="v-w1" class="clip shot" src="assets/video/wall.mp4" muted playsinline data-start="16.9736" data-duration="4.1184" data-media-start="2.7" data-playback-rate="1.0441" data-track-index="23"></video>
+              <div id="cur-w1" class="clip cursor" data-start="16.9736" data-duration="4.1184" data-track-index="24"></div>
+              <div id="rip-w1-0" class="ripple" style="left:1811px;top:107px"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam split" id="cam-x1" style="left:0;top:0;width:1080px;height:1920px;clip-path:polygon(0 0, 100% 0, 100% 44%, 0 56%);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-x1" data-layout-allow-overflow>
+              <video id="v-x1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="21.092" data-duration="4.1184" data-media-start="9.4" data-playback-rate="0.6" data-track-index="25"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam split" id="cam-x2" style="left:0;top:0;width:1080px;height:1920px;clip-path:polygon(0 56%, 100% 44%, 100% 100%, 0 100%);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-x2" data-layout-allow-overflow>
+              <video id="v-x2" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="21.092" data-duration="4.1184" data-media-start="14.35" data-playback-rate="0.8" data-track-index="27"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam gray" id="cam-k1" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-k1" data-layout-allow-overflow>
+              <video id="v-k1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="25.2104" data-duration="2.0592" data-media-start="0.2" data-playback-rate="0.12" data-track-index="29"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam violet" id="cam-k2" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-k2" data-layout-allow-overflow>
+              <video id="v-k2" class="clip shot" src="assets/video/reveal.mp4" muted playsinline data-start="27.2696" data-duration="2.0592" data-media-start="0.5" data-playback-rate="0.9" data-track-index="31"></video>
+              <div id="cur-k2" class="clip cursor" data-start="27.2696" data-duration="2.0592" data-track-index="32"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam gray" id="cam-k3" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-k3" data-layout-allow-overflow>
+              <video id="v-k3" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="29.3288" data-duration="2.0592" data-media-start="0.55" data-playback-rate="0.8013" data-track-index="33"></video>
+              <div id="cur-k3" class="clip cursor" data-start="29.3288" data-duration="2.0592" data-track-index="34"></div>
+              <div id="rip-k3-0" class="ripple" style="left:1864px;top:277px"></div>
+              <div id="rip-k3-1" class="ripple" style="left:1791px;top:316px"></div>
+              <div id="rip-k3-2" class="ripple" style="left:1818.5px;top:473.1px"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam gray" id="cam-k4" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-k4" data-layout-allow-overflow>
+              <video id="v-k4" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="31.388" data-duration="1.5444" data-media-start="2.2" data-playback-rate="0.4856" data-track-index="35"></video>
+              <div id="cur-k4" class="clip cursor" data-start="31.388" data-duration="1.5444" data-track-index="36"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam gray" id="cam-k5" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-k5" data-layout-allow-overflow>
+              <video id="v-k5" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="32.9324" data-duration="0.5148" data-media-start="2.95" data-playback-rate="0.1" data-track-index="37"></video>
+              <div id="cur-k5" class="clip cursor" data-start="32.9324" data-duration="0.5148" data-track-index="38"></div>
+              <div id="rip-k5-0" class="ripple" style="left:1811px;top:107px"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d1-0" style="left:0;top:0;width:1080px;height:1920px;clip-path: inset(0px 720px 1280px 0px);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d1-0" data-layout-allow-overflow>
+              <video id="v-d1-0" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="33.4472" data-duration="1.0296" data-media-start="2.98" data-playback-rate="0.55" data-track-index="39"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d1-1" style="left:0;top:0;width:1080px;height:1920px;clip-path: inset(0px 360px 1280px 360px);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d1-1" data-layout-allow-overflow>
+              <video id="v-d1-1" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="33.4472" data-duration="1.0296" data-media-start="2.983" data-playback-rate="0.55" data-track-index="39"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d1-2" style="left:0;top:0;width:1080px;height:1920px;clip-path: inset(0px 0px 1280px 720px);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d1-2" data-layout-allow-overflow>
+              <video id="v-d1-2" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="33.4472" data-duration="1.0296" data-media-start="2.986" data-playback-rate="0.55" data-track-index="39"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d1-3" style="left:0;top:0;width:1080px;height:1920px;clip-path: inset(640px 720px 640px 0px);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d1-3" data-layout-allow-overflow>
+              <video id="v-d1-3" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="33.4472" data-duration="1.0296" data-media-start="2.989" data-playback-rate="0.55" data-track-index="39"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d1-4" style="left:0;top:0;width:1080px;height:1920px;clip-path: inset(640px 360px 640px 360px);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d1-4" data-layout-allow-overflow>
+              <video id="v-d1-4" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="33.4472" data-duration="1.0296" data-media-start="2.992" data-playback-rate="0.55" data-track-index="39"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d1-5" style="left:0;top:0;width:1080px;height:1920px;clip-path: inset(640px 0px 640px 720px);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d1-5" data-layout-allow-overflow>
+              <video id="v-d1-5" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="33.4472" data-duration="1.0296" data-media-start="2.995" data-playback-rate="0.55" data-track-index="39"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d1-6" style="left:0;top:0;width:1080px;height:1920px;clip-path: inset(1280px 720px 0px 0px);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d1-6" data-layout-allow-overflow>
+              <video id="v-d1-6" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="33.4472" data-duration="1.0296" data-media-start="2.998" data-playback-rate="0.55" data-track-index="39"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d1-7" style="left:0;top:0;width:1080px;height:1920px;clip-path: inset(1280px 360px 0px 360px);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d1-7" data-layout-allow-overflow>
+              <video id="v-d1-7" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="33.4472" data-duration="1.0296" data-media-start="3.001" data-playback-rate="0.55" data-track-index="39"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d1-8" style="left:0;top:0;width:1080px;height:1920px;clip-path: inset(1280px 0px 0px 720px);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d1-8" data-layout-allow-overflow>
+              <video id="v-d1-8" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="33.4472" data-duration="1.0296" data-media-start="3.004" data-playback-rate="0.55" data-track-index="39"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d2" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d2" data-layout-allow-overflow>
+              <video id="v-d2" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="34.4768" data-duration="2.0592" data-media-start="3.55" data-playback-rate="0.4613" data-track-index="41"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam split" id="cam-d3a" style="left:0;top:0;width:1080px;height:1920px;clip-path:inset(0 0 calc(66.67% + 5px) 0);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d3a" data-layout-allow-overflow>
+              <video id="v-d3a" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="36.536" data-duration="2.0592" data-media-start="4.5" data-playback-rate="0.4" data-track-index="43"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam split" id="cam-d3b" style="left:0;top:0;width:1080px;height:1920px;clip-path:inset(calc(33.33% + 5px) 0 calc(33.33% + 5px) 0);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d3b" data-layout-allow-overflow>
+              <video id="v-d3b" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="36.536" data-duration="2.0592" data-media-start="4.504" data-playback-rate="0.4" data-track-index="45"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam split" id="cam-d3c" style="left:0;top:0;width:1080px;height:1920px;clip-path:inset(calc(66.67% + 5px) 0 0 0);">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d3c" data-layout-allow-overflow>
+              <video id="v-d3c" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="36.536" data-duration="2.0592" data-media-start="4.508" data-playback-rate="0.4" data-track-index="47"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d4" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d4" data-layout-allow-overflow>
+              <video id="v-d4" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="38.5952" data-duration="2.0592" data-media-start="5.3" data-playback-rate="0.45" data-track-index="49"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d5" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d5" data-layout-allow-overflow>
+              <video id="v-d5" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="40.6544" data-duration="2.0592" data-media-start="6.85" data-playback-rate="0.3" data-track-index="51"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-d6" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-d6" data-layout-allow-overflow>
+              <video id="v-d6" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="42.7136" data-duration="3.0888" data-media-start="7.47" data-playback-rate="0.2914" data-track-index="53"></video>
+              <div id="cur-d6" class="clip cursor" data-start="42.7136" data-duration="3.0888" data-track-index="54"></div>
+              <div id="rip-d6-0" class="ripple" style="left:1839px;top:752.5px"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-c1" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-c1" data-layout-allow-overflow>
+              <video id="v-c1" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="45.8024" data-duration="1.0296" data-media-start="8.37" data-playback-rate="0.42" data-track-index="55"></video>
+              <div id="cur-c1" class="clip cursor" data-start="45.8024" data-duration="1.0296" data-track-index="56"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cam" id="cam-c2" style="left:0;top:0;width:1080px;height:1920px;">
+          <div class="cam-fit" style="transform: scale(1.00000)">
+            <div class="cam-in" id="camin-c2" data-layout-allow-overflow>
+              <video id="v-c2" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="46.832" data-duration="1.0296" data-media-start="8.9" data-playback-rate="2" data-track-index="57"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-e1" style="left:40px;top:560px;width:1000px;height:563px;">
+          <div class="cam-fit" style="transform: scale(0.52083)">
+            <div class="cam-in" id="camin-e1" data-layout-allow-overflow>
+              <video id="v-e1" class="clip shot" src="assets/video/short.mp4" muted playsinline data-start="47.8616" data-duration="1.0296" data-media-start="14.7" data-playback-rate="1.4" data-track-index="59"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-e2" style="left:40px;top:560px;width:1000px;height:563px;">
+          <div class="cam-fit" style="transform: scale(0.52083)">
+            <div class="cam-in" id="camin-e2" data-layout-allow-overflow>
+              <video id="v-e2" class="clip shot" src="assets/video/ranked.mp4" muted playsinline data-start="48.8912" data-duration="1.0296" data-media-start="0.3" data-playback-rate="1.4" data-track-index="61"></video>
+            </div>
+          </div>
+        </div>
+        <div class="cam screen" id="cam-z1" style="left:40px;top:470px;width:1000px;height:563px;">
+          <div class="cam-fit" style="transform: scale(0.52083)">
+            <div class="cam-in" id="camin-z1" data-layout-allow-overflow>
+              <video id="v-z1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="49.9208" data-duration="3.5792" data-media-start="10" data-playback-rate="0.3" data-track-index="63"></video>
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+      <div id="ov-intro" class="layer" data-composition-id="ov-intro" data-composition-src="compositions/ov-intro.html" data-start="0" data-duration="8.7368" data-track-index="100" data-width="1080" data-height="1920"></div>
+      <div id="ov-play" class="layer" data-composition-id="ov-play" data-composition-src="compositions/ov-play.html" data-start="8.7368" data-duration="16.4736" data-track-index="101" data-width="1080" data-height="1920"></div>
+      <div id="ov-hold" class="layer" data-composition-id="ov-hold" data-composition-src="compositions/ov-hold.html" data-start="25.2104" data-duration="8.2368" data-track-index="102" data-width="1080" data-height="1920"></div>
+      <div id="ov-drop" class="layer" data-composition-id="ov-drop" data-composition-src="compositions/ov-drop.html" data-start="33.4472" data-duration="12.3552" data-track-index="103" data-width="1080" data-height="1920"></div>
+      <div id="ov-out" class="layer" data-composition-id="ov-out" data-composition-src="compositions/ov-out.html" data-start="45.8024" data-duration="7.6976" data-track-index="104" data-width="1080" data-height="1920"></div>
+      <div id="fx-overlay" class="layer" data-composition-id="fx-overlay" data-composition-src="compositions/fx-overlay.html" data-start="0" data-duration="53.5" data-track-index="150" data-width="1080" data-height="1920"></div>
+      <audio id="soundtrack" src="assets/audio/soundtrack.wav" data-start="0" data-duration="53.5" data-track-index="200" data-volume="1"></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const HITS = [[0.5,1],[2.5592,0.6],[4.6184,0.3],[8.7368,0.5],[12.8552,0.6],[16.9736,0.6],[21.092,0.6],[25.2104,0.4],[33.4472,1],[34.4768,0.5],[36.536,0.7],[38.5952,0.6],[40.6544,0.7],[45.8024,0.9],[49.9208,1]];
+      const cursor = (id, start, dur, pts) => {
+        const el = document.getElementById("cur-" + id);
+        const cam = document.getElementById("camin-" + id);
+        const p = { v: 0 };
+        const place = () => {
+          const f = p.v * (pts.length - 1);
+          const i = Math.min(pts.length - 2, Math.floor(f));
+          const k = f - i;
+          const a = pts[i], b = pts[i + 1] || a;
+          const z = gsap.getProperty(cam, "scale") || 1;
+          el.style.transform = "translate(" + (a[0] + (b[0] - a[0]) * k - 6) + "px," + (a[1] + (b[1] - a[1]) * k - 3) + "px) scale(" + (1.25 / z).toFixed(4) + ")";
+        };
+        place();
+        tl.to(p, { v: 1, duration: dur, ease: "none", onUpdate: place }, start);
+      };
+      const ripple = (sel, t) => {
+        tl.fromTo(sel, { opacity: 1, scale: 0.3 }, { opacity: 0, scale: 1.6, duration: 0.45, ease: "power2.out", immediateRender: false }, t);
+      };
+      const whip = (sel, t, dir, out) => {
+        if (out) tl.fromTo(sel, { x: 0, filter: "blur(0px)" }, { x: dir * 420, filter: "blur(18px)", duration: 0.1, ease: "power2.in", immediateRender: false }, t - 0.1);
+        else tl.fromTo(sel, { x: -dir * 420, filter: "blur(18px)" }, { x: 0, filter: "blur(0px)", duration: 0.14, ease: "power3.out", immediateRender: false }, t);
+      };
+      const rgbR = document.getElementById("rgb-r");
+      const rgbG = document.getElementById("rgb-gb");
+      const hit = (t, k) => {
+        const amp = 22 * k;
+        const shake = gsap.timeline();
+        [[1, -0.6], [-0.8, 0.9], [0.6, -0.4], [-0.3, 0.3], [0, 0]].forEach(([x, y], i) => shake.to("#rig-shake", { x: x * amp * (1 - i * 0.18), y: y * amp * (1 - i * 0.18), duration: 0.035, ease: "none" }));
+        tl.add(shake, t);
+        const split = { v: 0 };
+        tl.fromTo(split, { v: 16 * k }, { v: 0, duration: 0.26, ease: "power2.out", immediateRender: false, onUpdate: () => {
+          rgbR.setAttribute("dx", split.v.toFixed(2));
+          rgbG.setAttribute("dx", (-split.v).toFixed(2));
+          document.getElementById("rig").style.filter = split.v > 0.05 ? "url(#rgb-split)" : "none";
+        } }, t);
+      };
+      tl.fromTo("#camin-a0", {"x":-2450,"y":-328,"scale":2.3}, { ...{"x":-2125,"y":-188,"scale":2.05}, duration: 0.5, ease: "power3.in" }, 0);
+      tl.set("#cam-a0", { visibility: "visible" }, 0);
+      tl.set("#cam-a0", { visibility: "hidden" }, 0.5);
+      tl.fromTo("#camin-a1", {"x":-1772.5,"y":-78,"scale":1.85}, { ...{"x":-2125,"y":-229,"scale":2.05}, duration: 1.0296, ease: "expo.out" }, 0.5);
+      tl.set("#cam-a1", { visibility: "visible" }, 0.5);
+      tl.set("#cam-a1", { visibility: "hidden" }, 1.5296);
+      tl.fromTo("#camin-a2", {"x":-972,"y":0,"scale":3.6}, { ...{"x":-804,"y":0,"scale":3.2}, duration: 1.0296, ease: "power2.inOut" }, 1.5296);
+      tl.set("#cam-a2", { visibility: "visible" }, 1.5296);
+      tl.set("#cam-a2", { visibility: "hidden" }, 2.5592);
+      tl.fromTo("#camin-b1", {"x":-320.6,"y":-288,"scale":1.38}, { ...{"x":-320.6,"y":-288,"scale":1.38}, duration: 2.0592, ease: "none" }, 2.5592);
+      tl.set("#cam-b1", { visibility: "visible" }, 2.5592);
+      tl.set("#cam-b1", { visibility: "hidden" }, 4.6184);
+      tl.fromTo("#cam-b1", {"rotationY":0,"rotationX":0,"scale":1.28,"y":-60}, {"rotationY":0,"rotationX":0,"scale":1,"y":0,"duration":0.7,"ease":"expo.out"}, 2.5592);
+      tl.to("#cam-b1", { rotationY: 0, duration: 1.3492, ease: "none" }, 3.2692);
+      tl.fromTo("#camin-g1", {"x":-390,"y":0,"scale":1.5}, { ...{"x":-660,"y":-54,"scale":1.8}, duration: 4.1184, ease: "power2.inOut" }, 4.6184);
+      tl.set("#cam-g1", { visibility: "visible" }, 4.6184);
+      tl.set("#cam-g1", { visibility: "hidden" }, 8.7368);
+      tl.fromTo("#cam-g1", {"rotationY":10,"rotationX":6,"scale":0.6,"opacity":0,"z":-400}, {"rotationY":10,"rotationX":6,"scale":1,"opacity":1,"z":0,"duration":0.32,"ease":"back.out(1.6)"}, 4.6184);
+      tl.to("#cam-g1", { rotationY: 6, duration: 3.7884, ease: "none" }, 4.9484);
+      tl.fromTo("#camin-g2", {"x":-2688,"y":-252,"scale":2.4}, { ...{"x":-2688,"y":-252,"scale":2.4}, duration: 3.6036, ease: "power2.inOut" }, 5.1332);
+      tl.set("#cam-g2", { visibility: "visible" }, 5.1332);
+      tl.set("#cam-g2", { visibility: "hidden" }, 8.7368);
+      tl.fromTo("#cam-g2", {"rotationY":-10,"rotationX":6,"scale":0.6,"opacity":0,"z":-400}, {"rotationY":-10,"rotationX":6,"scale":1,"opacity":1,"z":0,"duration":0.32,"ease":"back.out(1.6)"}, 5.1332);
+      tl.to("#cam-g2", { rotationY: -6, duration: 3.2736, ease: "none" }, 5.4632);
+      cursor("g2", 5.1332, 3.6036, [[1496.9,274.3],[1532.3,275.1],[1532.3,275.1],[1560,275.7],[1560,275.7],[1580.7,276.2],[1595.6,276.5],[1595.6,276.5],[1605.5,276.8],[1605.5,276.8],[1611.6,276.9],[1614.7,277],[1614.7,277],[1615.8,277],[1615.8,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616.3,277],[1616.3,277],[1618.2,277],[1618.2,277],[1623.6,277],[1633.9,277],[1633.9,277],[1650.7,277],[1650.7,277],[1664.9,277],[1673.1,277],[1673.1,277],[1676.9,277],[1676.9,277],[1677.9,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678.3,277],[1678.3,277],[1680.2,277],[1680.2,277],[1685.6,277],[1695.9,277],[1695.9,277],[1712.7,277],[1712.7,277],[1726.9,277],[1735.1,277],[1735.1,277],[1738.9,277],[1738.9,277],[1739.9,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740.3,277],[1740.3,277],[1742.2,277],[1742.2,277],[1747.6,277],[1757.9,277],[1757.9,277],[1774.7,277],[1774.7,277],[1788.9,277],[1797.1,277],[1797.1,277],[1800.9,277],[1800.9,277],[1801.9,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802.3,277],[1802.3,277],[1804.2,277],[1804.2,277],[1809.6,277],[1819.9,277],[1819.9,277],[1836.7,277],[1836.7,277],[1850.9,277],[1859.1,277],[1859.1,277],[1862.9,277],[1862.9,277],[1863.9,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1863.9,277],[1863.9,277],[1863.6,277.2],[1863.6,277.2],[1862.6,277.7],[1860.8,278.7],[1860.8,278.7],[1857.7,280.3],[1857.7,280.3],[1853.2,282.8],[1846.8,286.2],[1846.8,286.2],[1838.4,290.7],[1838.4,290.7],[1827.5,296.5],[1816.6,302.3],[1816.6,302.3],[1808.2,306.8],[1808.2,306.8],[1801.8,310.2],[1797.3,312.7],[1797.3,312.7],[1794.2,314.3],[1794.2,314.3],[1792.4,315.3],[1791.4,315.8],[1791.4,315.8],[1791.1,316],[1791.1,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316]]);
+      tl.fromTo("#camin-g3", {"x":-928,"y":-212,"scale":1.6}, { ...{"x":-928,"y":-212,"scale":1.6}, duration: 3.0888, ease: "power2.inOut" }, 5.648);
+      tl.set("#cam-g3", { visibility: "visible" }, 5.648);
+      tl.set("#cam-g3", { visibility: "hidden" }, 8.7368);
+      tl.fromTo("#cam-g3", {"rotationY":10,"rotationX":6,"scale":0.6,"opacity":0,"z":-400}, {"rotationY":10,"rotationX":6,"scale":1,"opacity":1,"z":0,"duration":0.32,"ease":"back.out(1.6)"}, 5.648);
+      tl.to("#cam-g3", { rotationY: 6, duration: 2.7588, ease: "none" }, 5.978);
+      tl.fromTo("#camin-g4", {"x":-320.6,"y":-288,"scale":1.38}, { ...{"x":-320.6,"y":-288,"scale":1.38}, duration: 2.574, ease: "power2.inOut" }, 6.1628);
+      tl.set("#cam-g4", { visibility: "visible" }, 6.1628);
+      tl.set("#cam-g4", { visibility: "hidden" }, 8.7368);
+      tl.fromTo("#cam-g4", {"rotationY":-10,"rotationX":6,"scale":0.6,"opacity":0,"z":-400}, {"rotationY":-10,"rotationX":6,"scale":1,"opacity":1,"z":0,"duration":0.32,"ease":"back.out(1.6)"}, 6.1628);
+      tl.to("#cam-g4", { rotationY: -6, duration: 2.244, ease: "none" }, 6.4928);
+      tl.fromTo("#camin-r1", {"x":-153.6,"y":-180,"scale":1.2}, { ...{"x":-840,"y":-120,"scale":2}, duration: 4.1184, ease: "power2.inOut" }, 8.7368);
+      tl.set("#cam-r1", { visibility: "visible" }, 8.7368);
+      tl.set("#cam-r1", { visibility: "hidden" }, 12.8552);
+      tl.fromTo("#cam-r1", {"rotationY":-42,"rotationX":4,"x":900,"opacity":0}, {"rotationY":-12,"rotationX":4,"x":0,"opacity":1,"duration":0.5,"ease":"expo.out"}, 8.7368);
+      tl.to("#cam-r1", { rotationY: -7.199999999999999, duration: 3.6084, ease: "none" }, 9.2468);
+      cursor("r1", 8.7368, 4.1184, [[1383.8,665.6],[1383.8,665.6],[1383.8,665.6],[1383.8,665.6],[1383.8,665.6],[1383.8,665.6],[1383.7,665.6],[1383.7,665.6],[1383.6,665.5],[1383.6,665.5],[1383.4,665.4],[1383.2,665.3],[1382.9,665.1],[1382.4,664.8],[1381.9,664.5],[1381.9,664.5],[1381.2,664],[1380.4,663.5],[1379.3,662.9],[1378.1,662.1],[1376.7,661.3],[1376.7,661.3],[1375.1,660.3],[1373.3,659.2],[1371.2,657.9],[1368.8,656.4],[1368.8,656.4],[1366.2,654.8],[1363.3,653],[1360,651],[1356.5,648.8],[1352.6,646.4],[1352.6,646.4],[1348.4,643.8],[1343.7,641],[1338.7,637.9],[1333.4,634.6],[1327.5,631],[1327.5,631],[1321.3,627.2],[1314.6,623.1],[1307.5,618.7],[1299.8,614],[1299.8,614],[1291.7,609],[1283.1,603.7],[1274,598.1],[1264.3,592.2],[1254,585.9],[1254,585.9],[1243.2,579.2],[1231.8,572.2],[1220.5,565.2],[1209.6,558.6],[1199.4,552.3],[1199.4,552.3],[1189.7,546.3],[1180.6,540.7],[1172,535.4],[1163.8,530.4],[1156.2,525.7],[1156.2,525.7],[1149.1,521.3],[1142.4,517.2],[1136.1,513.4],[1130.3,509.8],[1130.3,509.8],[1124.9,506.5],[1119.9,503.4],[1115.3,500.6],[1111.1,498],[1107.2,495.6],[1107.2,495.6],[1103.6,493.4],[1100.4,491.4],[1097.5,489.6],[1094.9,488],[1092.5,486.6],[1092.5,486.6],[1090.4,485.3],[1088.6,484.2],[1086.9,483.2],[1085.5,482.3],[1084.3,481.6],[1084.3,481.6],[1083.3,480.9],[1082.5,480.4],[1081.8,480],[1081.2,479.6],[1081.2,479.6],[1080.8,479.4],[1080.5,479.2],[1080.2,479],[1080.1,478.9],[1080,478.9],[1080,478.9],[1079.9,478.9],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1080,478.8],[1080,478.8],[1080.2,478.7],[1080.4,478.5],[1080.4,478.5],[1080.7,478.3],[1081.2,478],[1081.8,477.6],[1082.7,477.1],[1083.7,476.4],[1083.7,476.4],[1084.9,475.6],[1086.4,474.7],[1088.2,473.6],[1090.2,472.2],[1092.6,470.7],[1092.6,470.7],[1095.3,469],[1098.3,467],[1101.8,464.8],[1105.6,462.3],[1105.6,462.3],[1109.9,459.6],[1114.7,456.6],[1119.9,453.2],[1125.6,449.6],[1131.8,445.6],[1131.8,445.6],[1138.5,441.2],[1145.8,436.6],[1153.8,431.5],[1162.3,426],[1171.4,420.2],[1171.4,420.2],[1181.2,413.9],[1191,407.6],[1200.1,401.7],[1208.6,396.3],[1216.6,391.2],[1216.6,391.2],[1223.9,386.5],[1230.6,382.2],[1236.8,378.2],[1242.5,374.5],[1242.5,374.5],[1247.7,371.2],[1252.5,368.2],[1256.8,365.4],[1260.6,363],[1264.1,360.7],[1264.1,360.7],[1267.1,358.8],[1269.8,357],[1272.2,355.5],[1274.2,354.2],[1276,353.1],[1276,353.1],[1277.5,352.1],[1278.7,351.3],[1279.7,350.7],[1280.6,350.2],[1281.2,349.7],[1281.2,349.7],[1281.7,349.4],[1282,349.2],[1282.2,349.1],[1282.4,349],[1282.4,349],[1282.4,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.4,348.9],[1282.4,348.9],[1282.2,348.9],[1281.4,348.8],[1279.9,348.7],[1277.4,348.4],[1273.6,348.1],[1273.6,348.1],[1268.4,347.6],[1261.5,347],[1252.6,346.1],[1241.4,345.1],[1241.4,345.1],[1227.9,343.8],[1211.6,342.3],[1192.3,340.5],[1169.9,338.5],[1144,336],[1144,336],[1114.4,333.3],[1080.9,330.2],[1043.2,326.7],[1001,322.8],[954.2,318.4],[954.2,318.4],[902.5,313.6],[845.6,308.3],[783.2,302.5],[715.2,296.2],[715.2,296.2],[647.2,289.9],[584.9,284.1],[528,278.8],[476.3,274],[429.4,269.6],[429.4,269.6],[387.3,265.7],[349.6,262.2],[316.1,259.1],[286.5,256.3],[260.6,253.9],[260.6,253.9],[238.1,251.8],[218.9,250],[202.6,248.5],[189,247.3],[177.9,246.2],[177.9,246.2],[169,245.4],[162.1,244.7],[156.9,244.3],[153.1,243.9],[153.1,243.9],[150.6,243.7],[149.1,243.5],[148.3,243.5],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4]]);
+      tl.fromTo("#camin-s1", {"x":-4680,"y":0,"scale":3}, { ...{"x":-5393,"y":-26,"scale":3.4}, duration: 2.0592, ease: "power2.inOut" }, 12.8552);
+      tl.set("#cam-s1", { visibility: "visible" }, 12.8552);
+      tl.set("#cam-s1", { visibility: "hidden" }, 14.9144);
+      cursor("s1", 12.8552, 2.0592, [[1064.5,264.4],[1167.6,266.7],[1167.6,266.7],[1257,268.8],[1333.6,270.5],[1333.6,270.5],[1398.5,272],[1452.6,273.3],[1452.6,273.3],[1496.9,274.3],[1532.3,275.1],[1532.3,275.1],[1560,275.7],[1580.7,276.2],[1595.6,276.5],[1595.6,276.5],[1605.5,276.8],[1611.6,276.9],[1611.6,276.9],[1614.7,277],[1615.8,277],[1615.8,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616.3,277],[1616.3,277],[1618.2,277],[1623.6,277],[1623.6,277],[1633.9,277],[1650.7,277],[1664.9,277],[1664.9,277],[1673.1,277],[1676.9,277],[1676.9,277],[1677.9,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678.3,277],[1678.3,277],[1680.2,277],[1685.6,277],[1685.6,277],[1695.9,277],[1712.7,277],[1712.7,277],[1726.9,277],[1735.1,277],[1738.9,277],[1738.9,277],[1739.9,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740.3,277],[1740.3,277],[1742.2,277],[1747.6,277],[1747.6,277],[1757.9,277],[1774.7,277],[1774.7,277],[1788.9,277],[1797.1,277],[1797.1,277],[1800.9,277],[1801.9,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802.3,277],[1802.3,277],[1804.2,277],[1809.6,277],[1809.6,277],[1819.9,277],[1836.7,277],[1836.7,277],[1850.9,277],[1859.1,277],[1859.1,277],[1862.9,277],[1863.9,277],[1863.9,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277]]);
+      tl.fromTo("#knock-s1 span", { scale: 1.25 }, { scale: 1, duration: 2.0592, ease: "power2.out" }, 12.8552);
+      tl.fromTo("#camin-s2", {"x":-2688,"y":-252,"scale":2.4}, { ...{"x":-3264,"y":-351,"scale":2.7}, duration: 2.0592, ease: "power2.inOut" }, 14.9144);
+      tl.set("#cam-s2", { visibility: "visible" }, 14.9144);
+      tl.set("#cam-s2", { visibility: "hidden" }, 16.9736);
+      tl.fromTo("#cam-s2", {"rotationY":42,"rotationX":4,"x":-900,"opacity":0}, {"rotationY":12,"rotationX":4,"x":0,"opacity":1,"duration":0.5,"ease":"expo.out"}, 14.9144);
+      tl.to("#cam-s2", { rotationY: 7.199999999999999, duration: 1.5492, ease: "none" }, 15.4244);
+      cursor("s2", 14.9144, 2.0592, [[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1863.9,277],[1863.6,277.2],[1862.6,277.7],[1860.8,278.7],[1857.7,280.3],[1853.2,282.8],[1846.8,286.2],[1827.5,296.5],[1816.6,302.3],[1808.2,306.8],[1801.8,310.2],[1797.3,312.7],[1794.2,314.3],[1792.4,315.3],[1791.4,315.8],[1791.1,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1790.8,316.3],[1790.4,317],[1789.6,318.3],[1788.2,320.6],[1786.2,323.9],[1783.4,328.6],[1779.7,334.7],[1774.9,342.7],[1769,352.6],[1762,364.1],[1756.1,374.1],[1751.3,382],[1747.6,388.2],[1744.8,392.8],[1741.4,398.4],[1740.6,399.8],[1740.2,400.5],[1740,400.7],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1739.9,400.8],[1739.6,401.1],[1738.5,402.1],[1736.6,403.9],[1733.3,407],[1721.5,417.8],[1712.4,426.2],[1700.8,436.9],[1689.1,447.7],[1680,456.1],[1673.1,462.4],[1668.2,466.9],[1664.9,469.9],[1663,471.8],[1661.9,472.7],[1661.6,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1]]);
+      ripple("#rip-s2-0", 14.9144);
+      ripple("#rip-s2-1", 15.5228);
+      ripple("#rip-s2-2", 16.8332);
+      tl.fromTo("#camin-w1", {"x":-153.6,"y":-180,"scale":1.2}, { ...{"x":-640,"y":-420,"scale":1.6}, duration: 4.1184, ease: "power2.inOut" }, 16.9736);
+      tl.set("#cam-w1", { visibility: "visible" }, 16.9736);
+      tl.set("#cam-w1", { visibility: "hidden" }, 21.092);
+      tl.fromTo("#cam-w1", {"rotationY":0,"rotationX":0,"scale":1.6,"opacity":0}, {"rotationY":0,"rotationX":0,"scale":1,"opacity":1,"duration":0.4,"ease":"expo.out"}, 16.9736);
+      tl.to("#cam-w1", { rotationY: 0, duration: 3.7084, ease: "none" }, 17.3836);
+      cursor("w1", 16.9736, 4.1184, [[1811.3,123.1],[1811.2,116.3],[1811.1,111.8],[1811,109],[1811,107.6],[1811,107.1],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107.1],[1811,107.3],[1811.1,107.8],[1811.2,108.5],[1811.5,111.1],[1811.8,113.1],[1812.1,115.7],[1812.5,119],[1813,122.9],[1813.6,127.7],[1814.3,133.3],[1815.1,139.8],[1816.1,147.4],[1817.1,156],[1818.4,165.8],[1819.7,176.8],[1821.3,189.1],[1823,202.7],[1824.9,217.8],[1827,234.4],[1829.2,252.6],[1831.7,272.4],[1834.4,294],[1837.3,317.3],[1840.5,342.6],[1843.7,367.8],[1849.3,412.7],[1851.8,432.5],[1854,450.7],[1856.1,467.3],[1858,482.4],[1859.7,496],[1861.3,508.3],[1862.6,519.3],[1863.9,529.1],[1864.9,537.7],[1865.9,545.3],[1866.7,551.8],[1867.4,557.4],[1868,562.2],[1868.5,566.1],[1868.9,569.4],[1869.2,572],[1869.5,574],[1869.7,575.5],[1869.8,576.6],[1869.9,577.3],[1870,577.8],[1870,578],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1]]);
+      ripple("#rip-w1-0", 17.213);
+      tl.fromTo("#camin-x1", {"x":-1670,"y":-472,"scale":1.7}, { ...{"x":-1930,"y":-584,"scale":1.9}, duration: 4.1184, ease: "power2.inOut" }, 21.092);
+      tl.set("#cam-x1", { visibility: "visible" }, 21.092);
+      tl.set("#cam-x1", { visibility: "hidden" }, 25.2104);
+      tl.fromTo("#cam-x1", {"x":-1200}, {"x":0,"duration":0.42,"ease":"expo.out"}, 21.092);
+      tl.fromTo("#camin-x2", {"x":-1670,"y":420,"scale":1.7}, { ...{"x":-1930,"y":300,"scale":1.9}, duration: 4.1184, ease: "power2.inOut" }, 21.092);
+      tl.set("#cam-x2", { visibility: "visible" }, 21.092);
+      tl.set("#cam-x2", { visibility: "hidden" }, 25.2104);
+      tl.fromTo("#cam-x2", {"x":1200}, {"x":0,"duration":0.42,"ease":"expo.out"}, 21.092);
+      tl.fromTo("#camin-k1", {"x":-1310,"y":-78,"scale":1.85}, { ...{"x":-1440,"y":-218.4,"scale":1.98}, duration: 2.0592, ease: "none" }, 25.2104);
+      tl.set("#cam-k1", { visibility: "visible" }, 25.2104);
+      tl.set("#cam-k1", { visibility: "hidden" }, 27.2696);
+      tl.fromTo("#camin-k2", {"x":-1897.5,"y":0,"scale":1.95}, { ...{"x":-2210,"y":-74,"scale":2.2}, duration: 2.0592, ease: "power2.inOut" }, 27.2696);
+      tl.set("#cam-k2", { visibility: "visible" }, 27.2696);
+      tl.set("#cam-k2", { visibility: "hidden" }, 29.3288);
+      cursor("k2", 27.2696, 2.0592, [[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.3,787.4],[1434.3,787.3],[1434.1,787.2],[1434,787],[1433.7,786.8],[1433.4,786.5],[1432.9,786.1],[1432.4,785.6],[1432.4,785.6],[1431.7,785],[1430.9,784.2],[1430,783.4],[1428.9,782.4],[1427.6,781.2],[1426.2,779.9],[1424.6,778.4],[1422.7,776.7],[1420.7,774.8],[1420.7,774.8],[1418.4,772.7],[1415.8,770.4],[1413.1,767.9],[1410,765.1],[1406.7,762],[1403.1,758.7],[1399.2,755.1],[1395,751.3],[1390.4,747.1],[1390.4,747.1],[1385.5,742.6],[1380.3,737.8],[1374.7,732.7],[1368.8,727.3],[1362.4,721.4],[1355.7,715.3],[1348.5,708.7],[1340.9,701.8],[1332.9,694.4],[1332.9,694.4],[1324.5,686.7],[1315.6,678.5],[1306.2,669.9],[1296.3,660.9],[1286,651.4],[1275.1,641.5],[1263.8,631],[1251.8,620.1],[1239.4,608.7],[1239.4,608.7],[1226.4,596.8],[1212.9,584.4],[1199.3,572],[1186.3,560.1],[1173.9,548.7],[1161.9,537.8],[1150.6,527.3],[1139.7,517.4],[1129.4,507.9],[1129.4,507.9],[1119.5,498.9],[1110.1,490.3],[1101.2,482.1],[1092.8,474.4],[1084.8,467],[1077.2,460.1],[1070,453.5],[1063.3,447.4],[1056.9,441.5],[1056.9,441.5],[1051,436.1],[1045.4,431],[1040.2,426.2],[1035.3,421.7],[1030.7,417.5],[1026.5,413.7],[1022.6,410.1],[1019,406.8],[1015.7,403.7],[1015.7,403.7],[1012.6,400.9],[1009.9,398.4],[1007.3,396.1],[1005,394],[1003,392.1],[1001.1,390.4],[999.5,388.9],[998.1,387.6],[996.8,386.4],[996.8,386.4],[995.7,385.4],[994.8,384.6],[994,383.8],[993.3,383.2],[992.8,382.7],[992.3,382.3],[992,382],[991.7,381.8],[991.6,381.6],[991.6,381.6],[991.4,381.5],[991.4,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4]]);
+      tl.fromTo("#camin-k3", {"x":-5028,"y":-192,"scale":3.2}, { ...{"x":-5463,"y":-282,"scale":3.45}, duration: 2.0592, ease: "power2.inOut" }, 29.3288);
+      tl.set("#cam-k3", { visibility: "visible" }, 29.3288);
+      tl.set("#cam-k3", { visibility: "hidden" }, 31.388);
+      cursor("k3", 29.3288, 2.0592, [[1522.6,430.7],[1586.4,402],[1641.8,377.1],[1641.8,377.1],[1689.2,355.7],[1729.4,337.6],[1762.8,322.5],[1790.3,310.2],[1790.3,310.2],[1812.2,300.3],[1829.3,292.6],[1842.2,286.8],[1851.4,282.7],[1851.4,282.7],[1857.5,279.9],[1861.3,278.2],[1863.2,277.4],[1863.9,277],[1863.9,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1863.9,277],[1863.9,277],[1863.6,277.2],[1862.6,277.7],[1860.8,278.7],[1857.7,280.3],[1857.7,280.3],[1853.2,282.8],[1846.8,286.2],[1838.4,290.7],[1827.5,296.5],[1827.5,296.5],[1816.6,302.3],[1808.2,306.8],[1801.8,310.2],[1797.3,312.7],[1797.3,312.7],[1794.2,314.3],[1792.4,315.3],[1791.4,315.8],[1791.1,316],[1791.1,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316.1],[1791.1,316.5],[1791.1,316.5],[1791.3,317.8],[1791.8,320.3],[1792.5,324.5],[1793.6,330.7],[1793.6,330.7],[1795.1,339.3],[1797.1,350.7],[1799.7,365.5],[1802.9,383.9],[1802.9,383.9],[1806.6,405.3],[1809.8,423.6],[1812.4,438.4],[1814.4,449.8],[1814.4,449.8],[1815.9,458.5],[1817,464.6],[1817.7,468.8],[1818.2,471.3],[1818.2,471.3],[1818.4,472.6],[1818.5,473],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1]]);
+      ripple("#rip-k3-0", 29.828);
+      ripple("#rip-k3-1", 30.5144);
+      ripple("#rip-k3-2", 31.3256);
+      tl.fromTo("#camin-k4", {"x":-4680,"y":0,"scale":3}, { ...{"x":-5448,"y":0,"scale":3.4}, duration: 1.5444, ease: "power2.in" }, 31.388);
+      tl.set("#cam-k4", { visibility: "visible" }, 31.388);
+      tl.set("#cam-k4", { visibility: "hidden" }, 32.9324);
+      cursor("k4", 31.388, 1.5444, [[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473.1],[1818.5,473],[1818.5,473],[1818.5,472.5],[1818.5,472.5],[1818.5,471.1],[1818.5,471.1],[1818.4,468.3],[1818.4,468.3],[1818.3,463.8],[1818.3,463.8],[1818.2,457],[1818.2,457],[1818,447.6],[1818,447.6],[1817.7,435],[1817.7,435],[1817.7,435],[1817.4,418.9],[1817.4,418.9],[1817,398.7],[1817,398.7],[1816.5,374.1],[1816.5,374.1],[1815.9,344.5],[1815.9,344.5],[1815.2,309.7],[1815.2,309.7],[1814.3,270.5],[1814.3,270.5],[1813.6,235.6],[1813.6,235.6],[1813,206],[1813,206],[1812.5,181.4],[1812.5,181.4],[1812.1,161.2],[1812.1,161.2],[1811.8,145.1],[1811.8,145.1],[1811.5,132.5],[1811.5,132.5],[1811.3,123.1],[1811.3,123.1],[1811.2,116.3],[1811.2,116.3],[1811.1,111.8],[1811.1,111.8],[1811,109],[1811,109],[1811,107.6],[1811,107.6],[1811,107.6],[1811,107.1],[1811,107.1],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107]]);
+      tl.fromTo("#camin-k5", {"x":-5448,"y":0,"scale":3.4}, { ...{"x":-8515,"y":0,"scale":5}, duration: 0.5148, ease: "expo.out" }, 32.9324);
+      tl.set("#cam-k5", { visibility: "visible" }, 32.9324);
+      tl.set("#cam-k5", { visibility: "hidden" }, 33.4472);
+      cursor("k5", 32.9324, 0.5148, [[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107]]);
+      ripple("#rip-k5-0", 32.9324);
+      tl.fromTo("#camin-d1-0", {"x":-1800,"y":-24,"scale":1.8}, { ...{"x":-2100,"y":-160,"scale":2}, duration: 1.0296, ease: "expo.out" }, 33.4472);
+      tl.set("#cam-d1-0", { visibility: "visible" }, 33.4472);
+      tl.set("#cam-d1-0", { visibility: "hidden" }, 34.4768);
+      tl.fromTo("#cam-d1-0", { x: -200, y: -320, z: -900, rotationY: 14.285714285714286, rotationX: -22.857142857142858, opacity: 0 }, { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.42, ease: "expo.out", delay: 0.00 }, 33.4472);
+      tl.fromTo("#camin-d1-1", {"x":-1800,"y":-24,"scale":1.8}, { ...{"x":-2100,"y":-160,"scale":2}, duration: 1.0296, ease: "expo.out" }, 33.4472);
+      tl.set("#cam-d1-1", { visibility: "visible" }, 33.4472);
+      tl.set("#cam-d1-1", { visibility: "hidden" }, 34.4768);
+      tl.fromTo("#cam-d1-1", { x: 0, y: -320, z: -900, rotationY: 0, rotationX: -22.857142857142858, opacity: 0 }, { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.42, ease: "expo.out", delay: 0.03 }, 33.4472);
+      tl.fromTo("#camin-d1-2", {"x":-1800,"y":-24,"scale":1.8}, { ...{"x":-2100,"y":-160,"scale":2}, duration: 1.0296, ease: "expo.out" }, 33.4472);
+      tl.set("#cam-d1-2", { visibility: "visible" }, 33.4472);
+      tl.set("#cam-d1-2", { visibility: "hidden" }, 34.4768);
+      tl.fromTo("#cam-d1-2", { x: 200, y: -320, z: -900, rotationY: -14.285714285714286, rotationX: -22.857142857142858, opacity: 0 }, { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.42, ease: "expo.out", delay: 0.06 }, 33.4472);
+      tl.fromTo("#camin-d1-3", {"x":-1800,"y":-24,"scale":1.8}, { ...{"x":-2100,"y":-160,"scale":2}, duration: 1.0296, ease: "expo.out" }, 33.4472);
+      tl.set("#cam-d1-3", { visibility: "visible" }, 33.4472);
+      tl.set("#cam-d1-3", { visibility: "hidden" }, 34.4768);
+      tl.fromTo("#cam-d1-3", { x: -200, y: 0, z: -900, rotationY: 14.285714285714286, rotationX: 0, opacity: 0 }, { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.42, ease: "expo.out", delay: 0.03 }, 33.4472);
+      tl.fromTo("#camin-d1-4", {"x":-1800,"y":-24,"scale":1.8}, { ...{"x":-2100,"y":-160,"scale":2}, duration: 1.0296, ease: "expo.out" }, 33.4472);
+      tl.set("#cam-d1-4", { visibility: "visible" }, 33.4472);
+      tl.set("#cam-d1-4", { visibility: "hidden" }, 34.4768);
+      tl.fromTo("#cam-d1-4", { x: 0, y: 0, z: -900, rotationY: 0, rotationX: 0, opacity: 0 }, { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.42, ease: "expo.out", delay: 0.06 }, 33.4472);
+      tl.fromTo("#camin-d1-5", {"x":-1800,"y":-24,"scale":1.8}, { ...{"x":-2100,"y":-160,"scale":2}, duration: 1.0296, ease: "expo.out" }, 33.4472);
+      tl.set("#cam-d1-5", { visibility: "visible" }, 33.4472);
+      tl.set("#cam-d1-5", { visibility: "hidden" }, 34.4768);
+      tl.fromTo("#cam-d1-5", { x: 200, y: 0, z: -900, rotationY: -14.285714285714286, rotationX: 0, opacity: 0 }, { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.42, ease: "expo.out", delay: 0.00 }, 33.4472);
+      tl.fromTo("#camin-d1-6", {"x":-1800,"y":-24,"scale":1.8}, { ...{"x":-2100,"y":-160,"scale":2}, duration: 1.0296, ease: "expo.out" }, 33.4472);
+      tl.set("#cam-d1-6", { visibility: "visible" }, 33.4472);
+      tl.set("#cam-d1-6", { visibility: "hidden" }, 34.4768);
+      tl.fromTo("#cam-d1-6", { x: -200, y: 320, z: -900, rotationY: 14.285714285714286, rotationX: 22.857142857142858, opacity: 0 }, { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.42, ease: "expo.out", delay: 0.06 }, 33.4472);
+      tl.fromTo("#camin-d1-7", {"x":-1800,"y":-24,"scale":1.8}, { ...{"x":-2100,"y":-160,"scale":2}, duration: 1.0296, ease: "expo.out" }, 33.4472);
+      tl.set("#cam-d1-7", { visibility: "visible" }, 33.4472);
+      tl.set("#cam-d1-7", { visibility: "hidden" }, 34.4768);
+      tl.fromTo("#cam-d1-7", { x: 0, y: 320, z: -900, rotationY: 0, rotationX: 22.857142857142858, opacity: 0 }, { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.42, ease: "expo.out", delay: 0.00 }, 33.4472);
+      tl.fromTo("#camin-d1-8", {"x":-1800,"y":-24,"scale":1.8}, { ...{"x":-2100,"y":-160,"scale":2}, duration: 1.0296, ease: "expo.out" }, 33.4472);
+      tl.set("#cam-d1-8", { visibility: "visible" }, 33.4472);
+      tl.set("#cam-d1-8", { visibility: "hidden" }, 34.4768);
+      tl.fromTo("#cam-d1-8", { x: 200, y: 320, z: -900, rotationY: -14.285714285714286, rotationX: 22.857142857142858, opacity: 0 }, { x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1, duration: 0.42, ease: "expo.out", delay: 0.03 }, 33.4472);
+      tl.fromTo("#camin-d2", {"x":-1865,"y":-76,"scale":1.85}, { ...{"x":-2400,"y":-216,"scale":2.1}, duration: 2.0592, ease: "power2.inOut" }, 34.4768);
+      tl.set("#cam-d2", { visibility: "visible" }, 34.4768);
+      tl.set("#cam-d2", { visibility: "hidden" }, 36.536);
+      tl.fromTo("#camin-d3a", {"x":-1594.4,"y":-373,"scale":2.3}, { ...{"x":-1872.8,"y":-463,"scale":2.6}, duration: 2.0592, ease: "power2.inOut" }, 36.536);
+      tl.set("#cam-d3a", { visibility: "visible" }, 36.536);
+      tl.set("#cam-d3a", { visibility: "hidden" }, 38.5952);
+      tl.fromTo("#cam-d3a", {"x":-1100}, {"x":0,"duration":0.38,"ease":"expo.out"}, 36.536);
+      tl.fromTo("#camin-d3b", {"x":-2101,"y":200,"scale":1.9}, { ...{"x":-2379,"y":120,"scale":2.1}, duration: 2.0592, ease: "power2.inOut" }, 36.536);
+      tl.set("#cam-d3b", { visibility: "visible" }, 36.536);
+      tl.set("#cam-d3b", { visibility: "hidden" }, 38.5952);
+      tl.fromTo("#cam-d3b", {"x":1100}, {"x":0,"duration":0.38,"ease":"expo.out"}, 36.536);
+      tl.fromTo("#camin-d3c", {"x":-735,"y":793,"scale":3}, { ...{"x":-862.5,"y":712,"scale":3.3}, duration: 2.0592, ease: "power2.inOut" }, 36.536);
+      tl.set("#cam-d3c", { visibility: "visible" }, 36.536);
+      tl.set("#cam-d3c", { visibility: "hidden" }, 38.5952);
+      tl.fromTo("#cam-d3c", {"x":-1100}, {"x":0,"duration":0.38,"ease":"expo.out"}, 36.536);
+      tl.fromTo("#camin-d4", {"x":-1530,"y":-24,"scale":1.8}, { ...{"x":-1860,"y":-240,"scale":2}, duration: 2.0592, ease: "power2.inOut" }, 38.5952);
+      tl.set("#cam-d4", { visibility: "visible" }, 38.5952);
+      tl.set("#cam-d4", { visibility: "hidden" }, 40.6544);
+      tl.fromTo("#camin-d5", {"x":-1835,"y":-104,"scale":1.9}, { ...{"x":-2320,"y":-272,"scale":2.2}, duration: 2.0592, ease: "power2.inOut" }, 40.6544);
+      tl.set("#cam-d5", { visibility: "visible" }, 40.6544);
+      tl.set("#cam-d5", { visibility: "hidden" }, 42.7136);
+      tl.fromTo("#camin-d6", {"x":-2025,"y":-132,"scale":1.9}, { ...{"x":-3420,"y":-672,"scale":2.4}, duration: 3.0888, ease: "power2.in" }, 42.7136);
+      tl.set("#cam-d6", { visibility: "visible" }, 42.7136);
+      tl.set("#cam-d6", { visibility: "hidden" }, 45.8024);
+      cursor("d6", 42.7136, 3.0888, [[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.2],[1870,578.2],[1870,578.2],[1870,578.2],[1869.9,578.7],[1869.9,578.7],[1869.9,578.7],[1869.6,580.1],[1869.6,580.1],[1869.6,580.1],[1869.1,582.9],[1869.1,582.9],[1869.1,582.9],[1869.1,582.9],[1868.3,587.5],[1868.3,587.5],[1868.3,587.5],[1867.1,594.4],[1867.1,594.4],[1867.1,594.4],[1867.1,594.4],[1865.4,604],[1865.4,604],[1865.4,604],[1863.1,616.7],[1863.1,616.7],[1863.1,616.7],[1863.1,616.7],[1860.2,633],[1860.2,633],[1860.2,633],[1856.6,653.5],[1856.6,653.5],[1856.6,653.5],[1856.6,653.5],[1852.4,677.2],[1852.4,677.2],[1852.4,677.2],[1848.8,697.6],[1848.8,697.6],[1848.8,697.6],[1845.9,714],[1845.9,714],[1845.9,714],[1845.9,714],[1843.6,726.7],[1843.6,726.7],[1843.6,726.7],[1841.9,736.3],[1841.9,736.3],[1841.9,736.3],[1841.9,736.3],[1840.7,743.1],[1840.7,743.1],[1840.7,743.1],[1839.9,747.7],[1839.9,747.7],[1839.9,747.7],[1839.9,747.7],[1839.4,750.5],[1839.4,750.5],[1839.4,750.5],[1839.1,751.9],[1839.1,751.9],[1839.1,751.9],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5]]);
+      ripple("#rip-d6-0", 45.791);
+      tl.fromTo("#camin-c1", {"x":-932.5,"y":0,"scale":1.55}, { ...{"x":-1056,"y":0,"scale":1.68}, duration: 1.0296, ease: "expo.out" }, 45.8024);
+      tl.set("#cam-c1", { visibility: "visible" }, 45.8024);
+      tl.set("#cam-c1", { visibility: "hidden" }, 46.832);
+      cursor("c1", 45.8024, 1.0296, [[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5]]);
+      tl.fromTo("#camin-c2", {"x":-1865,"y":-76,"scale":1.85}, { ...{"x":-2220,"y":-160,"scale":2}, duration: 1.0296, ease: "power2.inOut" }, 46.832);
+      tl.set("#cam-c2", { visibility: "visible" }, 46.832);
+      tl.set("#cam-c2", { visibility: "hidden" }, 47.8616);
+      tl.fromTo("#camin-e1", {"x":-622.7,"y":-505.5,"scale":1.7}, { ...{"x":-808.9,"y":-628.5,"scale":1.9}, duration: 1.0296, ease: "power2.inOut" }, 47.8616);
+      tl.set("#cam-e1", { visibility: "visible" }, 47.8616);
+      tl.set("#cam-e1", { visibility: "hidden" }, 48.8912);
+      tl.fromTo("#cam-e1", {"rotationY":0,"rotationX":0,"scale":0.6,"opacity":0,"z":-400}, {"rotationY":0,"rotationX":0,"scale":1,"opacity":1,"z":0,"duration":0.32,"ease":"back.out(1.6)"}, 47.8616);
+      tl.to("#cam-e1", { rotationY: 0, duration: 0.6996, ease: "none" }, 48.1916);
+      tl.fromTo("#camin-e2", {"x":-432,"y":-390,"scale":1.5}, { ...{"x":-571.2,"y":-483,"scale":1.65}, duration: 1.0296, ease: "power2.inOut" }, 48.8912);
+      tl.set("#cam-e2", { visibility: "visible" }, 48.8912);
+      tl.set("#cam-e2", { visibility: "hidden" }, 49.9208);
+      tl.fromTo("#cam-e2", {"rotationY":0,"rotationX":0,"opacity":1}, {"rotationY":0,"rotationX":0,"opacity":1,"duration":0.01}, 48.8912);
+      tl.to("#cam-e2", { rotationY: 0, duration: 1.0096, ease: "none" }, 48.9112);
+      tl.fromTo("#camin-z1", {"x":-320.6,"y":-288,"scale":1.38}, { ...{"x":-432,"y":-360,"scale":1.5}, duration: 3.5792, ease: "power1.out" }, 49.9208);
+      tl.set("#cam-z1", { visibility: "visible" }, 49.9208);
+      tl.set("#cam-z1", { visibility: "hidden" }, 53.5);
+      tl.fromTo("#cam-z1", {"rotationY":0,"rotationX":0,"scale":1,"opacity":1}, {"rotationY":0,"rotationX":0,"scale":0.78,"opacity":0,"duration":0.6,"ease":"expo.out"}, 49.9208);
+      tl.to("#cam-z1", { rotationY: 0, duration: 2.9692, ease: "none" }, 50.5308);
+      whip("#cam-c1", 46.832, -1, true);
+      whip("#cam-c2", 46.832, -1, false);
+      tl.fromTo("#paper", { opacity: 0 }, { opacity: 1, duration: 0.25, ease: "power2.out", immediateRender: false }, 2.3092);
+      tl.fromTo("#paper", { opacity: 1 }, { opacity: 0, duration: 0.25, ease: "power2.out", immediateRender: false }, 33.1972);
+      tl.fromTo("#paper", { opacity: 0 }, { opacity: 1, duration: 0.01, ease: "power2.out", immediateRender: false }, 47.8616);
+      tl.fromTo("#ink", { opacity: 0 }, { opacity: 1, duration: 2.0592, ease: "power1.inOut" }, 25.2104);
+      tl.to("#ink", { opacity: 0, duration: 0.01 }, 33.4472);
+      HITS.forEach(([t, k]) => hit(t, k));
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

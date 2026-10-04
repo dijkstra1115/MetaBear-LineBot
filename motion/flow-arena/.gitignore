@@ -10,3 +10,15 @@ check.log
 # Full system-font copy used only to re-subset (see promo/scripts/subset-font.py)
 promo/scripts/font-src/
 promo/scripts/.chars.txt
+# Trailer gameplay captures (large; re-record with trailer/scripts/capture.mjs) and font glyph list
+trailer/assets/video/*.mp4
+trailer/scripts/.chars.txt
+# Surge: the licensed song and every mix that contains it stay out of Git; large captures too
+surge/assets/audio/raya.*
+surge/assets/audio/soundtrack.wav
+surge/assets/video/*.mp4
+surge/scripts/.chars.txt
+surge-916/assets/audio/raya.*
+surge-916/assets/audio/soundtrack.wav
+surge-916/assets/video/*.mp4
+surge-916/scripts/.chars.txt
