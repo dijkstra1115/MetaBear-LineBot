@@ -8,8 +8,9 @@ export const ALERT_KINDS = {
   move: "價格急動",
   event: "突發事件",
 };
-// Your own order events worth a pause; a push you just sent is not one of them.
-const OWN_ALERTS = new Set(["fill", "trigger", "stop", "take", "liquidation", "danger", "rejected"]);
+// Your own order events worth a pause; a push you just sent is not one of them, and neither is each
+// partial fill of a resting order: only the fill that completes it ("filled").
+const OWN_ALERTS = new Set(["filled", "trigger", "stop", "take", "liquidation", "danger", "rejected"]);
 const FLOW_WINDOW = 10;
 const BIG_FLOW_MIN = 10000; // 100 BTC in ten seconds
 const BIG_FLOW_MULTIPLE = 6;

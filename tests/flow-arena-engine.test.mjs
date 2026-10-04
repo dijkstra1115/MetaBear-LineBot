@@ -214,6 +214,37 @@ test("a turn runs five simulated minutes, and a filled resting order pauses it e
   assert.equal(paused.alert.kind, "own");
 });
 
+test("a resting order filled in pieces pauses once, when the last piece fills", () => {
+  const sim = quick(10);
+  const session = new Session(sim);
+  session.alerts = { bigFlow: false, cascade: false, own: true, move: false, event: false };
+  const player = new Player(sim);
+  sim.addAccount("bot", "test");
+  const bid = sim.book.bestBid();
+  const order = player.submitLimit("buy", bid, 10000);
+  assert.equal(order.resting, 10000);
+  player.drainEvents();
+  const pieces = [];
+  let run = null;
+  for (let t = 0; t < 200; t++) {
+    // A seller hits the level a little at a time and never trades below it.
+    sim.book.submit("sell", bid, 1500, { owner: "bot", acct: "bot", rest: false });
+    run = session.advance(1);
+    pieces.push(...run.events.filter((event) => event.kind === "fill"));
+    if (run.stop) break;
+  }
+  assert.equal(run.stop, "alert");
+  assert.ok(pieces.length > 1, "the order filled in more than one piece");
+  assert.deepEqual(run.alert.events.map((event) => event.kind), ["filled"]);
+  const filled = run.alert.events[0];
+  assert.equal(filled.side, "buy");
+  assert.equal(filled.lots, 10000);
+  assert.equal(filled.lots, pieces.reduce((sum, event) => sum + event.lots, 0));
+  assert.equal(filled.price, bid);
+  assert.equal(player.position, 10000);
+  assert.equal(player.working.size, 0);
+});
+
 test("a ranked game replays exactly from its seed and action log", async () => {
   const { ActionLog, replayRanked, rankedResult, checkActions } = await import("../public/arena/engine/ranked.js");
   const turns = 3;

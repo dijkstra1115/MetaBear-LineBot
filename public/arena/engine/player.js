@@ -23,6 +23,8 @@ export class Player {
     this.protection = { stop: null, take: null, stopFraction: 1, takeFraction: 1 };
     this.orderIds = new Set();
     this.reduceOnly = new Set();
+    // Maker fills per resting order, so a completed order is reported once instead of fill by fill.
+    this.working = new Map();
     // Orders placed while the market is paused wait here and go out during the next run.
     this.queue = [];
     this.nextId = 1;
@@ -61,6 +63,7 @@ export class Player {
       else {
         this.orderIds.delete(id);
         this.reduceOnly.delete(id);
+        this.working.delete(id);
       }
     }
     return out;
@@ -102,7 +105,17 @@ export class Player {
     this.stats.volume += lots;
     this.fills.push({ time: this.sim.time, side: signed > 0 ? "buy" : "sell", lots, price, taker, order: taker ? `t${this.takerOrder}` : `o${orderId}` });
     if (this.fills.length > 400) this.fills.shift();
-    if (!taker) this.events.push({ kind: "fill", side: signed > 0 ? "buy" : "sell", lots, price });
+    if (taker) return;
+    const side = signed > 0 ? "buy" : "sell";
+    this.events.push({ kind: "fill", side, lots, price });
+    const work = this.working.get(orderId);
+    if (!work) return;
+    work.lots += lots;
+    work.value += lots * price;
+    // The book has already taken this fill off the order; nothing left means it just completed.
+    if (this.sim.book.orders.get(orderId)?.lots > 0) return;
+    this.working.delete(orderId);
+    this.events.push({ kind: "filled", side, lots: work.lots, price: Math.round(work.value / work.lots) });
   }
 
   afterOwnOrder(matched, side) {
@@ -147,6 +160,7 @@ export class Player {
     const arrival = this.sim.book.submit(side, price, lots, { owner: "player", acct: "player" });
     if (arrival.resting) {
       this.orderIds.add(arrival.id);
+      this.working.set(arrival.id, { lots: 0, value: 0 });
       if (reduceOnly) this.reduceOnly.add(arrival.id);
     }
     const wave = this.afterOwnOrder(arrival.matched, side);
@@ -197,6 +211,7 @@ export class Player {
     if (!this.orderIds.has(id)) return false;
     this.orderIds.delete(id);
     this.reduceOnly.delete(id);
+    this.working.delete(id);
     return this.sim.book.cancel(id);
   }
 
