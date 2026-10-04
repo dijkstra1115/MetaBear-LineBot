@@ -1,0 +1,194 @@
+        @font-face {
+          font-family: "Barlow Condensed";
+          src: url("assets/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2");
+          font-weight: 700;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "Barlow Condensed";
+          src: url("assets/fonts/barlow-condensed-latin-500-normal.woff2") format("woff2");
+          font-weight: 500;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "JetBrains Mono";
+          src: url("assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+          font-weight: 100 800;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          pointer-events: none;
+          color: #e9f1f8;
+          font-family: "Noto Sans TC", sans-serif;
+          --long: #2de2a6;
+          --short: #ff4f6e;
+          --fuel: #ffad42;
+          --gold: #ffd77a;
+          --violet: #a98bff;
+          --ink: #e9f1f8;
+          --bg: #04070b;
+        }
+        .abs {
+          position: absolute;
+        }
+        .disp {
+          font-family: "Barlow Condensed", "Noto Sans TC", sans-serif;
+          font-weight: 700;
+          text-transform: uppercase;
+          line-height: 0.86;
+          letter-spacing: -0.01em;
+          white-space: nowrap;
+        }
+        .cn {
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          line-height: 1.1;
+          white-space: nowrap;
+        }
+        .mono {
+          font-family: "JetBrains Mono", monospace;
+          font-weight: 700;
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+        }
+        .glow-w {
+          text-shadow: 0 0 40px rgba(233, 241, 248, 0.35), 0 4px 0 rgba(0, 0, 0, 0.35);
+        }
+        .glow-g {
+          color: var(--gold);
+          text-shadow: 0 0 46px rgba(255, 215, 122, 0.55), 0 4px 0 rgba(0, 0, 0, 0.35);
+        }
+        .glow-l {
+          color: var(--long);
+          text-shadow: 0 0 46px rgba(45, 226, 166, 0.6), 0 4px 0 rgba(0, 0, 0, 0.35);
+        }
+        .glow-s {
+          color: var(--short);
+          text-shadow: 0 0 46px rgba(255, 79, 110, 0.6), 0 4px 0 rgba(0, 0, 0, 0.35);
+        }
+        .glow-v {
+          color: var(--violet);
+          text-shadow: 0 0 46px rgba(169, 139, 255, 0.6), 0 4px 0 rgba(0, 0, 0, 0.35);
+        }
+        .outline {
+          color: transparent;
+          -webkit-text-stroke: 3px rgba(233, 241, 248, 0.9);
+        }
+        .outline-g {
+          color: transparent;
+          -webkit-text-stroke: 3px var(--gold);
+        }
+        .chip {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          height: 52px;
+          padding: 0 22px;
+          border-radius: 10px;
+          background: rgba(6, 11, 18, 0.82);
+          border: 1px solid rgba(255, 215, 122, 0.45);
+          box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), inset 0 0 22px rgba(255, 215, 122, 0.08);
+          font: 700 24px "JetBrains Mono", "Noto Sans TC", monospace;
+          letter-spacing: 0.12em;
+          color: var(--gold);
+          white-space: nowrap;
+        }
+        .chip i {
+          display: block;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: currentColor;
+          box-shadow: 0 0 14px currentColor;
+        }
+        .scrim-l {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1300px;
+          height: 1080px;
+          background: linear-gradient(90deg, rgba(3, 6, 10, 0.86) 0%, rgba(3, 6, 10, 0.55) 45%, rgba(3, 6, 10, 0) 100%);
+        }
+        .scrim-b {
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          width: 1920px;
+          height: 520px;
+          background: linear-gradient(0deg, rgba(3, 6, 10, 0.9) 0%, rgba(3, 6, 10, 0.55) 50%, rgba(3, 6, 10, 0) 100%);
+        }
+        .scrim-t {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 420px;
+          background: linear-gradient(180deg, rgba(3, 6, 10, 0.95) 0%, rgba(3, 6, 10, 0.72) 55%, rgba(3, 6, 10, 0) 100%);
+        }
+        .chapter {
+          position: absolute;
+          left: 96px;
+          top: 80px;
+          display: flex;
+          align-items: flex-end;
+          gap: 26px;
+        }
+        .chapter .num {
+          font: 700 168px "Barlow Condensed", sans-serif;
+          line-height: 0.8;
+          color: transparent;
+          -webkit-text-stroke: 3px var(--gold);
+        }
+        .chapter .words {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding-bottom: 6px;
+        }
+        .chapter .en {
+          font: 700 64px "Barlow Condensed", sans-serif;
+          line-height: 0.9;
+          text-transform: uppercase;
+          color: #fff;
+          letter-spacing: 0.02em;
+        }
+        .chapter .zh {
+          font: 900 34px "Noto Sans TC", sans-serif;
+          color: var(--gold);
+          letter-spacing: 0.2em;
+        }
+        .bracket {
+          position: absolute;
+          border: 0 solid var(--gold);
+          width: 44px;
+          height: 44px;
+          filter: drop-shadow(0 0 8px rgba(255, 215, 122, 0.7));
+        }
+        .bracket.tl {
+          border-left-width: 4px;
+          border-top-width: 4px;
+        }
+        .bracket.tr {
+          border-right-width: 4px;
+          border-top-width: 4px;
+        }
+        .bracket.bl {
+          border-left-width: 4px;
+          border-bottom-width: 4px;
+        }
+        .bracket.br {
+          border-right-width: 4px;
+          border-bottom-width: 4px;
+        }
+        .bar-hazard {
+          background: repeating-linear-gradient(-55deg, var(--gold) 0 26px, #1a1406 26px 52px);
+        }

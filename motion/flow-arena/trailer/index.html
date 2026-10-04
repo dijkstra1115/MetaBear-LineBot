@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #04070b;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #04070b;
+      }
+      #rig {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      #rig-shake {
+        position: absolute;
+        inset: 0;
+      }
+      .cam {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      .cam-in {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        transform-origin: 0 0;
+      }
+      video.shot {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        object-fit: cover;
+        filter: contrast(1.08) saturate(1.18);
+      }
+      video.shot.dim {
+        filter: contrast(1.05) saturate(1.1) brightness(0.55) blur(3px);
+      }
+      .cursor {
+        filter: drop-shadow(0 0 7px rgba(255, 215, 122, 0.6)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 30px;
+        height: 30px;
+        transform-origin: 6px 3px;
+      }
+      .cursor::before,
+      .cursor::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 30px;
+        height: 30px;
+        clip-path: polygon(20% 9%, 20% 78%, 38% 61%, 50% 89%, 61% 84%, 49% 57%, 73% 57%);
+      }
+      .cursor::before {
+        background: #0a0f16;
+        transform: scale(1.28);
+        transform-origin: 20% 9%;
+      }
+      .cursor::after {
+        background: #fdfaf2;
+      }
+      .ripple {
+        position: absolute;
+        width: 0;
+        height: 0;
+        opacity: 0;
+      }
+      .ripple::before,
+      .ripple::after {
+        content: "";
+        position: absolute;
+        left: -40px;
+        top: -40px;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid #ffd77a;
+        box-shadow: 0 0 18px #ffd77a;
+      }
+      .ripple::after {
+        left: -12px;
+        top: -12px;
+        width: 24px;
+        height: 24px;
+        border: 0;
+        background: #ffd77a;
+        opacity: 0.8;
+      }
+      .layer {
+        position: absolute;
+        inset: 0;
+      }
+      #seams {
+        position: absolute;
+        left: 640px;
+        top: 0;
+        width: 640px;
+        height: 1080px;
+        border-left: 4px solid #04070b;
+        border-right: 4px solid #04070b;
+        opacity: 0;
+        box-shadow: inset 0 0 0 1px rgba(255, 215, 122, 0.25);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="45" data-width="1920" data-height="1080">
+      <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+        <filter id="rgb-split" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+          <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
+          <feOffset id="rgb-r" in="r" dx="0" dy="0" result="ro" />
+          <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" result="gb" />
+          <feOffset id="rgb-gb" in="gb" dx="0" dy="0" result="gbo" />
+          <feBlend in="ro" in2="gbo" mode="screen" />
+        </filter>
+      </svg>
+      <div id="rig">
+        <div id="rig-shake">
+        <div class="cam" id="cam-o1">
+          <div class="cam-in" id="camin-o1" data-layout-allow-overflow>
+            <video id="v-o1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="0" data-duration="0.4688" data-media-start="10.62" data-playback-rate="0.55" data-track-index="1"></video>
+            <div id="cur-o1" class="clip cursor" data-start="0" data-duration="0.4688" data-track-index="2"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-o2">
+          <div class="cam-in" id="camin-o2" data-layout-allow-overflow>
+            <video id="v-o2" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="0.4688" data-duration="0.4688" data-media-start="8.95" data-playback-rate="0.6" data-track-index="3"></video>
+            <div id="cur-o2" class="clip cursor" data-start="0.4688" data-duration="0.4688" data-track-index="4"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-o3">
+          <div class="cam-in" id="camin-o3" data-layout-allow-overflow>
+            <video id="v-o3" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="0.9375" data-duration="0.4688" data-media-start="11" data-playback-rate="0.5" data-track-index="5"></video>
+          </div>
+        </div>
+        <div class="cam" id="cam-o4">
+          <div class="cam-in" id="camin-o4" data-layout-allow-overflow>
+            <video id="v-o4" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="1.4063" data-duration="0.4688" data-media-start="12.6" data-playback-rate="0.6" data-track-index="7"></video>
+          </div>
+        </div>
+        <div class="cam" id="cam-o5">
+          <div class="cam-in" id="camin-o5" data-layout-allow-overflow>
+            <video id="v-o5" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="1.875" data-duration="0.9375" data-media-start="11.25" data-playback-rate="0.55" data-track-index="9"></video>
+            <div id="cur-o5" class="clip cursor" data-start="1.875" data-duration="0.9375" data-track-index="10"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-o6">
+          <div class="cam-in" id="camin-o6" data-layout-allow-overflow>
+            <video id="v-o6" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="2.8125" data-duration="0.9375" data-media-start="13.05" data-playback-rate="0.5" data-track-index="11"></video>
+            <div id="cur-o6" class="clip cursor" data-start="2.8125" data-duration="0.9375" data-track-index="12"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-rw">
+          <div class="cam-in" id="camin-rw" data-layout-allow-overflow>
+            <video id="v-rw" class="clip shot" src="assets/video/rewind.mp4" muted playsinline data-start="3.75" data-duration="0.9375" data-media-start="0" data-playback-rate="1" data-track-index="13"></video>
+          </div>
+        </div>
+        <div class="cam" id="cam-t1">
+          <div class="cam-in" id="camin-t1" data-layout-allow-overflow>
+            <video id="v-t1" class="clip shot dim" src="assets/video/main.mp4" muted playsinline data-start="4.6875" data-duration="2.8125" data-media-start="0" data-playback-rate="0.12" data-track-index="15"></video>
+          </div>
+        </div>
+        <div class="cam" id="cam-r1">
+          <div class="cam-in" id="camin-r1" data-layout-allow-overflow>
+            <video id="v-r1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="7.5" data-duration="1.875" data-media-start="0.15" data-playback-rate="0.75" data-track-index="17"></video>
+            <div id="cur-r1" class="clip cursor" data-start="7.5" data-duration="1.875" data-track-index="18"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-r2">
+          <div class="cam-in" id="camin-r2" data-layout-allow-overflow>
+            <video id="v-r2" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="9.375" data-duration="1.875" data-media-start="1.56" data-playback-rate="0.75" data-track-index="19"></video>
+            <div id="cur-r2" class="clip cursor" data-start="9.375" data-duration="1.875" data-track-index="20"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-r3">
+          <div class="cam-in" id="camin-r3" data-layout-allow-overflow>
+            <video id="v-r3" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="11.25" data-duration="1.875" data-media-start="2.97" data-playback-rate="0.75" data-track-index="21"></video>
+            <div id="cur-r3" class="clip cursor" data-start="11.25" data-duration="1.875" data-track-index="22"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-l1">
+          <div class="cam-in" id="camin-l1" data-layout-allow-overflow>
+            <video id="v-l1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="13.125" data-duration="1.875" data-media-start="4.2" data-playback-rate="1.0667" data-track-index="23"></video>
+            <div id="cur-l1" class="clip cursor" data-start="13.125" data-duration="1.875" data-track-index="24"></div>
+            <div id="rip-l1-0" class="ripple" style="left:1864px;top:277px"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-l2">
+          <div class="cam-in" id="camin-l2" data-layout-allow-overflow>
+            <video id="v-l2" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="15" data-duration="1.875" data-media-start="6.2" data-playback-rate="0.9067" data-track-index="25"></video>
+            <div id="cur-l2" class="clip cursor" data-start="15" data-duration="1.875" data-track-index="26"></div>
+            <div id="rip-l2-0" class="ripple" style="left:1791px;top:316px"></div>
+            <div id="rip-l2-1" class="ripple" style="left:1661.5px;top:473.1px"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-l3">
+          <div class="cam-in" id="camin-l3" data-layout-allow-overflow>
+            <video id="v-l3" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="16.875" data-duration="1.4063" data-media-start="7.9" data-playback-rate="0.6044" data-track-index="27"></video>
+            <div id="cur-l3" class="clip cursor" data-start="16.875" data-duration="1.4063" data-track-index="28"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-l4">
+          <div class="cam-in" id="camin-l4" data-layout-allow-overflow>
+            <video id="v-l4" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="18.2813" data-duration="0.4688" data-media-start="8.75" data-playback-rate="0.1" data-track-index="29"></video>
+            <div id="cur-l4" class="clip cursor" data-start="18.2813" data-duration="0.4688" data-track-index="30"></div>
+            <div id="rip-l4-0" class="ripple" style="left:1811px;top:107px"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-i1">
+          <div class="cam-in" id="camin-i1" data-layout-allow-overflow>
+            <video id="v-i1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="18.75" data-duration="0.9375" data-media-start="8.797" data-playback-rate="0.55" data-track-index="31"></video>
+            <div id="cur-i1" class="clip cursor" data-start="18.75" data-duration="0.9375" data-track-index="32"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-i2">
+          <div class="cam-in" id="camin-i2" data-layout-allow-overflow>
+            <video id="v-i2" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="19.6875" data-duration="1.875" data-media-start="9.31" data-playback-rate="0.7" data-track-index="33"></video>
+            <div id="cur-i2" class="clip cursor" data-start="19.6875" data-duration="1.875" data-track-index="34"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-i3a" style="clip-path: inset(0px 1280px 0px 0px)">
+          <div class="cam-in" id="camin-i3a" data-layout-allow-overflow>
+            <video id="v-i3a" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="21.5625" data-duration="1.875" data-media-start="10.62" data-playback-rate="0.37" data-track-index="35"></video>
+          </div>
+        </div>
+        <div class="cam" id="cam-i3b" style="clip-path: inset(0px 640px 0px 640px)">
+          <div class="cam-in" id="camin-i3b" data-layout-allow-overflow>
+            <video id="v-i3b" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="21.5625" data-duration="1.875" data-media-start="10.621" data-playback-rate="0.37" data-track-index="37"></video>
+          </div>
+        </div>
+        <div class="cam" id="cam-i3c" style="clip-path: inset(0px 0px 0px 1280px)">
+          <div class="cam-in" id="camin-i3c" data-layout-allow-overflow>
+            <video id="v-i3c" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="21.5625" data-duration="1.875" data-media-start="10.622" data-playback-rate="0.37" data-track-index="39"></video>
+          </div>
+        </div>
+        <div class="cam" id="cam-i4">
+          <div class="cam-in" id="camin-i4" data-layout-allow-overflow>
+            <video id="v-i4" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="23.4375" data-duration="1.875" data-media-start="11.32" data-playback-rate="0.9" data-track-index="41"></video>
+            <div id="cur-i4" class="clip cursor" data-start="23.4375" data-duration="1.875" data-track-index="42"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-i5">
+          <div class="cam-in" id="camin-i5" data-layout-allow-overflow>
+            <video id="v-i5" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="25.3125" data-duration="1.875" data-media-start="13" data-playback-rate="0.3" data-track-index="43"></video>
+            <div id="cur-i5" class="clip cursor" data-start="25.3125" data-duration="1.875" data-track-index="44"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-i6">
+          <div class="cam-in" id="camin-i6" data-layout-allow-overflow>
+            <video id="v-i6" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="27.1875" data-duration="2.8125" data-media-start="13.56" data-playback-rate="0.2524" data-track-index="45"></video>
+            <div id="cur-i6" class="clip cursor" data-start="27.1875" data-duration="2.8125" data-track-index="46"></div>
+            <div id="rip-i6-0" class="ripple" style="left:1839px;top:752.5px"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-c1">
+          <div class="cam-in" id="camin-c1" data-layout-allow-overflow>
+            <video id="v-c1" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="30" data-duration="1.875" data-media-start="14.27" data-playback-rate="0.4" data-track-index="47"></video>
+            <div id="cur-c1" class="clip cursor" data-start="30" data-duration="1.875" data-track-index="48"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-c2">
+          <div class="cam-in" id="camin-c2" data-layout-allow-overflow>
+            <video id="v-c2" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="31.875" data-duration="1.875" data-media-start="15.02" data-playback-rate="1.4" data-track-index="49"></video>
+            <div id="cur-c2" class="clip cursor" data-start="31.875" data-duration="1.875" data-track-index="50"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-c3">
+          <div class="cam-in" id="camin-c3" data-layout-allow-overflow>
+            <video id="v-c3" class="clip shot" src="assets/video/main.mp4" muted playsinline data-start="33.75" data-duration="1.875" data-media-start="19.6" data-playback-rate="1.5" data-track-index="51"></video>
+          </div>
+        </div>
+        <div class="cam" id="cam-p1">
+          <div class="cam-in" id="camin-p1" data-layout-allow-overflow>
+            <video id="v-p1" class="clip shot" src="assets/video/reveal.mp4" muted playsinline data-start="35.625" data-duration="1.875" data-media-start="0.45" data-playback-rate="1.35" data-track-index="53"></video>
+            <div id="cur-p1" class="clip cursor" data-start="35.625" data-duration="1.875" data-track-index="54"></div>
+          </div>
+        </div>
+        <div class="cam" id="cam-p2">
+          <div class="cam-in" id="camin-p2" data-layout-allow-overflow>
+            <video id="v-p2" class="clip shot" src="assets/video/ranked.mp4" muted playsinline data-start="37.5" data-duration="1.875" data-media-start="0.15" data-playback-rate="0.93" data-track-index="55"></video>
+          </div>
+        </div>
+        <div class="cam" id="cam-e1">
+          <div class="cam-in" id="camin-e1" data-layout-allow-overflow>
+            <video id="v-e1" class="clip shot dim" src="assets/video/main.mp4" muted playsinline data-start="39.375" data-duration="5.625" data-media-start="9.6" data-playback-rate="0.42" data-track-index="57"></video>
+          </div>
+        </div>
+        </div>
+        <div id="seams" data-layout-ignore></div>
+      </div>
+      <div id="ov-open" class="layer" data-composition-id="ov-open" data-composition-src="compositions/ov-open.html" data-start="0" data-duration="4.6875" data-track-index="100" data-width="1920" data-height="1080"></div>
+      <div id="ov-title" class="layer" data-composition-id="ov-title" data-composition-src="compositions/ov-title.html" data-start="4.6875" data-duration="2.8125" data-track-index="101" data-width="1920" data-height="1080"></div>
+      <div id="ov-read" class="layer" data-composition-id="ov-read" data-composition-src="compositions/ov-read.html" data-start="7.5" data-duration="5.625" data-track-index="102" data-width="1920" data-height="1080"></div>
+      <div id="ov-load" class="layer" data-composition-id="ov-load" data-composition-src="compositions/ov-load.html" data-start="13.125" data-duration="5.625" data-track-index="103" data-width="1920" data-height="1080"></div>
+      <div id="ov-ignite" class="layer" data-composition-id="ov-ignite" data-composition-src="compositions/ov-ignite.html" data-start="18.75" data-duration="11.25" data-track-index="104" data-width="1920" data-height="1080"></div>
+      <div id="ov-cash" class="layer" data-composition-id="ov-cash" data-composition-src="compositions/ov-cash.html" data-start="30" data-duration="5.625" data-track-index="105" data-width="1920" data-height="1080"></div>
+      <div id="ov-compete" class="layer" data-composition-id="ov-compete" data-composition-src="compositions/ov-compete.html" data-start="35.625" data-duration="3.75" data-track-index="106" data-width="1920" data-height="1080"></div>
+      <div id="ov-cta" class="layer" data-composition-id="ov-cta" data-composition-src="compositions/ov-cta.html" data-start="39.375" data-duration="5.625" data-track-index="107" data-width="1920" data-height="1080"></div>
+      <div id="fx-overlay" class="layer" data-composition-id="fx-overlay" data-composition-src="compositions/fx-overlay.html" data-start="0" data-duration="45" data-track-index="150" data-width="1920" data-height="1080"></div>
+      <audio id="soundtrack" src="assets/audio/soundtrack.wav" data-start="0" data-duration="45" data-track-index="200" data-volume="1"></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const HITS = [[0,1],[0.46875,0.5],[0.9375,0.5],[1.40625,0.5],[1.875,0.8],[2.8125,0.6],[4.6875,1],[7.5,0.5],[13.125,0.5],[18.28125,0.7],[18.75,1],[19.6875,0.6],[21.5625,0.9],[23.4375,0.7],[25.3125,0.8],[30,1],[31.875,0.6],[33.75,0.5],[35.625,0.6],[37.5,0.6],[39.375,0.9],[43.125,1]];
+      // cursor: sampled page positions at 60 per second; counter-scaled so it reads the same size at any zoom
+      const cursor = (id, start, dur, pts) => {
+        const el = document.getElementById("cur-" + id);
+        const cam = document.getElementById("camin-" + id);
+        const p = { v: 0 };
+        const place = () => {
+          const f = p.v * (pts.length - 1);
+          const i = Math.min(pts.length - 2, Math.floor(f));
+          const k = f - i;
+          const a = pts[i], b = pts[i + 1] || a;
+          const z = gsap.getProperty(cam, "scale") || 1;
+          el.style.transform = "translate(" + (a[0] + (b[0] - a[0]) * k - 6) + "px," + (a[1] + (b[1] - a[1]) * k - 3) + "px) scale(" + (1.25 / z).toFixed(4) + ")";
+        };
+        place();
+        tl.to(p, { v: 1, duration: dur, ease: "none", onUpdate: place }, start);
+      };
+      const ripple = (sel, t) => {
+        tl.fromTo(sel, { opacity: 1, scale: 0.3 }, { opacity: 0, scale: 1.6, duration: 0.45, ease: "power2.out", immediateRender: false }, t);
+      };
+      // whip: smear the outgoing shot off and the incoming shot on
+      const whip = (sel, t, dir, out) => {
+        if (out) tl.fromTo(sel, { x: 0, filter: "blur(0px)" }, { x: dir * 420, filter: "blur(18px)", duration: 0.1, ease: "power2.in", immediateRender: false }, t - 0.1);
+        else tl.fromTo(sel, { x: -dir * 420, filter: "blur(18px)" }, { x: 0, filter: "blur(0px)", duration: 0.14, ease: "power3.out", immediateRender: false }, t);
+      };
+      // hit: camera shake and a chromatic split that decays fast
+      const rgbR = document.getElementById("rgb-r");
+      const rgbG = document.getElementById("rgb-gb");
+      const hit = (t, k) => {
+        const amp = 26 * k;
+        const shake = gsap.timeline();
+        [[1, -0.6], [-0.8, 0.9], [0.6, -0.4], [-0.3, 0.3], [0, 0]].forEach(([x, y], i) => shake.to("#rig-shake", { x: x * amp * (1 - i * 0.18), y: y * amp * (1 - i * 0.18), duration: 0.035, ease: "none" }));
+        tl.add(shake, t);
+        const split = { v: 0 };
+        tl.fromTo(split, { v: 18 * k }, { v: 0, duration: 0.28, ease: "power2.out", immediateRender: false, onStart: () => {}, onUpdate: () => {
+          rgbR.setAttribute("dx", split.v.toFixed(2));
+          rgbG.setAttribute("dx", (-split.v).toFixed(2));
+          document.getElementById("rig").style.filter = split.v > 0.05 ? "url(#rgb-split)" : "none";
+        } }, t);
+      };
+      tl.fromTo("#camin-o1", {"x":-478.4,"y":-390,"scale":1.55}, { ...{"x":-385.6,"y":-330,"scale":1.45}, duration: 0.4688, ease: "power3.out" }, 0);
+      cursor("o1", 0, 0.4688, [[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1]]);
+      tl.fromTo("#camin-o2", {"x":-2098,"y":-186,"scale":2.2}, { ...{"x":-1820,"y":-120,"scale":2}, duration: 0.4688, ease: "power2.inOut" }, 0.4688);
+      cursor("o2", 0.4688, 0.4688, [[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107.1],[1811,107.1],[1811,107.3],[1811.1,107.8],[1811.1,107.8],[1811.2,108.5],[1811.2,108.5],[1811.3,109.6],[1811.5,111.1],[1811.5,111.1],[1811.8,113.1],[1811.8,113.1],[1812.1,115.7],[1812.5,119],[1812.5,119],[1813,122.9],[1813,122.9],[1813.6,127.7],[1814.3,133.3],[1814.3,133.3],[1815.1,139.8]]);
+      tl.fromTo("#camin-o3", {"x":-1016,"y":-110,"scale":2.6}, { ...{"x":-788,"y":-35,"scale":2.3}, duration: 0.4688, ease: "power2.inOut" }, 0.9375);
+      tl.fromTo("#camin-o4", {"x":-240,"y":-225,"scale":3}, { ...{"x":-120,"y":-148.5,"scale":2.7}, duration: 0.4688, ease: "power2.inOut" }, 1.4063);
+      tl.fromTo("#camin-o5", {"x":-57.6,"y":-32.4,"scale":1.06}, { ...{"x":-320.6,"y":-288,"scale":1.38}, duration: 0.9375, ease: "power2.in" }, 1.875);
+      cursor("o5", 1.875, 0.9375, [[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1]]);
+      tl.fromTo("#camin-o6", {"x":-320.6,"y":-288,"scale":1.38}, { ...{"x":-617.6,"y":-480,"scale":1.7}, duration: 0.9375, ease: "power1.in" }, 2.8125);
+      cursor("o6", 2.8125, 0.9375, [[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1]]);
+      tl.fromTo("#camin-rw", {"x":0,"y":0,"scale":1}, { ...{"x":0,"y":0,"scale":1}, duration: 0.9375, ease: "power2.inOut" }, 3.75);
+      tl.fromTo("#camin-t1", {"x":-153.6,"y":-180,"scale":1.2}, { ...{"x":-265,"y":-252,"scale":1.32}, duration: 2.8125, ease: "none" }, 4.6875);
+      tl.fromTo("#camin-r1", {"x":-200,"y":-210,"scale":1.25}, { ...{"x":-750,"y":-87,"scale":1.9}, duration: 1.875, ease: "power2.inOut" }, 7.5);
+      cursor("r1", 7.5, 1.875, [[1383.8,665.6],[1383.8,665.6],[1383.8,665.6],[1383.8,665.6],[1383.8,665.6],[1383.8,665.6],[1383.8,665.6],[1383.7,665.6],[1383.7,665.6],[1383.6,665.5],[1383.6,665.5],[1383.4,665.4],[1383.2,665.3],[1382.9,665.1],[1382.9,665.1],[1382.4,664.8],[1381.9,664.5],[1381.2,664],[1381.2,664],[1380.4,663.5],[1379.3,662.9],[1378.1,662.1],[1378.1,662.1],[1376.7,661.3],[1375.1,660.3],[1373.3,659.2],[1373.3,659.2],[1371.2,657.9],[1368.8,656.4],[1366.2,654.8],[1366.2,654.8],[1363.3,653],[1360,651],[1356.5,648.8],[1352.6,646.4],[1352.6,646.4],[1348.4,643.8],[1343.7,641],[1338.7,637.9],[1338.7,637.9],[1333.4,634.6],[1327.5,631],[1321.3,627.2],[1321.3,627.2],[1314.6,623.1],[1307.5,618.7],[1299.8,614],[1299.8,614],[1291.7,609],[1283.1,603.7],[1274,598.1],[1274,598.1],[1264.3,592.2],[1254,585.9],[1243.2,579.2],[1243.2,579.2],[1231.8,572.2],[1220.5,565.2],[1209.6,558.6],[1209.6,558.6],[1199.4,552.3],[1189.7,546.3],[1180.6,540.7],[1180.6,540.7],[1172,535.4],[1163.8,530.4],[1156.2,525.7],[1156.2,525.7],[1149.1,521.3],[1142.4,517.2],[1136.1,513.4],[1136.1,513.4],[1130.3,509.8],[1124.9,506.5],[1119.9,503.4],[1119.9,503.4],[1115.3,500.6],[1111.1,498],[1107.2,495.6],[1107.2,495.6],[1103.6,493.4],[1100.4,491.4],[1097.5,489.6],[1097.5,489.6],[1094.9,488],[1092.5,486.6],[1090.4,485.3],[1090.4,485.3],[1088.6,484.2],[1086.9,483.2],[1085.5,482.3],[1085.5,482.3],[1084.3,481.6],[1083.3,480.9],[1082.5,480.4],[1082.5,480.4],[1081.8,480],[1081.2,479.6],[1080.8,479.4],[1080.8,479.4],[1080.5,479.2],[1080.2,479],[1080.1,478.9],[1080.1,478.9],[1080,478.9],[1079.9,478.9],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8]]);
+      tl.fromTo("#camin-r2", {"x":-750,"y":-87,"scale":1.9}, { ...{"x":-1090,"y":-210,"scale":2.5}, duration: 1.875, ease: "power1.inOut" }, 9.375);
+      cursor("r2", 9.375, 1.875, [[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1079.9,478.8],[1080,478.8],[1080,478.8],[1080.2,478.7],[1080.2,478.7],[1080.4,478.5],[1080.7,478.3],[1081.2,478],[1081.2,478],[1081.8,477.6],[1082.7,477.1],[1083.7,476.4],[1083.7,476.4],[1084.9,475.6],[1086.4,474.7],[1088.2,473.6],[1088.2,473.6],[1090.2,472.2],[1092.6,470.7],[1095.3,469],[1095.3,469],[1098.3,467],[1101.8,464.8],[1105.6,462.3],[1105.6,462.3],[1109.9,459.6],[1114.7,456.6],[1119.9,453.2],[1119.9,453.2],[1125.6,449.6],[1131.8,445.6],[1138.5,441.2],[1138.5,441.2],[1145.8,436.6],[1153.8,431.5],[1162.3,426],[1162.3,426],[1171.4,420.2],[1181.2,413.9],[1191,407.6],[1191,407.6],[1200.1,401.7],[1208.6,396.3],[1216.6,391.2],[1216.6,391.2],[1223.9,386.5],[1230.6,382.2],[1236.8,378.2],[1236.8,378.2],[1242.5,374.5],[1247.7,371.2],[1252.5,368.2],[1252.5,368.2],[1256.8,365.4],[1260.6,363],[1264.1,360.7],[1264.1,360.7],[1267.1,358.8],[1269.8,357],[1272.2,355.5],[1272.2,355.5],[1274.2,354.2],[1276,353.1],[1277.5,352.1],[1277.5,352.1],[1278.7,351.3],[1279.7,350.7],[1280.6,350.2],[1280.6,350.2],[1281.2,349.7],[1281.7,349.4],[1282,349.2],[1282,349.2],[1282.2,349.1],[1282.4,349],[1282.4,348.9],[1282.4,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.5,348.9],[1282.4,348.9],[1282.4,348.9],[1282.2,348.9],[1281.4,348.8],[1279.9,348.7],[1279.9,348.7],[1277.4,348.4],[1273.6,348.1],[1268.4,347.6],[1268.4,347.6],[1261.5,347],[1252.6,346.1],[1241.4,345.1],[1241.4,345.1],[1227.9,343.8],[1211.6,342.3],[1192.3,340.5],[1192.3,340.5],[1169.9,338.5],[1144,336],[1114.4,333.3]]);
+      tl.fromTo("#camin-r3", {"x":0,"y":-45,"scale":2.6}, { ...{"x":0,"y":-157.5,"scale":3.1}, duration: 1.875, ease: "power2.inOut" }, 11.25);
+      cursor("r3", 11.25, 1.875, [[1114.4,333.3],[1080.9,330.2],[1043.2,326.7],[1043.2,326.7],[1001,322.8],[954.2,318.4],[902.5,313.6],[902.5,313.6],[845.6,308.3],[783.2,302.5],[715.2,296.2],[715.2,296.2],[647.2,289.9],[584.9,284.1],[528,278.8],[528,278.8],[476.3,274],[429.4,269.6],[387.3,265.7],[387.3,265.7],[349.6,262.2],[316.1,259.1],[286.5,256.3],[286.5,256.3],[260.6,253.9],[238.1,251.8],[218.9,250],[218.9,250],[202.6,248.5],[189,247.3],[177.9,246.2],[177.9,246.2],[169,245.4],[162.1,244.7],[156.9,244.3],[156.9,244.3],[153.1,243.9],[150.6,243.7],[149.1,243.5],[149.1,243.5],[148.3,243.5],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148,243.4],[148.2,243.4],[149.3,243.5],[152.4,243.5],[152.4,243.5],[158.5,243.7],[168.4,243.9],[183.3,244.2],[183.3,244.2],[204,244.7],[231.7,245.4],[267.1,246.2],[267.1,246.2],[311.4,247.2],[365.5,248.4],[430.4,249.9],[430.4,249.9],[507,251.6],[596.4,253.7],[699.5,256],[699.5,256],[817.3,258.7],[946.7,261.7],[1064.5,264.4],[1064.5,264.4],[1167.6,266.7],[1257,268.8],[1333.6,270.5],[1333.6,270.5],[1398.5,272],[1452.6,273.3],[1496.9,274.3],[1496.9,274.3],[1532.3,275.1],[1560,275.7],[1580.7,276.2],[1580.7,276.2],[1595.6,276.5]]);
+      tl.fromTo("#camin-l1", {"x":-3840,"y":-294,"scale":3}, { ...{"x":-4992,"y":-460.8,"scale":3.6}, duration: 1.875, ease: "power2.inOut" }, 13.125);
+      cursor("l1", 13.125, 1.875, [[1064.5,264.4],[1167.6,266.7],[1257,268.8],[1333.6,270.5],[1398.5,272],[1452.6,273.3],[1496.9,274.3],[1532.3,275.1],[1580.7,276.2],[1595.6,276.5],[1605.5,276.8],[1611.6,276.9],[1614.7,277],[1615.8,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616,277],[1616.3,277],[1618.2,277],[1633.9,277],[1650.7,277],[1664.9,277],[1673.1,277],[1676.9,277],[1677.9,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678,277],[1678.3,277],[1680.2,277],[1685.6,277],[1712.7,277],[1726.9,277],[1735.1,277],[1738.9,277],[1739.9,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740,277],[1740.3,277],[1742.2,277],[1747.6,277],[1757.9,277],[1788.9,277],[1797.1,277],[1800.9,277],[1801.9,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802,277],[1802.3,277],[1804.2,277],[1809.6,277],[1819.9,277],[1836.7,277],[1859.1,277],[1862.9,277],[1863.9,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1864,277],[1863.9,277],[1863.6,277.2],[1862.6,277.7],[1860.8,278.7],[1853.2,282.8],[1846.8,286.2],[1838.4,290.7],[1827.5,296.5],[1816.6,302.3],[1808.2,306.8],[1801.8,310.2],[1797.3,312.7],[1794.2,314.3],[1792.4,315.3],[1791.4,315.8],[1791.1,316],[1791,316],[1791,316],[1791,316]]);
+      ripple("#rip-l1-0", 14.4375);
+      tl.fromTo("#camin-l2", {"x":-3648,"y":-620,"scale":2.9}, { ...{"x":-4224,"y":-740,"scale":3.2}, duration: 1.875, ease: "power2.inOut" }, 15);
+      cursor("l2", 15, 1.875, [[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1791,316],[1790.8,316.3],[1790.4,317],[1789.6,318.3],[1788.2,320.6],[1786.2,323.9],[1786.2,323.9],[1783.4,328.6],[1779.7,334.7],[1774.9,342.7],[1769,352.6],[1762,364.1],[1756.1,374.1],[1751.3,382],[1747.6,388.2],[1744.8,392.8],[1742.8,396.2],[1742.8,396.2],[1741.4,398.4],[1740.6,399.8],[1740.2,400.5],[1740,400.7],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1740,400.8],[1739.9,400.8],[1739.6,401.1],[1738.5,402.1],[1738.5,402.1],[1736.6,403.9],[1733.3,407],[1728.4,411.5],[1721.5,417.8],[1712.4,426.2],[1700.8,436.9],[1689.1,447.7],[1680,456.1],[1673.1,462.4],[1668.2,466.9],[1668.2,466.9],[1664.9,469.9],[1663,471.8],[1661.9,472.7],[1661.6,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1]]);
+      ripple("#rip-l2-0", 15.0551);
+      ripple("#rip-l2-1", 16.5993);
+      tl.fromTo("#camin-l3", {"x":-2688,"y":0,"scale":2.4}, { ...{"x":-4608,"y":0,"scale":3.4}, duration: 1.4063, ease: "power2.in" }, 16.875);
+      cursor("l3", 16.875, 1.4063, [[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.5,473.1],[1661.6,472.8],[1661.6,472.8],[1661.9,472],[1662.6,470.5],[1662.6,470.5],[1663.6,468],[1663.6,468],[1665.1,464.3],[1667.2,459.1],[1667.2,459.1],[1670,452.2],[1670,452.2],[1673.6,443.4],[1678.1,432.4],[1678.1,432.4],[1683.6,418.9],[1690.3,402.7],[1690.3,402.7],[1698.1,383.6],[1698.1,383.6],[1707.2,361.3],[1717.7,335.6],[1717.7,335.6],[1729.7,306.2],[1729.7,306.2],[1742.8,273.9],[1754.8,244.5],[1754.8,244.5],[1765.3,218.8],[1765.3,218.8],[1774.4,196.5],[1782.2,177.4],[1782.2,177.4],[1788.9,161.2],[1788.9,161.2],[1794.4,147.8],[1798.9,136.7],[1798.9,136.7],[1802.5,127.9],[1802.5,127.9],[1805.3,121],[1807.4,115.8],[1807.4,115.8],[1808.9,112.1],[1808.9,112.1],[1809.9,109.6],[1810.6,108.1],[1810.6,108.1],[1810.9,107.3],[1810.9,107.3],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107]]);
+      tl.fromTo("#camin-l4", {"x":-4608,"y":0,"scale":3.4}, { ...{"x":-8064,"y":-16.4,"scale":5.2}, duration: 0.4688, ease: "expo.out" }, 18.2813);
+      cursor("l4", 18.2813, 0.4688, [[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107]]);
+      ripple("#rip-l4-0", 18.2813);
+      tl.fromTo("#camin-i1", {"x":-115.2,"y":-64.8,"scale":1.12}, { ...{"x":-246.4,"y":-240,"scale":1.3}, duration: 0.9375, ease: "expo.out" }, 18.75);
+      cursor("i1", 18.75, 0.9375, [[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107],[1811,107.1],[1811,107.1],[1811,107.3],[1811,107.3],[1811.1,107.8],[1811.1,107.8],[1811.2,108.5],[1811.2,108.5],[1811.3,109.6],[1811.5,111.1],[1811.5,111.1],[1811.8,113.1],[1811.8,113.1],[1812.1,115.7],[1812.1,115.7],[1812.5,119],[1812.5,119],[1813,122.9],[1813,122.9],[1813.6,127.7],[1814.3,133.3],[1814.3,133.3],[1815.1,139.8],[1815.1,139.8],[1816.1,147.4],[1816.1,147.4],[1817.1,156],[1817.1,156],[1818.4,165.8],[1819.7,176.8],[1819.7,176.8],[1821.3,189.1]]);
+      tl.fromTo("#camin-i2", {"x":-320.6,"y":-288,"scale":1.38}, { ...{"x":-640,"y":-420,"scale":1.6}, duration: 1.875, ease: "power2.inOut" }, 19.6875);
+      cursor("i2", 19.6875, 1.875, [[1821.3,189.1],[1821.3,189.1],[1823,202.7],[1824.9,217.8],[1824.9,217.8],[1827,234.4],[1829.2,252.6],[1829.2,252.6],[1831.7,272.4],[1834.4,294],[1837.3,317.3],[1837.3,317.3],[1840.5,342.6],[1843.7,367.8],[1843.7,367.8],[1846.6,391.1],[1849.3,412.7],[1849.3,412.7],[1851.8,432.5],[1854,450.7],[1856.1,467.3],[1856.1,467.3],[1858,482.4],[1859.7,496],[1859.7,496],[1861.3,508.3],[1862.6,519.3],[1862.6,519.3],[1863.9,529.1],[1864.9,537.7],[1865.9,545.3],[1865.9,545.3],[1866.7,551.8],[1867.4,557.4],[1867.4,557.4],[1868,562.2],[1868.5,566.1],[1868.5,566.1],[1868.9,569.4],[1869.2,572],[1869.5,574],[1869.5,574],[1869.7,575.5],[1869.8,576.6],[1869.8,576.6],[1869.9,577.3],[1870,577.8],[1870,577.8],[1870,578],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1]]);
+      tl.fromTo("#camin-i3a", {"x":-712,"y":-10,"scale":2.2}, { ...{"x":-1016,"y":-110,"scale":2.6}, duration: 1.875, ease: "power2.inOut" }, 21.5625);
+      tl.fromTo("#camin-i3b", {"x":-1536,"y":-54,"scale":1.8}, { ...{"x":-2098,"y":-186,"scale":2.2}, duration: 1.875, ease: "power2.inOut" }, 21.5625);
+      tl.fromTo("#camin-i3c", {"x":-40,"y":-97.5,"scale":2.5}, { ...{"x":-240,"y":-225,"scale":3}, duration: 1.875, ease: "power2.inOut" }, 21.5625);
+      tl.fromTo("#camin-i4", {"x":-48,"y":-27,"scale":1.05}, { ...{"x":-320.6,"y":-288,"scale":1.38}, duration: 1.875, ease: "power2.inOut" }, 23.4375);
+      cursor("i4", 23.4375, 1.875, [[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1]]);
+      tl.fromTo("#camin-i5", {"x":-320.6,"y":-288,"scale":1.38}, { ...{"x":0,"y":-21,"scale":2.2}, duration: 1.875, ease: "power2.inOut" }, 25.3125);
+      cursor("i5", 25.3125, 1.875, [[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1]]);
+      tl.fromTo("#camin-i6", {"x":-153.6,"y":-180,"scale":1.2}, { ...{"x":-1536,"y":-612,"scale":1.8}, duration: 2.8125, ease: "power2.in" }, 27.1875);
+      cursor("i6", 27.1875, 2.8125, [[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.1],[1870,578.2],[1870,578.2],[1870,578.2],[1870,578.2],[1869.9,578.7],[1869.9,578.7],[1869.9,578.7],[1869.9,578.7],[1869.6,580.1],[1869.6,580.1],[1869.6,580.1],[1869.6,580.1],[1869.1,582.9],[1869.1,582.9],[1869.1,582.9],[1869.1,582.9],[1868.3,587.5],[1868.3,587.5],[1868.3,587.5],[1868.3,587.5],[1867.1,594.4],[1867.1,594.4],[1867.1,594.4],[1867.1,594.4],[1865.4,604],[1865.4,604],[1865.4,604],[1865.4,604],[1863.1,616.7],[1863.1,616.7],[1863.1,616.7],[1863.1,616.7],[1860.2,633],[1860.2,633],[1860.2,633],[1860.2,633],[1856.6,653.5],[1856.6,653.5],[1856.6,653.5],[1856.6,653.5],[1852.4,677.2],[1852.4,677.2],[1852.4,677.2],[1852.4,677.2],[1848.8,697.6],[1848.8,697.6],[1848.8,697.6],[1848.8,697.6],[1845.9,714],[1845.9,714],[1845.9,714],[1845.9,714],[1843.6,726.7],[1843.6,726.7],[1843.6,726.7],[1843.6,726.7],[1841.9,736.3],[1841.9,736.3],[1841.9,736.3],[1841.9,736.3],[1840.7,743.1],[1840.7,743.1],[1840.7,743.1],[1840.7,743.1],[1839.9,747.7],[1839.9,747.7],[1839.9,747.7],[1839.9,747.7],[1839.4,750.5],[1839.4,750.5],[1839.4,750.5],[1839.4,750.5],[1839.1,751.9],[1839.1,751.9],[1839.1,751.9],[1839.1,751.9],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5]]);
+      ripple("#rip-i6-0", 29.9868);
+      tl.fromTo("#camin-c1", {"x":-465,"y":-210,"scale":1.5}, { ...{"x":-845,"y":-410,"scale":1.9}, duration: 1.875, ease: "expo.out" }, 30);
+      cursor("c1", 30, 1.875, [[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5]]);
+      tl.fromTo("#camin-c2", {"x":-320.6,"y":-288,"scale":1.38}, { ...{"x":-615,"y":-360,"scale":1.5}, duration: 1.875, ease: "power2.inOut" }, 31.875);
+      cursor("c2", 31.875, 1.875, [[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5],[1839,752.5]]);
+      tl.fromTo("#camin-c3", {"x":-669.3,"y":-536.3,"scale":1.75}, { ...{"x":-902,"y":-690,"scale":2}, duration: 1.875, ease: "power2.inOut" }, 33.75);
+      tl.fromTo("#camin-p1", {"x":-633,"y":-94.5,"scale":1.35}, { ...{"x":-1046,"y":-259,"scale":1.7}, duration: 1.875, ease: "power2.inOut" }, 35.625);
+      cursor("p1", 35.625, 1.875, [[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.4,787.4],[1434.3,787.4],[1434.3,787.3],[1434.1,787.2],[1433.7,786.8],[1433.4,786.5],[1432.9,786.1],[1431.7,785],[1430.9,784.2],[1430,783.4],[1427.6,781.2],[1426.2,779.9],[1424.6,778.4],[1420.7,774.8],[1418.4,772.7],[1415.8,770.4],[1410,765.1],[1406.7,762],[1403.1,758.7],[1395,751.3],[1390.4,747.1],[1380.3,737.8],[1374.7,732.7],[1368.8,727.3],[1355.7,715.3],[1348.5,708.7],[1340.9,701.8],[1324.5,686.7],[1315.6,678.5],[1306.2,669.9],[1286,651.4],[1275.1,641.5],[1263.8,631],[1239.4,608.7],[1226.4,596.8],[1212.9,584.4],[1186.3,560.1],[1173.9,548.7],[1161.9,537.8],[1139.7,517.4],[1129.4,507.9],[1110.1,490.3],[1101.2,482.1],[1092.8,474.4],[1077.2,460.1],[1070,453.5],[1063.3,447.4],[1051,436.1],[1045.4,431],[1040.2,426.2],[1030.7,417.5],[1026.5,413.7],[1022.6,410.1],[1015.7,403.7],[1012.6,400.9],[1009.9,398.4],[1005,394],[1003,392.1],[1001.1,390.4],[998.1,387.6],[996.8,386.4],[994.8,384.6],[994,383.8],[993.3,383.2],[992.3,382.3],[992,382],[991.7,381.8],[991.4,381.5],[991.4,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.4],[991.3,381.5],[991.4,381.6],[991.5,382],[991.6,382.3],[991.7,382.6],[992.1,383.6],[992.3,384.3],[992.6,385.1],[993.3,387.1],[993.8,388.3],[994.3,389.6],[995.4,392.9],[996.1,394.8],[996.9,396.9],[998.6,401.8],[999.6,404.6],[1000.7,407.6],[1003.2,414.4],[1004.5,418.2]]);
+      tl.fromTo("#camin-p2", {"x":-292.8,"y":-297,"scale":1.35}, { ...{"x":-524.8,"y":-452,"scale":1.6}, duration: 1.875, ease: "power2.inOut" }, 37.5);
+      tl.fromTo("#camin-e1", {"x":-432,"y":-360,"scale":1.5}, { ...{"x":-107.2,"y":-150,"scale":1.15}, duration: 5.625, ease: "power1.out" }, 39.375);
+      whip("#cam-r1", 9.375, -1, true);
+      whip("#cam-r2", 9.375, -1, false);
+      whip("#cam-r2", 11.25, -1, true);
+      whip("#cam-r3", 11.25, -1, false);
+      whip("#cam-l1", 15, -1, true);
+      whip("#cam-l2", 15, -1, false);
+      whip("#cam-l2", 16.875, -1, true);
+      whip("#cam-l3", 16.875, -1, false);
+      whip("#cam-c1", 31.875, -1, true);
+      whip("#cam-c2", 31.875, -1, false);
+      whip("#cam-c2", 33.75, -1, true);
+      whip("#cam-c3", 33.75, -1, false);
+      whip("#cam-p1", 37.5, -1, true);
+      whip("#cam-p2", 37.5, -1, false);
+      HITS.forEach(([t, k]) => hit(t, k));
+      tl.fromTo("#seams", { opacity: 0 }, { opacity: 1, duration: 0.01 }, 21.5625);
+      tl.to("#seams", { opacity: 0, duration: 0.01 }, 23.4375);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
