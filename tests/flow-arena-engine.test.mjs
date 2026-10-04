@@ -214,6 +214,23 @@ test("a turn runs five simulated minutes, and a filled resting order pauses it e
   assert.equal(paused.alert.kind, "own");
 });
 
+test("with turn pauses off, turns roll over without stopping until the final turn", () => {
+  const sim = quick(10);
+  const session = new Session(sim);
+  session.alerts = { turn: false, bigFlow: false, cascade: false, own: false, move: false, event: false };
+  session.finalTurn = 3;
+  const run = session.advance(700);
+  assert.equal(run.stop, null);
+  assert.equal(run.ticks, 700);
+  assert.equal(run.turned, 2);
+  assert.equal(session.turn, 3);
+  const last = session.advance(1000);
+  assert.equal(last.stop, "turn", "the final turn still stops");
+  assert.equal(last.ticks, 200);
+  assert.equal(last.turned, 1);
+  assert.equal(session.turn, 4);
+});
+
 test("a resting order filled in pieces pauses once, when the last piece fills", () => {
   const sim = quick(10);
   const session = new Session(sim);

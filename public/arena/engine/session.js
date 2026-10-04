@@ -1,5 +1,5 @@
-// Semi-turn play: the market runs in five-minute turns and stops for planning at the end of each turn,
-// or early when something worth a decision happens (a tactical pause).
+// Semi-turn play: the market runs in five-minute turns and stops for planning at the end of each turn
+// (unless turn pauses are off), or early when something worth a decision happens (a tactical pause).
 export const TURN_SECONDS = 300;
 export const ALERT_KINDS = {
   bigFlow: "大單偵測",
@@ -26,7 +26,9 @@ export class Session {
     this.turnStart = sim.time;
     this.turnStartPrice = sim.last;
     this.phase = "plan";
-    this.alerts = { bigFlow: true, cascade: true, own: true, move: true, event: true };
+    this.alerts = { turn: true, bigFlow: true, cascade: true, own: true, move: true, event: true };
+    // The end of this turn stops the market even with turn pauses off: a ranked game ends there.
+    this.finalTurn = Infinity;
     this.window = [];
     this.baseline = 2000;
     this.lastBigFlow = -Infinity;
@@ -45,9 +47,11 @@ export class Session {
   }
 
   // Runs up to `ticks` simulated seconds. Stops at the end of the turn or on the first enabled alert.
+  // `turned` counts turns that ended along the way, including one that stopped the run.
   advance(ticks) {
     const sim = this.sim;
     const events = [];
+    let turned = 0;
     this.phase = "run";
     for (let i = 0; i < ticks; i++) {
       const stats = sim.tick();
@@ -55,21 +59,25 @@ export class Session {
       events.push(...own);
       const alert = this.detect(stats, own);
       if (sim.time >= this.turnEnd) {
+        const final = this.turn >= this.finalTurn;
         this.turn++;
         this.turnStart = sim.time;
         this.turnStartPrice = sim.last;
         this.moveAlerted = false;
-        this.phase = "plan";
-        return { ticks: i + 1, stop: "turn", alert, events };
+        turned++;
+        if (this.alerts.turn !== false || final) {
+          this.phase = "plan";
+          return { ticks: i + 1, stop: "turn", alert, events, turned };
+        }
       }
       if (alert) {
         this.phase = "plan";
         this.log.unshift({ time: sim.time, ...alert });
         this.log.length = Math.min(this.log.length, 30);
-        return { ticks: i + 1, stop: "alert", alert, events };
+        return { ticks: i + 1, stop: "alert", alert, events, turned };
       }
     }
-    return { ticks, stop: null, alert: null, events };
+    return { ticks, stop: null, alert: null, events, turned };
   }
 
   detect(stats, own) {

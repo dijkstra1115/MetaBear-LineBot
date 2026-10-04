@@ -53,7 +53,7 @@ let lastRender = 0;
 let openPrice = 0;
 let turnOpen = null;
 let railTab = "intel";
-const alertPrefs = { bigFlow: true, cascade: true, own: true, move: true, event: true, ...store.get("alerts", {}) };
+const alertPrefs = { turn: true, bigFlow: true, cascade: true, own: true, move: true, event: true, ...store.get("alerts", {}) };
 // Chart indicators the player can switch on and off.
 const INDICATOR_DEFAULTS = { ema20: true, ema50: true, vwap: true, volume: true, cvd: true, oi: true, footprint: true, absorb: true, omen: true, fills: true };
 const view = { count: 120, zoom: 1, offset: 0, layer: "liq", ind: { ...INDICATOR_DEFAULTS, ...store.get("indicators", {}) }, pushes: [], now: 0, reveal: false, frame: { low: null, high: null, hold: false }, flashes: [], cursorPrice: null, cursorLabel: null, cursorX: null };
@@ -105,6 +105,7 @@ function newMarket(seed = randomSeed(), { rankedGame = false } = {}) {
     $("ranked-final").hidden = true;
     session = new Session(sim);
     session.alerts = { ...alertPrefs };
+    if (ranked) session.finalTurn = RANKED_TURNS;
     seenFeedId = sim.liquidationFeed.at(-1)?.id ?? 0;
     feedShown = seenFeedId;
     openPrice = sim.last;
@@ -847,6 +848,11 @@ function handleRun(result) {
   processEvents(result.events);
   processLiquidations();
   if (turnOpen) turnPeak = Math.max(turnPeak, player.equity() - turnOpen.pnl);
+  // Turn pauses off: the turn rolls over without a report, and the next one is measured afresh.
+  if (result.turned && result.stop !== "turn") {
+    turnOpen = snapshot();
+    banner(`第 ${session.turn} 回合`, "violet");
+  }
   if (result.stop) {
     running = false;
     showPause(result);
