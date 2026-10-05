@@ -467,6 +467,17 @@ body.ranked .reveal-button { opacity: 0.3; cursor: not-allowed; }
 .pause-card.report .pause-stats dd.market { color: var(--ink-2); font-size: 12px; font-weight: 600; }
 
 /* Ranked final */
+#ranked-rule { display: block; margin-top: 3px; color: var(--ink-2); font-size: 10px; white-space: nowrap; }
+#ranked-rule[hidden] { display: none; }
+#ranked-rule.urgent { color: var(--gold); }
+.settlement-detail { color: var(--ink-2); font-size: 12px; line-height: 1.7; }
+.ranked-final { max-height: 94%; overflow-y: auto; }
+.ranked-notice { max-width: 510px; }
+.ranked-notice h2 { color: var(--gold); font-size: 22px; }
+.ranked-notice p, .season-rule { color: var(--ink-2); font-size: 13px; line-height: 1.8; }
+.ranked-notice .primary { width: 100%; margin-top: 12px; padding: 12px; border: 1px solid var(--gold); border-radius: 10px; background: #f0cd80; color: #17130b; font-weight: 700; cursor: pointer; }
+.season-picker { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.season-picker select { padding: 9px 12px; border: 1px solid var(--line-2); border-radius: 8px; background: #171a1e; color: var(--ink); font: inherit; }
 .ranked-final { position: absolute; z-index: 9; top: 50%; left: 50%; display: grid; gap: 9px; width: min(460px, 86%); padding: 24px 26px; transform: translate(-50%, -50%); border: 1px solid rgba(var(--gold-rgb), 0.6); border-radius: 20px; background: radial-gradient(120% 80% at 50% 0%, rgba(var(--gold-rgb), 0.2), transparent 60%), rgba(14, 12, 6, 0.95); box-shadow: 0 0 0 8px rgba(var(--gold-rgb), 0.07), 0 0 80px -10px rgba(var(--fuel-rgb), 0.55), 0 40px 90px -20px #000; text-align: center; animation: card-pop 0.55s var(--ease-spring); }
 .eyebrow-gold { color: var(--gold); font: 700 10px var(--font-mono); letter-spacing: 0.22em; }
 .ranked-final strong { color: #f8e6b8; font-size: 14px; }

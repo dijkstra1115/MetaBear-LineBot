@@ -8,8 +8,8 @@ const TAKER_FEE = 0.0005;
 const MARKET_BAND = 0.1;
 const PUSH_LOTS = 5000; // 50 BTC or more counts as a push for liquidation credit
 
-// The sandbox player: unlimited wallet with no size cap, isolated margin per position and real
-// liquidation. Leverage only sets the margin, and with it how far away the liquidation price sits.
+// Unlimited wallet and position size. Margin determines the liquidation trigger, not a loss cap:
+// every player exit trades through the book, including liquidation remainders.
 // Equity is the running PnL (realized − fees + unrealized).
 export class Player {
   constructor(sim) {
@@ -30,10 +30,11 @@ export class Player {
     this.nextId = 1;
     this.takerOrder = 0;
     this.exitIntent = false;
+    this.liquidation = null;
     this.push = null;
     this.events = [];
     this.fills = [];
-    this.stats = { ignited: 0, liquidations: 0, marginLost: 0, volume: 0, peak: 0, maxDrawdown: 0 };
+    this.stats = { ignited: 0, liquidations: 0, liquidationLoss: 0, volume: 0, notional: 0, peak: 0, maxDrawdown: 0 };
     this.equityPath = [{ time: sim.time, equity: 0 }];
   }
 
@@ -79,6 +80,7 @@ export class Player {
     if (side !== "buy" && side !== "sell") return "方向無效";
     if (!Number.isSafeInteger(lots) || lots <= 0) return "請輸入有效數量";
     if (reduceOnly) return null;
+    if (this.liquidation) return "強制平倉中，完成前不能下新委託";
     if (this.exitIntent && this.account.position && side === (this.account.position > 0 ? "buy" : "sell")) return "平倉等待流動性，暫不能加倉";
     return null;
   }
@@ -89,7 +91,7 @@ export class Player {
     return Math.min(lots, Math.abs(position));
   }
 
-  // Applied by the market after the ledger moved; keeps isolated margin and fees.
+  // Applied by the market after the ledger moved; keeps position margin and fees.
   // orderId is the resting order for maker fills; taker fills belong to the order being sent.
   onFill(signed, price, taker, orderId = null) {
     const position = this.account.position;
@@ -103,6 +105,15 @@ export class Player {
     const fee = notional(price, lots) * (taker ? TAKER_FEE : MAKER_FEE);
     this.fees += fee;
     this.stats.volume += lots;
+    this.stats.notional += notional(price, lots);
+    if (!position && this.liquidation) {
+      const { before, ...closing } = this.liquidation;
+      const lost = before - (this.account.realized - this.fees);
+      this.stats.liquidationLoss += lost;
+      this.events.push({ kind: "liquidationComplete", ...closing, lost });
+      this.liquidation = null;
+      this.exitIntent = false;
+    }
     this.fills.push({ time: this.sim.time, side: signed > 0 ? "buy" : "sell", lots, price, taker, order: taker ? `t${this.takerOrder}` : `o${orderId}` });
     if (this.fills.length > 400) this.fills.shift();
     if (taker) return;
@@ -173,6 +184,7 @@ export class Player {
   // They are checked now but sent during the first second of the next run, at random points among
   // everyone else's orders, so a paused book is never yours alone.
   enqueue(order) {
+    if (this.liquidation) return { ok: false, error: "強制平倉中，完成前不能下新委託" };
     if (order.type === "close") {
       if (!this.account.position) return { ok: false, error: "目前沒有持倉" };
     } else {
@@ -193,6 +205,11 @@ export class Player {
   }
 
   execute(order) {
+    if (this.liquidation) {
+      const result = { ok: false, error: "強制平倉中，完成前不能下新委託" };
+      this.events.push({ kind: "rejected", ...result, order });
+      return result;
+    }
     const result = order.type === "close"
       ? (order.fraction >= 1 ? this.close() : this.closePart(order.fraction))
       : order.type === "limit"
@@ -230,6 +247,7 @@ export class Player {
   }
 
   setProtection(stop, take, stopFraction = 1, takeFraction = 1) {
+    if (this.liquidation) return "強制平倉中，無法設定止損止盈";
     const position = this.account.position;
     if (!position) return "先建立部位再設定止損止盈";
     const mark = this.sim.markPrice();
@@ -276,34 +294,22 @@ export class Player {
     this.stats.maxDrawdown = Math.max(this.stats.maxDrawdown, this.stats.peak - equity);
   }
 
-  // Isolated margin: the mark crossing the liquidation price closes the position at market. The
-  // loss is capped at the position margin; the insurance fund takes anything the book cannot.
+  // Once triggered, liquidation keeps retrying market exits even if the mark recovers. There is
+  // no off-book transfer or loss refund; fills and fees determine the entire realized result.
   checkLiquidation(mark) {
+    if (this.liquidation) return;
     const liq = this.liquidationPrice();
     if (!liq) return;
     const long = this.account.position > 0;
     if (long ? mark > liq : mark < liq) return;
-    const sim = this.sim;
     const lots = Math.abs(this.account.position);
-    const margin = this.margin;
     const before = this.account.realized - this.fees;
     this.cancelAll();
     this.clearProtection();
-    this.exitIntent = false;
-    const side = long ? "sell" : "buy";
-    this.takerOrder++;
-    sim.book.submit(side, roundPrice(sim.last * (long ? 1 - MARKET_BAND : 1 + MARKET_BAND)), lots, { owner: "player", acct: "player", rest: false });
-    if (this.account.position) {
-      sim.settleAgainst(this.account, sim.insurance, liq);
-      this.margin = 0;
-    }
-    const lost = before - (this.account.realized - this.fees);
-    if (lost > margin) this.account.realized += lost - margin;
-    const charged = Math.min(lost, margin);
+    this.exitIntent = true;
+    this.liquidation = { side: long ? "long" : "short", lots, price: liq, before };
     this.stats.liquidations++;
-    this.stats.marginLost += charged;
-    this.events.push({ kind: "liquidation", side: long ? "long" : "short", lots, price: liq, lost: charged });
-    sim.maintain();
+    this.events.push({ kind: "liquidation", side: this.liquidation.side, lots, price: liq });
   }
 
   onTick() {

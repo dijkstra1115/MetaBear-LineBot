@@ -115,12 +115,11 @@ test("positions have no size cap, and leverage changes only while flat", () => {
   assert.match(player.setLeverage(5), /空倉/);
 });
 
-test("a liquidation loses at most the position margin", () => {
+test("a liquidation closes through the market and preserves the balanced ledger", () => {
   const sim = quick(6);
   const player = new Player(sim);
   player.setLeverage(20);
   player.submitMarket("buy", 50000);
-  const margin = player.margin;
   const liq = player.liquidationPrice();
   assert.ok(liq < sim.last);
   const bot = sim.addAccount("bot", "test");
@@ -132,7 +131,8 @@ test("a liquidation loses at most the position margin", () => {
   }
   assert.equal(player.position, 0);
   assert.equal(player.stats.liquidations, 1);
-  assert.ok(player.stats.marginLost <= margin + 1e-6);
+  assert.ok(player.stats.liquidationLoss > 0);
+  assert.equal(player.liquidation, null);
   assert.ok(bot.position < 0);
   assert.equal(sim.ledgerBalance(), 0);
 });
@@ -214,19 +214,19 @@ test("a turn runs five simulated minutes, and a filled resting order pauses it e
   assert.equal(paused.alert.kind, "own");
 });
 
-test("with turn pauses off, turns roll over without stopping until the final turn", () => {
+test("with turn pauses off, ranked games stop before and after the final turn", () => {
   const sim = quick(10);
   const session = new Session(sim);
   session.alerts = { turn: false, bigFlow: false, cascade: false, own: false, move: false, event: false };
   session.finalTurn = 3;
   const run = session.advance(700);
-  assert.equal(run.stop, null);
-  assert.equal(run.ticks, 700);
+  assert.equal(run.stop, "turn", "the last-turn warning cannot be skipped");
+  assert.equal(run.ticks, 600);
   assert.equal(run.turned, 2);
   assert.equal(session.turn, 3);
   const last = session.advance(1000);
   assert.equal(last.stop, "turn", "the final turn still stops");
-  assert.equal(last.ticks, 200);
+  assert.equal(last.ticks, 300);
   assert.equal(last.turned, 1);
   assert.equal(session.turn, 4);
 });
@@ -263,7 +263,7 @@ test("a resting order filled in pieces pauses once, when the last piece fills", 
 });
 
 test("a ranked game replays exactly from its seed and action log", async () => {
-  const { ActionLog, replayRanked, rankedResult, checkActions } = await import("../public/arena/engine/ranked.js");
+  const { ActionLog, replayRanked, RankedSettlement, checkActions } = await import("../public/arena/engine/ranked.js");
   const turns = 3;
   const seed = 4242;
   const sim = new Sandbox(seed);
@@ -281,9 +281,153 @@ test("a ranked game replays exactly from its seed and action log", async () => {
   log.apply(player, "cancelAll");
   // Run to the end of the last turn, pausing wherever the session pauses, like the page does.
   while (sim.time - log.start < turns * 300) session.advance(turns * 300 - (sim.time - log.start));
-  const live = rankedResult(sim, player);
+  const settlement = new RankedSettlement(sim, player);
+  while (!settlement.done) settlement.advance();
+  const live = settlement.result();
   assert.equal(checkActions(log.actions, turns), null);
   const replayed = replayRanked({ seed, actions: JSON.parse(JSON.stringify(log.actions)), turns });
   assert.deepEqual(replayed, live);
   assert.notEqual(live.pnl, 0);
+});
+
+test("long and short liquidations wait for fills, survive recovery, and never refund excess losses", () => {
+  for (const side of ["buy", "sell"]) {
+    const sim = new Sandbox(6, { synthCandles: 0, warmSeconds: 0 });
+    // Keep the real order book and ledger, but supply liquidity explicitly for this scenario.
+    for (const id of [...sim.book.orders.keys()]) sim.book.cancel(id);
+    sim.book.onTaker = () => {};
+    sim.maintain = () => {};
+    sim.resolveTriggers = () => null;
+    const player = new Player(sim);
+    const bot = sim.addAccount("counterparty", "test");
+    const opposite = side === "buy" ? "sell" : "buy";
+    const entry = 10_000_000;
+    sim.book.last = entry;
+    let mark = entry;
+    sim.markPrice = () => mark;
+    player.setLeverage(20);
+    sim.book.submit(opposite, entry, 10000, { owner: bot.id, acct: bot.id });
+    player.submitMarket(side, 10000);
+    const margin = player.margin;
+    const feesBefore = player.fees;
+    const volumeBefore = player.stats.volume;
+    player.enqueue({ type: "market", side, lots: 100 });
+    player.submitLimit(side, side === "buy" ? 8_000_000 : 12_000_000, 100);
+    const insuranceBefore = { ...sim.insurance };
+    mark = player.liquidationPrice();
+    player.onTick();
+    assert.equal(Math.abs(player.position), 10000, "no counterparty means no closing fill");
+    assert.equal(player.queue.length, 0);
+    assert.equal(player.orders().length, 0);
+    assert.equal(player.stats.liquidations, 1);
+    assert.equal(player.exitIntent, true);
+    assert.equal(player.execute({ type: "market", side: opposite, lots: 20000 }).ok, false, "cannot reverse a liquidating position");
+    assert.equal(player.enqueue({ type: "market", side, lots: 100 }).ok, false);
+    const exitPrice = side === "buy" ? 9_000_000 : 11_000_000;
+    sim.book.submit(side, exitPrice, 4000, { owner: bot.id, acct: bot.id });
+    player.onTick();
+    assert.equal(Math.abs(player.position), 6000);
+    assert.equal(player.stats.liquidations, 1, "a partial fill does not retrigger liquidation");
+    mark = entry; // The market recovers, but forced closing must continue.
+    sim.book.submit(side, exitPrice, 6000, { owner: bot.id, acct: bot.id });
+    player.onTick();
+    assert.equal(player.position, 0);
+    assert.equal(player.exitIntent, false);
+    assert.equal(player.liquidation, null);
+    assert.equal(player.account.realized, -1_000_000, "full execution loss remains in the ledger");
+    const exitFees = exitPrice * 10000 / 10000 * 0.0005;
+    assert.ok(Math.abs(player.fees - feesBefore - exitFees) < 1e-6);
+    assert.ok(Math.abs(player.stats.liquidationLoss - (1_000_000 + exitFees)) < 1e-6);
+    assert.ok(player.stats.liquidationLoss > margin, "losses can exceed position margin");
+    assert.equal(player.stats.volume - volumeBefore, 10000, "every lot closed by a trade");
+    assert.deepEqual(sim.insurance, insuranceBefore, "insurance never receives the player's position");
+    assert.equal(sim.ledgerBalance(), 0);
+    const events = player.drainEvents();
+    assert.equal(events.filter(e => e.kind === "liquidation").length, 1);
+    assert.equal(events.filter(e => e.kind === "liquidationComplete").length, 1);
+    assert.equal(player.enqueue({ type: "market", side, lots: 100 }).ok, true, "trading resumes once flat");
+  }
+});
+
+test("ranked settlement closes longs and shorts, cancels every order, and charges actual fills", async () => {
+  const { RankedSettlement, rankedResult } = await import("../public/arena/engine/ranked.js");
+  for (const side of ["buy", "sell"]) {
+    const sim = quick(42);
+    const player = new Player(sim);
+    player.submitMarket(side, 40000);
+    const position = Math.abs(player.position);
+    assert.ok(position > 0);
+    assert.throws(() => rankedResult(sim, player), /尚未完成平倉/);
+    player.enqueue({ type: "market", side, lots: 10000 });
+    player.submitLimit(side, Math.round(sim.last * (side === "buy" ? 0.8 : 1.2)), 1000);
+    const feesBefore = player.fees;
+    const settlement = new RankedSettlement(sim, player);
+    for (let i = 0; i < 100 && !settlement.done; i++) settlement.advance();
+    assert.equal(settlement.done, true);
+    assert.equal(player.position, 0);
+    assert.equal(player.queue.length, 0);
+    assert.equal(player.orders().length, 0);
+    assert.equal(player.protection.stop, null);
+    assert.equal(player.protection.take, null);
+    const result = settlement.result();
+    assert.equal(result.pnl, Math.round((player.account.realized - player.fees) * 100) / 100);
+    assert.equal(result.settlement.lots, position);
+    assert.equal(result.settlement.marketLots, position);
+    assert.ok(result.settlement.averagePrice > 0);
+    assert.equal(result.settlement.fees, player.fees - feesBefore);
+    assert.ok(result.settlement.fees > 0);
+    assert.deepEqual(settlement.result(), result, "reading the result does not trade again");
+    assert.equal(sim.ledgerBalance(), 0);
+  }
+});
+
+test("settlement waits for liquidity instead of valuing an unfilled position at the mark", async () => {
+  const { RankedSettlement } = await import("../public/arena/engine/ranked.js");
+  const sim = quick(42);
+  const player = new Player(sim);
+  player.submitMarket("buy", 10000);
+  const position = player.position;
+  for (const id of [...sim.book.orders.keys()]) sim.book.cancel(id);
+  const settlement = new RankedSettlement(sim, player);
+  assert.equal(settlement.done, false);
+  assert.equal(player.position, position);
+  assert.equal(player.exitIntent, true);
+  assert.throws(() => settlement.result(), /尚未完成平倉/);
+  for (let i = 0; i < 100 && !settlement.done; i++) settlement.advance();
+  assert.equal(settlement.done, true);
+  assert.ok(settlement.result().settlement.seconds > 0);
+});
+
+test("flat players finish settlement without another market tick or trading fee", async () => {
+  const { RankedSettlement } = await import("../public/arena/engine/ranked.js");
+  const sim = quick();
+  const player = new Player(sim);
+  player.enqueue({ type: "market", side: "buy", lots: 10000 });
+  const time = sim.time;
+  const settlement = new RankedSettlement(sim, player);
+  settlement.advance(300);
+  assert.equal(sim.time, time);
+  assert.equal(player.queue.length, 0);
+  assert.equal(settlement.result().pnl, 0);
+  assert.equal(settlement.result().settlement.lots, 0);
+});
+
+test("concentrated large buys still finish with a flat, balanced ledger", async () => {
+  const { RankedSettlement } = await import("../public/arena/engine/ranked.js");
+  const sim = quick(42);
+  const player = new Player(sim);
+  player.setLeverage(1);
+  for (let i = 0; i < 10; i++) {
+    player.submitMarket("buy", 500000);
+    sim.tick();
+  }
+  const settlement = new RankedSettlement(sim, player);
+  assert.ok(settlement.summary.lots > 500000, "the exit is larger than a single 5,000 BTC order");
+  for (let i = 0; i < 100 && !settlement.done; i++) settlement.advance();
+  assert.equal(settlement.done, true);
+  assert.equal(player.position, 0);
+  assert.equal(sim.ledgerBalance(), 0);
+  const result = settlement.result();
+  assert.equal(result.settlement.marketLots, result.settlement.lots);
+  assert.equal(result.pnl, Math.round((player.account.realized - player.fees) * 100) / 100);
 });

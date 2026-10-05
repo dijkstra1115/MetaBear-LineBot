@@ -3,7 +3,7 @@ import { DEFAULT_LEVERAGE, LEVERAGES, Player } from "./engine/player.js";
 import { ALERT_KINDS, Session } from "./engine/session.js";
 import { REGIMES } from "./engine/regime.js";
 import { Tour, askForTour } from "./tutorial.js";
-import { ActionLog, RANKED_TURNS, RANKED_VERSION, applyAction, rankedResult } from "./engine/ranked.js";
+import { ActionLog, RANKED_TURNS, RANKED_VERSION, RankedSettlement, applyAction } from "./engine/ranked.js";
 import { MAX_ZOOM, MIN_CANDLES, MIN_ZOOM, chartGeometry, chartOnAxis, chartPriceAt, drawChart, gameClock } from "./chart.js";
 import { Fx } from "./fx.js";
 import { Sound } from "./sound.js";
@@ -89,6 +89,7 @@ function act(op, args = {}) {
 }
 
 function newMarket(seed = randomSeed(), { rankedGame = false } = {}) {
+  if (ranked?.settlement && !ranked.result) return;
   running = false;
   const loading = $("loading");
   loading.hidden = false;
@@ -101,7 +102,7 @@ function newMarket(seed = randomSeed(), { rankedGame = false } = {}) {
     ranked = rankedGame ? { log: new ActionLog(sim), over: false, result: null } : null;
     act("leverage", { leverage: store.get("leverage", DEFAULT_LEVERAGE) });
     document.body.classList.toggle("ranked", Boolean(ranked));
-    $("mode-pill").textContent = ranked ? "RANKED · 24 TURNS" : "SANDBOX";
+    $("mode-pill").textContent = ranked ? "RANKED · 新賽季" : "SANDBOX";
     $("ranked-final").hidden = true;
     session = new Session(sim);
     session.alerts = { ...alertPrefs };
@@ -129,10 +130,10 @@ function newMarket(seed = randomSeed(), { rankedGame = false } = {}) {
     $("seed-label").textContent = `#${seed}`;
     loading.classList.add("out");
     setTimeout(() => { loading.hidden = true; }, 420);
-    setMessage(ranked ? `排名賽開始：${RANKED_TURNS} 回合，比最後的總損益。揭曉在排名賽中停用。` : "新市場已建立。計畫階段市場暫停：先讀圖、推測人群的停損與強平在哪，再按「執行回合」。");
-    if (ranked) setTimeout(() => banner("RANKED · 24 TURNS", "gold"), 450);
+    setMessage(ranked ? `新賽季：${RANKED_TURNS} 回合結束自動平倉，以平倉後淨損益排名。` : "新市場已建立。計畫階段市場暫停：先讀圖、推測人群的停損與強平在哪，再按「執行回合」。");
+    if (ranked) showRankedNotice(false);
     // First visit: offer the walkthrough once the page is filled in.
-    if (!store.get("tourSeen", false)) {
+    if (!ranked && !store.get("tourSeen", false)) {
       store.set("tourSeen", true);
       setTimeout(() => askForTour({ onYes: startTour, onNo: () => {} }), 500);
     }
@@ -152,7 +153,7 @@ let turnPeak = 0;
 let turnStalls = 0;
 
 function setRunning(next) {
-  if (!sim || (next && ranked?.over)) return;
+  if (!sim || $("ranked-notice").open || (next && ranked?.over)) return;
   if (next && view.reveal) toggleReveal(false);
   if (next && !running) {
     sound.start();
@@ -462,7 +463,8 @@ function describeEvent(event) {
     case "filled": return `掛單全部成交：${side} ${btc(event.lots)}，均價 ${price(event.price)}`;
     case "stop": return `止損觸發（標記價 ${price(event.price)}），市價平倉 ${Math.round((event.fraction ?? 1) * 100)}%`;
     case "take": return `止盈觸發（標記價 ${price(event.price)}），市價平倉 ${Math.round((event.fraction ?? 1) * 100)}%`;
-    case "liquidation": return `你的${event.side === "long" ? "多單" : "空單"} ${btc(event.lots)} 在 ${price(event.price)} 被強平，賠掉保證金 ${plain(event.lost)}`;
+    case "liquidation": return `你的${event.side === "long" ? "多單" : "空單"} ${btc(event.lots)} 觸發強平，正在依市場流動性分批出場；損失可能超過保證金。`;
+    case "liquidationComplete": return `強制平倉完成，這次出場淨損益 ${money(-event.lost)}（已扣手續費）。`;
     case "danger": return `你的強平價 ${price(event.price)} 距離標記價不到 1%`;
     case "rejected": return `委託沒有送出：${event.error}`;
     default: return "";
@@ -529,7 +531,7 @@ function processEvents(events) {
       sound.boom(1);
       sound.fail();
       floatLabel(`💥 你的${event.side === "long" ? "多單" : "空單"}被強平`, point.x - 12, point.y, "coral", true);
-      banner(`你被強平了 ${money(-event.lost)}`, "coral");
+      banner("觸發強平 · 持續撮合直到空倉", "coral");
       setMessage(describeEvent(event), true);
     } else if (event.kind === "fill") {
       const color = event.side === "buy" ? LONG : SHORT;
@@ -574,8 +576,49 @@ function countUp(element, target, format, delay, index = 0) {
   }, delay);
 }
 
+function showRankedNotice(finalTurn) {
+  running = false;
+  const dialog = $("ranked-notice");
+  $("ranked-notice-title").textContent = finalTurn ? "最後一回合，請安排出場" : "新賽季 · 平倉後才計分";
+  $("ranked-notice-detail").textContent = finalTurn
+    ? "本回合結束後，系統會撤銷所有委託，將剩餘持倉自動市價平倉。你可以在回合內自行安排出場。"
+    : "排名賽共 24 回合，可以跨回合持倉。第 24 回合結束後，系統會撤銷所有委託，將剩餘持倉自動市價平倉。";
+  $("ranked-notice-continue").textContent = finalTurn ? "開始最後回合" : "了解，開始布局";
+  dialog.dataset.finalTurn = String(finalTurn);
+  if (!dialog.open) dialog.showModal();
+}
+
+function beginRankedSettlement() {
+  ranked.over = true;
+  running = false;
+  ranked.settlement = new RankedSettlement(sim, player);
+  $("pause-card").hidden = true;
+  $("ranked-final-title").textContent = "正在自動平倉";
+  $("ranked-pnl").textContent = "—";
+  $("ranked-stats").textContent = "正在依市場流動性成交…";
+  $("ranked-settlement").textContent = "所有委託已撤銷。剩餘持倉將繼續撮合，全部平倉後才能上傳成績。";
+  $("ranked-status").textContent = "";
+  for (const id of ["ranked-upload", "ranked-name", "ranked-again", "ranked-sandbox"]) $(id).disabled = true;
+  document.querySelector(".final-share").hidden = true;
+  $("ranked-final").hidden = false;
+  finishSettlement();
+}
+
+function finishSettlement() {
+  if (!ranked.settlement.done) return;
+  ranked.result = ranked.settlement.result();
+  showRankedFinal();
+}
+
 function showRankedFinal() {
   const result = ranked.result;
+  $("ranked-final-title").textContent = "新賽季 · 平倉後淨損益";
+  const closed = result.settlement;
+  $("ranked-settlement").textContent = closed.lots
+    ? `自動平倉 ${btc(closed.lots)}${closed.averagePrice != null ? ` · 成交均價 ${price(closed.averagePrice)} USDT` : ""} · 平倉手續費 ${plain(closed.fees)} · 延長模擬 ${closed.seconds} 秒。所有部位均已在市場成交，最終成績已計入平倉影響。`
+    : "你已在結束前完成平倉；所有未成交委託已撤銷。";
+  for (const id of ["ranked-again", "ranked-sandbox"]) $(id).disabled = false;
+  document.querySelector(".final-share").hidden = false;
   const pnlBox = $("ranked-pnl");
   pnlBox.className = result.pnl > 0 ? "positive" : result.pnl < 0 ? "negative" : "";
   countUp(pnlBox, result.pnl, money, 350, 4);
@@ -601,8 +644,8 @@ function showRankedFinal() {
 function rankedShareText() {
   const result = ranked.result;
   const rank = ranked.rank ? `（排行榜第 ${ranked.rank} 名）` : "";
-  return `🔥 我在 MetaBear FLOW ARENA 排名賽拿下 ${money(result.pnl)}${rank}
-24 回合 · 引爆強平 ${btc(result.ignited)}
+  return `🔥 我在 MetaBear FLOW ARENA 新賽季拿下 ${money(result.pnl)}${rank}
+24 回合 · 平倉後淨損益 · 引爆強平 ${btc(result.ignited)}
 同一個市場，你玩得比我好嗎？👉 ${location.origin}/arena/?seed=${sim.seed}`;
 }
 
@@ -611,6 +654,7 @@ function updateShare() {
 }
 
 async function uploadRanked() {
+  if (!ranked?.result || !ranked.result.settled || player.position) return;
   const name = $("ranked-name").value.trim().slice(0, 18);
   if (!name) return ($("ranked-status").textContent = "請輸入名稱");
   store.set("rankedName", name);
@@ -639,7 +683,16 @@ async function uploadRanked() {
   }
 }
 
-async function showLeaderboard(highlight = null) {
+let boardSeason = "current";
+let boardRequest = 0;
+async function showLeaderboard(highlight = null, season = boardSeason) {
+  boardSeason = season;
+  const request = ++boardRequest;
+  $("leaderboard-season").value = season;
+  $("leaderboard-title").textContent = season === "legacy" ? "舊賽季 · 總損益" : "新賽季 · 平倉後淨損益";
+  $("leaderboard-rule").textContent = season === "legacy"
+    ? "舊賽季（回合結束不會強制平倉）。成績包含未平倉損益，保留原始排名供查看。"
+    : "第 24 回合結束自動市價平倉；以扣除手續費後的淨損益排名。";
   const dialog = $("leaderboard");
   const list = $("leaderboard-rows");
   const podium = $("leaderboard-podium");
@@ -648,17 +701,18 @@ async function showLeaderboard(highlight = null) {
   $("leaderboard-status").textContent = "讀取中…";
   if (!dialog.open) dialog.showModal();
   try {
-    const response = await fetch("/arena/api/scores");
+    const response = await fetch(`/arena/api/scores?season=${encodeURIComponent(season)}`);
     const body = await response.json();
+    if (request !== boardRequest) return;
     if (!response.ok) throw Error(body.error ?? `伺服器回應 ${response.status}`);
-    $("leaderboard-status").textContent = body.scores.length ? "" : "還沒有成績，成為第一個吧。";
+    $("leaderboard-status").textContent = body.scores.length ? "" : season === "legacy" ? "舊賽季尚無成績。" : "新賽季還沒有成績，成為第一個吧。舊成績可切換至舊賽季查看。";
     podium.replaceChildren(...body.scores.slice(0, 3).map((row, index) => {
       const li = document.createElement("li");
       li.className = `p${index + 1}`;
       const rank = document.createElement("b");
       rank.textContent = ["1ST", "2ND", "3RD"][index];
       const name = document.createElement("span");
-      name.textContent = row.name;
+      name.textContent = row.name + (row.recalculatedFrom ? "（舊賽季重算）" : "");
       const score = document.createElement("em");
       score.textContent = money(row.pnl);
       score.className = row.pnl >= 0 ? "positive" : "negative";
@@ -668,7 +722,7 @@ async function showLeaderboard(highlight = null) {
     list.replaceChildren(...body.scores.map((row, index) => {
       const tr = document.createElement("tr");
       if (row.id === highlight) tr.className = "you";
-      const cells = [index + 1, row.name, money(row.pnl), row.seed, new Date(row.createdAt).toLocaleDateString("zh-TW")];
+      const cells = [index + 1, row.name + (row.recalculatedFrom ? "（舊賽季重算）" : ""), money(row.pnl), row.seed, new Date(row.createdAt).toLocaleDateString("zh-TW")];
       for (const value of cells) {
         const td = document.createElement("td");
         td.textContent = String(value);
@@ -679,6 +733,7 @@ async function showLeaderboard(highlight = null) {
       return tr;
     }));
   } catch (error) {
+    if (request !== boardRequest) return;
     $("leaderboard-status").textContent = `讀取失敗：${error.message}（本機預覽伺服器沒有排行榜 API）`;
   }
 }
@@ -748,13 +803,12 @@ function showReport() {
     else sound.chime(3);
   }, 300 + rows.length * 160);
   turnOpen = snapshot();
-  // The game ends the moment the last turn does: lock it and take the score now, then let the
-  // report play before the final card.
+  // Player decisions end at the deadline; a score follows only when the exit has finished.
   if (ranked && !ranked.over && session.turn > RANKED_TURNS) {
-    ranked.over = true;
-    ranked.result = rankedResult(sim, player);
-    running = false;
-    setTimeout(showRankedFinal, 1600);
+    beginRankedSettlement();
+  } else if (ranked && session.turn === RANKED_TURNS && !ranked.finalReminder) {
+    ranked.finalReminder = true;
+    showRankedNotice(true);
   }
 }
 
@@ -1133,10 +1187,12 @@ function render() {
   const turnShown = ranked ? Math.min(session.turn, RANKED_TURNS) : session.turn;
   $("turn-title").textContent = ranked ? "RANKED TURN" : "TURN";
   $("turn-label").innerHTML = `${String(turnShown).padStart(2, "0")}${ranked ? `<small>/${RANKED_TURNS}</small>` : ""}`;
+  $("ranked-rule").hidden = !ranked;
+  $("ranked-rule").classList.toggle("urgent", Boolean(ranked && turnShown >= RANKED_TURNS - 1));
   const progress = 1 - session.secondsLeft / session.turnSeconds;
   $("turn-ring").style.strokeDashoffset = String(100 - progress * 100);
   $("clock-label").textContent = gameClock(sim.time);
-  $("clock-left").textContent = `剩 ${mmss(Math.max(0, session.secondsLeft))}`;
+  $("clock-left").textContent = ranked?.over ? (ranked.result ? "已完成結算" : "自動平倉中") : `剩 ${mmss(Math.max(0, session.secondsLeft))}`;
   $("clock-left").classList.toggle("urgent", session.secondsLeft <= 60);
   $("turn-fill").style.setProperty("--p", String(progress));
   if (Math.abs(equity - pnlTarget) >= 1) {
@@ -1158,7 +1214,7 @@ function render() {
   $("run-button").disabled = Boolean(ranked?.over);
   const status = $("run-status");
   status.className = `run-status ${running ? "running" : view.reveal ? "revealing" : "planning"}`;
-  status.querySelector("b").textContent = running ? "執行中" : view.reveal ? "揭曉中" : ranked?.over ? "已結束" : "計畫中";
+  status.querySelector("b").textContent = running ? "執行中" : view.reveal ? "揭曉中" : ranked?.over ? (ranked.result ? "已結束" : "平倉中") : "計畫中";
   document.querySelectorAll("[data-speed]").forEach((button) => button.classList.toggle("active", Number(button.dataset.speed) === speed));
   $("sound-toggle").setAttribute("aria-pressed", String(sound.enabled));
 
@@ -1279,6 +1335,11 @@ function smolder(dt) {
 function frame(now) {
   const dt = lastFrame == null ? 0 : Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
+  if (ranked?.settlement && !ranked.result) {
+    ranked.settlement.advance(30);
+    $("ranked-stats").textContent = `剩餘待平倉 ${btc(Math.abs(player.position))} · 已延長模擬 ${sim.time - ranked.settlement.start} 秒`;
+    finishSettlement();
+  }
   if (running && sim) {
     accumulator += dt * TICKS_PER_SECOND * speed * fx.timeScale();
     const ticks = Math.floor(accumulator);
@@ -1431,7 +1492,14 @@ $("ranked-button").addEventListener("click", () => {
   newMarket(randomSeed(), { rankedGame: true });
 });
 $("board-button").addEventListener("click", () => showLeaderboard());
-$("ranked-upload").addEventListener("click", () => (ranked?.uploadedId ? showLeaderboard(ranked.uploadedId) : uploadRanked()));
+$("leaderboard-season").addEventListener("change", (event) => showLeaderboard(null, event.target.value));
+$("ranked-notice").addEventListener("cancel", (event) => event.preventDefault());
+$("ranked-notice-continue").addEventListener("click", () => {
+  const finalTurn = $("ranked-notice").dataset.finalTurn === "true";
+  $("ranked-notice").close();
+  if (finalTurn) setRunning(true);
+});
+$("ranked-upload").addEventListener("click", () => (ranked?.uploadedId ? showLeaderboard(ranked.uploadedId, "current") : uploadRanked()));
 $("ranked-again").addEventListener("click", () => newMarket(randomSeed(), { rankedGame: true }));
 $("ranked-share").addEventListener("click", () => sound.chime(5));
 $("ranked-copy").addEventListener("click", async () => {
@@ -1567,7 +1635,7 @@ canvas.addEventListener("dblclick", () => {
 
 document.addEventListener("keydown", (event) => {
   if (touring || event.target.closest?.("input, select, textarea") || event.metaKey || event.ctrlKey || event.altKey) return;
-  if ($("leaderboard").open) return;
+  if ($("leaderboard").open || $("ranked-notice").open) return;
   const key = event.key.toLowerCase();
   if (key === " ") {
     event.preventDefault();

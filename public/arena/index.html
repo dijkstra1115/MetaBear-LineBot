@@ -28,7 +28,7 @@
     <div class="match-controls" role="group" aria-label="市場">
       <label class="seed-field"><span>SEED</span><input id="seed-input" inputmode="numeric" maxlength="10" placeholder="隨機" aria-label="種子（留空為隨機）" /><em id="seed-label">—</em></label>
       <button id="new-button" class="chip-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" /></svg>新市場</button>
-      <button id="ranked-button" class="chip-button ranked" type="button" title="24 回合，比最後的總損益"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 20h8" /></svg>排名賽</button>
+      <button id="ranked-button" class="chip-button ranked" type="button" title="24 回合結束自動平倉，比平倉後淨損益"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 20h8" /></svg>排名賽</button>
       <button id="board-button" class="chip-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6" /></svg>排行榜</button>
     </div>
     <div class="top-tools">
@@ -46,7 +46,7 @@
     <section class="hud" aria-label="回合與戰績">
       <div class="hud-turn">
         <svg class="turn-ring" viewBox="0 0 44 44" aria-hidden="true"><circle class="track" cx="22" cy="22" r="19" /><circle id="turn-ring" class="fill" cx="22" cy="22" r="19" pathLength="100" /></svg>
-        <div><span id="turn-title">TURN</span><strong id="turn-label">01</strong></div>
+        <div><span id="turn-title">TURN</span><strong id="turn-label">01</strong><small id="ranked-rule" hidden>第 24 回合結束自動平倉</small></div>
       </div>
       <div class="hud-clock"><span>遊戲時間</span><strong id="clock-label">09:00</strong><em id="clock-left">剩 05:00</em><i id="turn-fill"></i></div>
       <div class="hud-score"><span>總損益 USDT</span><strong id="hud-pnl">+$0</strong><em id="hud-pnl-detail">已實現 +$0 · 手續費 $0</em></div>
@@ -235,6 +235,7 @@
           <strong id="ranked-final-title">最終損益</strong>
           <b id="ranked-pnl">+$0</b>
           <p id="ranked-stats"></p>
+          <p id="ranked-settlement" class="settlement-detail"></p>
           <label class="ranked-name">名稱 <input id="ranked-name" maxlength="18" placeholder="匿名交易者" autocomplete="nickname" /></label>
           <div class="final-actions"><button id="ranked-upload" type="button" class="primary">上傳成績</button><button id="ranked-again" type="button">再來一局</button><button id="ranked-sandbox" type="button">回到沙盤</button></div>
           <p id="ranked-status" class="ranked-status" role="status"></p>
@@ -302,7 +303,8 @@
       </section>
 
       <section class="ticket-block account-block" aria-label="帳戶">
-        <header class="block-head"><span class="label">ACCOUNT</span><span class="hint">資金無上限 · 逐倉 · <b id="leverage-value">3×</b></span></header>
+        <header class="block-head"><span class="label">ACCOUNT</span><span class="hint">資金無上限 · <b id="leverage-value">3×</b></span></header>
+        <p class="hint">強平會持續在市場出場，損失可能超過保證金。</p>
         <div class="account-total"><span>總損益</span><strong id="equity">+$0</strong></div>
         <dl class="stat-grid ledger">
           <div><dt>已實現</dt><dd id="realized">+$0</dd></div>
@@ -316,8 +318,17 @@
     </aside>
   </main>
 
-  <dialog id="leaderboard" class="leaderboard">
-    <div class="leaderboard-head"><span class="eyebrow-gold">LEADERBOARD</span><strong>排名賽 · 24 回合總損益</strong><button id="leaderboard-close" type="button" aria-label="關閉">✕</button></div>
+  <dialog id="ranked-notice" class="leaderboard ranked-notice" aria-labelledby="ranked-notice-title" aria-describedby="ranked-notice-detail ranked-notice-cost">
+    <span class="eyebrow-gold">RANKED · 新賽季規則</span>
+    <h2 id="ranked-notice-title">新賽季 · 平倉後才計分</h2>
+    <p id="ranked-notice-detail"></p>
+    <p id="ranked-notice-cost">最終依平倉後淨損益排名，包含滑價、價格衝擊與手續費。市場接不完時會延長模擬，分批成交直到空倉。強平損失可能超過保證金，全部平倉後才會結算。</p>
+    <button id="ranked-notice-continue" type="button" class="primary">了解，開始布局</button>
+  </dialog>
+  <dialog id="leaderboard" class="leaderboard" aria-labelledby="leaderboard-title">
+    <div class="leaderboard-head"><span class="eyebrow-gold">LEADERBOARD</span><strong id="leaderboard-title">新賽季 · 平倉後淨損益</strong><button id="leaderboard-close" type="button" aria-label="關閉">✕</button></div>
+    <label class="season-picker">賽季 <select id="leaderboard-season"><option value="current">新賽季 · 結束自動平倉</option><option value="legacy">舊賽季 · 不強制平倉</option></select></label>
+    <p id="leaderboard-rule" class="season-rule"></p>
     <ol id="leaderboard-podium" class="podium"></ol>
     <table><thead><tr><th>#</th><th>名稱</th><th>損益</th><th>種子</th><th>日期</th></tr></thead><tbody id="leaderboard-rows"></tbody></table>
     <p id="leaderboard-status" class="ranked-status"></p>

@@ -10,7 +10,7 @@ export const ALERT_KINDS = {
 };
 // Your own order events worth a pause; a push you just sent is not one of them, and neither is each
 // partial fill of a resting order: only the fill that completes it ("filled").
-const OWN_ALERTS = new Set(["filled", "trigger", "stop", "take", "liquidation", "danger", "rejected"]);
+const OWN_ALERTS = new Set(["filled", "trigger", "stop", "take", "liquidation", "liquidationComplete", "danger", "rejected"]);
 const FLOW_WINDOW = 10;
 const BIG_FLOW_MIN = 10000; // 100 BTC in ten seconds
 const BIG_FLOW_MULTIPLE = 6;
@@ -65,7 +65,8 @@ export class Session {
         this.turnStartPrice = sim.last;
         this.moveAlerted = false;
         turned++;
-        if (this.alerts.turn !== false || final) {
+        // Always stop before the last ranked turn so the player sees the settlement warning.
+        if (this.alerts.turn !== false || final || this.turn === this.finalTurn) {
           this.phase = "plan";
           return { ticks: i + 1, stop: "turn", alert, events, turned };
         }

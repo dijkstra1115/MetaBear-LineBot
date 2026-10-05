@@ -2,6 +2,7 @@ import {
   MAX_ACTIONS,
   RANKED_TURNS,
   RANKED_VERSION,
+  SETTLED_SEASON_VERSION,
   checkActions,
 } from "../public/arena/engine/ranked.js";
 import { HttpError, json, readBody } from "./http";
@@ -28,6 +29,7 @@ type ScoreRow = {
   turns: number;
   verified: number;
   created_at: string;
+  source_score_id: number | null;
 };
 
 export async function handleArenaScores(
@@ -37,8 +39,11 @@ export async function handleArenaScores(
   const db = env.ARENA_DB;
   if (!db) return json({ error: "排行榜尚未啟用" }, 503);
   try {
-    if (request.method === "GET" || request.method === "HEAD")
-      return json({ scores: await topScores(db) });
+    if (request.method === "GET" || request.method === "HEAD") {
+      const season = new URL(request.url).searchParams.get("season") ?? "current";
+      if (season !== "current" && season !== "legacy") throw new HttpError(400, "未知的賽季");
+      return json({ season, scores: await topScores(db, season) });
+    }
     if (request.method !== "POST") return json({ error: "不支援的方法" }, 405);
     if (!request.headers.get("Content-Type")?.includes("application/json"))
       throw new HttpError(415, "需要 JSON");
@@ -68,22 +73,22 @@ export async function handleArenaScores(
       )
       .first<{ id: number }>();
     const better = await db
-      .prepare("SELECT COUNT(*) AS n FROM arena_scores WHERE pnl > ?")
-      .bind(score.pnl)
+      .prepare("SELECT COUNT(*) AS n FROM arena_scores WHERE version >= ? AND pnl > ?")
+      .bind(SETTLED_SEASON_VERSION, score.pnl)
       .first<{ n: number }>();
-    return json({ id: inserted?.id, rank: (better?.n ?? 0) + 1 }, 201);
+    return json({ id: inserted?.id, rank: (better?.n ?? 0) + 1, season: "current" }, 201);
   } catch (error) {
     if (error instanceof HttpError) return json({ error: error.message }, error.status);
     throw error;
   }
 }
 
-async function topScores(db: D1Database) {
+async function topScores(db: D1Database, season: "current" | "legacy") {
   const { results } = await db
     .prepare(
-      "SELECT id, name, pnl, seed, turns, verified, created_at FROM arena_scores ORDER BY pnl DESC, id ASC LIMIT ?",
+      `SELECT id, name, pnl, seed, turns, verified, created_at, json_extract(stats, '$.recalculatedFrom') AS source_score_id FROM arena_scores WHERE version ${season === "legacy" ? "<" : ">="} ? ORDER BY pnl DESC, id ASC LIMIT ?`,
     )
-    .bind(BOARD_SIZE)
+    .bind(SETTLED_SEASON_VERSION, BOARD_SIZE)
     .all<ScoreRow>();
   return results.map((row) => ({
     id: row.id,
@@ -92,6 +97,7 @@ async function topScores(db: D1Database) {
     seed: row.seed,
     turns: row.turns,
     verified: Boolean(row.verified),
+    recalculatedFrom: row.source_score_id ?? null,
     createdAt: `${row.created_at.replace(" ", "T")}Z`,
   }));
 }
@@ -106,6 +112,9 @@ export function parseScore(text: string) {
   if (!body || typeof body !== "object") throw new HttpError(400, "資料格式不對");
   if (body.version !== RANKED_VERSION) throw new HttpError(400, "遊戲版本不符，請重新整理後再玩");
   if (body.turns !== RANKED_TURNS) throw new HttpError(400, "回合數不符");
+  const stats = body.stats as Record<string, unknown> | null;
+  if (!stats || stats.settled !== true || stats.position !== 0)
+    throw new HttpError(400, "請完成平倉結算後再上傳成績");
   const seed = body.seed;
   if (!Number.isSafeInteger(seed) || (seed as number) < 1 || (seed as number) > 0xffffffff)
     throw new HttpError(400, "種子不對");
@@ -148,6 +157,8 @@ function pickStats(value: unknown) {
   const number = (key: string) =>
     typeof stats[key] === "number" && Number.isFinite(stats[key]) ? (stats[key] as number) : 0;
   return {
+    settled: true,
+    position: 0,
     volume: number("volume"),
     liquidations: number("liquidations"),
     ignited: number("ignited"),
