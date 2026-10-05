@@ -1,0 +1,163 @@
+[
+ {
+  "id": "matching",
+  "number": "01",
+  "kind": "concept",
+  "title": "K 線",
+  "duration": 28
+ },
+ {
+  "id": "footprint",
+  "number": "02",
+  "kind": "concept",
+  "title": "足跡圖",
+  "duration": 30
+ },
+ {
+  "id": "heatmap",
+  "number": "03",
+  "kind": "concept",
+  "title": "熱力圖",
+  "duration": 30
+ },
+ {
+  "id": "order-types",
+  "number": "04",
+  "kind": "concept",
+  "title": "市價單與限價單",
+  "duration": 30
+ },
+ {
+  "id": "slippage",
+  "number": "05",
+  "kind": "concept",
+  "title": "滑價",
+  "duration": 30
+ },
+ {
+  "id": "leverage",
+  "number": "06",
+  "kind": "concept",
+  "title": "合約槓桿",
+  "duration": 30
+ },
+ {
+  "id": "liquidation",
+  "number": "07",
+  "kind": "concept",
+  "title": "合約強平",
+  "duration": 32
+ },
+ {
+  "id": "volume",
+  "number": "08",
+  "kind": "concept",
+  "title": "成交量",
+  "duration": 30
+ },
+ {
+  "id": "delta-concept",
+  "number": "09",
+  "kind": "concept",
+  "title": "Delta 與 CVD",
+  "duration": 30
+ },
+ {
+  "id": "stop-orders",
+  "number": "10",
+  "kind": "concept",
+  "title": "停損單",
+  "duration": 32
+ },
+ {
+  "id": "open-interest",
+  "number": "11",
+  "kind": "concept",
+  "title": "未平倉量（OI）",
+  "duration": 36
+ },
+ {
+  "id": "funding",
+  "number": "12",
+  "kind": "concept",
+  "title": "資金費率",
+  "duration": 32
+ },
+ {
+  "id": "volume-profile",
+  "number": "13",
+  "kind": "concept",
+  "title": "成交量分布圖",
+  "duration": 30
+ },
+ {
+  "id": "imbalance",
+  "number": "14",
+  "kind": "concept",
+  "title": "足跡不平衡",
+  "duration": 30
+ },
+ {
+  "id": "wick",
+  "number": "01",
+  "kind": "story",
+  "title": "衝上去，怎麼又回來？",
+  "duration": 36
+ },
+ {
+  "id": "absorption-story",
+  "number": "02",
+  "kind": "story",
+  "title": "突破誘多，高位吸收，反轉出貨",
+  "duration": 44
+ },
+ {
+  "id": "breakout-volume",
+  "number": "03",
+  "kind": "story",
+  "title": "放量突破，怎樣才算站穩？",
+  "duration": 38
+ },
+ {
+  "id": "order-block",
+  "number": "04",
+  "kind": "story",
+  "title": "什麼是訂單塊？",
+  "duration": 38
+ },
+ {
+  "id": "btc-wall",
+  "number": "05",
+  "kind": "story",
+  "title": "真實盤面上的訂單塊",
+  "duration": 54
+ },
+ {
+  "id": "fibonacci",
+  "number": "06",
+  "kind": "story",
+  "title": "黃金口袋，是答案還是巧合？",
+  "duration": 68
+ },
+ {
+  "id": "failed-auction",
+  "number": "01",
+  "kind": "strategy",
+  "title": "掃過前低，收回才算數",
+  "duration": 77
+ },
+ {
+  "id": "support-resistance",
+  "number": "02",
+  "kind": "strategy",
+  "title": "同一道支撐，守住或翻轉",
+  "duration": 92
+ },
+ {
+  "id": "trend-pullback",
+  "number": "03",
+  "kind": "strategy",
+  "title": "回調縮量，才是上車點",
+  "duration": 71
+ }
+]
