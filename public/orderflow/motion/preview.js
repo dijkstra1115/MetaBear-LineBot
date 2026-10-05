@@ -39,6 +39,9 @@ export const POSTER_T = {
   "order-block": 31,
   "btc-wall": 30.5,
   "failed-auction": 49.2,
+  "support-resistance": 33.6,
+  "trend-pullback": 38.4,
+  fibonacci: 33.6,
 };
 export const posterTime = (lesson) => POSTER_T[lesson.id] ?? lesson.duration * 0.5;
 

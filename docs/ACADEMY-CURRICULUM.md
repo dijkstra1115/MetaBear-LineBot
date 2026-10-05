@@ -1,6 +1,6 @@
 # 現役課程清單
 
-2026-09-30：20 堂（14 堂概念、5 堂故事、1 堂策略），全部為 Canvas 動態課程。此表依 academy-catalog.js 整理，程式目錄為準。
+2026-10-05：23 堂（14 堂概念、6 堂故事、3 堂策略），全部為 Canvas 動態課程。此表依 academy-catalog.js 整理，程式目錄為準。
 
 | 類型 | 課程 | 秒數 | ID |
 | --- | --- | --- | --- |
@@ -21,8 +21,11 @@
 | 故事 | 衝上去，怎麼又回來？ | 36 | wick |
 | 故事 | 突破誘多，高位吸收，反轉出貨 | 44 | absorption-story |
 | 故事 | 放量突破，怎樣才算站穩？ | 38 | breakout-volume |
-| 故事 | 訂單塊到底長怎樣？ | 38 | order-block |
-| 故事 | 一道賣牆，最後倒給了誰？ | 54 | btc-wall |
+| 故事 | 什麼是訂單塊？ | 38 | order-block |
+| 故事 | 真實盤面上的訂單塊 | 54 | btc-wall |
+| 故事 | 黃金口袋，是答案還是巧合？ | 68 | fibonacci |
 | 策略 | 掃過前低，收回才算數 | 77 | failed-auction |
+| 策略 | 同一道支撐，守住或翻轉 | 92 | support-resistance |
+| 策略 | 回調縮量，才是上車點 | 71 | trend-pullback |
 
 舊版長篇與已移除課程全部封存，不列入現行路線。[歷史架構](../archive/2026-09-29/main/docs/ACADEMY-CURRICULUM.md) 僅供追溯；[接續指南](ACADEMY-HANDOFF.md) 說明目前修改與驗證方式。
