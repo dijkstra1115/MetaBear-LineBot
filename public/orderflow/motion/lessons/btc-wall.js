@@ -1,4 +1,4 @@
-// S05 一道賣牆，最後倒給了誰？ — a real BTC case study (2026-07-02, Taipei time).
+// S05 真實盤面上的訂單塊 — a real BTC case study (2026-07-02, Taipei time).
 // Binance BTC perpetual: from 05:43 to 06:20 every 1-minute high is 60,800.00 while a resting
 // sell wall absorbs ~4,500 BTC of taker buys. 06:21: ~2,100 BTC of market buys break the wall,
 // stops trigger and price reaches 61,322 (+522) at 06:21:20. OI −821 BTC in the next 5 minutes.
@@ -710,7 +710,7 @@ const RECAP = [
 
 export const lesson = {
   id: "btc-wall",
-  title: "一道賣牆，最後倒給了誰？",
+  title: "真實盤面上的訂單塊",
   duration: 54,
   dataLabel: "REAL MARKET · BINANCE／OKX 公開數據重繪",
   description:
@@ -915,7 +915,7 @@ export const lesson = {
     titleCard(ctx, t, {
       num: "S5",
       kicker: "STORY 05 · BTC CASE STUDY",
-      title: "一道賣牆，最後倒給了誰？",
+      title: "真實盤面上的訂單塊",
       sub: "2026.07.02 清晨 · Binance BTC 永續",
       titleSize: 72,
       outA: 1.9,

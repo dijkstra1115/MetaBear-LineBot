@@ -1,4 +1,4 @@
-// S04 訂單塊到底長怎樣？ — a named buyer A absorbs passively, then buys actively.
+// S04 什麼是訂單塊？ — a named buyer A absorbs passively, then buys actively.
 // ORDER-BLOCK-LESSON-PLAN: prior high 105. 14:30 trades 103×4, 104×3 (others), 103×12,
 // 102×18, 101×20 (sellers hit A's bids = 50), 102×3 (other buyer) → O103 H104 L101 C102.
 // 14:31: A buys 5 each at 102…107 → O102 H107 L102 C107. A = 50 + 30 = 80, never sells.
@@ -75,7 +75,7 @@ function aBids(t) {
 
 export const lesson = {
   id: "order-block",
-  title: "訂單塊到底長怎樣？",
+  title: "什麼是訂單塊？",
   duration: 38,
   description:
     "具名的模擬買家 A 要買 80 隻：先在 103、102、101 掛買，承接主動賣出 50 隻，這根 K 線反而收跌；期限接近，A 改用主動買入，逐檔買完 30 隻把價格推到 107，收盤越過前高 105。起漲前那根收跌 K 的 101–104，就是本例畫出的訂單塊。",
@@ -382,7 +382,7 @@ export const lesson = {
     titleCard(ctx, t, {
       num: "S4",
       kicker: "STORY 04 · ORDER BLOCK",
-      title: "訂單塊到底長怎樣？",
+      title: "什麼是訂單塊？",
       sub: "大買家如何留下起漲區",
       titleSize: 76,
       outA: 1.9,

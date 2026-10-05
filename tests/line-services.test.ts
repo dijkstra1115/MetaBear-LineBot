@@ -240,7 +240,7 @@ test("rich menu covers exactly six tiles and has no AI toggles or public VIP lin
     uri: communityUrl,
   });
   assert.ok(communityUrl.startsWith("https://line.me/ti/g2/"));
-  assert.ok(menu.areas.every((area) => area.action.type === "postback"));
+  assert.ok(menu.areas.slice(0, 4).every((area) => area.action.type === "postback"));
   const text = (i: number) =>
     new URLSearchParams((menu.areas[i].action as { data: string }).data).get(
       "text",
@@ -261,7 +261,10 @@ test("rich menu covers exactly six tiles and has no AI toggles or public VIP lin
     text(3),
     "合約基礎",
   );
-  assert.equal(text(4), "人工協助");
+  assert.deepEqual(menu.areas[4].action, {
+    type: "message",
+    text: "人工協助",
+  });
   for (const command of ["提交 UID", "開始註冊", "合約基礎", "人工協助"])
     assert.equal(isImmediateCommand(command), true);
 });

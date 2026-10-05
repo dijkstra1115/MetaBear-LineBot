@@ -129,7 +129,7 @@ export const FUTURES_LESSON_KEYS = [
 export const MARKET_LESSON_KEYS = marketLessonKeys as string[];
 export const isLesson = (topic: string) => Object.hasOwn(LESSONS, topic);
 export const command = (label: string, text = label): Action =>
-  label === text
+  label === text || text === "人工協助"
     ? { type: "message", label, text }
     : {
         type: "postback",

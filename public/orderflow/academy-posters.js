@@ -14,6 +14,7 @@ const kicker = (c) =>
 const REEL = [
   ["btc-wall", 18.8, 27.6],
   ["failed-auction", 17.2, 26.6],
+  ["support-resistance", 56.6, 66.0],
   ["wick", 8.2, 16.4],
   ["footprint", 5.2, 13.6],
   ["absorption-story", 21.5, 30.5],

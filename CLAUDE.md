@@ -190,7 +190,7 @@ Not committed: `pages/dist/`, `dist/backend/`, `motion/out/`, `.wrangler/`,
 ## Academy (orderflow) conventions
 
 - `public/orderflow/academy-catalog.js` is the single source of truth for lesson
-  IDs, numbers, titles, prerequisites, kind and status (currently 20 motion
+  IDs, numbers, titles, prerequisites, kind and status (currently 23 motion
   lessons; some docs still say 19).
 - A lesson is `public/orderflow/motion/lessons/<id>.js` exporting `lesson` with
   `draw(ctx, t)`. `draw` must be a **pure function of `t`**: no retained state,

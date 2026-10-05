@@ -253,7 +253,7 @@ export const courses = [
     kind: "story",
     topic: "reading",
     status: "new",
-    title: "訂單塊到底長怎樣？",
+    title: "什麼是訂單塊？",
     subtitle: "大買家如何留下起漲區",
     description:
       "大單先掛買承接，再主動逐價成交：看懂成本、成交速度與起漲區的關係。",
@@ -268,7 +268,7 @@ export const courses = [
     kind: "story",
     topic: "reading",
     status: "new",
-    title: "一道賣牆，最後倒給了誰？",
+    title: "真實盤面上的訂單塊",
     subtitle: "真實盤面：牆、擊穿與倒貨",
     description:
       "真實 BTC 事件復盤：60,800 賣牆吸收買盤 38 分鐘，擊穿後止損推升到 61,322，再由主動賣出倒回牆下。",
@@ -276,6 +276,21 @@ export const courses = [
     format: "motion",
     href: "./btc-wall.html",
     prerequisites: ["order-block", "stop-orders", "open-interest"],
+  },
+  {
+    id: "fibonacci",
+    number: "06",
+    kind: "story",
+    topic: "reading",
+    status: "new",
+    title: "黃金口袋，是答案還是巧合？",
+    subtitle: "斐波那契：人群的地圖",
+    description:
+      "四條斐波那契線放在回調最常見的區段，碰到是必然；有用的是人群在黃金口袋的掛買與 0.786 下的停損。同一個回調演兩次：買單留著就守住，先撤就加速。",
+    duration: 68,
+    format: "motion",
+    href: "./fibonacci.html",
+    prerequisites: ["heatmap", "stop-orders", "support-resistance"],
   },
   {
     id: "failed-auction",
@@ -291,6 +306,36 @@ export const courses = [
     format: "motion",
     href: "./failed-auction.html",
     prerequisites: ["volume-profile", "stop-orders", "open-interest", "absorption-story"],
+  },
+  {
+    id: "support-resistance",
+    number: "02",
+    kind: "strategy",
+    topic: "reading",
+    status: "new",
+    title: "同一道支撐，守住或翻轉",
+    subtitle: "支撐壓力：區域、撤單、翻轉",
+    description:
+      "四個理由畫出支撐區；牆留著、吸收、收回就做多。倒回同一刻：牆先撤、跌破後被接受，舊支撐變壓力，回測推不過才做空。",
+    duration: 92,
+    format: "motion",
+    href: "./support-resistance.html",
+    prerequisites: ["volume-profile", "heatmap", "stop-orders", "breakout-volume", "failed-auction"],
+  },
+  {
+    id: "trend-pullback",
+    number: "03",
+    kind: "strategy",
+    topic: "reading",
+    status: "new",
+    title: "回調縮量，才是上車點",
+    subtitle: "順勢回調：換氣還是換人",
+    description:
+      "上漲中的回調：縮量、CVD 只吐回一小段、OI 下降，等第一根 Δ 轉正並突破回調小高點才上車。倒回同一個高點：回調放量、CVD 跌破推升起點、新空單進場，就不做。",
+    duration: 71,
+    format: "motion",
+    href: "./trend-pullback.html",
+    prerequisites: ["delta-concept", "open-interest", "volume-profile", "support-resistance"],
   },
 ];
 
@@ -340,6 +385,7 @@ export const paths = [
       "absorption-story",
       "order-block",
       "btc-wall",
+      "fibonacci",
     ],
   },
   {
@@ -347,6 +393,12 @@ export const paths = [
     label: "理解合約風險",
     caption: "先懂部位，再看風險門檻",
     ids: ["leverage", "liquidation", "stop-orders", "funding"],
+  },
+  {
+    id: "strategy",
+    label: "策略實戰",
+    caption: "地點、事件、確認、執行",
+    ids: ["failed-auction", "support-resistance", "trend-pullback"],
   },
 ];
 export const isAvailable = (course) => course.status !== "planned";
