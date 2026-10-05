@@ -1,0 +1,12 @@
+# HyperFrames render outputs and caches
+renders/
+snapshots/
+.thumbnails/
+.hyperframes/
+.waveform-cache/
+check.log
+# The user-supplied song and every mix that contains it stay out of Git; large captures too
+assets/audio/song.*
+assets/audio/soundtrack.wav
+assets/video/*.mp4
+scripts/.chars.txt
