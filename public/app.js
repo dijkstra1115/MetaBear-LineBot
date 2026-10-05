@@ -94,6 +94,11 @@ async function loadCustomers() {
   if (version !== listVersion) return;
   total = data.total;
   $("#customer-count").textContent = total;
+  const supportOnly = new URLSearchParams(filters).get("support") === "1";
+  $("#show-support").setAttribute("aria-pressed", String(supportOnly));
+  $("#list-description").textContent = supportOnly
+    ? "顯示等待認領及客服已接手的用戶；點「查看」可認領並查看 LINE 對話。"
+    : "選擇用戶查看完整資料與核實紀錄。";
   $("#customer-rows").replaceChildren();
   $("#empty").hidden = !!data.customers.length;
   for (const c of data.customers) {
@@ -194,6 +199,7 @@ async function loadCustomers() {
 }
 async function loadStats() {
   const data = await api("/api/stats");
+  $("#support-count").textContent = String(data.support?.count || 0);
   const counts = Object.fromEntries(data.stages.map((x) => [x.stage, x.count]));
   $("#stage-strip").replaceChildren();
   for (const [key, label] of Object.entries(stageNames)) {
@@ -347,6 +353,15 @@ for (const b of document.querySelectorAll("[data-view]"))
     run(() => showView(b.dataset.view)),
   );
 $("#refresh").onclick = run(refresh);
+$("#show-support").onclick = run(async () => {
+  const form = $("#filters");
+  form.reset();
+  field(form, "month").value = month();
+  field(form, "support").value = "1";
+  filters = serializeFilters();
+  page = 1;
+  await refresh();
+});
 $("#filters").addEventListener(
   "submit",
   run(async (e) => {

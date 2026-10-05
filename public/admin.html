@@ -109,9 +109,20 @@
                 選擇用戶查看完整資料與核實紀錄。
               </p>
             </div>
-            <button id="refresh" class="quiet">重新整理 ↻</button>
+            <div>
+              <button id="show-support" class="secondary" type="button">
+                需協助 <span id="support-count" class="count">0</span>
+              </button>
+              <button id="refresh" class="quiet">重新整理 ↻</button>
+            </div>
           </div>
           <form id="filters" class="filters">
+            <label
+              >人工協助<select name="support">
+                <option value="">全部用戶</option>
+                <option value="1">需協助（待認領／已接手）</option>
+              </select></label
+            >
             <label
               >資格<select name="qualification">
                 <option value="">全部資格</option>

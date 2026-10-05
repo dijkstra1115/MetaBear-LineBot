@@ -912,6 +912,10 @@ test("every menu question works independently without AI or prior registration",
   assert.equal(entry.type, "text");
   if (entry.type !== "text") return;
   const labels = entry.quickReply!.items.map(({ action }) => action.label);
+  assert.deepEqual(
+    entry.quickReply!.items.find(({ action }) => action.label === "遇到問題")?.action,
+    { type: "message", label: "遇到問題", text: "人工協助" },
+  );
   assert.deepEqual(labels, [
     "開始註冊",
     "入金教學",
@@ -1429,6 +1433,8 @@ test("support notification, claim, bot pause, resume and resolution form one wor
   const user = "U" + crypto.randomUUID().replaceAll("-", "");
   const beforePush = pushes.length;
   await webhook([event("人工協助", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /請直接在這個聊天室留言/);
+  assert.match(String(calls.at(-1)!.messages[0].text), /想詢問或需要協助的問題/);
   const pending = await db
     .prepare("SELECT * FROM support_cases WHERE line_user_id=?")
     .bind(user)
@@ -1437,6 +1443,10 @@ test("support notification, claim, bot pause, resume and resolution form one wor
   assert.equal(pending.notification_status, "sent");
   assert.equal(pushes.length, beforePush + 1);
   assert.doesNotMatch(JSON.stringify(pushes.at(-1)), new RegExp(user));
+
+  await webhook([event("人工協助", user)]);
+  assert.match(String(calls.at(-1)!.messages[0].text), /留下想詢問的問題/);
+  assert.equal(pushes.length, beforePush + 1);
 
   assert.equal(
     (
