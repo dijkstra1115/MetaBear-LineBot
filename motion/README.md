@@ -10,6 +10,7 @@
 | [academy-drop/](academy-drop/README.md) | 31 秒學院對拍宣傳片（使用者提供的歌曲），真實課程頁與沙盤錄影，16:9 | HyperFrames |
 | [academy-voice/](academy-voice/README.md) | 43 秒學院旁白版：AI 低沉男聲（Gemini TTS）＋合成音效，無配樂，16:9 | HyperFrames |
 | [academy-story/](academy-story/README.md) | 27 秒學院極簡旁白版（參考 aether）：問題→解法→示範，向量 UI、音墊＋少數重擊，16:9 | HyperFrames |
+| [academy-film/](academy-film/README.md) | 27 秒學院品牌旁白片（定稿）：連續 3D 攝影機、景深、重繪產品介面、低音音效，16:9 60 fps | HyperFrames |
 | [flow-arena/](flow-arena/README.md) | FLOW ARENA 宣傳片：launch、gameplay、promo，與 60 秒旗艦廣告 flagship | HyperFrames；flagship 用自己的 Canvas + CPU 後製管線 |
 | out/ | 所有輸出的 MP4、PNG 與暫存（不進 Git） | — |
 

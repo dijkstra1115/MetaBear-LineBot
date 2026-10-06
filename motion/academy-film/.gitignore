@@ -1,0 +1,16 @@
+# HyperFrames render outputs and caches
+renders/
+snapshots/
+.thumbnails/
+.hyperframes/
+.waveform-cache/
+check.log
+# Mixes and large captures (re-record with scripts/capture.mjs)
+assets/audio/soundtrack.wav
+assets/video/*.mp4
+scripts/.chars.txt
+# User-supplied sound effects (downloaded clips); kept local, not redistributed through Git
+assets/audio/sfx/*.mp3
+# Unused alternative takes of the opening line (take 3 is the one spliced in)
+assets/audio/takes/line1-1.wav
+assets/audio/takes/line1-2.wav
