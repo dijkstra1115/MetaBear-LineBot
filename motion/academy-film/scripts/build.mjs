@@ -2,7 +2,7 @@
 // spoken word), the product UI placed in 3D, the lesson canvas and wall, and assets/audio/sfx.json for mix.mjs.
 // Usage: node scripts/build.mjs
 import fs from "node:fs";
-import { C, END, SPLICE } from "./cues.mjs";
+import { C, END, SPLICE, VOICE_FX } from "./cues.mjs";
 
 const r = (x) => +x.toFixed(3);
 const hash = (i) => {
@@ -47,12 +47,12 @@ function rsiCard() {
   const v = series(48, 3, 9, 52).map((x) => Math.max(18, Math.min(86, x)));
   const pts = poly(v, 420, 150, 0, 100);
   return `${head("wave", "RSI", seg(["15m", "1H", "4H"], "1H"))}
-    <div class="row" style="height:64px;gap:10px"><span class="num" style="font-size:34px">71.42</span><span class="num up" style="font-size:18px">+6.18</span><span class="sp" style="flex:1"></span><span class="tag s">OVERBOUGHT</span></div>
+    <div class="row" style="height:64px;gap:10px"><span class="num" id="rsi-v" style="font-size:34px">71.42</span><span class="num up" style="font-size:18px">+6.18</span><span class="sp" style="flex:1"></span><span class="tag s">OVERBOUGHT</span></div>
     <svg width="460" height="170" viewBox="-20 -6 460 170" style="display:block">
       <rect x="0" y="0" width="420" height="45" fill="rgba(243,162,107,0.07)"/><rect x="0" y="105" width="420" height="45" fill="rgba(120,225,213,0.06)"/>
       <line x1="0" y1="45" x2="420" y2="45" stroke="rgba(243,162,107,0.5)" stroke-dasharray="4 5"/><line x1="0" y1="105" x2="420" y2="105" stroke="rgba(120,225,213,0.5)" stroke-dasharray="4 5"/>
       <defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(201,183,255,0.35)"/><stop offset="1" stop-color="rgba(201,183,255,0)"/></linearGradient></defs>
-      <polygon points="0,150 ${pts} 420,150" fill="url(#rg)"/><polyline points="${pts}" fill="none" stroke="#c9b7ff" stroke-width="2.4"/>
+      <polygon points="0,150 ${pts} 420,150" fill="url(#rg)"/><polyline id="rsi-line" points="${pts}" fill="none" stroke="#c9b7ff" stroke-width="2.4" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0"/>
       <text x="426" y="49" fill="#8a9ca5" font-size="13" font-family="JetBrains Mono">70</text><text x="426" y="109" fill="#8a9ca5" font-size="13" font-family="JetBrains Mono">30</text>
     </svg>`;
 }
@@ -63,7 +63,7 @@ function macdCard() {
   const l2 = hist.map((v, i) => `${i * 14 + 4},${(80 - Math.sin(i * 0.38 + 0.1) * 40).toFixed(1)}`).join(" ");
   return `${head("bars", "MACD", '<span class="num muted" style="font-size:15px">12 · 26 · 9</span>')}
     <div class="row" style="height:46px;gap:18px;font-size:15px"><span><span class="tag n">MACD</span> <span class="num up">0.0182</span></span><span><span class="tag n">SIGNAL</span> <span class="num">0.0141</span></span></div>
-    <svg width="440" height="170" viewBox="-12 -8 440 170" style="display:block"><line x1="0" y1="80" x2="420" y2="80" stroke="rgba(255,255,255,0.12)"/>${bars}<polyline points="${l1}" fill="none" stroke="#7aa7ff" stroke-width="2"/><polyline points="${l2}" fill="none" stroke="#e8bd7d" stroke-width="2"/></svg>`;
+    <svg width="440" height="170" viewBox="-12 -8 440 170" style="display:block"><line x1="0" y1="80" x2="420" y2="80" stroke="rgba(255,255,255,0.12)"/><g id="macd-bars">${bars}</g><polyline points="${l1}" fill="none" stroke="#7aa7ff" stroke-width="2"/><polyline points="${l2}" fill="none" stroke="#e8bd7d" stroke-width="2"/></svg>`;
 }
 function chartCard() {
   let p = 120, s = "";
@@ -82,7 +82,7 @@ function chartCard() {
     bbL.push(`${x},${(p + 34 + Math.sin(i / 3) * 6).toFixed(1)}`);
   }
   const chips = ["EMA 20", "EMA 50", "EMA 200", "BB", "VWAP", "Ichimoku", "+6"].map((t, i) => `<span class="tag ${i === 6 ? "b" : "n"}" style="margin-right:6px">${t}</span>`).join("");
-  return `${head("candle", 'BTC / USDT <span class="muted" style="font-weight:500;margin-left:6px">Perpetual</span>', '<span class="num" style="font-size:22px">104,761.5</span><span class="num up" style="font-size:16px;margin-left:10px">+0.96%</span>')}
+  return `${head("candle", 'BTC / USDT <span class="muted" style="font-weight:500;margin-left:6px">Perpetual</span>', '<span class="num" id="px-v" style="font-size:22px">104,761.5</span><span class="num up" style="font-size:16px;margin-left:10px">+0.96%</span>')}
     <div style="padding:12px 22px 0">${chips}</div>
     <svg width="760" height="300" viewBox="0 20 760 260" style="display:block;margin-top:6px">
       <polygon points="${bbU.join(" ")} ${bbL.slice().reverse().join(" ")}" fill="rgba(122,167,255,0.08)"/>
@@ -98,14 +98,16 @@ function indCard() {
     ${rows.map(([n, p, on]) => `<div class="row" style="height:58px;border-bottom:1.5px solid rgba(255,255,255,0.04)"><div style="flex:1"><div style="font-size:19px;font-weight:600">${n}</div><div class="num muted" style="font-size:13px">${p}</div></div><span class="tg${on ? "" : " off"}"></span></div>`).join("")}`;
 }
 function chatCard() {
-  const m = [["CK", "#f3a26b", "CryptoKing", "LONG now. Last chance before 120K!!", "2m"], ["WA", "#7aa7ff", "WhaleAlerts", "Huge sell wall at 105K. Short it.", "2m"], ["MT", "#c9b7ff", "Mia · Trader", "RSI says overbought… wait?", "1m"], ["JD", "#78e1d5", "Jay", "Indicators are lagging, just ape.", "now"]];
-  return `${head("chat", "# btc-signals", '<span class="tag s">128 NEW</span>')}
-    ${m.map(([a, c, n, t, ago]) => `<div class="row" style="align-items:flex-start;padding-top:14px"><span class="av" style="background:${c}">${a}</span><div style="flex:1"><div style="font-size:16px;font-weight:700;margin-bottom:5px">${n} <span class="muted num" style="font-size:12px;font-weight:500;margin-left:6px">${ago}</span></div><div class="bubble">${t}</div></div></div>`).join("")}`;
+  const m = [["CK", "#f3a26b", "CryptoKing", "LONG now. Last chance before 120K!!", "2m"], ["WA", "#7aa7ff", "WhaleAlerts", "Huge sell wall at 105K. Short it.", "2m"], ["MT", "#c9b7ff", "Mia · Trader", "RSI says overbought… wait?", "1m"], ["JD", "#78e1d5", "Jay", "Indicators are lagging, just ape.", "now"], ["AL", "#e8bd7d", "Alex", "Fib 0.618 says bounce. Or not.", "now"]];
+  const msg = ([a, c, n, t, ago], i) => `<div class="row chat-msg" id="chat-m${i}" style="align-items:flex-start;padding-top:14px"><span class="av" style="background:${c}">${a}</span><div style="flex:1"><div style="font-size:16px;font-weight:700;margin-bottom:5px">${n} <span class="muted num" style="font-size:12px;font-weight:500;margin-left:6px">${ago}</span></div><div class="bubble">${t}</div></div></div>`;
+  return `${head("chat", "# btc-signals", '<span class="tag s" id="chat-badge">128 NEW</span>')}
+    <div style="position:relative;height:400px;overflow:hidden"><div id="chat-list">${m.map(msg).join("")}</div>
+    <div class="row" id="chat-typing" style="position:absolute;left:0;bottom:6px;font-size:15px;color:#8a9ca5;opacity:0"><span class="typing"><i id="td-0"></i><i id="td-1"></i><i id="td-2"></i></span>Alex is typing…</div></div>`;
 }
 function scanCard() {
   const r2 = [["BTC", "BUY", "b", 0.82], ["ETH", "SELL", "s", 0.64], ["SOL", "STRONG BUY", "b", 0.91], ["BNB", "SELL", "s", 0.57], ["XRP", "BUY", "b", 0.48]];
   return `${head("radar", "Signal Scanner", seg(["5m", "15m", "1H"], "15m"))}
-    ${r2.map(([s, sig, k, c]) => `<div class="row" style="height:50px;border-bottom:1.5px solid rgba(255,255,255,0.04)"><span class="num" style="width:56px;font-size:17px">${s}</span><span class="tag ${k}" style="width:110px;text-align:center">${sig}</span><span style="flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden"><i style="display:block;height:6px;width:${c * 100}%;background:${k === "b" ? "#78e1d5" : "#f3a26b"}"></i></span><span class="num muted" style="font-size:14px;width:44px;text-align:right">${Math.round(c * 100)}%</span></div>`).join("")}`;
+    ${r2.map(([s, sig, k, c], j) => `<div class="row" style="height:50px;border-bottom:1.5px solid rgba(255,255,255,0.04)"><span class="num" style="width:56px;font-size:17px">${s}</span><span class="tag ${k}" style="width:110px;text-align:center">${sig}</span><span style="flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden"><i id="scan-b-${j}" style="display:block;transform-origin:0 50%;height:6px;width:${c * 100}%;background:${k === "b" ? "#78e1d5" : "#f3a26b"}"></i></span><span class="num muted" style="font-size:14px;width:44px;text-align:right">${Math.round(c * 100)}%</span></div>`).join("")}`;
 }
 function gaugeCard() {
   const a = Math.PI * (1 - 0.72);
@@ -115,9 +117,9 @@ function gaugeCard() {
       <defs><linearGradient id="gg" x1="0" x2="1"><stop offset="0" stop-color="#f3a26b"/><stop offset="0.5" stop-color="#e8bd7d"/><stop offset="1" stop-color="#78e1d5"/></linearGradient></defs>
       <path d="M28 112 A92 92 0 0 1 212 112" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="14" stroke-linecap="round"/>
       <path d="M28 112 A92 92 0 0 1 212 112" fill="none" stroke="url(#gg)" stroke-width="14" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="${(289 * 0.28).toFixed(0)}"/>
-      <line x1="120" y1="112" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#f1f6f6" stroke-width="4" stroke-linecap="round"/><circle cx="120" cy="112" r="7" fill="#f1f6f6"/>
+      <line id="g-needle" x1="120" y1="112" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#f1f6f6" stroke-width="4" stroke-linecap="round"/><circle cx="120" cy="112" r="7" fill="#f1f6f6"/>
     </svg>
-    <div style="text-align:center;margin-top:-6px"><span class="num" style="font-size:34px">72</span> <span class="up" style="font-size:18px;font-weight:700">GREED</span></div>`;
+    <div style="text-align:center;margin-top:-6px"><span class="num" id="g-v" style="font-size:34px">72</span> <span class="up" style="font-size:18px;font-weight:700">GREED</span></div>`;
 }
 function postCard() {
   return `${head("post", '<span class="av" style="width:30px;height:30px;font-size:12px;background:#e8bd7d;margin-right:4px">MX</span>Max <span class="muted" style="font-weight:500;margin-left:8px">@maxleverage</span>')}
@@ -143,9 +145,9 @@ const CARD_DEFS = [
   { id: "macd", x: 740, y: 250, z: -1580, w: 440, h: 290, a: 0.9, html: macdCard() },
   { id: "ind", x: -760, y: 240, z: -1330, w: 360, h: 480, a: 0.9, html: indCard() },
   { id: "scan", x: -230, y: 340, z: -1720, w: 480, h: 330, a: 0.85, html: scanCard() },
-  { id: "gauge", x: -170, y: -360, z: -1080, w: 320, h: 260, a: 0.9, html: gaugeCard() },
+  { id: "gauge", x: -270, y: -350, z: -1080, w: 320, h: 260, a: 0.9, html: gaugeCard() },
   { id: "chat", x: 400, y: 320, z: -1180, w: 500, h: 470, a: 0.97, html: chatCard() },
-  { id: "post", x: 600, y: -330, z: -1230, w: 440, h: 200, a: 0.97, html: postCard() },
+  { id: "post", x: 120, y: -280, z: -1110, w: 440, h: 200, a: 0.97, html: postCard() },
 ];
 // near the lens from the first frame: soft, out-of-focus product UI drifting past the opening line
 const FG_DEFS = [
@@ -153,16 +155,19 @@ const FG_DEFS = [
   { id: "fg-liq", x: 860, y: -300, z: 280, w: 400, h: 290, a: 0.9, html: liqCard() },
 ];
 const OPINION = ["chat", "post", "gauge"];
-const objHtml = (c, cls = "card") => `<div class="obj" id="o-${c.id}" data-x="${c.x}" data-y="${c.y}" data-z="${c.z}" data-alpha="0"><div class="face ${cls}" id="c-${c.id}" style="width:${c.w}px;height:${c.h}px">${c.html}</div></div>`;
+// every card carries a sheen: a thin band of light that sweeps across the glass when the card lands
+const objHtml = (c, cls = "card") => `<div class="obj" id="o-${c.id}" data-x="${c.x}" data-y="${c.y}" data-z="${c.z}" data-alpha="0"><div class="face ${cls}" id="c-${c.id}" style="width:${c.w}px;height:${c.h}px">${c.html}<i class="sheen" id="sh-${c.id}"></i></div></div>`;
 
 // ---------- the question ----------
 const QTEXT = "衝上去，怎麼又回來？";
 const Q = [...QTEXT].map((ch, i) => ({ t: r(C.pick + 0.12 + i * 0.075) }));
-const SEND = r(C.question + 0.72);
+// the question is sent by picking the matching lesson from the suggestions
+const SEND = r(C.pick + 1.05);
 const qHtml = `<div class="ch" style="height:84px;padding:0 40px;font-size:26px"><img src="assets/img/badge.png" alt="" style="width:44px;height:44px" />MetaBear Academy<span class="sp"></span><span class="tag b">23 堂課</span></div>
   <div class="q-in"><div id="qph">想弄懂什麼？</div><div id="qtext">${[...QTEXT].map((ch, i) => `<span id="q-${i}">${ch}</span>`).join("")}<i id="caret"></i></div>
   <div id="qsend"><svg viewBox="0 0 30 30" aria-hidden="true"><path d="M15 25 V6 M7 13 L15 5 L23 13" fill="none" stroke="#062521" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" /></svg></div></div>
   <div class="q-chips">${["K 線", "足跡圖", "訂單塊", "合約強平"].map((t) => `<span class="q-chip"><i></i>${t}</span>`).join("")}</div>
+  <div id="qdrop"><div class="qopt on" id="qopt-0"><span class="tag b">市場故事 01</span>衝上去，怎麼又回來？<span class="sp"></span><span class="num muted" style="font-size:16px">36 秒</span></div><div class="qopt" id="qopt-1"><span class="tag n">名詞圖解 01</span>K 線：開高低收怎麼留下形狀<span class="sp"></span><span class="num muted" style="font-size:16px">28 秒</span></div></div>
   <div id="ripple"></div><div id="cursor"></div>`;
 
 // ---------- the lesson canvas: trades → candle → series → level ----------
@@ -185,6 +190,10 @@ const candle = (id, [o, h, l, c], left, extra = "") => {
   const col = c >= o ? "#78e1d5" : "#f3a26b";
   return `<div class="cdl" id="${id}" style="left:${left}px;top:0${extra}"><div class="wk" style="top:${y(h)}px;height:${y(l) - y(h)}px;background:${col}"></div><div class="bd" style="top:${y(Math.max(o, c))}px;height:${Math.max(4, y(Math.min(o, c)) - y(Math.max(o, c)))}px;background:${col}"></div></div>`;
 };
+// chapters of the real lesson (wick, "衝上去，怎麼又回來？", 36 s): the canvas's progress bar plays through them
+const WICK_T = [0, 6.4, 12.8, 15.3, 20.6, 36];
+const WICK_L = ["九根 K 裡的一根上影線", "買了很多，價格卻不動", "只買一點，價格衝上去", "大量賣出，逐檔回落", "上衝與回落，是兩件事"];
+const WICK = WICK_L.map((label, i) => ({ t: WICK_T[i], d: r(WICK_T[i + 1] - WICK_T[i]), label }));
 const canvasHtml = `<div class="lesson-top"><span class="kick">市場故事 01</span><span class="ttl">衝上去，怎麼又回來？</span><span class="sp" style="flex:1"></span><span class="tag n">BTC 永續 · 1 分 K</span></div>
   ${[100, 102, 104, 106, 108, 110].map((p) => `<div class="axis" style="top:${y(p) - 9}px">${p}</div>`).join("")}
   <div id="band" style="top:${y(102)}px;height:${y(100) - y(102)}px"></div>
@@ -193,7 +202,7 @@ const canvasHtml = `<div class="lesson-top"><span class="kick">市場故事 01</
   <div class="cdl" id="hero-c" style="left:${HERO.x}px;top:0"><div class="wk" id="hero-wk" style="top:${y(HERO_OHLC[1])}px;height:${y(HERO_OHLC[2]) - y(HERO_OHLC[1])}px;background:#78e1d5"></div><div class="bd" id="hero-bd" style="top:${y(HERO_OHLC[3])}px;height:${y(HERO_OHLC[0]) - y(HERO_OHLC[3])}px;background:#78e1d5;box-shadow:0 0 40px rgba(120,225,213,0.55)"></div></div>
   ${TOUCH.map((t, i) => `<div class="touch" id="touch-${i}" style="left:${t.x}px;top:${t.y}px;opacity:0"></div>`).join("")}
   ${DOTS.map((d) => `<div class="dot${d.buy ? "" : " s"}" id="${d.id}"></div>`).join("")}
-  <div class="lesson-bot"><span class="num muted" style="font-size:16px">0:12 / 0:36</span><span class="segs">${[1.2, 1, 1.4, 1, 0.8].map((g, i) => `<i style="flex:${g}"${i < 2 ? ' class="done"' : ""}></i>`).join("")}</span><span class="tag n">01 · 一分鐘裡的買賣現場</span></div>`;
+  <div class="lesson-bot"><span class="num muted" id="lt-v" style="font-size:16px;white-space:nowrap">0:09 / 0:36</span><span class="segs">${WICK.map((c, i) => `<i style="flex:${c.d}"><b id="seg-${i}"></b></i>`).join("")}</span><span class="tag n" id="lt-ch">02 · 買了很多，價格卻不動</span></div>`;
 const PLAN_ROWS = [["地點", "支撐區 100–102"], ["事件", "回測，賣壓被吸收"], ["確認", "收回區間上方"], ["執行", "確認後才進場"]];
 const PLAN = [C.levels2 + 0.15, C.become3, C.become3 + 0.25, C.decisions].map((t) => ({ t: r(t) }));
 const planHtml = `${head("sliders", "交易計畫", '<span class="tag b">4 / 4</span>')}
@@ -214,11 +223,10 @@ const WORLD = [
   `<div class="obj" id="o-h2" data-x="40" data-y="-40" data-z="-1240"><div class="face headline" id="h2"><span id="h2a">Too Many</span> <span id="h2b">Opinions</span></div></div>`,
   `<div class="obj" id="o-logo" data-x="0" data-y="-30" data-z="-2600" data-alpha="0"><div class="face logo" id="logo"><img id="logo-b" src="assets/img/badge.png" alt="" /><span id="logo-w">MetaBear Academy</span></div></div>`,
   `<div class="obj" id="o-logosub" data-x="0" data-y="100" data-z="-2600" data-alpha="0"><div class="face sub-mono" id="logosub">互動學院 · ORDERFLOW ACADEMY</div></div>`,
-  objHtml({ id: "q", x: 0, y: 10, z: -3300, w: 1000, h: 340, html: qHtml }),
+  objHtml({ id: "q", x: 0, y: 30, z: -3300, w: 1000, h: 400, html: qHtml }),
   objHtml({ id: "canvas", x: 0, y: -10, z: -4300, w: 1400, h: 760, html: canvasHtml }),
   objHtml({ id: "plan", x: 400, y: 40, z: -4020, w: 480, h: 440, html: planHtml }),
   ...TILES.map((t) => `<div class="obj" id="o-${t.id}" data-x="${t.x}" data-y="${t.y}" data-z="${t.z}" data-alpha="0"><div class="face tile" style="width:420px;height:236px"><img src="assets/img/lessons/${t.img}.jpg" alt="" /></div></div>`),
-  `<div class="obj" id="o-l6" data-x="0" data-y="0" data-z="-3700"><div class="face" id="line6"><span id="e-0">Every</span><span id="e-1">move,</span><span id="e-2" class="accent">explained.</span></div></div>`,
 ].join("\n          ");
 
 const FIN = r(C.voEnd + 0.55);
@@ -243,6 +251,7 @@ let html = fs.readFileSync("scripts/template.html", "utf8")
     `const NTOUCH = ${TOUCH.length};`,
     `const PLAN = ${JSON.stringify(PLAN)};`,
     `const TILES = ${JSON.stringify(TILES.map(({ id }) => ({ id })))};`,
+    `const WICK = ${JSON.stringify(WICK)};`,
   ].join("\n      "));
 if (/__[A-Z0-9_]+__/.test(html)) throw Error("unfilled placeholder " + html.match(/__[A-Z0-9_]+__/)[0]);
 fs.writeFileSync("index.html", html);
@@ -252,6 +261,9 @@ const sfx = [];
 const add = (type, t, o = {}) => sfx.push({ type, t: r(t), ...o });
 const clipAt = (file, t, gain, o = {}) => add("sample", t, { file, gain, ...o });
 add("drone", 0, { dur: END, gain: 0.065 });
+// the tools gliding into place behind the opening line, and the lesson wall opening out
+add("lowslide", 0.12, { dur: 1.6, gain: 0.16 });
+add("lowslide", C.l5end + 0.15, { dur: 1.4, gain: 0.14 });
 add("swell", C.fragmented - 0.6, { dur: 1.4, gain: 0.06 });
 add("air", C.fragmented + 0.05, { gain: 0.05 });
 // fly through the word: the deep whoosh peaks ~0.25 s in, timed to the middle of the dive
@@ -259,12 +271,13 @@ clipAt("whoosh-deep", C.l1end + 0.2, 0.5);
 add("thock", C.indicators, { gain: 0.1 });
 add("thock", C.opinions, { gain: 0.1 });
 // so we built…: the sub drop (62 → 27 Hz over ~2.8 s) is the squeeze of every tool into one point
-clipAt("sub-drop", C.so - 0.15, 0.19);
+clipAt("sub-drop", C.so - 0.15, 0.3);
 // the logo lands out of the drop's tail
 clipAt("whoosh-deep", C.metabear - 0.3, 0.35);
 add("air", C.metabear + 0.05, { gain: 0.06 });
 add("whoosh", C.pick - 0.7, { dur: 0.9, up: true, gain: 0.06 });
 Q.forEach((q, i) => add("key", q.t, { gain: 0.16, pitch: 1700 + (i % 4) * 120 }));
+add("pop", C.pick + 0.62, { gain: 0.07 });
 clipAt("ui-thud", SEND, 0.55);
 clipAt("whoosh-deep", C.watch - 0.4, 0.45);
 add("pop", C.candles1 + 0.3, { gain: 0.14 });
@@ -277,5 +290,5 @@ clipAt("whoosh-deep", C.l5end + 0.05, 0.4);
 add("swell", C.every - 0.4, { dur: 1.8, gain: 0.05 });
 // the lockup: whoosh into a deep bass drop; its crest (~0.3 s in) lands on the badge
 clipAt("whoosh-bass-drop", FIN - 0.3, 0.17, { fadeOut: 0.8 });
-fs.writeFileSync("assets/audio/sfx.json", JSON.stringify({ end: END, off: r(C.reading - 0.39), pitch: 1, splice: SPLICE, sfx }));
+fs.writeFileSync("assets/audio/sfx.json", JSON.stringify({ end: END, off: r(C.reading - 0.39), splice: SPLICE, voiceFx: VOICE_FX, sfx }));
 console.log(`index.html ${END}s · ${CARD_DEFS.length + FG_DEFS.length} cards · ${TILES.length} tiles · ${sfx.length} sounds`);

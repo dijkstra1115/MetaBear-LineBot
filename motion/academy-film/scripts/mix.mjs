@@ -48,24 +48,30 @@ const sine = (f, i) => Math.sin((2 * Math.PI * f * i) / SR);
 // ---------- the sound vocabulary ----------
 // user-supplied clips (assets/audio/sfx/*.mp3), decoded once and placed like any other sound
 const clipCache = {};
-const clip = (name) => {
-  if (!clipCache[name]) {
-    const raw = execFileSync(FFMPEG, ["-v", "error", "-i", `assets/audio/sfx/${name}.mp3`, "-f", "f32le", "-ac", "2", "-ar", String(SR), "-"], { maxBuffer: 1 << 28 });
-    clipCache[name] = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
+// tempo < 1 stretches a clip (pitch kept) so it lasts longer
+const clip = (name, tempo = 1) => {
+  const key = name + "@" + tempo;
+  if (!clipCache[key]) {
+    const af = tempo !== 1 ? ["-af", `rubberband=tempo=${tempo}:pitchq=quality`] : [];
+    const raw = execFileSync(FFMPEG, ["-v", "error", "-i", `assets/audio/sfx/${name}.mp3`, ...af, "-f", "f32le", "-ac", "2", "-ar", String(SR), "-"], { maxBuffer: 1 << 28 });
+    clipCache[key] = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
   }
-  return clipCache[name];
+  return clipCache[key];
 };
 const SYN = {
   // { file, t, gain, from }: plays a clip starting at t (from = seconds skipped into the clip)
-  sample: ({ file, t, gain = 1, from = 0, fadeOut = 0 }) => {
-    const d = clip(file);
+  // drive > 0 saturates the clip so a sub-bass sound grows audible harmonics on small speakers
+  sample: ({ file, t, gain = 1, from = 0, fadeOut = 0, tempo = 1, drive = 0, fadeIn = 0 }) => {
+    const d = clip(file, tempo);
+    const sat = (v) => (drive ? 0.5 * v + 0.5 * (Math.tanh(v * drive) / Math.tanh(drive)) : v);
+    const fi = Math.round(fadeIn * SR);
     const n0 = at(t), skip = Math.round(from * SR), len = d.length / 2 - skip, fo = Math.round(fadeOut * SR);
     for (let i = 0; i < len; i++) {
-      const g = fo && i > len - fo ? (len - i) / fo : 1;
+      const g = (fo && i > len - fo ? (len - i) / fo : 1) * (fi && i < fi ? i / fi : 1);
       const n = n0 + i;
       if (n < 0 || n >= N) continue;
-      L[n] += d[(skip + i) * 2] * gain * g;
-      R[n] += d[(skip + i) * 2 + 1] * gain * g;
+      L[n] += sat(d[(skip + i) * 2]) * gain * g;
+      R[n] += sat(d[(skip + i) * 2 + 1]) * gain * g;
     }
   },
   tick: ({ t, pitch = 2400, gain = 0.05 }) => {
@@ -241,6 +247,23 @@ const SYN = {
     }
     for (let i = 0; i < at(0.02); i++) put(n1 + i, rel(rnd()) * 1.4 * Math.exp(-i / (0.0025 * SR)) * gain * 0.5, 0.12);
   },
+  // a low, soft slide: band-passed noise breathing up and back down in the low mids, slightly widened
+  lowslide: ({ t, dur = 1.5, gain = 0.15 }) => {
+    // state-variable band-pass so the centre can glide without resetting the filter
+    const n0 = at(t), len = at(dur), q = 0.9;
+    let l1 = 0, b1 = 0, l2 = 0, b2 = 0;
+    for (let i = 0; i < len; i++) {
+      const x = i / len;
+      const fc = 150 + 330 * Math.sin(Math.PI * x);
+      const f1 = 2 * Math.sin((Math.PI * fc) / SR), f2 = 2 * Math.sin((Math.PI * fc * 1.04) / SR);
+      const a = rnd(), b = rnd();
+      l1 += f1 * b1; const h1 = a * 0.7 + b * 0.3 - l1 - q * b1; b1 += f1 * h1;
+      l2 += f2 * b2; const h2 = b * 0.7 + a * 0.3 - l2 - q * b2; b2 += f2 * h2;
+      const e = Math.sin(Math.PI * Math.pow(x, 0.8)) ** 2 * gain * 2.5;
+      put(n0 + i, b1 * e, -0.35);
+      put(n0 + i, b2 * e, 0.35);
+    }
+  },
   pop: ({ t, gain = 0.15 }) => {
     SYN.thock({ t, gain });
     SYN.blip({ t: t + 0.01, pitch: 880, gain: gain * 0.3 });
@@ -252,15 +275,21 @@ for (const c of CUES.sfx) {
 }
 
 // ---------- the narration ----------
-// CUES.pitch < 1 lowers the voice with formants kept; the sample keeps the take as recorded (pitch 1).
-const pitchArgs = CUES.pitch && CUES.pitch !== 1 ? ["-af", `rubberband=pitch=${CUES.pitch}:formant=preserved:pitchq=quality`] : [];
 // the splice from cues.mjs: the re-recorded opening sentence, then the original take from SPLICE.from on
 const SP = CUES.splice;
+// the voice chain (ffmpeg filters) runs after the splice; scripts/voice-lab.mjs renders alternatives
+const FX = process.env.VOICE_FX ?? CUES.voiceFx ?? "";
+const takePart = (a, b) => `atrim=${a}:${b},asetpts=PTS-STARTPTS,volume=${SP.takeGainDb}dB,aresample=${SR},aformat=channel_layouts=mono`;
 const voGraph = SP
-  ? `[1:a]atrim=0:${SP.takeEnd},asetpts=PTS-STARTPTS,volume=${SP.takeGainDb}dB,aresample=${SR},aformat=channel_layouts=mono[s0];` +
-    `[0:a]atrim=${SP.from},asetpts=PTS-STARTPTS,aresample=${SR},aformat=channel_layouts=mono[s1];[s0][s1]concat=n=2:v=0:a=1${pitchArgs.length ? "," + pitchArgs[1] : ""}[out]`
+  ? `[1:a]asplit=2[t0][t1];[t0]${takePart(0, SP.cut[0])}[s0];[t1]${takePart(SP.cut[1], SP.takeEnd)}[s1];` +
+    `[0:a]atrim=${SP.from},asetpts=PTS-STARTPTS,aresample=${SR},aformat=channel_layouts=mono[s2];[s0][s1][s2]concat=n=3:v=0:a=1${FX ? "," + FX : ""}[out]`
   : null;
-const raw = execFileSync(FFMPEG, ["-v", "error", "-i", "assets/audio/vo-raw.wav", ...(SP ? ["-i", `assets/audio/${SP.take}`] : []), ...(voGraph ? ["-filter_complex", voGraph, "-map", "[out]"] : pitchArgs), "-f", "f32le", "-ac", "1", "-ar", String(SR), "-"], { maxBuffer: 1 << 30 });
+const raw = execFileSync(FFMPEG, ["-v", "error", "-i", "assets/audio/vo-raw.wav", ...(SP ? ["-i", `assets/audio/${SP.take}`] : []), "-filter_complex", voGraph, "-map", "[out]", "-f", "f32le", "-ac", "1", "-ar", String(SR), "-"], { maxBuffer: 1 << 30 });
+if (process.env.VO_ONLY) {
+  // voice-lab: write just the processed narration and stop
+  fs.writeFileSync(process.env.VO_ONLY, raw);
+  process.exit(0);
+}
 const vo = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
 const warm = biquad("lowshelf", 140, 0.7, 2.5);
 const deMud = biquad("peak", 320, 1.1, -1.5);
@@ -268,7 +297,8 @@ const hp = biquad("hp", 50, 0.7);
 let env = 0;
 const off = at(CUES.off);
 for (let i = 0; i < vo.length; i++) {
-  let v = hp(deMud(warm(vo[i])));
+  // with a voice chain the EQ already happened in ffmpeg; without one, a light default warmth
+  let v = FX ? hp(vo[i]) : hp(deMud(warm(vo[i])));
   env = Math.max(Math.abs(v), env * 0.9995);
   const over = Math.max(0, env - 0.25);
   const g = 1 / (1 + over * 2.2);
