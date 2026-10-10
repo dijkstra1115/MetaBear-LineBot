@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template>
+      <style>
+        /* @kit-css:start */
+        @font-face {
+          font-family: "Barlow Condensed";
+          src: url("assets/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2");
+          font-weight: 700;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "Barlow Condensed";
+          src: url("assets/fonts/barlow-condensed-latin-500-normal.woff2") format("woff2");
+          font-weight: 500;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "JetBrains Mono";
+          src: url("assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+          font-weight: 100 800;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          color: #ecf2f7;
+          font-family: "Noto Sans TC", sans-serif;
+          --bg: #05070b;
+          --panel: #0b1118;
+          --ink: #ecf2f7;
+          --dim: #93a3b4;
+          --gold: #ffd36b;
+          --long: #2de2a6;
+          --short: #ff4f6e;
+        }
+        .abs {
+          position: absolute;
+        }
+        .full {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+        }
+        .world {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+          transform-origin: 0 0;
+        }
+        .disp {
+          font-family: "Barlow Condensed", "Noto Sans TC", sans-serif;
+          font-weight: 700;
+          line-height: 0.84;
+          letter-spacing: -0.01em;
+          white-space: nowrap;
+        }
+        .cn {
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          line-height: 1.12;
+          white-space: nowrap;
+        }
+        .mono {
+          font-family: "JetBrains Mono", monospace;
+          font-weight: 700;
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+        }
+        .paper {
+          color: transparent;
+          -webkit-text-stroke: 4px rgba(236, 242, 247, 0.92);
+        }
+        .paper-s {
+          color: transparent;
+          -webkit-text-stroke: 4px var(--short);
+        }
+        .paper-g {
+          color: transparent;
+          -webkit-text-stroke: 4px var(--gold);
+        }
+        .bank {
+          color: var(--gold);
+          text-shadow: 0 0 48px rgba(255, 211, 107, 0.5), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .hot {
+          color: var(--short);
+          text-shadow: 0 0 48px rgba(255, 79, 110, 0.55), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .up {
+          color: var(--long);
+          text-shadow: 0 0 48px rgba(45, 226, 166, 0.5), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .lift {
+          text-shadow: 0 0 40px rgba(236, 242, 247, 0.28), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .dim {
+          color: var(--dim);
+        }
+        .chip {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          height: 58px;
+          padding: 0 24px;
+          border-radius: 8px;
+          background: rgba(11, 17, 24, 0.88);
+          border: 2px solid rgba(236, 242, 247, 0.22);
+          font: 700 26px "JetBrains Mono", "Noto Sans TC", monospace;
+          letter-spacing: 0.06em;
+          color: var(--ink);
+          white-space: nowrap;
+        }
+        .chip b {
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          letter-spacing: 0.02em;
+        }
+        .chip.gold {
+          border-color: rgba(255, 211, 107, 0.7);
+          color: var(--gold);
+        }
+        .chip.red {
+          border-color: rgba(255, 79, 110, 0.7);
+          color: var(--short);
+        }
+        .chip.green {
+          border-color: rgba(45, 226, 166, 0.6);
+          color: var(--long);
+        }
+        .chip i {
+          display: block;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: currentColor;
+          box-shadow: 0 0 16px currentColor;
+        }
+        /* broadcast chrome */
+        .bug {
+          position: absolute;
+          left: 72px;
+          top: 56px;
+          display: flex;
+          align-items: stretch;
+          height: 64px;
+          font: 700 26px "JetBrains Mono", monospace;
+          letter-spacing: 0.1em;
+          white-space: nowrap;
+        }
+        .bug .rec {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 0 22px;
+          background: #d7263d;
+          color: #ffffff;
+        }
+        .bug .rec i {
+          display: block;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #ffffff;
+        }
+        .bug .who {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding: 0 24px;
+          background: rgba(11, 17, 24, 0.92);
+          border: 2px solid rgba(236, 242, 247, 0.18);
+          border-left: 0;
+          color: var(--ink);
+        }
+        .bug .who span {
+          color: var(--dim);
+        }
+        .clockbox {
+          position: absolute;
+          right: 72px;
+          top: 56px;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 0 24px;
+          background: rgba(11, 17, 24, 0.92);
+          border: 2px solid rgba(236, 242, 247, 0.18);
+          font: 700 30px "JetBrains Mono", monospace;
+          letter-spacing: 0.04em;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+          color: var(--ink);
+        }
+        .clockbox span {
+          color: var(--dim);
+        }
+        .scrub {
+          position: absolute;
+          left: 72px;
+          right: 72px;
+          bottom: 54px;
+          height: 34px;
+        }
+        .scrub .rail {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 15px;
+          height: 4px;
+          background: rgba(236, 242, 247, 0.16);
+        }
+        .scrub .fill {
+          position: absolute;
+          left: 0;
+          top: 15px;
+          width: 1776px;
+          height: 4px;
+          background: var(--ink);
+          transform-origin: 0 50%;
+          transform: scaleX(0);
+        }
+        .scrub .tick {
+          position: absolute;
+          top: 9px;
+          width: 2px;
+          height: 16px;
+          background: rgba(236, 242, 247, 0.35);
+        }
+        .scrub .head {
+          position: absolute;
+          top: 3px;
+          left: -14px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: var(--ink);
+          box-shadow: 0 0 20px rgba(236, 242, 247, 0.7);
+        }
+        .ghostnum {
+          position: absolute;
+          font: 700 1300px "Barlow Condensed", sans-serif;
+          line-height: 0.8;
+          color: transparent;
+          -webkit-text-stroke: 3px rgba(236, 242, 247, 0.1);
+          white-space: nowrap;
+        }
+        .glow {
+          position: absolute;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255, 211, 107, 0.32) 0%, rgba(255, 211, 107, 0.1) 38%, rgba(255, 211, 107, 0) 70%);
+        }
+        .glow.red {
+          background: radial-gradient(circle, rgba(255, 79, 110, 0.34) 0%, rgba(255, 79, 110, 0.1) 38%, rgba(255, 79, 110, 0) 70%);
+        }
+        .glow.green {
+          background: radial-gradient(circle, rgba(45, 226, 166, 0.3) 0%, rgba(45, 226, 166, 0.09) 38%, rgba(45, 226, 166, 0) 70%);
+        }
+        .flash {
+          position: absolute;
+          inset: 0;
+          background: #ecf2f7;
+          opacity: 0;
+        }
+        .flash.red {
+          background: var(--short);
+        }
+        .flash.gold {
+          background: var(--gold);
+        }
+        .cut {
+          position: absolute;
+          inset: 0;
+          background: #05070b;
+          opacity: 0;
+        }
+        .stamp {
+          display: inline-flex;
+          align-items: center;
+          gap: 16px;
+          padding: 10px 26px 12px;
+          border: 5px solid currentColor;
+          border-radius: 10px;
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+        
+        /* overlays sit on recorded gameplay: scrims keep the type readable over a busy page */
+        .scrim-l {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1300px;
+          height: 1080px;
+          background: linear-gradient(90deg, rgba(5, 7, 11, 0.9) 0%, rgba(5, 7, 11, 0.66) 46%, rgba(5, 7, 11, 0) 100%);
+        }
+        .scrim-b {
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          width: 1920px;
+          height: 620px;
+          background: linear-gradient(0deg, rgba(5, 7, 11, 0.94) 0%, rgba(5, 7, 11, 0.7) 45%, rgba(5, 7, 11, 0) 100%);
+        }
+        .shade {
+          position: absolute;
+          inset: 0;
+          background: rgba(5, 7, 11, 0.55);
+        }
+        .solid {
+          position: absolute;
+          inset: 0;
+          background: #05070b;
+        }
+        .lt {
+          position: absolute;
+          left: 96px;
+          bottom: 96px;
+        }
+        .tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 14px;
+          padding: 10px 22px;
+          background: rgba(5, 7, 11, 0.86);
+          border-left: 6px solid var(--gold);
+          font: 700 30px "JetBrains Mono", "Noto Sans TC", monospace;
+          letter-spacing: 0.04em;
+          white-space: nowrap;
+        }
+        .tag b {
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+        }
+/* @kit-css:end */
+        .l-no {
+          position: absolute;
+          left: 110px;
+          top: 250px;
+        }
+        .l-no .k {
+          display: block;
+          font-size: 40px;
+          letter-spacing: 0.4em;
+          color: var(--gold);
+        }
+        .l-no .name {
+          display: block;
+          margin-top: 14px;
+          font-size: 230px;
+          line-height: 1.05;
+        }
+        .l-no .chips {
+          display: flex;
+          gap: 16px;
+          margin-top: 34px;
+        }
+        .l-no .chip em {
+          font-style: normal;
+          font: 900 22px "Noto Sans TC", sans-serif;
+          padding: 4px 10px;
+          border-radius: 4px;
+          background: var(--gold);
+          color: #1a1305;
+        }
+        .l-push .k {
+          display: block;
+          font-size: 54px;
+        }
+        .l-push .v {
+          display: block;
+          margin-top: 10px;
+          font-size: 150px;
+        }
+        .l-bank {
+          position: absolute;
+          left: 96px;
+          bottom: 96px;
+          opacity: 0;
+        }
+        .l-bank .lab {
+          display: flex;
+          align-items: baseline;
+          gap: 18px;
+          font-size: 46px;
+          color: var(--gold);
+        }
+        .l-bank .lab .mono {
+          font-size: 24px;
+          letter-spacing: 0.16em;
+        }
+        .l-bank .row {
+          display: flex;
+          align-items: baseline;
+          gap: 18px;
+        }
+        .l-bank .n {
+          font-size: 200px;
+        }
+        .l-bank .u {
+          font-size: 64px;
+          color: var(--gold);
+        }
+        .l-loop {
+          position: absolute;
+          right: 96px;
+          bottom: 110px;
+          text-align: right;
+        }
+        .l-loop .k {
+          display: block;
+          font-size: 44px;
+        }
+        .l-loop .n {
+          display: block;
+          font-size: 180px;
+        }
+        .l-mega {
+          position: absolute;
+          right: 96px;
+          bottom: 110px;
+          text-align: right;
+        }
+        .l-mega .k {
+          display: block;
+          font-size: 50px;
+        }
+        .l-mega .v {
+          display: block;
+          margin-top: 6px;
+          font-size: 170px;
+        }
+        .l-mega .p {
+          display: block;
+          margin-top: 10px;
+          font-size: 44px;
+        }
+        .l-self {
+          position: absolute;
+          right: 96px;
+          bottom: 130px;
+          font-size: 96px;
+          color: var(--gold);
+          transform-origin: 50% 50%;
+        }
+        .l-done {
+          position: absolute;
+          right: 96px;
+          bottom: 110px;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 16px;
+        }
+        .l-done .min {
+          font-size: 72px;
+        }
+        .l-win {
+          position: absolute;
+          left: 96px;
+          right: 96px;
+          bottom: 84px;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+        }
+        .l-win .col .k {
+          display: block;
+          font-size: 40px;
+        }
+        .l-win .col .v {
+          display: block;
+          margin-top: 6px;
+          font-size: 150px;
+        }
+        .l-win .arrow {
+          font-size: 120px;
+          color: var(--dim);
+          margin-bottom: 20px;
+        }
+        .l-win .one {
+          font-size: 150px;
+        }
+      </style>
+      <div data-hf-id="hf-toll" id="root" data-composition-id="ov-liu" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-7kix" class="scrim-l l-lscrim" data-layout-ignore=""></div>
+        <div data-hf-id="hf-jqzj" class="scrim-b l-scrim" data-layout-ignore=""></div>
+        <div data-hf-id="hf-jk0w" class="l-no">
+          <span data-hf-id="hf-pnmx" class="mono k">NO.1</span>
+          <span data-hf-id="hf-68t6" class="disp name lift">劉孟孟</span>
+          <div data-hf-id="hf-exrd" class="chips">
+            <div data-hf-id="hf-rk52" class="chip gold"><b data-hf-id="hf-c79j">槓桿</b> 3× <em data-hf-id="hf-2tje">三人最低</em></div>
+            <div data-hf-id="hf-rjbq" class="chip gold"><b data-hf-id="hf-d4j0">操作</b> <span data-hf-id="hf-miwo" class="l-acts">16</span> 筆 <em data-hf-id="hf-6jr7">三人最少</em></div>
+          </div>
+        </div>
+        <div data-hf-id="hf-kwdh" class="lt l-push">
+          <span data-hf-id="hf-03ly" class="cn k">一道買牆，再一推翻倍</span>
+          <span data-hf-id="hf-p36n" class="disp v"><span data-hf-id="hf-dgjd" class="lift">$100,000</span> <span data-hf-id="hf-jxn1" class="dim">→</span> <span data-hf-id="hf-8bs0" class="up">$200,000</span></span>
+        </div>
+        <div data-hf-id="hf-d9az" class="l-bank">
+          <div data-hf-id="hf-mnnx" class="lab"><span data-hf-id="hf-j8m4" class="cn">帶走</span><span data-hf-id="hf-72p8" class="mono">BANKED · CLOSED PNL</span></div>
+          <div data-hf-id="hf-thy4" class="row"><span data-hf-id="hf-1x6r" class="disp n bank l-bn">+0.00</span><span data-hf-id="hf-ppwx" class="cn u">億</span></div>
+        </div>
+        <div data-hf-id="hf-d34j" class="l-loop">
+          <span data-hf-id="hf-ysnf" class="cn k">推上去 → 自己平倉</span>
+          <span data-hf-id="hf-a6hv" class="disp n lift">×<span data-hf-id="hf-sdey" class="l-ln">0</span></span>
+        </div>
+        <div data-hf-id="hf-qi67" class="l-mega">
+          <span data-hf-id="hf-5tx9" class="cn k">最後一推</span>
+          <span data-hf-id="hf-1yct" class="disp v up l-mv">$551,051</span>
+          <span data-hf-id="hf-t5qd" class="cn p">帳面 <span data-hf-id="hf-on7x" class="disp paper l-pn">+0.00</span> 億</span>
+        </div>
+        <div data-hf-id="hf-0tdi" class="l-self stamp">自己平倉 ✓</div>
+        <div data-hf-id="hf-5onh" class="l-done">
+          <span data-hf-id="hf-i70z" class="cn min">第 <span data-hf-id="hf-v05v" class="l-dm">77</span> 分鐘，空倉離場</span>
+          <div data-hf-id="hf-tfdr" class="chip gold"><i data-hf-id="hf-wt6k"></i><b data-hf-id="hf-jclb">強平</b> 0 次</div>
+        </div>
+        <div data-hf-id="hf-nrg9" class="l-win">
+          <div data-hf-id="hf-7s1i" class="col"><span data-hf-id="hf-3y44" class="cn k">帳面最高</span><span data-hf-id="hf-eyc7" class="disp v paper l-peak">+78.39</span></div>
+          <span data-hf-id="hf-hif8" class="disp arrow">→</span>
+          <div data-hf-id="hf-vmze" class="col"><span data-hf-id="hf-1h06" class="cn k" style="color: var(--gold)">平倉帶走</span><span data-hf-id="hf-7hk4" class="disp v bank l-final">+41.66</span></div>
+          <span data-hf-id="hf-z6n7" class="disp one bank">NO.1</span>
+        </div>
+        <div data-hf-id="hf-f9zq" class="flash l-flash" data-layout-ignore=""></div>
+        <div data-hf-id="hf-9w9v" class="flash gold l-gflash" data-layout-ignore=""></div>
+      </div>
+      <script>
+        (() => {
+          // @scene:start
+          const SCENE = {"id":"ov-liu","T0":24.8276,"DUR":18.6207};
+// @scene:end
+          // @kit-js:start
+          // Shared scene kit, injected into every composition by scripts/build.mjs. Expects SCENE = { id, T0, DUR }.
+          // Everything visual is a pure function of film time: DOM entrances on the GSAP timeline, and one
+          // render(ft) driver per scene for canvas charts, counters, chrome and camera.
+          const BAR = 2.0689655;
+          const BEAT = BAR / 4;
+          const D0 = 0; // film bar 0 is song bar 4: the cut starts on a downbeat
+          const bar = (n, beat = 0) => +(D0 + n * BAR + beat * BEAT).toFixed(4);
+          const ROOT = document.querySelector('[data-composition-id="' + SCENE.id + '"]');
+          const $ = (s) => ROOT.querySelector(s);
+          const $$ = (s) => Array.from(ROOT.querySelectorAll(s));
+          const el = (x) => (typeof x === "string" ? $$(x) : x);
+          const tl = gsap.timeline({ paused: true });
+          const L = (t) => Math.max(0, +(t - SCENE.T0).toFixed(4));
+
+          // ---- entrances (each a different attack; see DESIGN.md) ----
+          const slam = (x, t, o = {}) =>
+            tl.fromTo(
+              el(x),
+              { opacity: 0, scale: o.from ?? 1.6, filter: `blur(${o.blur ?? 16}px)`, x: o.x ?? 0, y: o.y ?? 0 },
+              { opacity: 1, scale: 1, filter: "blur(0px)", x: 0, y: 0, duration: o.d ?? 0.2, ease: o.ease ?? "power4.out", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+              L(t),
+            );
+          const snap = (x, t, o = {}) =>
+            tl.fromTo(
+              el(x),
+              { opacity: 0, x: o.dx ?? -180, skewX: o.skew ?? -14 },
+              { opacity: 1, x: 0, skewX: 0, duration: o.d ?? 0.3, ease: "expo.out", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+              L(t),
+            );
+          const rise = (x, t, o = {}) =>
+            tl.fromTo(
+              el(x),
+              { opacity: 0, y: o.dy ?? 80, clipPath: "inset(0% 0% 100% 0%)" },
+              { opacity: 1, y: 0, clipPath: "inset(0% 0% 0% 0%)", duration: o.d ?? 0.38, ease: o.ease ?? "circ.out", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+              L(t),
+            );
+          const wipe = (x, t, o = {}) =>
+            tl.fromTo(
+              el(x),
+              { opacity: 1, clipPath: o.from ?? "inset(0% 100% 0% 0%)" },
+              { clipPath: "inset(0% 0% 0% 0%)", duration: o.d ?? 0.34, ease: o.ease ?? "power3.inOut", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+              L(t),
+            );
+          const pop = (x, t, o = {}) =>
+            tl.fromTo(
+              el(x),
+              { opacity: 0, scale: o.from ?? 0.3, rotation: o.rot ?? -10 },
+              { opacity: 1, scale: 1, rotation: 0, duration: o.d ?? 0.42, ease: "back.out(1.6)", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+              L(t),
+            );
+          const fade = (x, t, d = 0.3, to = 1, from = 0) =>
+            tl.fromTo(el(x), { opacity: from }, { opacity: to, duration: d, ease: "power2.out", immediateRender: false }, L(t));
+          const out = (x, t, o = {}) =>
+            tl.to(
+              el(x),
+              { opacity: 0, x: o.dx ?? 0, y: o.dy ?? 0, scale: o.scale ?? 1, filter: `blur(${o.blur ?? 0}px)`, duration: o.d ?? 0.2, ease: o.ease ?? "power2.in", stagger: o.stagger ?? 0 },
+              L(t),
+            );
+          const hide = (x, t) => tl.set(el(x), { opacity: 0 }, L(t));
+          const flash = (x, t, peak = 0.85, d = 0.4) =>
+            tl.fromTo(el(x), { opacity: peak }, { opacity: 0, duration: d, ease: "power2.out", immediateRender: false }, L(t));
+          const kick = (x, t, s = 1.14, d = 0.26) =>
+            tl.fromTo(el(x), { scale: s }, { scale: 1, duration: d, ease: "power2.out", immediateRender: false }, L(t));
+          const drift = (x, t0, t1, from, to) =>
+            tl.fromTo(el(x), from, { ...to, duration: Math.max(0.01, t1 - t0), ease: "sine.inOut", immediateRender: false }, L(t0));
+
+          // ---- numbers and text ----
+          const usd = (v) => "$" + Math.round(v).toLocaleString("en-US");
+          const yi = (v, d = 2) => (v / 1e8).toFixed(d);
+          const int = (v) => Math.round(v).toLocaleString("en-US");
+          const two = (n) => String(n).padStart(2, "0");
+          const clock = (s) => {
+            s = Math.max(0, Math.floor(s));
+            return `${two(Math.floor(s / 3600))}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
+          };
+          const setText = (node, s) => {
+            if (node.__t !== s) {
+              node.textContent = s;
+              node.__t = s;
+            }
+          };
+
+          // ---- pure time functions ----
+          const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+          const EASE = {
+            lin: (x) => x,
+            in: (x) => x * x * x,
+            in2: (x) => x * x,
+            out: (x) => 1 - (1 - x) ** 3,
+            out4: (x) => 1 - (1 - x) ** 4,
+            inOut: (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2),
+            expo: (x) => (x >= 1 ? 1 : 1 - 2 ** (-10 * x)),
+            step: (x) => (x >= 1 ? 1 : 0),
+          };
+          const mix = (a, b, x) =>
+            typeof a === "number" ? a + (b - a) * x : Object.fromEntries(Object.keys(a).map((k) => [k, a[k] + (b[k] - a[k]) * x]));
+          // keys: [[t, value, ease?], ...] — a key's ease shapes the segment that ends at it
+          const track = (keys, t) => {
+            if (t <= keys[0][0]) return keys[0][1];
+            for (let i = 1; i < keys.length; i++) {
+              const k = keys[i];
+              if (t <= k[0]) {
+                const p = keys[i - 1];
+                return mix(p[1], k[1], EASE[k[2] || "lin"]((t - p[0]) / (k[0] - p[0] || 1)));
+              }
+            }
+            return keys[keys.length - 1][1];
+          };
+          const prog = (t, t0, t1, e = "lin") => EASE[e](clamp((t - t0) / (t1 - t0), 0, 1));
+          const hash = (n) => {
+            const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+            return x - Math.floor(x);
+          };
+          const sample = (a, x) => {
+            if (x <= 0) return a[0];
+            const n = a.length - 1;
+            if (x >= n) return a[n];
+            const i = Math.floor(x);
+            return a[i] + (a[i + 1] - a[i]) * (x - i);
+          };
+          // deterministic camera shake from impact events [[t, amplitude, duration], ...]
+          const shake = (t, hits) => {
+            let x = 0, y = 0, r = 0;
+            for (const [t0, amp, dur] of hits) {
+              if (t < t0 || t > t0 + dur) continue;
+              const env = (1 - (t - t0) / dur) ** 2 * amp;
+              const k = Math.floor(t * 60);
+              x += (hash(k * 3 + 1) - 0.5) * 2 * env;
+              y += (hash(k * 5 + 2) - 0.5) * 2 * env;
+              r += (hash(k * 7 + 3) - 0.5) * 0.06 * env;
+            }
+            return { x, y, r };
+          };
+
+          // ---- canvas ----
+          const canvas = (sel) => {
+            const c = $(sel);
+            const ctx = c.getContext("2d");
+            return ctx;
+          };
+          const yMap = (v, r) =>
+            v.log
+              ? (p) => r.y + r.h * (1 - (Math.log(p) - Math.log(v.y0)) / (Math.log(v.y1) - Math.log(v.y0)))
+              : (p) => r.y + r.h * (1 - (p - v.y0) / (v.y1 - v.y0));
+          const xMap = (v, r) => (t) => r.x + ((t - v.x0) / (v.x1 - v.x0)) * r.w;
+          // price line from game second `from` to `to` (fractional) in view v inside rect r
+          const priceLine = (ctx, a, from, to, v, r, o = {}) => {
+            const X = xMap(v, r), Y = yMap(v, r);
+            const t0 = Math.max(from, v.x0), t1 = Math.min(to, v.x1, a.length - 1);
+            if (t1 <= t0) return null;
+            const step = Math.max(0.25, (v.x1 - v.x0) / r.w);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(r.x - 4, r.y - (o.over ?? 0), r.w + 8, r.h + (o.over ?? 0) * 2);
+            ctx.clip();
+            ctx.beginPath();
+            ctx.moveTo(X(t0), Y(sample(a, t0)));
+            for (let t = t0 + step; t < t1; t += step) ctx.lineTo(X(t), Y(sample(a, t)));
+            const end = sample(a, t1);
+            const hx = X(t1), hy = Y(end);
+            ctx.lineTo(hx, hy);
+            const color = o.color ?? "236,242,247";
+            if (o.fill) {
+              ctx.save();
+              ctx.lineTo(hx, r.y + r.h);
+              ctx.lineTo(X(t0), r.y + r.h);
+              ctx.closePath();
+              const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+              g.addColorStop(0, `rgba(${color},${o.fill})`);
+              g.addColorStop(1, `rgba(${color},0)`);
+              ctx.fillStyle = g;
+              ctx.fill();
+              ctx.restore();
+              ctx.beginPath();
+              ctx.moveTo(X(t0), Y(sample(a, t0)));
+              for (let t = t0 + step; t < t1; t += step) ctx.lineTo(X(t), Y(sample(a, t)));
+              ctx.lineTo(hx, hy);
+            }
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.strokeStyle = `rgba(${color},${(o.glow ?? 0.16) * (o.alpha ?? 1)})`;
+            ctx.lineWidth = (o.lw ?? 4) * 5;
+            ctx.stroke();
+            ctx.strokeStyle = `rgba(${color},${o.alpha ?? 1})`;
+            ctx.lineWidth = o.lw ?? 4;
+            ctx.stroke();
+            ctx.restore();
+            return { x: hx, y: hy, p: end };
+          };
+          const head = (ctx, x, y, color = "236,242,247", s = 1) => {
+            const g = ctx.createRadialGradient(x, y, 0, x, y, 46 * s);
+            g.addColorStop(0, `rgba(${color},0.55)`);
+            g.addColorStop(1, `rgba(${color},0)`);
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(x, y, 46 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = `rgb(${color})`;
+            ctx.beginPath();
+            ctx.arc(x, y, 9 * s, 0, Math.PI * 2);
+            ctx.fill();
+          };
+          // readable price ticks for any view (linear or log): coarse round numbers first, then finer ones
+          // wherever they still keep minPx apart
+          const niceTicks = (v, r, minPx = 70) => {
+            const Y = yMap(v, r);
+            const lo = Math.min(v.y0, v.y1), hi = Math.max(v.y0, v.y1);
+            // across a wide log range only round mantissas read as round (100k, 150k, 200k, 300k…)
+            const wide = hi / lo > 2.5;
+            const roundish = (p) => {
+              const m = p / 10 ** Math.floor(Math.log10(p));
+              return [1, 1.5, 2, 3, 4, 5, 6, 8].some((x) => Math.abs(m - x) < 1e-9);
+            };
+            const steps = [];
+            for (let k = Math.floor(Math.log10(hi)); k >= Math.floor(Math.log10(Math.max(1, hi - lo))) - 1; k--)
+              for (const m of [5, 2, 1]) steps.push(m * 10 ** k);
+            const keep = [];
+            for (const step of steps)
+              for (let p = Math.ceil(lo / step) * step; p <= hi; p += step) {
+                const y = Y(p);
+                if (y < r.y + 20 || y > r.y + r.h - 8 || (wide && !roundish(p))) continue;
+                if (keep.every((q) => Math.abs(Y(q) - y) >= minPx)) keep.push(p);
+              }
+            return keep;
+          };
+          // faint price grid with labels on the right edge of r
+          const grid = (ctx, v, r, prices, o = {}) => {
+            const Y = yMap(v, r);
+            ctx.save();
+            ctx.font = `700 ${o.size ?? 22}px "JetBrains Mono"`;
+            ctx.textAlign = "right";
+            ctx.textBaseline = "bottom";
+            for (const p of prices) {
+              const y = Y(p);
+              if (y < r.y - 2 || y > r.y + r.h + 2) continue;
+              ctx.fillStyle = `rgba(236,242,247,${o.line ?? 0.08})`;
+              ctx.fillRect(r.x, Math.round(y), r.w, 2);
+              ctx.fillStyle = `rgba(147,163,180,${o.label ?? 0.85})`;
+              ctx.fillText(usd(p), r.x + r.w, y - 8);
+            }
+            ctx.restore();
+          };
+          const bgGrid = (ctx, alpha = 0.05, ox = 0, oy = 0) => {
+            ctx.fillStyle = `rgba(236,242,247,${alpha})`;
+            const sx = ((ox % 60) + 60) % 60, sy = ((oy % 60) + 60) % 60;
+            for (let x = sx; x < 1920; x += 60) ctx.fillRect(Math.round(x), 0, 1, 1080);
+            for (let y = sy; y < 1080; y += 60) ctx.fillRect(0, Math.round(y), 1920, 1);
+          };
+          // ballistic particle burst, a pure function of time since t0
+          const burst = (ctx, t, t0, x, y, o = {}) => {
+            const tau = t - t0;
+            const life = o.life ?? 1.2;
+            if (tau < 0 || tau > life) return;
+            const n = o.n ?? 40;
+            const color = o.color ?? "45,226,166";
+            for (let i = 0; i < n; i++) {
+              const a = (o.angle ?? -Math.PI / 2) + (hash(i * 7 + (o.seed ?? 1)) - 0.5) * (o.arc ?? Math.PI * 1.2);
+              const sp = (o.speed ?? 900) * (0.35 + hash(i * 13 + (o.seed ?? 1)) * 0.9);
+              const px = x + Math.cos(a) * sp * tau;
+              const py = y + Math.sin(a) * sp * tau + 0.5 * (o.g ?? 900) * tau * tau;
+              const k = 1 - tau / life;
+              const s = (o.size ?? 6) * (0.5 + hash(i * 3 + 9));
+              ctx.fillStyle = `rgba(${color},${k * k})`;
+              ctx.fillRect(px - s / 2, py - s / 2, s, s * (o.stretch ?? 1));
+            }
+          };
+
+          // ---- broadcast chrome: REPLAY bug, game clock, 24-turn scrubber ----
+          const chrome = (box, who, seed) => {
+            box.insertAdjacentHTML(
+              "beforeend",
+              // the overlay's vignette deliberately grades the frame corners over the broadcast chrome
+              `<div class="bug"><div class="rec" data-layout-allow-occlusion><i></i>REPLAY</div><div class="who" data-layout-allow-occlusion>${who}<span data-layout-allow-occlusion>SEED ${seed}</span></div></div>` +
+                `<div class="clockbox"><span data-layout-allow-occlusion>T+</span><b class="ck" data-layout-allow-occlusion>00:00:00</b><span data-layout-allow-occlusion>/ 02:00:00</span></div>` +
+                `<div class="scrub"><div class="rail"></div>${Array.from({ length: 23 }, (_, i) => `<div class="tick" style="left:${((i + 1) / 24) * 1776}px"></div>`).join("")}<div class="fill"></div><div class="head"></div></div>`,
+            );
+            const ck = box.querySelector(".ck"), fill = box.querySelector(".fill"), hd = box.querySelector(".head");
+            return (gameT) => {
+              const g = clamp(gameT, 0, 7200);
+              setText(ck, clock(g));
+              fill.style.transform = `scaleX(${g / 7200})`;
+              hd.style.transform = `translateX(${(g / 7200) * 1776}px)`;
+            };
+          };
+          // one driver: render(ft) for the whole scene
+          const drive = (render) => {
+            const c = { v: 0 };
+            render(SCENE.T0);
+            tl.to(c, { v: SCENE.DUR, duration: SCENE.DUR, ease: "none", onUpdate: () => render(SCENE.T0 + c.v) }, 0);
+          };
+// @kit-js:end
+          // @data:start
+          const DATA = {"name":"劉孟孟","seed":905547980,"pnl":4165713724.49,"peak":7838579962.535753,"leverage":3,"actions":16,"bell":4165713724,"wall":92731,"shots":[{"start":24.8276,"end":26.8966,"from":0,"rate":1.1681,"fps":60},{"start":26.8966,"end":27.931,"from":2.4967,"rate":1.7562,"fps":60},{"start":27.931,"end":28.9655,"from":4.313300000000001,"rate":0.5317,"fps":60},{"start":28.9655,"end":29.4828,"from":4.863300000000001,"rate":2.0943,"fps":60},{"start":29.4828,"end":30,"from":5.946700000000001,"rate":0.3221,"fps":60},{"start":30,"end":30.5172,"from":6.113300000000001,"rate":1.6114,"fps":60},{"start":30.5172,"end":31.0345,"from":6.946700000000001,"rate":0.2577,"fps":60},{"start":31.0345,"end":31.5517,"from":7.08,"rate":0.6444,"fps":60},{"start":31.5517,"end":32.069,"from":7.4133000000000004,"rate":0.29,"fps":60},{"start":32.069,"end":32.5862,"from":7.563300000000001,"rate":1.2568,"fps":60},{"start":32.5862,"end":33.1034,"from":8.2133,"rate":0.5157,"fps":60},{"start":33.1034,"end":35.1724,"from":8.48,"rate":0.8056,"fps":60},{"start":35.1724,"end":37.2414,"from":10.146700000000001,"rate":0.5961,"fps":60},{"start":37.2414,"end":39.3103,"from":11.38,"rate":2.2008,"fps":60},{"start":39.3103,"end":41.3793,"from":15.933300000000001,"rate":1.015,"fps":60},{"start":41.3793,"end":43.4483,"from":18.0333,"rate":1,"fps":60}],"pushFilm":[26.8966,28.9655,30,31.0345,32.069,33.1034],"closeFilm":[27.931,29.4828,30.5172,31.5517,32.5862],"megaFilm":35.1724,"selfFilm":37.2414,"lastFilm":39.1816,"frames":[[15,0,11,10059100],[30,0,9,10037200],[45,0,7,10016000],[60,0,7,10000100],[75,0,7,10000100],[90,0,7,10000100],[105,0,7,10000000],[120,0,7,10000100],[135,0,7,10000000],[150,0,7,10000100],[165,0,7,10000000],[180,0,7,10000100],[195,0,7,10000100],[210,0,7,10000100],[225,0,7,10000000],[240,0,7,10000100],[255,0,7,10000100],[270,0,7,10000000],[285,0,7,10000100],[300,0,7,10000000],[315,0,7,10000100],[330,0,7,10000000],[345,0,7,10004600],[360,0,7,10000000],[375,0,7,10008600],[390,0,7,10000500],[405,0,7,10000100],[420,0,7,10000100],[435,0,7,10000100],[450,0,7,10000100],[465,0,7,10000100],[480,0,7,10000100],[495,0,7,10000100],[510,0,7,10000100],[525,0,7,10000100],[540,0,7,10000100],[555,0,7,10000100],[570,0,7,10000100],[585,0,7,10000100],[600,0,7,10000100],[615,0,7,10000100],[630,0,7,10000100],[645,0,7,10000100],[660,0,7,10005200],[675,0,7,10000100],[690,0,7,10000100],[705,0,7,10000100],[720,0,7,10000000],[735,0,7,10000100],[750,0,7,10000100],[765,0,7,10000000],[780,0,7,10000100],[795,0,7,10000100],[810,0,7,10000000],[825,0,7,10000000],[840,0,7,10000100],[855,0,7,10000000],[870,0,7,10000100],[885,0,7,10000100],[900,0,7,10000100],[915,0,7,10000000],[930,0,7,10000100],[945,0,7,10000000],[960,0,7,10000100],[975,0,7,10000100],[990,0,7,10000000],[1005,0,7,10000100],[1020,0,7,10000000],[1035,0,7,10000800],[1050,0,7,10000100],[1065,0,7,10000100],[1080,0,7,10000100],[1095,0,7,10000100],[1110,0,7,10000000],[1125,0,7,10000100],[1140,0,7,10000100],[1155,0,7,10000000],[1170,0,7,10000000],[1185,0,7,10000100],[1200,0,7,10000100],[1215,0,7,10000100],[1230,0,7,10000100],[1245,0,7,10000100],[1260,0,7,10000100],[1275,0,7,10002700],[1290,0,7,10000000],[1305,0,7,10000100],[1320,0,7,10005700],[1335,0,7,10000000],[1350,0,7,10000000],[1365,0,7,10000000],[1380,0,7,10000100],[1395,0,7,10000000],[1410,0,7,10000100],[1425,0,7,10000100],[1440,0,7,10000000],[1455,0,7,10000000],[1470,0,7,10000000],[1485,0,7,10000100],[1500,0,7,10000000],[1515,0,7,10000100],[1530,0,7,10003500],[1545,0,7,10000100],[1560,0,7,10000100],[1575,0,7,10000100],[1590,0,7,10000100],[1605,0,7,10006800],[1620,0,7,10000000],[1635,0,7,10000000],[1650,0,7,10000100],[1665,0,7,10001900],[1680,0,7,10002500],[1695,0,6,10000100],[1710,0,6,10000000],[1725,0,6,10000000],[1740,0,6,10000100],[1755,-1,6,10000100],[1770,-1,6,10000000],[1785,-1,6,10000100],[1800,-1,6,10000100],[1815,-1,6,10000000],[1830,-1,6,10000100],[1845,-1,7,10000300],[1860,-1,6,10000100],[1875,-1,7,10001900],[1890,-1,6,10000100],[1905,-1,7,10001800],[1920,-1,6,10000100],[1935,-1,6,10000100],[1950,-1,7,10001900],[1965,-1,6,10000000],[1980,-1,6,10000100],[1995,-1,6,10000100],[2010,-1,6,10000000],[2025,-1,6,10000100],[2040,-1,6,10000100],[2055,-1,6,10000000],[2070,-1,6,10000100],[2085,-1,6,10000100],[2100,-1,6,10000100],[2115,-1,6,10000100],[2130,-1,7,10004800],[2145,-1,7,10005300],[2160,-1,6,10000100],[2175,-1,6,10000000],[2190,-1,7,10002600],[2205,-1,6,10000000],[2210,-1,6,10000100],[2215,-1,6,10000100],[2221,-1,7,10000000],[2226,-1,6,10000100],[2232,-1,2040,20000100],[2233,-1,2119,20000100],[2235,-1,2214,20000100],[2236,-1,2241,20000000],[2237,-1,2260,20000000],[2239,-1,2283,20000100],[2240,-1,2290,20000000],[2242,-1,2298,20000000],[2243,-1,2300,20000100],[2244,-1,2301,20000000],[2246,-1,2303,20000100],[2247,-1,2303,20000000],[2248,-1,2303,20000000],[2250,-1,2303,20000000],[2252,-1,2303,20000000],[2254,-1,2303,20000000],[2258,-1,2303,20000000],[2261,-1,2303,20000100],[2266,-1,2303,20000100],[2271,-1,2303,20000100],[2277,-1,2303,20000000],[2282,-1,2303,20000000],[2288,-1,2303,20000000],[2293,-1,2303,20000000],[2299,-1,2303,20000100],[2304,-1,2303,20000100],[2310,-1,2303,20000100],[2315,-1,2303,20000100],[2321,-1,2303,20000100],[2326,-1,2303,20000100],[2332,-1,2303,20000100],[2337,-1,2303,20000100],[2343,-1,2303,20000100],[2348,-1,2303,20000100],[2354,-1,2303,20000100],[2359,-1,2303,20000000],[2365,-1,2303,20000100],[2370,-1,2303,20000100],[2376,-1,2303,20000100],[2381,-1,2303,20000100],[2387,-1,2303,20000100],[2392,-1,2303,20000100],[2398,-1,2303,20000000],[2403,-1,2303,20000100],[2409,-1,2303,20000100],[2414,-1,2303,20000100],[2420,-1,2303,20000100],[2425,-1,2303,20000100],[2431,-1,2303,20000100],[2436,-1,2303,20000100],[2442,-1,2303,20000000],[2447,-1,2303,20000100],[2453,-1,2303,20000000],[2458,-1,2303,20000100],[2464,-1,2303,20000000],[2469,-1,2303,20000100],[2475,-1,2303,20000100],[2480,-1,2303,20000000],[2486,-1,2303,20000000],[2491,-1,2303,20000100],[2497,-1,2303,20000100],[2502,-1,2303,20000100],[2508,-1,2303,20000100],[2513,-1,2302,20000100],[2519,-1,2302,20000000],[2524,-1,2302,20000100],[2530,-1,2302,20000100],[2535,-1,2302,20000100],[2541,-1,2302,20000100],[2546,-1,2302,20000000],[2552,-1,2302,20000000],[2557,-1,2302,20000100],[2563,-1,2302,20000100],[2568,-1,2302,20000100],[2574,-1,2302,20000000],[2579,-1,2302,20000000],[2585,-1,2302,20000000],[2590,-1,2302,20000000],[2596,-1,2302,20000100],[2601,-1,2302,20000100],[2607,-1,2302,20000000],[2612,-1,2302,20000100],[2618,-1,2302,20000100],[2623,-1,2302,20000100],[2629,-1,2302,20000100],[2634,-1,2302,20000100],[2640,-1,2302,20000000],[2645,-1,2302,20000000],[2651,-1,2302,20000100],[2656,-1,2302,20000000],[2662,-1,2302,20000100],[2667,-1,2302,20000100],[2673,-1,2302,20000000],[2678,-1,2302,20000100],[2684,-1,2302,20000000],[2689,-1,2302,20000100],[2695,-1,2302,20000100],[2700,-1,2302,20000100],[2706,-1,2302,20000100],[2711,-1,2302,20000100],[2717,-1,2302,20000100],[2722,-1,2302,20000100],[2728,-1,2302,20000100],[2733,-1,2302,20000100],[2739,-1,2302,20000000],[2744,-1,2302,20000100],[2750,-1,2302,20000000],[2755,-1,2302,20000100],[2761,-1,2302,20000000],[2766,355,1052,15609000],[2772,526,496,11298800],[2773,511,486,10991000],[2774,474,474,10030300],[2776,474,474,10118800],[2777,474,474,10118800],[2778,474,474,10118800],[2780,474,474,10118800],[2781,474,474,10118700],[2783,474,474,10118800],[2784,474,474,10120300],[2785,474,474,10118700],[2787,474,474,10101600],[2788,474,474,10106300],[2789,474,474,10109700],[2791,474,474,10101900],[2794,474,474,10101700],[2797,474,474,10101900],[2801,474,474,10081900],[2805,474,474,10085800],[2811,474,474,10082200],[2816,474,474,10094800],[2822,474,474,10069300],[2827,474,474,10069300],[2833,474,474,10060500],[2838,474,474,10061600],[2844,474,474,10064200],[2849,474,474,10064000],[2855,474,474,10060600],[2860,474,474,10053400],[2866,474,474,10057400],[2871,474,474,10035500],[2877,474,474,10051300],[2882,473,1073,20000000],[2888,473,1073,20000000],[2893,473,1073,20000000],[2899,473,1073,20000000],[2904,473,1073,20000000],[2910,473,1073,20000100],[2915,473,1073,20000100],[2921,473,1073,20000100],[2926,473,1073,20000100],[2932,473,1073,20000000],[2937,473,1073,20000000],[2943,473,1073,20000100],[2948,473,1073,20000100],[2954,473,1073,20000100],[2959,473,1073,20000100],[2965,473,1073,20000100],[2970,473,1073,20000000],[2976,473,1073,20000000],[2981,473,1073,20000000],[2987,473,1073,20000100],[2992,473,1073,20000100],[2998,473,1073,20000000],[3003,473,1073,20000100],[3009,473,1073,20000100],[3014,473,1073,20000000],[3020,473,1073,20000000],[3025,473,1073,20000000],[3031,473,1073,20000100],[3036,473,1073,20000100],[3042,473,1073,20000000],[3047,473,1073,20000100],[3053,473,1073,20000000],[3058,473,1073,20000100],[3064,473,1073,20000000],[3069,473,1073,20000100],[3075,473,1073,20000000],[3080,473,1073,20000000],[3086,473,1073,20000000],[3091,473,1073,20000100],[3097,473,1073,20000000],[3102,473,1073,20000000],[3108,473,1073,20000000],[3113,473,1073,20000100],[3119,473,1073,20000000],[3124,473,1073,20000100],[3130,473,1073,20000100],[3135,473,1073,20000000],[3141,473,1073,20000100],[3146,473,1073,20000100],[3152,473,1073,20000000],[3157,473,1073,20000000],[3163,473,1073,20000000],[3168,473,1073,20000100],[3174,473,1073,20000100],[3179,473,1073,20000000],[3185,473,1073,20000000],[3190,473,1073,20000100],[3196,473,1073,20000000],[3201,473,1073,20000100],[3207,473,1073,20000100],[3212,473,1073,20000100],[3218,473,1073,20000000],[3223,473,1073,20000000],[3229,473,1073,20000000],[3234,473,1073,20000100],[3240,851,855,16685200],[3245,854,854,15408800],[3251,854,854,14811200],[3256,854,854,14399900],[3262,854,854,13900400],[3267,854,854,13463400],[3269,854,854,13345000],[3271,854,854,13221100],[3274,854,854,12886300],[3276,854,854,12803500],[3278,854,1032,20000000],[3280,854,1236,20000000],[3283,854,1236,20000000],[3286,854,1236,20000100],[3289,854,1236,20000100],[3293,854,1236,20000000],[3297,854,1236,20000000],[3302,854,1236,20000000],[3308,854,1236,20000100],[3313,854,1236,20000000],[3319,854,1236,20000000],[3324,854,1236,20000000],[3330,854,1236,20000100],[3335,854,1236,20000100],[3341,854,1236,20000100],[3346,854,1236,20000000],[3352,854,1236,20000000],[3357,854,1236,20000000],[3363,854,1236,20000000],[3368,854,1236,20000000],[3374,854,1236,20000000],[3379,854,1236,20000100],[3385,854,1236,20000100],[3390,854,1236,20000000],[3396,854,1236,20000000],[3401,854,1236,20000000],[3407,854,1236,20000100],[3412,854,1236,20000100],[3418,854,1236,20000000],[3423,854,1236,20000100],[3429,854,1236,20000000],[3434,854,1236,20000000],[3440,854,1236,20000000],[3445,854,1236,20000000],[3451,854,1236,20000000],[3456,854,1236,20000000],[3462,854,1236,20000000],[3467,854,1236,20000000],[3473,854,1236,20000000],[3478,854,1236,20000000],[3484,854,1236,20000100],[3489,854,1236,20000100],[3495,854,1236,20000000],[3500,854,1236,20000000],[3506,854,1236,20000100],[3511,854,1236,20000000],[3517,854,1236,20000100],[3522,854,1236,20000100],[3528,854,1236,20000100],[3533,854,1236,20000100],[3539,974,974,14658500],[3544,974,974,14295900],[3550,974,974,14295900],[3555,974,974,13743100],[3561,974,974,13214200],[3566,974,974,13183000],[3572,974,974,12437400],[3577,974,974,11969100],[3583,974,1387,20000100],[3588,974,1387,20000100],[3594,974,1387,20000000],[3599,974,1387,20000100],[3605,974,1387,20000000],[3610,974,1387,20000000],[3616,974,1387,20000100],[3621,974,1387,20000000],[3627,974,1387,20000100],[3632,974,1387,20000100],[3638,974,1387,20000000],[3643,974,1387,20000000],[3649,974,1387,20000100],[3654,974,1387,20000000],[3660,974,1387,20000100],[3665,974,1387,20000100],[3671,974,1387,20000000],[3676,974,1387,20000100],[3682,974,1387,20000000],[3687,974,1387,20000000],[3693,1109,1109,13262800],[3698,1109,1109,13256500],[3704,1109,1109,13256500],[3709,1109,1109,12916300],[3715,1109,1109,12837000],[3720,1109,1109,12270800],[3726,1109,1109,12078600],[3731,1109,1109,11839600],[3737,1109,1109,11615900],[3742,1109,1546,20000100],[3748,1109,1546,20000100],[3753,1109,1546,20000000],[3759,1109,1546,20000000],[3764,1109,1546,20000000],[3770,1109,1546,20000100],[3775,1109,1546,20000100],[3781,1109,1546,20000000],[3786,1109,1546,20000000],[3792,1109,1546,20000100],[3797,1109,1546,20000000],[3803,1109,1546,20000100],[3808,1109,1546,20000000],[3814,1109,1546,20000000],[3819,1109,1546,20000000],[3825,1109,1546,20000000],[3830,1109,1546,20000100],[3836,1109,1546,20000100],[3841,1109,1546,20000100],[3847,1109,1546,20000000],[3852,1109,1546,20000000],[3858,1109,1546,20000000],[3863,1109,1546,20000100],[3869,1109,1546,20000100],[3874,1109,1546,20000100],[3880,1109,1546,20000000],[3885,1109,1546,20000100],[3891,1109,1546,20000100],[3896,1109,1546,20000000],[3902,1109,1546,20000000],[3907,1109,1546,20000100],[3913,1109,1546,20000100],[3918,1109,1546,20000000],[3924,1109,1546,20000100],[3929,1109,1546,20000100],[3935,1109,1546,20000100],[3940,1109,1546,20000000],[3946,1109,1546,20000000],[3951,1109,1546,20000000],[3957,1217,1216,12989200],[3959,1216,1216,12791700],[3961,1216,1216,12683700],[3963,1216,1216,12549100],[3966,1216,1216,12502000],[3968,1216,1216,12501900],[3970,1216,1216,12500100],[3972,1216,1216,12192400],[3975,1216,1216,12099200],[3979,1216,1216,11832300],[3983,1216,1216,11678400],[3987,1216,1216,11430400],[3992,1216,1216,11223300],[3998,1216,1216,11187300],[4003,1216,1216,11183100],[4005,1216,1216,11147500],[4007,1216,1708,20000000],[4009,1216,1708,20000000],[4010,1216,1708,20000000],[4012,1216,1708,20000000],[4014,1216,1708,20000000],[4016,1216,1708,20000000],[4018,1216,1708,20000100],[4020,1216,1708,20000100],[4021,1216,1708,20000000],[4023,1216,1708,20000100],[4025,1216,1708,20000000],[4027,1216,1708,20000000],[4029,1216,1708,20000100],[4031,1216,1708,20000000],[4032,1216,1708,20000000],[4034,1216,1708,20000100],[4036,1216,1708,20000000],[4038,1216,1708,20000100],[4040,1216,1708,20000000],[4042,1216,1708,20000000],[4043,1216,1708,20000000],[4045,1216,1708,20000100],[4047,1216,1708,20000000],[4049,1216,1708,20000000],[4051,1216,1708,20000000],[4053,1216,1708,20000100],[4054,1216,1708,20000000],[4056,1216,1708,20000000],[4058,1216,1708,20000100],[4060,1216,1708,20000000],[4062,1216,1708,20000100],[4064,1216,1708,20000000],[4065,1216,1708,20000000],[4067,1216,1708,20000100],[4069,1216,1708,20000000],[4071,1216,1708,20000100],[4073,1216,1708,20000000],[4075,1216,1708,20000100],[4076,1216,1708,20000000],[4078,1216,1708,20000000],[4080,1216,1708,20000100],[4082,1216,1708,20000100],[4084,1216,1708,20000100],[4086,1216,1708,20000000],[4087,1216,1708,20000000],[4089,1216,1708,20000000],[4091,1216,1708,20000100],[4093,1216,1708,20000100],[4095,1216,1708,20000000],[4097,1216,1708,20000100],[4098,1216,1708,20000000],[4100,1216,1708,20000100],[4102,1216,1708,20000100],[4104,1216,1708,20000100],[4106,1216,1708,20000000],[4108,1216,1708,20000000],[4109,1216,1708,20000000],[4111,1216,1708,20000100],[4113,1216,1708,20000000],[4115,1216,1708,20000100],[4117,1216,1708,20000000],[4119,1216,1708,20000000],[4120,1216,1708,20000000],[4122,1216,1708,20000000],[4124,1216,1708,20000000],[4126,1216,1708,20000100],[4128,1216,1708,20000100],[4130,1216,1708,20000000],[4131,1216,1708,20000000],[4133,1216,1708,20000100],[4135,1216,1708,20000100],[4137,1216,1708,20000000],[4139,1216,1708,20000000],[4141,1216,1708,20000100],[4142,1216,1708,20000100],[4144,1216,1708,20000100],[4146,1216,1708,20000100],[4148,1216,1708,20000100],[4150,1216,1708,20000000],[4152,1216,1708,20000100],[4153,1216,1708,20000100],[4155,1216,1708,20000000],[4157,1216,1708,20000100],[4159,1216,1708,20000000],[4161,1216,1708,20000000],[4163,1216,1708,20000100],[4164,1216,1708,20000100],[4166,1216,1708,20000100],[4168,1216,1708,20000000],[4170,1216,1708,20000000],[4172,1216,1708,20000100],[4174,1216,1708,20000000],[4175,1216,1708,20000100],[4177,1216,1708,20000100],[4179,1216,1708,20000100],[4181,1216,1708,20000000],[4183,1216,1708,20000000],[4185,1216,1708,20000000],[4186,1216,1708,20000000],[4188,1216,1708,20000000],[4190,1215,6935,50000100],[4191,1215,6935,50000100],[4191,1215,6935,50000100],[4191,1215,6935,50000100],[4192,1215,7023,50134600],[4192,1215,7023,50134600],[4193,1215,7019,50011400],[4193,1215,7019,50011400],[4194,1215,7008,50000100],[4194,1215,7008,50000100],[4195,1215,6980,50000100],[4195,1215,6980,50000100],[4196,1215,6983,50247800],[4196,1215,6983,50247800],[4197,1215,6966,50006400],[4197,1215,6966,50006400],[4197,1215,6966,50006400],[4198,1215,6974,50029200],[4198,1215,6974,50029200],[4199,1215,7001,50000000],[4199,1215,7001,50000000],[4200,1215,6988,50132100],[4200,1215,6988,50132100],[4201,1215,6976,50000000],[4201,1215,6976,50000000],[4202,1215,6983,50295100],[4202,1215,6983,50295100],[4202,1215,6983,50295100],[4203,1215,7069,50912900],[4203,1215,7069,50912900],[4204,1215,6963,50000000],[4204,1215,6963,50000000],[4205,1215,7093,50902000],[4205,1215,7093,50902000],[4206,1215,7060,50929900],[4206,1215,7060,50929900],[4207,1215,7145,51289900],[4207,1215,7145,51289900],[4208,1215,7154,51304300],[4208,1215,7154,51304300],[4208,1215,7154,51304300],[4209,1215,7182,51454800],[4210,1215,7203,51606800],[4210,1215,7203,51606800],[4211,1215,7237,51768400],[4212,1215,7271,51946100],[4213,1215,7299,52104200],[4214,1215,7308,52266500],[4215,1215,7360,52453800],[4216,1215,7370,52637500],[4217,1215,7441,52989200],[4219,1215,7496,53131100],[4220,1215,7523,53334100],[4221,1215,7521,53308900],[4223,1215,7648,54004000],[4225,1215,7682,54260400],[4226,1215,7712,54451700],[4228,1215,7839,55105100],[4230,1215,7793,54610900],[4231,1215,7708,54273500],[4233,1215,7528,53334100],[4235,1215,7590,53747200],[4237,1215,7435,52214400],[4239,1215,7140,51105900],[4241,1215,6975,50007000],[4242,1215,6989,50000100],[4244,1215,6990,50243800],[4246,1215,6979,50010500],[4248,1215,6990,50014300],[4250,1215,6961,50000100],[4252,1215,6968,50000100],[4253,1215,6990,50000100],[4254,1215,6990,50083400],[4255,1215,6990,50106500],[4256,1215,6969,50014100],[4256,1215,6969,50014100],[4257,2269,5539,42090900],[4258,2783,5077,38869900],[4259,3377,4673,35223500],[4259,3377,4673,35223500],[4260,3725,4427,31999900],[4261,3989,4304,29631200],[4262,4198,4252,27299500],[4262,4198,4252,27299500],[4263,4242,4242,25784200],[4264,4242,4242,25872500],[4264,4242,4242,25872500],[4265,4242,4242,25452500],[4266,4242,4242,25660200],[4267,4242,4242,25705900],[4267,4242,4242,25705900],[4268,4242,4242,25671600],[4269,4242,4242,25302200],[4270,4242,4242,25889400],[4271,4242,4242,25838500],[4272,4242,4242,25957100],[4273,4242,4242,25992800],[4274,4242,4242,26127900],[4275,4242,4242,26344900],[4276,4242,4242,26339400],[4277,4242,4242,26529500],[4278,4242,4242,26443400],[4279,4242,4242,26607700],[4280,4242,4242,26040700],[4280,4242,4242,26040700],[4281,4242,4242,25625400],[4282,4242,4242,25623000],[4283,4242,4242,25356200],[4283,4242,4242,25356200],[4284,4242,4242,25593100],[4285,4242,4242,25698100],[4286,4242,4242,25862600],[4286,4242,4242,25862600],[4287,4242,4242,25868100],[4288,4242,4242,26002700],[4288,4242,4242,26002700],[4289,4242,4242,25530700],[4290,4242,4242,25772000],[4291,4242,4242,25782900],[4291,4242,4242,25782900],[4292,4242,4242,25455000],[4293,4242,4242,25643000],[4294,4242,4242,25676000],[4295,4242,4242,25797600],[4296,4242,4242,25959000],[4297,4242,4242,26142400],[4298,4242,4242,26059200],[4299,4242,4242,26109700],[4300,4242,4242,26287500],[4301,4242,4242,26336900],[4303,4242,4242,26521700],[4304,4242,4242,26602700],[4304,4242,4242,26602700],[4305,4242,4242,26689300],[4306,4242,4242,26794400],[4306,4242,4242,26794400],[4307,4242,4242,26103800],[4308,4242,4242,25965400],[4309,4242,4242,26697100],[4309,4242,4242,26697100],[4310,4242,4242,26668400],[4311,4242,4242,26725100],[4312,4242,4242,26442800],[4312,4242,4242,26442800],[4313,4242,4242,26358100],[4314,4242,4242,26256600],[4315,4242,4242,26302400],[4315,4242,4242,26302400],[4316,4242,4242,26486700],[4317,4242,4242,26342500],[4317,4242,4242,26342500],[4318,4242,4242,26353100],[4319,4242,4242,26577500],[4320,4242,4242,26562700],[4321,4242,4242,26398200],[4322,4242,4242,26464400],[4323,4242,4242,26428900],[4324,4242,4242,26301700],[4326,4242,4242,25710200],[4327,4242,4242,25231900],[4328,4242,4242,24551600],[4329,4242,4242,23617900],[4331,4242,4242,23190900],[4332,4242,4242,22863300],[4332,4242,4242,22863300],[4333,4242,4242,22863400],[4334,4242,4242,22861500],[4335,4242,4242,22861500],[4335,4242,4242,22861500],[4336,4242,4242,22856100],[4337,4242,4242,21748300],[4337,4242,4242,21748300],[4338,4242,4242,21614300],[4339,4242,4242,21383500],[4340,4242,4242,21125700],[4340,4242,4242,21125700],[4341,4242,4242,20781100],[4342,4242,4242,20568400],[4343,4242,4242,20299100],[4343,4242,4242,20299100],[4344,4242,4242,20122700],[4345,4242,4242,20000000],[4346,4242,4242,20000100],[4346,4242,4242,20000100],[4347,4242,4242,20000000],[4348,4242,4242,20000000],[4349,4242,4242,20000100],[4350,4242,4242,20000100],[4351,4242,4242,20000000],[4352,4242,4242,20000000],[4354,4242,4242,20000000],[4355,4242,4242,20000100],[4356,4242,4242,20000000],[4358,4242,4242,20000000],[4359,4242,4242,20000100],[4360,4242,4242,20000000],[4362,4242,4242,20000100],[4364,4242,4242,20000000],[4365,4242,4242,20000000],[4367,4242,4242,20000000],[4369,4242,4242,20000100],[4371,4242,4242,20000000],[4372,4242,4242,20000000],[4374,4242,4242,20000000],[4376,4242,4242,20000000],[4378,4242,4242,20000000],[4380,4242,4242,20000000],[4382,4242,4242,20000000],[4383,4242,4242,20000000],[4385,4242,4242,20000100],[4387,4242,4242,20000000],[4389,4242,4242,20000100],[4391,4242,4242,20000100],[4393,4242,4242,20000100],[4394,4242,4242,20000100],[4396,4242,4242,20000000],[4398,4242,4242,20000100],[4400,4242,4242,20000000],[4402,4242,4242,20000000],[4404,4242,4242,20000000],[4405,4242,4242,20000000],[4407,4242,4242,20000000],[4409,4242,4242,20000100],[4411,4242,4242,20000100],[4413,4242,4242,20000100],[4415,4242,4242,20000100],[4416,4242,4242,20000000],[4418,4242,4242,20000100],[4420,4242,4242,20000000],[4422,4242,4242,20000100],[4424,4242,4242,20000100],[4426,4242,4242,20000000],[4427,4242,4242,20000000],[4429,4242,4242,20000100],[4431,4242,4242,20000100],[4433,4242,4242,20000000],[4435,4242,4242,20000000],[4437,4242,4242,20000100],[4438,4242,4242,20000000],[4440,4242,4242,20000100],[4442,4242,4242,20000100],[4444,4242,4242,20000000],[4446,4242,4242,20000100],[4448,4242,4242,20000000],[4449,4242,4242,20000000],[4451,4242,4242,20000100],[4453,4242,4242,20000000],[4455,4242,4242,20000000],[4457,4242,4242,20000000],[4459,4242,4242,20000100],[4460,4242,4242,20000100],[4462,4242,4242,20000000],[4464,4242,4242,20000000],[4466,4242,4242,20000000],[4468,4242,4242,20000100],[4470,4242,4242,20000000],[4471,4242,4242,20000000],[4473,4242,4242,20000000],[4475,4242,4242,20000100],[4477,4242,4242,20000100],[4479,4242,4242,20000100],[4481,4242,4242,20000100],[4482,4242,4242,20000100],[4484,4242,4242,20000000],[4486,4242,4242,20000000],[4488,4242,4242,20000000],[4490,4242,4242,20000000],[4492,4242,4242,20000100],[4493,4242,4242,20000000],[4495,4242,4242,20000100],[4497,4242,4242,20000100],[4499,4242,4242,20000000],[4501,4242,4242,20000000],[4503,4242,4242,20000000],[4504,4242,4242,20000100],[4506,4242,4242,20000000],[4508,4242,4242,20000000],[4510,4242,4242,20000000],[4512,4242,4242,20000000],[4514,4242,4242,20000000],[4515,4242,4242,20000000],[4517,4242,4242,20000000],[4519,4242,4242,20000100],[4521,4242,4242,20000000],[4523,4242,4242,20000100],[4525,4242,4242,20000100],[4526,4242,4242,20000100],[4528,4242,4242,20000100],[4530,4242,4242,20000000],[4532,4242,4242,20000000],[4534,4242,4242,20000000],[4536,4242,4242,20000000],[4537,4242,4242,20000000],[4539,4242,4242,20000000],[4541,4242,4242,20000000],[4543,4242,4242,20000000],[4545,4242,4242,20000000],[4547,4242,4242,20000000],[4548,4242,4242,20000100],[4550,4242,4242,20000000],[4552,4242,4242,20000100],[4554,4242,4242,20000100],[4556,4242,4242,20000000],[4558,4242,4242,20000000],[4559,4242,4242,20000000],[4561,4242,4242,20000100],[4563,4242,4242,20000000],[4565,4242,4242,20000100],[4567,4242,4242,20000000],[4569,4242,4242,20000000],[4570,4242,4242,20000100],[4572,4242,4242,20000100],[4574,4242,4242,20000000],[4576,4242,4242,20000000],[4578,4242,4242,20000000],[4580,4242,4242,20000100],[4581,4242,4242,20000000],[4583,4242,4242,20000100],[4585,4242,4242,20000100],[4587,4242,4242,20000000],[4589,4242,4242,20000000],[4591,4242,4242,20000000],[4592,4242,4242,20000100],[4594,4242,4242,20000100],[4596,4242,4242,20000000],[4598,4242,4242,20000100],[4600,4242,4242,20000100],[4602,4241,4242,20000100],[4603,4241,4241,20000000],[4605,4166,4166,16503700],[4607,4166,4166,16161400],[4609,4166,4166,15820000],[4611,4166,4166,15580400],[4613,4166,4166,15282000],[4614,4166,4166,15093500],[4616,4166,4166,14925900],[4618,4166,4166,14787800],[4620,4166,4166,14580800],[4622,4166,4166,14450400],[4624,4166,4166,14306500],[4625,4166,4166,14236400],[4627,4166,4166,14229800],[4629,4166,4166,13922300],[4631,4166,4166,13802200],[4633,4166,4166,13572900],[4635,4166,4166,13330200],[4636,4166,4166,13290200],[4638,4166,4166,13154500],[4640,4166,4166,13034900],[4642,4166,4166,12902500],[4644,4166,4166,12842600],[4646,4166,4166,12645400],[4647,4166,4166,12673000],[4649,4166,4166,12447500],[4650,4166,4166,12471300],[4651,4166,4166,12385600],[4651,4166,4166,12385600],[4652,4166,4166,12336800],[4653,4166,4166,12334300],[4654,4166,4166,12373300],[4654,4166,4166,12373300],[4655,4166,4166,12355900],[4656,4166,4166,12348700],[4657,4166,4166,12314400],[4657,4166,4166,12314400],[4658,4166,4166,12216000],[4659,4166,4166,12130200],[4659,4166,4166,12130200],[4660,4166,4166,12081400],[4661,4166,4166,12170200],[4662,4166,4166,12167400],[4662,4166,4166,12167400],[4663,4166,4166,12116900],[4664,4166,4166,12122800],[4665,4166,4166,12077700],[4666,4166,4166,11995900],[4666,4166,4166,11995900],[4667,4166,4166,11962900],[4668,4166,4166,12014400],[4670,4166,4166,11897400],[4671,4166,4166,11787900],[4672,4166,4166,11730400],[4673,4166,4166,11824600],[4674,4166,4166,11756100],[4676,4166,4166,11799800],[4677,4166,4166,11799800],[4679,4166,4166,11769000],[4680,4166,4166,11772700],[4709,4166,4166,11699800],[4739,4166,4166,11660100],[4769,4166,4166,11635600],[4799,4166,4166,11636600],[4829,4166,4166,11645900],[4859,4166,4166,11622700],[4889,4166,4166,11664900],[4919,4166,4166,11668900],[4949,4166,4166,11685900],[4979,4166,4166,11694100],[5009,4166,4166,11710000],[5039,4166,4166,11706700],[5069,4166,4166,11710400],[5099,4166,4166,11709400],[5129,4166,4166,11705600],[5159,4166,4166,11698700],[5189,4166,4166,11704600],[5219,4166,4166,11699500],[5249,4166,4166,11715800],[5279,4166,4166,11717900],[5309,4166,4166,11717000],[5339,4166,4166,11724300],[5369,4166,4166,11720500],[5399,4166,4166,11716400],[5429,4166,4166,11707200],[5459,4166,4166,11703100],[5489,4166,4166,11703200],[5519,4166,4166,11697200],[5549,4166,4166,11687000],[5579,4166,4166,11692200],[5609,4166,4166,11702900],[5639,4166,4166,11703700],[5669,4166,4166,11700100],[5699,4166,4166,11697300],[5729,4166,4166,11695800],[5759,4166,4166,11688100],[5789,4166,4166,11683700],[5819,4166,4166,11674500],[5849,4166,4166,11669700],[5879,4166,4166,11666500],[5909,4166,4166,11665200],[5939,4166,4166,11672400],[5969,4166,4166,11673800],[5999,4166,4166,11670600],[6029,4166,4166,11669100],[6059,4166,4166,11676100],[6089,4166,4166,11665400],[6119,4166,4166,11665200],[6149,4166,4166,11666900],[6179,4166,4166,11670000],[6209,4166,4166,11664400],[6239,4166,4166,11668800],[6269,4166,4166,11663300],[6299,4166,4166,11664600],[6329,4166,4166,11664100],[6359,4166,4166,11664700],[6389,4166,4166,11662800],[6419,4166,4166,11663800],[6449,4166,4166,11660100],[6479,4166,4166,11662300],[6509,4166,4166,11664000],[6539,4166,4166,11666400],[6569,4166,4166,11662800],[6599,4166,4166,11660200],[6629,4166,4166,11658800],[6659,4166,4166,11661500],[6689,4166,4166,11665600],[6719,4166,4166,11675000],[6749,4166,4166,11676700],[6779,4166,4166,11676400],[6809,4166,4166,11678000],[6839,4166,4166,11682900],[6869,4166,4166,11680300],[6899,4166,4166,11681700],[6900,4166,4166,11680300],[6930,4166,4166,11682300],[6960,4166,4166,11680400],[6990,4166,4166,11677100],[7020,4166,4166,11671400],[7050,4166,4166,11668000],[7080,4166,4166,11668400],[7110,4166,4166,11667100],[7140,4166,4166,11666400],[7170,4166,4166,11664500],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800],[7200,4166,4166,11660800]],"lastClose":4603,"peakPrice":551051};
+// @data:end
+          document.fonts.ready.then(() => {
+            const t12 = bar(12), t13 = bar(13), t14 = bar(14), t17 = bar(17), t18 = bar(18), t19 = bar(19), t20 = bar(20), tEnd = bar(21);
+            $(".l-acts").textContent = String(DATA.actions);
+            $(".l-mv").textContent = usd(DATA.peakPrice);
+            $(".l-dm").textContent = String(Math.ceil(DATA.lastClose / 60));
+            $(".l-peak").textContent = "+" + yi(DATA.peak);
+            $(".l-final").textContent = "+" + yi(DATA.pnl);
+            // the counters read the recording frame on screen, so they move with the footage
+            const frameAt = (ft) => {
+              const s = DATA.shots.find((x) => ft >= x.start && ft < x.end) ?? DATA.shots.at(-1);
+              const i = Math.round((s.from + (clamp(ft, s.start, s.end) - s.start) * s.rate) * s.fps);
+              return DATA.frames[clamp(i, 0, DATA.frames.length - 1)];
+            };
+            const bn = $(".l-bn"), pn = $(".l-pn"), ln = $(".l-ln");
+            drive((ft) => {
+              const f = frameAt(ft);
+              setText(bn, "+" + (f[1] / 100).toFixed(2));
+              setText(pn, "+" + (f[2] / 100).toFixed(2));
+              setText(ln, String(DATA.closeFilm.filter((t) => ft >= t).length));
+            });
+
+            // bar 12: the breath — No.1
+            fade(".l-lscrim", t12, 0.2, 1, 0);
+            rise(".l-no .k", t12, { dy: 30 });
+            snap(".l-no .name", bar(12, 0.5), { dx: -220, d: 0.34 });
+            pop(".l-no .chip", bar(12, 1.75), { stagger: 0.14, rot: -4, from: 0.6 });
+            out(".l-no", t13 - 0.08, { scale: 1.15, blur: 16, d: 0.08 });
+            out(".l-lscrim", t13 - 0.08, { d: 0.08 });
+
+            // bar 13: the first push lands on the drop
+            fade(".l-scrim", t13, 0.15, 1, 0);
+            flash(".l-flash", t13, 0.65, 0.35);
+            rise(".l-push .k", t13, { dy: 40 });
+            slam(".l-push .v", DATA.pushFilm[0], { from: 1.5, blur: 18, d: 0.24 });
+            out(".l-push", t14 - 0.08, { dx: -160, blur: 12, d: 0.12 });
+
+            // bars 14–16: push, close, bank it — five times
+            fade(".l-bank", t14, 0.2);
+            tl.fromTo($(".l-bank"), { x: -120 }, { x: 0, duration: 0.3, ease: "expo.out" }, L(t14));
+            rise(".l-loop", t14 + 0.05, { dy: 40 });
+            DATA.closeFilm.forEach((t) => {
+              kick(".l-bank .n", t + 0.04, 1.14, 0.22);
+              kick(".l-loop .n", t, 1.2, 0.2);
+              flash(".l-gflash", t, 0.14, 0.2);
+            });
+            out(".l-loop", t17 - 0.08, { dx: 140, blur: 10, d: 0.12 });
+
+            // bar 17: the last push, in slow motion
+            rise(".l-mega .k", t17, { dy: 30 });
+            slam(".l-mega .v", DATA.megaFilm, { from: 1.6, blur: 20, d: 0.26 });
+            flash(".l-flash", DATA.megaFilm, 0.3, 0.3);
+            rise(".l-mega .p", bar(17, 2), { dy: 30 });
+            out(".l-mega", t18 - 0.06, { dy: -40, blur: 10, d: 0.08 });
+
+            // bar 18: the self-close
+            flash(".l-gflash", t18, 0.4, 0.35);
+            tl.fromTo($(".l-self"), { opacity: 0, scale: 2.6, rotation: -12 }, { opacity: 1, scale: 1, rotation: -6, duration: 0.3, ease: "back.out(1.6)" }, L(t18 + 0.03));
+            kick(".l-bank .n", t18 + 0.1, 1.24, 0.4);
+            out(".l-self", t19 - 0.08, { dx: 140, blur: 10, d: 0.12 });
+
+            // bar 19: flat to the bell
+            rise(".l-done .min", t19, { dy: 40 });
+            pop(".l-done .chip", bar(19, 1), { rot: 4, from: 0.6 });
+            out(".l-done", t20 - 0.08, { dx: 140, blur: 10, d: 0.12 });
+            out(".l-bank", t20 - 0.08, { dx: -140, blur: 10, d: 0.12 });
+
+            // bar 20: the panel, and the comparison
+            flash(".l-gflash", t20, 0.3, 0.4);
+            rise(".l-win .col", bar(20, 0.5), { stagger: BEAT * 0.6, dy: 60 });
+            snap(".l-win .arrow", bar(20, 0.8), { dx: -60 });
+            slam(".l-win .one", bar(20, 2.25), { from: 1.8, blur: 18, d: 0.22 });
+            out(".l-win, .l-scrim", tEnd - 0.08, { d: 0.08 });
+
+            window.__timelines["ov-liu"] = tl;
+          });
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -74,7 +74,7 @@ pages/               Pages project root: wrangler.jsonc, functions/
 scripts/             Build, deployment-layout, image/asset generators, staging checks
 tests/               *.test.ts (backend, tsx) and *.test.mjs (academy, node --test)
 data/bingx-faq.json  FAQ seed data (also used by tests)
-motion/              tools/ (render/audio), showreel/, academy-promo/, flow-arena/{launch,gameplay,promo}
+motion/              tools/ (render/audio), academy/{showreel,promo,drop,voice,film}, flow-arena/*, out/ (renders), audio-library/
 docs/                Design, deployment and per-lesson plans (zh-Hant)
 archive/, experiments/   Frozen / paused, see scope rules
 legacy/              Retired FLOW ARENA V7 snapshot and recovery instructions

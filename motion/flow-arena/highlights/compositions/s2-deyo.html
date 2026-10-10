@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template>
+      <style>
+        /* @kit-css:start */
+        @font-face {
+          font-family: "Barlow Condensed";
+          src: url("assets/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2");
+          font-weight: 700;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "Barlow Condensed";
+          src: url("assets/fonts/barlow-condensed-latin-500-normal.woff2") format("woff2");
+          font-weight: 500;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "JetBrains Mono";
+          src: url("assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+          font-weight: 100 800;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: #05070b;
+          color: #ecf2f7;
+          font-family: "Noto Sans TC", sans-serif;
+          --bg: #05070b;
+          --panel: #0b1118;
+          --ink: #ecf2f7;
+          --dim: #93a3b4;
+          --gold: #ffd36b;
+          --long: #2de2a6;
+          --short: #ff4f6e;
+        }
+        .abs {
+          position: absolute;
+        }
+        .full {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+        }
+        .world {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+          transform-origin: 0 0;
+        }
+        .disp {
+          font-family: "Barlow Condensed", "Noto Sans TC", sans-serif;
+          font-weight: 700;
+          line-height: 0.84;
+          letter-spacing: -0.01em;
+          white-space: nowrap;
+        }
+        .cn {
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          line-height: 1.12;
+          white-space: nowrap;
+        }
+        .mono {
+          font-family: "JetBrains Mono", monospace;
+          font-weight: 700;
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+        }
+        .paper {
+          color: transparent;
+          -webkit-text-stroke: 4px rgba(236, 242, 247, 0.92);
+        }
+        .paper-s {
+          color: transparent;
+          -webkit-text-stroke: 4px var(--short);
+        }
+        .paper-g {
+          color: transparent;
+          -webkit-text-stroke: 4px var(--gold);
+        }
+        .bank {
+          color: var(--gold);
+          text-shadow: 0 0 48px rgba(255, 211, 107, 0.5), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .hot {
+          color: var(--short);
+          text-shadow: 0 0 48px rgba(255, 79, 110, 0.55), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .up {
+          color: var(--long);
+          text-shadow: 0 0 48px rgba(45, 226, 166, 0.5), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .lift {
+          text-shadow: 0 0 40px rgba(236, 242, 247, 0.28), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .dim {
+          color: var(--dim);
+        }
+        .chip {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          height: 58px;
+          padding: 0 24px;
+          border-radius: 8px;
+          background: rgba(11, 17, 24, 0.88);
+          border: 2px solid rgba(236, 242, 247, 0.22);
+          font: 700 26px "JetBrains Mono", "Noto Sans TC", monospace;
+          letter-spacing: 0.06em;
+          color: var(--ink);
+          white-space: nowrap;
+        }
+        .chip b {
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          letter-spacing: 0.02em;
+        }
+        .chip.gold {
+          border-color: rgba(255, 211, 107, 0.7);
+          color: var(--gold);
+        }
+        .chip.red {
+          border-color: rgba(255, 79, 110, 0.7);
+          color: var(--short);
+        }
+        .chip.green {
+          border-color: rgba(45, 226, 166, 0.6);
+          color: var(--long);
+        }
+        .chip i {
+          display: block;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: currentColor;
+          box-shadow: 0 0 16px currentColor;
+        }
+        /* broadcast chrome */
+        .bug {
+          position: absolute;
+          left: 72px;
+          top: 56px;
+          display: flex;
+          align-items: stretch;
+          height: 64px;
+          font: 700 26px "JetBrains Mono", monospace;
+          letter-spacing: 0.1em;
+          white-space: nowrap;
+        }
+        .bug .rec {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 0 22px;
+          background: #d7263d;
+          color: #ffffff;
+        }
+        .bug .rec i {
+          display: block;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #ffffff;
+        }
+        .bug .who {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding: 0 24px;
+          background: rgba(11, 17, 24, 0.92);
+          border: 2px solid rgba(236, 242, 247, 0.18);
+          border-left: 0;
+          color: var(--ink);
+        }
+        .bug .who span {
+          color: var(--dim);
+        }
+        .clockbox {
+          position: absolute;
+          right: 72px;
+          top: 56px;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 0 24px;
+          background: rgba(11, 17, 24, 0.92);
+          border: 2px solid rgba(236, 242, 247, 0.18);
+          font: 700 30px "JetBrains Mono", monospace;
+          letter-spacing: 0.04em;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+          color: var(--ink);
+        }
+        .clockbox span {
+          color: var(--dim);
+        }
+        .scrub {
+          position: absolute;
+          left: 72px;
+          right: 72px;
+          bottom: 54px;
+          height: 34px;
+        }
+        .scrub .rail {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 15px;
+          height: 4px;
+          background: rgba(236, 242, 247, 0.16);
+        }
+        .scrub .fill {
+          position: absolute;
+          left: 0;
+          top: 15px;
+          width: 1776px;
+          height: 4px;
+          background: var(--ink);
+          transform-origin: 0 50%;
+          transform: scaleX(0);
+        }
+        .scrub .tick {
+          position: absolute;
+          top: 9px;
+          width: 2px;
+          height: 16px;
+          background: rgba(236, 242, 247, 0.35);
+        }
+        .scrub .head {
+          position: absolute;
+          top: 3px;
+          left: -14px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: var(--ink);
+          box-shadow: 0 0 20px rgba(236, 242, 247, 0.7);
+        }
+        .ghostnum {
+          position: absolute;
+          font: 700 1300px "Barlow Condensed", sans-serif;
+          line-height: 0.8;
+          color: transparent;
+          -webkit-text-stroke: 3px rgba(236, 242, 247, 0.1);
+          white-space: nowrap;
+        }
+        .glow {
+          position: absolute;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255, 211, 107, 0.32) 0%, rgba(255, 211, 107, 0.1) 38%, rgba(255, 211, 107, 0) 70%);
+        }
+        .glow.red {
+          background: radial-gradient(circle, rgba(255, 79, 110, 0.34) 0%, rgba(255, 79, 110, 0.1) 38%, rgba(255, 79, 110, 0) 70%);
+        }
+        .glow.green {
+          background: radial-gradient(circle, rgba(45, 226, 166, 0.3) 0%, rgba(45, 226, 166, 0.09) 38%, rgba(45, 226, 166, 0) 70%);
+        }
+        .flash {
+          position: absolute;
+          inset: 0;
+          background: #ecf2f7;
+          opacity: 0;
+        }
+        .flash.red {
+          background: var(--short);
+        }
+        .flash.gold {
+          background: var(--gold);
+        }
+        .cut {
+          position: absolute;
+          inset: 0;
+          background: #05070b;
+          opacity: 0;
+        }
+        .stamp {
+          display: inline-flex;
+          align-items: center;
+          gap: 16px;
+          padding: 10px 26px 12px;
+          border: 5px solid currentColor;
+          border-radius: 10px;
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+/* @kit-css:end */
+        .d-ghost,
+        .d-hud {
+          opacity: 0;
+        }
+        .d-glow {
+          opacity: 0.35;
+        }
+        .d-breath {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+        }
+        .d-breath .no {
+          font: 700 40px "JetBrains Mono", monospace;
+          letter-spacing: 0.5em;
+          color: var(--dim);
+        }
+        .d-breath .num {
+          display: block;
+          font: 700 760px "Barlow Condensed", sans-serif;
+          line-height: 0.8;
+        }
+        .d-breath .lab {
+          font-size: 64px;
+          letter-spacing: 0.3em;
+        }
+        .d-card {
+          position: absolute;
+          inset: 0;
+        }
+        .d-card .big {
+          position: absolute;
+          left: 20px;
+          bottom: -170px;
+          font: 700 1180px "Barlow Condensed", sans-serif;
+          line-height: 0.8;
+          transform-origin: 30% 80%;
+        }
+        .d-card .info {
+          position: absolute;
+          left: 700px;
+          top: 250px;
+          width: 1120px;
+        }
+        .d-card .rank {
+          font-size: 30px;
+          letter-spacing: 0.18em;
+          color: var(--dim);
+        }
+        .d-card .name {
+          display: block;
+          margin-top: 26px;
+          font-size: 300px;
+        }
+        .d-card .chips {
+          display: flex;
+          gap: 18px;
+          margin-top: 46px;
+        }
+        .d-card .tag {
+          display: block;
+          margin-top: 40px;
+          font-size: 64px;
+        }
+        .d-cap {
+          position: absolute;
+          left: 110px;
+          top: 170px;
+        }
+        .d-cap .big {
+          display: block;
+          font-size: 120px;
+        }
+        .d-cap .en {
+          display: block;
+          margin-top: 18px;
+          font-size: 28px;
+          letter-spacing: 0.14em;
+          color: var(--dim);
+        }
+        .d-cap .chips {
+          display: flex;
+          gap: 16px;
+          margin-top: 30px;
+        }
+        .d-count {
+          position: absolute;
+          left: 110px;
+          top: 160px;
+        }
+        .d-count .lab {
+          display: block;
+          font-size: 56px;
+          color: var(--short);
+        }
+        .d-count .t {
+          display: block;
+          margin-top: 4px;
+          font-size: 250px;
+        }
+        .d-count .sub {
+          display: block;
+          margin-top: 20px;
+          font-size: 52px;
+        }
+        .d-orders {
+          position: absolute;
+          right: 72px;
+          top: 150px;
+          width: 300px;
+          height: 830px;
+          display: flex;
+          flex-direction: column-reverse;
+          gap: 4px;
+        }
+        .d-orders .o {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          height: 22.6px;
+          padding: 0 12px;
+          border: 2px solid rgba(45, 226, 166, 0.65);
+          border-radius: 4px;
+          background: rgba(6, 26, 20, 0.92);
+          color: var(--long);
+          font: 700 15px "JetBrains Mono", monospace;
+          letter-spacing: 0.04em;
+          white-space: nowrap;
+        }
+        .d-orders .o i {
+          display: block;
+          width: 10px;
+          height: 10px;
+          background: currentColor;
+        }
+        .d-x {
+          position: absolute;
+          left: 110px;
+          top: 150px;
+        }
+        .d-x .stack {
+          display: grid;
+        }
+        .d-x .stack span {
+          grid-area: 1 / 1;
+          font: 700 460px "Barlow Condensed", sans-serif;
+          line-height: 0.8;
+        }
+        .d-x .stack .c1 {
+          color: rgba(255, 79, 110, 0.85);
+          mix-blend-mode: screen;
+          opacity: 0;
+        }
+        .d-x .stack .c2 {
+          color: rgba(120, 200, 255, 0.85);
+          mix-blend-mode: screen;
+          opacity: 0;
+        }
+        .d-x .px {
+          display: block;
+          margin-top: 26px;
+          font-size: 60px;
+        }
+        .d-x .sec {
+          display: block;
+          margin-top: 10px;
+          font-size: 56px;
+        }
+        .d-liq {
+          position: absolute;
+          right: 72px;
+          top: 170px;
+        }
+        .d-paper {
+          position: absolute;
+          left: 110px;
+          top: 230px;
+        }
+        .d-paper .lab {
+          display: flex;
+          align-items: baseline;
+          gap: 24px;
+          font-size: 64px;
+        }
+        .d-paper .lab .en {
+          font-size: 30px;
+          letter-spacing: 0.16em;
+        }
+        .d-paper .row {
+          display: flex;
+          align-items: baseline;
+          gap: 26px;
+          margin-top: 22px;
+        }
+        .d-paper .n {
+          font-size: 330px;
+        }
+        .d-paper .u {
+          font-size: 80px;
+        }
+        .d-paper .chips {
+          display: flex;
+          gap: 16px;
+          margin-top: 40px;
+        }
+      </style>
+      <div data-hf-id="hf-0782" id="root" data-composition-id="s2-deyo" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-5p0v" class="ghostnum d-ghost" data-layout-ignore="" style="right: -60px; top: -40px">3</div>
+        <div data-hf-id="hf-5l6q" class="glow d-glow" data-layout-ignore="" style="left: 1100px; top: 80px; width: 1100px; height: 1100px"></div>
+        <div data-hf-id="hf-r11j" class="world d-world">
+          <canvas data-hf-id="hf-3qov" class="full d-cv" data-layout-allow-overflow="" width="1920" height="1080"></canvas>
+        </div>
+
+        <div data-hf-id="hf-s0cf" class="d-breath">
+          <span data-hf-id="hf-rc6v" class="no">NO.</span>
+          <span data-hf-id="hf-xeie" class="num paper">3</span>
+          <span data-hf-id="hf-3tf9" class="cn lab dim">第三名</span>
+        </div>
+
+        <div data-hf-id="hf-7tu7" class="d-card">
+          <span data-hf-id="hf-9di5" class="big lift">3</span>
+          <div data-hf-id="hf-46jo" class="info">
+            <div data-hf-id="hf-06tq" class="mono rank">RANK 03 · FINAL +22.80 億 USDT</div>
+            <span data-hf-id="hf-l7hm" class="disp name lift">deyo</span>
+            <div data-hf-id="hf-exrd" class="chips">
+              <div data-hf-id="hf-64su" class="chip red"><i data-hf-id="hf-wt6k"></i><b data-hf-id="hf-c79j">槓桿</b> 20×</div>
+              <div data-hf-id="hf-k14x" class="chip"><b data-hf-id="hf-d4j0">操作</b> 32 筆</div>
+              <div data-hf-id="hf-l8na" class="chip">SEED 3193907700</div>
+            </div>
+            <span data-hf-id="hf-vhxc" class="cn tag">兩小時的比賽，只在最後 42 秒出手。</span>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-a9fk" class="d-hud"></div>
+
+        <div data-hf-id="hf-pzlf" class="d-cap">
+          <span data-hf-id="hf-dfo1" class="cn big"><span data-hf-id="hf-7os7" class="d-cap-n">0</span> 秒，零交易</span>
+          <span data-hf-id="hf-odch" class="mono en">7,158 SECONDS · ZERO TRADES</span>
+          <div data-hf-id="hf-4dp9" class="chips">
+            <div data-hf-id="hf-xxbd" class="chip"><b data-hf-id="hf-9tof">持倉</b> 0 BTC</div>
+            <div data-hf-id="hf-zg7u" class="chip"><b data-hf-id="hf-ynhx">已實現</b> 0</div>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-iiny" class="d-count">
+          <span data-hf-id="hf-bkgh" class="cn lab">倒數</span>
+          <span data-hf-id="hf-uajc" class="disp t hot">00:42</span>
+          <span data-hf-id="hf-o61p" class="cn sub"><span data-hf-id="hf-hrz4" class="d-ocount">0</span> 張市價買單 · 20× 槓桿</span>
+        </div>
+        <div data-hf-id="hf-md1a" class="d-orders"></div>
+
+        <div data-hf-id="hf-ufyj" class="d-x">
+          <div data-hf-id="hf-d1zs" class="stack">
+            <span data-hf-id="hf-ohnj" class="c1">×10</span>
+            <span data-hf-id="hf-3anm" class="c2">×10</span>
+            <span data-hf-id="hf-2zf6" class="up">×10</span>
+          </div>
+          <span data-hf-id="hf-nnu3" class="mono px">$93,125 → $930,588</span>
+          <span data-hf-id="hf-zocw" class="cn sec">1 秒之內</span>
+        </div>
+        <div data-hf-id="hf-esgt" class="d-liq">
+          <div data-hf-id="hf-hmj2" class="chip red"><i data-hf-id="hf-zeb8"></i><b data-hf-id="hf-siss">空單連環強平</b> ×26 · 9,360 BTC</div>
+        </div>
+
+        <div data-hf-id="hf-68wl" class="d-paper">
+          <div data-hf-id="hf-mnnx" class="lab"><span data-hf-id="hf-v6c6" class="cn">帳面獲利</span><span data-hf-id="hf-ckff" class="mono en dim">PAPER PROFIT</span></div>
+          <div data-hf-id="hf-thy4" class="row">
+            <span data-hf-id="hf-gv7v" class="disp n paper d-pn">+0.00</span>
+            <span data-hf-id="hf-ppwx" class="cn u">億</span>
+          </div>
+          <div data-hf-id="hf-5kmc" class="chips">
+            <div data-hf-id="hf-8zzd" class="chip"><b data-hf-id="hf-9can">持倉</b> <span data-hf-id="hf-nq6b" class="d-pos">55,351</span> BTC</div>
+            <div data-hf-id="hf-coof" class="chip red"><i data-hf-id="hf-y7e5"></i><b data-hf-id="hf-q3h3">距離鐘響</b> <span data-hf-id="hf-lmt8" class="d-left">38</span> 秒</div>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-r55q" class="flash d-flash" data-layout-ignore=""></div>
+        <div data-hf-id="hf-ras9" class="flash red d-rflash" data-layout-ignore=""></div>
+      </div>
+      <script>
+        (() => {
+          // @scene:start
+        const SCENE = {"id":"s2-deyo","T0":15.3341,"DUR":12.4137};
+// @scene:end
+          // @kit-js:start
+        // Shared scene kit, injected into every composition by scripts/build.mjs. Expects SCENE = { id, T0, DUR }.
+        // Everything visual is a pure function of film time: DOM entrances on the GSAP timeline, and one
+        // render(ft) driver per scene for canvas charts, counters, chrome and camera.
+        const BAR = 2.0689655;
+        const BEAT = BAR / 4;
+        const D0 = 0.8512931;
+        const bar = (n, beat = 0) => +(D0 + n * BAR + beat * BEAT).toFixed(4);
+        const ROOT = document.querySelector('[data-composition-id="' + SCENE.id + '"]');
+        const $ = (s) => ROOT.querySelector(s);
+        const $$ = (s) => Array.from(ROOT.querySelectorAll(s));
+        const el = (x) => (typeof x === "string" ? $$(x) : x);
+        const tl = gsap.timeline({ paused: true });
+        const L = (t) => Math.max(0, +(t - SCENE.T0).toFixed(4));
+        
+        // ---- entrances (each a different attack; see DESIGN.md) ----
+        const slam = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 0, scale: o.from ?? 1.6, filter: `blur(${o.blur ?? 16}px)`, x: o.x ?? 0, y: o.y ?? 0 },
+            { opacity: 1, scale: 1, filter: "blur(0px)", x: 0, y: 0, duration: o.d ?? 0.2, ease: o.ease ?? "power4.out", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const snap = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 0, x: o.dx ?? -180, skewX: o.skew ?? -14 },
+            { opacity: 1, x: 0, skewX: 0, duration: o.d ?? 0.3, ease: "expo.out", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const rise = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 0, y: o.dy ?? 80, clipPath: "inset(0% 0% 100% 0%)" },
+            { opacity: 1, y: 0, clipPath: "inset(0% 0% 0% 0%)", duration: o.d ?? 0.38, ease: o.ease ?? "circ.out", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const wipe = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 1, clipPath: o.from ?? "inset(0% 100% 0% 0%)" },
+            { clipPath: "inset(0% 0% 0% 0%)", duration: o.d ?? 0.34, ease: o.ease ?? "power3.inOut", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const pop = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 0, scale: o.from ?? 0.3, rotation: o.rot ?? -10 },
+            { opacity: 1, scale: 1, rotation: 0, duration: o.d ?? 0.42, ease: "back.out(1.6)", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const fade = (x, t, d = 0.3, to = 1, from = 0) =>
+          tl.fromTo(el(x), { opacity: from }, { opacity: to, duration: d, ease: "power2.out", immediateRender: false }, L(t));
+        const out = (x, t, o = {}) =>
+          tl.to(
+            el(x),
+            { opacity: 0, x: o.dx ?? 0, y: o.dy ?? 0, scale: o.scale ?? 1, filter: `blur(${o.blur ?? 0}px)`, duration: o.d ?? 0.2, ease: o.ease ?? "power2.in", stagger: o.stagger ?? 0 },
+            L(t),
+          );
+        const hide = (x, t) => tl.set(el(x), { opacity: 0 }, L(t));
+        const flash = (x, t, peak = 0.85, d = 0.4) =>
+          tl.fromTo(el(x), { opacity: peak }, { opacity: 0, duration: d, ease: "power2.out", immediateRender: false }, L(t));
+        const kick = (x, t, s = 1.14, d = 0.26) =>
+          tl.fromTo(el(x), { scale: s }, { scale: 1, duration: d, ease: "power2.out", immediateRender: false }, L(t));
+        const drift = (x, t0, t1, from, to) =>
+          tl.fromTo(el(x), from, { ...to, duration: Math.max(0.01, t1 - t0), ease: "sine.inOut", immediateRender: false }, L(t0));
+        
+        // ---- numbers and text ----
+        const usd = (v) => "$" + Math.round(v).toLocaleString("en-US");
+        const yi = (v, d = 2) => (v / 1e8).toFixed(d);
+        const int = (v) => Math.round(v).toLocaleString("en-US");
+        const two = (n) => String(n).padStart(2, "0");
+        const clock = (s) => {
+          s = Math.max(0, Math.floor(s));
+          return `${two(Math.floor(s / 3600))}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
+        };
+        const setText = (node, s) => {
+          if (node.__t !== s) {
+            node.textContent = s;
+            node.__t = s;
+          }
+        };
+        
+        // ---- pure time functions ----
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const EASE = {
+          lin: (x) => x,
+          in: (x) => x * x * x,
+          in2: (x) => x * x,
+          out: (x) => 1 - (1 - x) ** 3,
+          out4: (x) => 1 - (1 - x) ** 4,
+          inOut: (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2),
+          expo: (x) => (x >= 1 ? 1 : 1 - 2 ** (-10 * x)),
+          step: (x) => (x >= 1 ? 1 : 0),
+        };
+        const mix = (a, b, x) =>
+          typeof a === "number" ? a + (b - a) * x : Object.fromEntries(Object.keys(a).map((k) => [k, a[k] + (b[k] - a[k]) * x]));
+        // keys: [[t, value, ease?], ...] — a key's ease shapes the segment that ends at it
+        const track = (keys, t) => {
+          if (t <= keys[0][0]) return keys[0][1];
+          for (let i = 1; i < keys.length; i++) {
+            const k = keys[i];
+            if (t <= k[0]) {
+              const p = keys[i - 1];
+              return mix(p[1], k[1], EASE[k[2] || "lin"]((t - p[0]) / (k[0] - p[0] || 1)));
+            }
+          }
+          return keys[keys.length - 1][1];
+        };
+        const prog = (t, t0, t1, e = "lin") => EASE[e](clamp((t - t0) / (t1 - t0), 0, 1));
+        const hash = (n) => {
+          const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+          return x - Math.floor(x);
+        };
+        const sample = (a, x) => {
+          if (x <= 0) return a[0];
+          const n = a.length - 1;
+          if (x >= n) return a[n];
+          const i = Math.floor(x);
+          return a[i] + (a[i + 1] - a[i]) * (x - i);
+        };
+        // deterministic camera shake from impact events [[t, amplitude, duration], ...]
+        const shake = (t, hits) => {
+          let x = 0, y = 0, r = 0;
+          for (const [t0, amp, dur] of hits) {
+            if (t < t0 || t > t0 + dur) continue;
+            const env = (1 - (t - t0) / dur) ** 2 * amp;
+            const k = Math.floor(t * 60);
+            x += (hash(k * 3 + 1) - 0.5) * 2 * env;
+            y += (hash(k * 5 + 2) - 0.5) * 2 * env;
+            r += (hash(k * 7 + 3) - 0.5) * 0.06 * env;
+          }
+          return { x, y, r };
+        };
+        
+        // ---- canvas ----
+        const canvas = (sel) => {
+          const c = $(sel);
+          const ctx = c.getContext("2d");
+          return ctx;
+        };
+        const yMap = (v, r) =>
+          v.log
+            ? (p) => r.y + r.h * (1 - (Math.log(p) - Math.log(v.y0)) / (Math.log(v.y1) - Math.log(v.y0)))
+            : (p) => r.y + r.h * (1 - (p - v.y0) / (v.y1 - v.y0));
+        const xMap = (v, r) => (t) => r.x + ((t - v.x0) / (v.x1 - v.x0)) * r.w;
+        // price line from game second `from` to `to` (fractional) in view v inside rect r
+        const priceLine = (ctx, a, from, to, v, r, o = {}) => {
+          const X = xMap(v, r), Y = yMap(v, r);
+          const t0 = Math.max(from, v.x0), t1 = Math.min(to, v.x1, a.length - 1);
+          if (t1 <= t0) return null;
+          const step = Math.max(0.25, (v.x1 - v.x0) / r.w);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(r.x - 4, r.y - (o.over ?? 0), r.w + 8, r.h + (o.over ?? 0) * 2);
+          ctx.clip();
+          ctx.beginPath();
+          ctx.moveTo(X(t0), Y(sample(a, t0)));
+          for (let t = t0 + step; t < t1; t += step) ctx.lineTo(X(t), Y(sample(a, t)));
+          const end = sample(a, t1);
+          const hx = X(t1), hy = Y(end);
+          ctx.lineTo(hx, hy);
+          const color = o.color ?? "236,242,247";
+          if (o.fill) {
+            ctx.save();
+            ctx.lineTo(hx, r.y + r.h);
+            ctx.lineTo(X(t0), r.y + r.h);
+            ctx.closePath();
+            const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+            g.addColorStop(0, `rgba(${color},${o.fill})`);
+            g.addColorStop(1, `rgba(${color},0)`);
+            ctx.fillStyle = g;
+            ctx.fill();
+            ctx.restore();
+            ctx.beginPath();
+            ctx.moveTo(X(t0), Y(sample(a, t0)));
+            for (let t = t0 + step; t < t1; t += step) ctx.lineTo(X(t), Y(sample(a, t)));
+            ctx.lineTo(hx, hy);
+          }
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.strokeStyle = `rgba(${color},${(o.glow ?? 0.16) * (o.alpha ?? 1)})`;
+          ctx.lineWidth = (o.lw ?? 4) * 5;
+          ctx.stroke();
+          ctx.strokeStyle = `rgba(${color},${o.alpha ?? 1})`;
+          ctx.lineWidth = o.lw ?? 4;
+          ctx.stroke();
+          ctx.restore();
+          return { x: hx, y: hy, p: end };
+        };
+        const head = (ctx, x, y, color = "236,242,247", s = 1) => {
+          const g = ctx.createRadialGradient(x, y, 0, x, y, 46 * s);
+          g.addColorStop(0, `rgba(${color},0.55)`);
+          g.addColorStop(1, `rgba(${color},0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(x, y, 46 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgb(${color})`;
+          ctx.beginPath();
+          ctx.arc(x, y, 9 * s, 0, Math.PI * 2);
+          ctx.fill();
+        };
+        // readable price ticks for any view (linear or log): coarse round numbers first, then finer ones
+        // wherever they still keep minPx apart
+        const niceTicks = (v, r, minPx = 70) => {
+          const Y = yMap(v, r);
+          const lo = Math.min(v.y0, v.y1), hi = Math.max(v.y0, v.y1);
+          // across a wide log range only round mantissas read as round (100k, 150k, 200k, 300k…)
+          const wide = hi / lo > 2.5;
+          const roundish = (p) => {
+            const m = p / 10 ** Math.floor(Math.log10(p));
+            return [1, 1.5, 2, 3, 4, 5, 6, 8].some((x) => Math.abs(m - x) < 1e-9);
+          };
+          const steps = [];
+          for (let k = Math.floor(Math.log10(hi)); k >= Math.floor(Math.log10(Math.max(1, hi - lo))) - 1; k--)
+            for (const m of [5, 2, 1]) steps.push(m * 10 ** k);
+          const keep = [];
+          for (const step of steps)
+            for (let p = Math.ceil(lo / step) * step; p <= hi; p += step) {
+              const y = Y(p);
+              if (y < r.y + 20 || y > r.y + r.h - 8 || (wide && !roundish(p))) continue;
+              if (keep.every((q) => Math.abs(Y(q) - y) >= minPx)) keep.push(p);
+            }
+          return keep;
+        };
+        // faint price grid with labels on the right edge of r
+        const grid = (ctx, v, r, prices, o = {}) => {
+          const Y = yMap(v, r);
+          ctx.save();
+          ctx.font = `700 ${o.size ?? 22}px "JetBrains Mono"`;
+          ctx.textAlign = "right";
+          ctx.textBaseline = "bottom";
+          for (const p of prices) {
+            const y = Y(p);
+            if (y < r.y - 2 || y > r.y + r.h + 2) continue;
+            ctx.fillStyle = `rgba(236,242,247,${o.line ?? 0.08})`;
+            ctx.fillRect(r.x, Math.round(y), r.w, 2);
+            ctx.fillStyle = `rgba(147,163,180,${o.label ?? 0.85})`;
+            ctx.fillText(usd(p), r.x + r.w, y - 8);
+          }
+          ctx.restore();
+        };
+        const bgGrid = (ctx, alpha = 0.05, ox = 0, oy = 0) => {
+          ctx.fillStyle = `rgba(236,242,247,${alpha})`;
+          const sx = ((ox % 60) + 60) % 60, sy = ((oy % 60) + 60) % 60;
+          for (let x = sx; x < 1920; x += 60) ctx.fillRect(Math.round(x), 0, 1, 1080);
+          for (let y = sy; y < 1080; y += 60) ctx.fillRect(0, Math.round(y), 1920, 1);
+        };
+        // ballistic particle burst, a pure function of time since t0
+        const burst = (ctx, t, t0, x, y, o = {}) => {
+          const tau = t - t0;
+          const life = o.life ?? 1.2;
+          if (tau < 0 || tau > life) return;
+          const n = o.n ?? 40;
+          const color = o.color ?? "45,226,166";
+          for (let i = 0; i < n; i++) {
+            const a = (o.angle ?? -Math.PI / 2) + (hash(i * 7 + (o.seed ?? 1)) - 0.5) * (o.arc ?? Math.PI * 1.2);
+            const sp = (o.speed ?? 900) * (0.35 + hash(i * 13 + (o.seed ?? 1)) * 0.9);
+            const px = x + Math.cos(a) * sp * tau;
+            const py = y + Math.sin(a) * sp * tau + 0.5 * (o.g ?? 900) * tau * tau;
+            const k = 1 - tau / life;
+            const s = (o.size ?? 6) * (0.5 + hash(i * 3 + 9));
+            ctx.fillStyle = `rgba(${color},${k * k})`;
+            ctx.fillRect(px - s / 2, py - s / 2, s, s * (o.stretch ?? 1));
+          }
+        };
+        
+        // ---- broadcast chrome: REPLAY bug, game clock, 24-turn scrubber ----
+        const chrome = (box, who, seed) => {
+          box.insertAdjacentHTML(
+            "beforeend",
+            // the overlay's vignette deliberately grades the frame corners over the broadcast chrome
+            `<div class="bug"><div class="rec" data-layout-allow-occlusion><i></i>REPLAY</div><div class="who" data-layout-allow-occlusion>${who}<span data-layout-allow-occlusion>SEED ${seed}</span></div></div>` +
+              `<div class="clockbox"><span data-layout-allow-occlusion>T+</span><b class="ck" data-layout-allow-occlusion>00:00:00</b><span data-layout-allow-occlusion>/ 02:00:00</span></div>` +
+              `<div class="scrub"><div class="rail"></div>${Array.from({ length: 23 }, (_, i) => `<div class="tick" style="left:${((i + 1) / 24) * 1776}px"></div>`).join("")}<div class="fill"></div><div class="head"></div></div>`,
+          );
+          const ck = box.querySelector(".ck"), fill = box.querySelector(".fill"), hd = box.querySelector(".head");
+          return (gameT) => {
+            const g = clamp(gameT, 0, 7200);
+            setText(ck, clock(g));
+            fill.style.transform = `scaleX(${g / 7200})`;
+            hd.style.transform = `translateX(${(g / 7200) * 1776}px)`;
+          };
+        };
+        // one driver: render(ft) for the whole scene
+        const drive = (render) => {
+          const c = { v: 0 };
+          render(SCENE.T0);
+          tl.to(c, { v: SCENE.DUR, duration: SCENE.DUR, ease: "none", onUpdate: () => render(SCENE.T0 + c.v) }, 0);
+        };
+// @kit-js:end
+          // @data:start
+        const DATA = {"name":"deyo","seed":3193907700,"pnl":2280101613.77,"leverage":20,"actions":32,"ticks":7216,"peak":33098292591.543285,"peakT":7162,"bell":29002911175,"liqT":7208,"end":7215,"p":[94143,94134,94134,94081,94042,94140,94139,94140,94140,94114,94129,94144,94165,94134,94169,94152,94134,94134,94169,94169,94169,94156,94156,94156,94156,94156,94156,94168,94169,94169,94156,94171,94171,94171,94171,94156,94171,94137,94165,94149,94163,94128,94171,94171,94155,94144,94148,94174,94177,94170,94170,94170,94157,94146,94165,94150,94144,94144,94159,94144,94154,94155,94156,94203,94217,94202,94205,94192,94163,94169,94199,94185,94204,94209,94194,94178,94174,94174,94174,94174,94174,94174,94177,94182,94174,94174,94196,94174,94276,94205,94169,94214,94203,94181,94192,94181,94181,94239,94171,94176,94186,94171,94182,94182,94182,94168,94168,94168,94168,94175,94163,94170,94175,94175,94208,94200,94166,94168,94168,94177,94177,94177,94177,94177,94177,94177,94177,94177,94177,94177,94175,94162,94159,94152,94169,94167,94175,94177,94171,94171,94158,94158,94158,94158,94162,94162,94143,94141,94152,94138,94148,94148,94177,94176,94163,94181,94154,94166,94154,94148,94163,94163,94163,94163,94163,94177,94155,94189,94172,94189,94204,94187,94187,94171,94190,94203,94191,94193,94176,94193,94176,94187,94208,94192,94192,94192,94192,94175,94175,94175,94171,94192,94180,94201,94170,94180,94180,94166,94176,94173,94173,94159,94173,94159,94173,94159,94169,94159,94159,94159,94159,94162,94162,94173,94159,94159,94162,94162,94162,94159,94161,94161,94161,94159,94177,94164,94149,94147,94133,94133,94157,94144,94180,94153,94153,94149,94122,94126,94122,94132,94120,94120,94125,94120,94135,94135,94151,94120,94132,94132,94133,94117,94115,94146,94149,94123,94108,94113,94110,94126,94110,94122,94098,94096,94132,94096,94116,94116,94116,94116,94104,94104,94101,94130,94101,94089,94087,94089,94089,94085,94104,94100,94083,94160,94090,94109,94078,94103,94089,94089,94089,94089,94089,94096,94089,94099,94083,94083,94094,94060,94090,94090,94090,94160,94181,94127,94182,94153,94230,94160,94195,94195,94233,94342,94293,94194,94175,94175,94165,94206,94189,94171,94171,94160,94154,94148,94132,94173,94123,94123,94122,94104,94110,94101,94175,94090,94102,94090,94091,94049,94088,94105,94105,94092,94076,94051,94076,94075,94090,94090,94061,94067,94126,94121,94121,94077,94100,94100,94100,94100,94028,94040,94082,94107,94092,94115,94028,94065,94110,94115,94080,94080,94080,94090,94090,94072,94115,94115,94087,94098,94072,94098,94072,94115,94115,94115,94075,94067,94067,94115,94115,94088,94115,94075,94082,94115,94080,94071,94076,94093,94071,94112,94078,94092,94061,94061,94061,94076,94079,94061,94074,94074,94061,94074,94061,94061,94061,94061,94115,94115,94183,94135,94321,94208,94205,94237,94208,94208,94423,94301,94459,94354,94297,94394,94302,94313,94306,94326,94278,94278,94282,94254,94264,94254,94281,94254,94254,94255,94255,94255,94255,94254,94254,94255,94255,94255,94254,94254,94255,94255,94312,94248,94264,94249,94249,94254,94246,94254,94213,94242,94218,94218,94213,94204,94249,94191,94216,94195,94195,94198,94182,94183,94198,94221,94167,94194,94221,94221,94187,94198,94164,94158,94179,94162,94128,94129,94192,94169,94129,94155,94155,94204,94135,94128,94185,94144,94157,94139,94139,94131,94139,94124,94098,94098,94121,94121,94106,94077,94074,94085,94082,94103,94103,94168,94125,94105,94059,94070,94127,94107,94063,94062,94072,94121,94134,94092,94063,94099,94062,94088,94055,94064,94081,94074,94020,94074,94011,94049,94074,94072,94074,94074,94074,94074,94058,94055,94053,94061,94061,94052,94061,94052,94052,94052,94052,94052,94052,94052,94052,94053,94052,94053,94053,94053,94053,94053,94053,94052,94053,94052,94052,94053,94052,94068,94052,94053,94052,94053,94053,94062,94052,94053,94052,94052,94052,94052,94052,94052,94052,94052,94052,94053,94052,94044,94044,94053,94069,94045,94042,94037,94020,94069,94036,94053,94046,94051,94046,94047,94054,94047,94047,94046,94047,94046,94047,94046,94058,94056,94086,94046,94090,94076,94048,94048,94079,94055,94048,94048,94049,94049,94028,94020,94135,94056,94023,94065,94043,94101,94053,94050,94059,94094,94099,94066,94066,94059,94058,94065,94110,94086,94030,94043,94086,94043,94043,94043,94045,94043,94043,94043,94043,94037,94015,94003,94125,94053,94053,94052,94009,94009,94009,94009,94009,94033,94066,94003,94021,94002,94012,94012,94056,94000,94000,94019,94000,94006,93968,93909,94056,94012,94086,94028,94028,94036,94036,94033,94054,94032,94029,94046,94024,94039,94041,94018,94034,94018,94046,94018,93980,94041,94041,93988,93980,93980,93976,93909,93988,93669,93679,94066,94061,93953,94145,94297,94297,94308,94143,94161,94363,94442,94334,94335,94350,94352,94332,94326,94320,94320,94320,94313,94304,94267,94264,94267,94281,94252,94252,94252,94255,94230,94236,94230,94190,94174,94174,94162,94200,94175,94175,94155,94138,94108,94108,94109,94108,94109,94109,94109,94109,94109,94108,94108,94108,94109,94108,94109,94108,94108,94109,94109,94109,94109,94109,94109,94109,94109,94108,94076,94076,94081,94076,94020,94037,94011,94018,93994,94011,94040,94001,94001,93982,93982,93983,93983,93924,93802,93975,93796,93394,93677,93820,93274,93881,93528,93700,93863,93863,93953,93960,93957,93957,94152,94152,94104,94116,94033,94052,94067,94067,94060,94007,94061,94014,94050,94122,94053,93956,94004,94073,94030,94026,93934,94020,94022,94022,93960,93985,93963,93963,93986,93963,93958,93947,93935,93986,93986,93966,93950,93943,93915,93927,93879,93891,93899,93918,93880,93888,93867,93860,93869,93869,93846,93816,93816,93841,93831,93830,93813,93822,93821,93818,93802,93809,93793,93786,93828,93770,93815,93782,93793,93572,93198,92918,92834,92385,91409,92015,91830,92674,92382,91815,92834,91854,91922,91766,91722,91477,91303,91093,91592,91459,91570,91537,91469,91449,91559,91542,91542,91557,91586,91575,91585,91585,91502,91502,91585,91586,91586,91585,91586,91586,91586,91585,91724,91884,91818,91957,91986,91986,91985,92170,92105,92132,92178,92219,92219,92218,92218,92349,92321,92339,92373,92437,92363,92415,92433,92447,92447,92447,92447,92443,92448,92448,92447,92442,92462,92462,92461,92461,92461,92559,92613,92602,92624,92623,92672,92632,92717,92722,92722,92721,92752,92751,92748,92754,92737,92788,92790,92795,92831,92831,92816,92846,92873,92847,92875,92875,92875,92838,92872,92874,92956,92874,92985,92928,93048,93001,92979,92948,92972,92959,92972,92959,92971,92959,92985,93049,92981,93026,93016,93020,93009,92993,92993,92974,92982,93004,93007,93008,93014,93002,93016,92989,92999,93012,93016,93016,92974,92980,92990,92975,92959,92990,92978,92978,92990,92990,92953,92978,92978,92990,92978,92998,92982,92998,92998,92987,92987,92978,92998,92998,92989,92998,92978,92998,92984,92984,93014,92990,93014,93008,93020,93014,92984,93017,92984,93017,92999,93029,93016,93037,93010,93041,93041,93053,93025,93038,93057,93047,93033,93084,93078,93065,93078,93072,93073,93086,93059,93059,93055,93052,93066,93052,93067,93033,93034,93099,93033,93057,93030,93052,93053,93036,93049,93022,93044,93044,93047,93082,93030,92969,93075,93042,93061,93047,93033,93033,93033,93033,93033,93027,93079,93038,93046,93058,93102,93102,93102,93030,93070,93070,93070,93070,93070,93070,93070,93073,93085,93076,93076,93076,93059,93059,93084,93059,93059,93079,93079,93079,93060,93060,93060,93065,93065,93065,93047,93047,93034,93041,93055,93070,93070,93070,93052,93052,93045,93045,93060,93042,93052,93052,93042,93042,93032,93043,93060,93060,93051,93050,93050,93037,93044,93037,93050,93044,93044,93056,93056,93037,93037,93037,93040,93037,93047,93037,93047,93039,93026,93026,93026,93028,93026,93025,93011,93019,93019,93019,93007,93014,92996,92977,92947,92971,92980,92953,92925,92975,92949,92974,92965,93002,92954,92986,92963,92972,92960,93045,92979,93004,92982,93004,92994,92994,92982,92988,93004,92968,92985,92962,92962,92962,92970,92970,92970,92970,92978,92971,92971,92969,93008,92967,92963,92962,92967,92978,92962,92960,92950,92946,92907,92941,92940,92992,92942,92951,92938,92938,92992,92955,92942,92942,92927,92927,92935,92935,92948,92884,92884,92881,92901,92962,92919,92918,92905,92929,92905,92925,92905,92886,92892,92888,92884,92880,92876,92887,92887,92887,92887,92887,92875,92887,92859,92863,92856,92856,92854,92840,92856,92871,92882,92853,92863,92863,92842,92857,92827,92838,92846,92846,92846,92828,92828,92840,92825,92806,92802,92840,92807,92807,92838,92825,92838,92838,92832,92803,92858,92836,92823,92787,92796,92829,92787,92827,92833,92812,92821,92824,92812,92836,92813,92826,92803,92820,92836,92858,92823,92807,92813,92837,92810,92813,92820,92810,92844,92815,92812,92810,92809,92789,92809,92798,92790,92789,92837,92800,92800,92789,92789,92789,92789,92800,92792,92792,92826,92792,92804,92804,92804,92807,92792,92792,92804,92794,92794,92807,92804,92804,92807,92794,92792,92792,92792,92792,92800,92789,92789,92787,92787,92807,92800,92789,92789,92789,92789,92820,92794,92794,92794,92791,92791,92802,92780,92780,92777,92756,92783,92796,92789,92792,92783,92792,92782,92781,92792,92792,92792,92792,92783,92774,92787,92756,92770,92781,92735,92755,92766,92766,92745,92745,92750,92758,92760,92735,92744,92744,92744,92779,92763,92768,92768,92781,92776,92766,92776,92766,92776,92776,92766,92758,92783,92767,92778,92778,92767,92775,92767,92795,92772,92767,92769,92766,92777,92777,92768,92779,92768,92768,92808,92775,92775,92783,92783,92783,92777,92796,92808,92794,92806,92806,92802,92813,92794,92794,92794,92794,92811,92804,92804,92815,92810,92810,92810,92810,92786,92802,92802,92802,92782,92798,92798,92798,92787,92794,92777,92803,92785,92782,92791,92780,92780,92780,92772,92786,92786,92774,92810,92782,92793,92793,92796,92786,92766,92790,92792,92794,92781,92810,92764,92806,92806,92806,92784,92792,92802,92802,92783,92802,92771,92784,92784,92795,92764,92799,92765,92817,92797,92775,92786,92786,92780,92780,92780,92776,92776,92773,92783,92784,92784,92793,92779,92790,92790,92790,92779,92776,92772,92762,92793,92772,92770,92755,92796,92817,92793,92793,92762,92793,92788,92788,92761,92783,92795,92802,92802,92727,92764,92791,92778,92808,92797,92773,92783,92768,92742,92754,92765,92804,92765,92763,92760,92770,92736,92760,92747,92770,92761,92761,92761,92748,92748,92748,92748,92748,92748,92732,92732,92749,92741,92718,92741,92720,92730,92702,92706,92718,92706,92706,92718,92718,92700,92718,92713,92699,92699,92713,92713,92682,92717,92689,92741,92693,92719,92682,92714,92682,92712,92691,92686,92686,92680,92675,92683,92719,92705,92681,92681,92688,92690,92676,92684,92684,92684,92676,92684,92670,92667,92672,92661,92670,92661,92670,92680,92671,92671,92660,92660,92660,92667,92660,92660,92660,92660,92642,92667,92667,92661,92661,92667,92667,92654,92664,92688,92650,92676,92668,92657,92668,92653,92659,92660,92660,92674,92653,92661,92649,92656,92645,92661,92644,92632,92623,92654,92634,92642,92645,92630,92638,92652,92608,92633,92633,92633,92622,92622,92622,92627,92627,92627,92627,92627,92627,92622,92630,92622,92622,92628,92640,92618,92598,92609,92616,92606,92603,92602,92610,92616,92601,92609,92601,92609,92582,92581,92595,92579,92583,92592,92626,92603,92583,92598,92587,92586,92626,92591,92597,92597,92588,92593,92593,92588,92588,92593,92593,92588,92590,92588,92593,92588,92588,92588,92588,92588,92588,92588,92588,92588,92588,92588,92588,92588,92592,92592,92588,92588,92588,92589,92589,92588,92588,92593,92589,92593,92589,92588,92589,92593,92588,92588,92593,92589,92588,92589,92589,92588,92588,92589,92589,92589,92589,92589,92588,92589,92588,92588,92589,92588,92588,92588,92589,92608,92588,92594,92588,92610,92588,92588,92595,92588,92610,92592,92592,92592,92592,92592,92592,92598,92598,92592,92592,92598,92592,92599,92592,92592,92592,92592,92597,92597,92597,92592,92592,92611,92592,92644,92644,92637,92628,92669,92617,92637,92625,92625,92623,92621,92621,92629,92621,92641,92646,92637,92626,92626,92635,92626,92609,92616,92640,92621,92646,92624,92632,92632,92642,92624,92621,92629,92645,92624,92630,92620,92620,92613,92651,92616,92612,92623,92610,92607,92604,92586,92595,92619,92624,92624,92597,92601,92601,92649,92583,92613,92600,92598,92596,92632,92614,92614,92614,92614,92615,92616,92594,92601,92598,92598,92598,92583,92601,92591,92580,92630,92587,92592,92610,92605,92605,92605,92594,92621,92621,92603,92623,92599,92594,92596,92605,92573,92573,92578,92578,92588,92591,92578,92578,92605,92573,92591,92591,92579,92579,92606,92585,92597,92610,92610,92605,92605,92605,92595,92595,92579,92598,92598,92599,92588,92588,92588,92563,92599,92579,92579,92599,92599,92573,92573,92558,92578,92591,92570,92580,92580,92567,92567,92558,92560,92568,92558,92568,92545,92562,92577,92569,92559,92569,92540,92563,92563,92570,92534,92536,92573,92568,92563,92563,92540,92559,92548,92577,92565,92545,92554,92559,92559,92559,92549,92557,92557,92571,92565,92552,92563,92552,92565,92565,92565,92552,92552,92561,92563,92549,92562,92539,92546,92544,92543,92551,92561,92545,92545,92554,92556,92543,92555,92555,92544,92543,92543,92543,92543,92543,92543,92543,92549,92543,92549,92543,92534,92532,92532,92549,92549,92535,92535,92546,92559,92548,92551,92539,92551,92551,92538,92538,92538,92545,92559,92550,92561,92572,92550,92550,92557,92535,92572,92547,92559,92547,92560,92559,92576,92553,92575,92582,92582,92546,92554,92550,92580,92565,92565,92541,92558,92545,92543,92538,92534,92523,92525,92525,92547,92526,92564,92546,92560,92532,92532,92546,92549,92537,92549,92537,92562,92542,92539,92539,92539,92539,92593,92565,92539,92602,92588,92579,92567,92576,92589,92581,92553,92560,92604,92600,92561,92575,92575,92582,92567,92582,92579,92582,92565,92578,92565,92582,92582,92582,92581,92568,92564,92602,92559,92589,92567,92543,92566,92545,92548,92556,92539,92539,92565,92570,92559,92559,92559,92559,92570,92551,92563,92551,92543,92544,92544,92543,92552,92543,92552,92543,92543,92575,92537,92537,92563,92569,92516,92516,92531,92543,92531,92531,92577,92529,92562,92562,92554,92545,92545,92545,92545,92545,92545,92545,92545,92554,92545,92554,92554,92545,92545,92545,92551,92551,92579,92535,92565,92552,92565,92565,92565,92553,92553,92535,92565,92561,92565,92564,92549,92565,92549,92549,92558,92558,92582,92583,92573,92573,92514,92544,92556,92543,92552,92541,92541,92537,92537,92546,92537,92537,92546,92546,92546,92546,92546,92534,92534,92541,92542,92528,92525,92514,92518,92531,92531,92531,92518,92518,92531,92527,92529,92531,92531,92531,92519,92516,92525,92531,92512,92531,92513,92526,92508,92518,92543,92525,92525,92513,92508,92517,92517,92508,92508,92513,92525,92508,92508,92508,92508,92508,92509,92508,92508,92508,92508,92542,92508,92508,92549,92508,92508,92508,92511,92511,92511,92508,92508,92511,92508,92508,92511,92511,92511,92508,92511,92424,92148,92696,92748,92528,92558,92581,92581,92550,92550,92564,92550,92550,92550,92550,92564,92550,92550,92552,92550,92566,92553,92550,92550,92550,92551,92550,92574,92535,92545,92535,92535,92535,92536,92535,92535,92556,92535,92520,92520,92511,92540,92525,92511,92511,92501,92512,92512,92529,92501,92491,92504,92488,92513,92503,92518,92508,92501,92488,92493,92477,92505,92505,92484,92500,92500,92505,92505,92490,92490,92490,92517,92507,92507,92497,92507,92520,92525,92516,92530,92508,92506,92515,92505,92512,92545,92521,92523,92510,92560,92533,92503,92514,92555,92522,92511,92516,92527,92516,92527,92527,92491,92520,92520,92510,92510,92520,92500,92520,92529,92533,92526,92516,92526,92516,92526,92505,92526,92505,92520,92520,92510,92520,92510,92510,92520,92520,92491,92500,92500,92477,92477,92512,92502,92501,92477,92484,92477,92490,92477,92498,92491,92493,92493,92482,92442,92449,92435,92435,92448,92449,92449,92449,92449,92439,92473,92455,92443,92458,92464,92451,92418,92390,92440,92431,92444,92418,92428,92427,92427,92439,92444,92404,92444,92444,92418,92413,92413,92421,92404,92418,92427,92411,92399,92444,92400,92400,92400,92399,92392,92403,92367,92376,92389,92376,92376,92380,92376,92376,92376,92378,92338,92340,92389,92325,92343,92368,92357,92281,92320,92306,92309,92318,92306,92315,92306,92312,92320,92313,92306,92320,92325,92302,92331,92329,92292,92326,92294,92298,92294,92294,92318,92307,92225,92184,92241,92251,92265,92268,92195,92235,92285,92245,92258,92245,92245,92258,92245,92251,92264,92245,92245,92245,92245,92245,92245,92245,92259,92249,92245,92245,92245,92246,92245,92246,92264,92247,92247,92247,92246,92246,92245,92245,92245,92278,92251,92251,92245,92248,92248,92248,92248,92245,92245,92248,92248,92275,92245,92247,92258,92258,92246,92246,92245,92245,92245,92245,92245,92246,92245,92246,92245,92246,92246,92246,92246,92245,92245,92246,92246,92245,92245,92246,92245,92245,92279,92250,92250,92250,92250,92196,92247,92247,92227,92235,92235,92201,92201,92201,92214,92214,92175,92175,92235,92206,92206,92195,92200,92200,92189,92189,92189,92223,92199,92199,92189,92193,92189,92189,92189,92189,92189,92189,92190,92190,92190,92189,92190,92190,92189,92189,92189,92190,92189,92190,92190,92190,92190,92189,92189,92204,92195,92185,92225,92215,92237,92208,92205,92205,92213,92213,92204,92204,92213,92205,92205,92204,92204,92204,92213,92205,92205,92192,92226,92198,92198,92215,92205,92215,92199,92215,92215,92247,92216,92216,92216,92216,92216,92214,92198,92215,92225,92225,92225,92225,92225,92215,92225,92215,92239,92218,92218,92227,92227,92229,92231,92245,92220,92251,92243,92219,92219,92219,92243,92313,92248,92248,92258,92258,92218,92218,92218,92254,92231,92231,92231,92240,92219,92248,92248,92250,92243,92256,92235,92243,92227,92228,92228,92228,92185,92222,92185,92236,92200,92216,92220,92207,92207,92218,92207,92232,92223,92214,92214,92214,92223,92210,92233,92233,92227,92227,92216,92240,92207,92310,92240,92251,92240,92236,92259,92273,92261,92274,92261,92261,92286,92330,92304,92304,92283,92254,92260,92260,92260,92301,92293,92314,92267,92296,92289,92289,92296,92288,92296,92290,92277,92285,92268,92314,92299,92314,92314,92302,92281,92296,92284,92302,92293,92302,92282,92281,92291,92291,92291,92291,92281,92291,92288,92281,92328,92281,92300,92278,92324,92328,92307,92321,92273,92353,92290,92274,92296,92375,92375,92307,92335,92355,92398,92363,92382,92382,92319,92337,92349,92398,92398,92322,92368,92368,92368,92393,92368,92382,92370,92370,92356,92416,92364,92347,92440,92370,92412,92400,92373,92370,92395,92383,92383,92370,92379,92370,92376,92445,92409,92434,92396,92396,92431,92431,92415,92401,92446,92447,92439,92439,92403,92420,92408,92431,92420,92420,92447,92424,92403,92424,92396,92423,92424,92426,92426,92376,92385,92413,92393,92404,92402,92402,92380,92407,92389,92380,92373,92390,92378,92378,92378,92384,92389,92339,92359,92336,92413,92374,92385,92362,92372,92338,92360,92349,92370,92361,92392,92344,92347,92356,92344,92454,92393,92360,92371,92354,92357,92364,92378,92368,92379,92371,92357,92357,92357,92328,92340,92356,92340,92346,92346,92362,92362,92366,92340,92350,92350,92364,92344,92352,92342,92342,92349,92340,92340,92344,92340,92340,92366,92348,92348,92340,92359,92340,92340,92340,92349,92349,92340,92349,92362,92377,92362,92364,92352,92364,92350,92362,92362,92365,92354,92379,92346,92351,92349,92359,92359,92361,92347,92361,92351,92359,92348,92359,92359,92359,92350,92360,92360,92360,92369,92355,92355,92355,92355,92355,92363,92369,92350,92350,92353,92380,92350,92355,92345,92348,92360,92340,92383,92366,92341,92340,92358,92328,92367,92367,92374,92354,92379,92379,92373,92374,92376,92364,92362,92352,92353,92376,92369,92356,92366,92367,92369,92357,92343,92328,92366,92357,92357,92387,92370,92371,92361,92359,92395,92358,92373,92373,92380,92391,92380,92358,92377,92377,92358,92358,92358,92370,92370,92370,92373,92385,92378,92364,92364,92374,92374,92374,92368,92368,92378,92395,92368,92409,92382,92382,92382,92422,92422,92390,92390,92390,92390,92390,92390,92390,92390,92390,92398,92390,92390,92390,92390,92398,92398,92405,92358,92405,92405,92378,92395,92358,92358,92358,92377,92358,92363,92363,92408,92383,92396,92388,92388,92388,92388,92405,92411,92411,92417,92397,92387,92390,92390,92390,92430,92390,92392,92403,92390,92390,92380,92395,92395,92395,92401,92401,92388,92388,92397,92397,92388,92396,92399,92375,92395,92383,92375,92375,92393,92375,92393,92393,92380,92375,92393,92376,92375,92388,92388,92376,92380,92391,92393,92394,92395,92380,92385,92395,92395,92395,92387,92387,92387,92387,92387,92395,92395,92378,92378,92378,92391,92391,92383,92383,92396,92396,92387,92396,92399,92399,92358,92392,92392,92397,92400,92400,92400,92386,92386,92390,92390,92406,92406,92395,92403,92395,92406,92406,92398,92398,92418,92412,92402,92402,92412,92412,92406,92402,92427,92420,92402,92402,92417,92406,92406,92384,92409,92409,92409,92400,92400,92423,92427,92409,92409,92409,92406,92415,92419,92407,92419,92396,92389,92419,92400,92411,92400,92411,92411,92400,92407,92422,92401,92399,92399,92399,92437,92431,92423,92423,92412,92422,92422,92396,92417,92396,92415,92415,92417,92407,92417,92439,92428,92430,92431,92454,92418,92418,92438,92455,92409,92433,92411,92411,92412,92447,92447,92432,92432,92432,92413,92431,92418,92415,92425,92415,92424,92424,92413,92424,92413,92413,92413,92409,92419,92407,92419,92420,92420,92408,92397,92392,92422,92422,92418,92418,92375,92375,92399,92387,92409,92401,92403,92379,92388,92379,92393,92384,92399,92397,92399,92387,92399,92389,92399,92373,92383,92383,92391,92399,92385,92385,92385,92382,92392,92382,92393,92408,92400,92402,92392,92381,92371,92391,92391,92391,92384,92384,92396,92384,92384,92384,92389,92389,92384,92394,92392,92384,92380,92388,92377,92377,92377,92377,92377,92382,92377,92377,92383,92377,92377,92377,92386,92388,92379,92377,92389,92389,92380,92377,92404,92404,92388,92410,92392,92416,92396,92388,92402,92390,92390,92390,92390,92390,92390,92390,92390,92418,92418,92390,92420,92414,92403,92417,92420,92420,92412,92390,92414,92414,92404,92390,92390,92395,92406,92397,92409,92399,92397,92390,92409,92397,92395,92409,92390,92396,92390,92405,92437,92437,92415,92415,92426,92415,92437,92421,92415,92419,92428,92428,92415,92438,92431,92431,92431,92437,92437,92438,92437,92437,92438,92445,92431,92439,92428,92436,92436,92436,92428,92428,92428,92428,92428,92428,92444,92428,92457,92432,92440,92429,92458,92445,92433,92433,92441,92420,92420,92420,92462,92420,92436,92436,92436,92420,92415,92415,92415,92415,92496,92457,92457,92432,92447,92514,92501,92519,92492,92519,92487,92496,92496,92484,92484,92484,92478,92483,92478,92478,92478,92478,92480,92480,92478,92478,92449,92458,92480,92459,92459,92459,92459,92459,92429,92438,92433,92472,92451,92451,92451,92451,92437,92451,92437,92437,92437,92437,92446,92446,92417,92410,92415,92415,92421,92421,92415,92420,92442,92415,92415,92446,92415,92427,92427,92415,92415,92406,92420,92420,92436,92436,92407,92407,92408,92408,92407,92407,92407,92451,92480,92480,92472,92432,92480,92462,92437,92429,92449,92449,92439,92439,92439,92448,92448,92448,92436,92436,92427,92440,92440,92440,92430,92422,92434,92407,92440,92407,92440,92418,92429,92418,92414,92414,92399,92404,92404,92393,92396,92390,92401,92391,92401,92392,92404,92392,92389,92389,92389,92389,92389,92412,92402,92389,92389,92389,92389,92397,92389,92397,92399,92401,92401,92415,92424,92389,92412,92424,92420,92410,92410,92422,92434,92446,92437,92426,92426,92426,92436,92426,92417,92422,92412,92419,92419,92419,92411,92430,92393,92424,92415,92424,92415,92424,92419,92418,92411,92427,92419,92430,92470,92471,92434,92439,92450,92428,92460,92499,92469,92434,92463,92466,92433,92470,92451,92462,92451,92473,92456,92466,92488,92488,92462,92468,92467,92456,92463,92463,92478,92615,92748,92704,92805,92666,92850,92850,92938,92941,92953,92929,92956,92956,92957,92955,92955,92960,92960,92961,92961,92959,92959,92961,92961,92961,92961,92962,92959,92962,92962,92960,92960,92962,92959,92959,92962,92955,92956,92960,92929,92920,92903,92871,92883,92893,92871,92847,92836,92839,92836,92839,92818,92771,92808,92806,92788,92798,92768,92768,92764,92764,92764,92758,92758,92788,92759,92759,92736,92729,92709,92709,92648,92658,92605,92662,92651,92647,92654,92654,92644,92644,92644,92644,92644,92646,92646,92646,92646,92646,92654,92654,92654,92627,92530,92643,92648,92648,92633,92622,92622,92622,92622,92623,92592,92617,92604,92600,92600,92600,92619,92600,92600,92581,92596,92583,92571,92596,92619,92566,92597,92575,92585,92575,92575,92579,92575,92575,92575,92575,92575,92575,92575,92575,92576,92575,92576,92582,92576,92576,92575,92575,92575,92576,92575,92582,92575,92575,92576,92575,92575,92575,92582,92588,92576,92576,92576,92576,92584,92576,92584,92575,92575,92575,92575,92576,92581,92575,92566,92568,92568,92568,92568,92566,92568,92564,92564,92565,92550,92546,92553,92553,92553,92553,92541,92547,92547,92547,92526,92547,92534,92544,92553,92553,92534,92544,92526,92553,92553,92548,92548,92548,92537,92525,92517,92521,92528,92528,92510,92513,92568,92505,92505,92543,92522,92534,92534,92534,92534,92534,92522,92521,92518,92515,92513,92513,92513,92549,92549,92549,92486,92525,92512,92512,92556,92512,92512,92534,92534,92463,92463,92560,92568,92498,92527,92527,92512,92566,92507,92507,92496,92504,92477,92479,92479,92479,92477,92477,92477,92497,92477,92477,92477,92497,92497,92477,92477,92477,92504,92477,92477,92477,92478,92477,92478,92478,92437,92421,92484,92438,92414,92442,92442,92442,92442,92429,92429,92429,92429,92429,92429,92432,92432,92432,92429,92429,92429,92432,92429,92360,92360,92393,92396,92420,92359,92359,92359,92359,92359,92361,92356,92356,92356,92356,92391,92378,92355,92352,92351,92351,92351,92350,92351,92350,92349,92348,92345,92345,92339,92421,92418,92389,92389,92380,92366,92366,92371,92359,92378,92378,92381,92396,92396,92383,92447,92447,92405,92420,92420,92405,92448,92420,92420,92420,92420,92428,92410,92376,92402,92412,92402,92402,92427,92409,92420,92420,92387,92393,92386,92408,92398,92411,92413,92404,92413,92413,92391,92385,92379,92373,92371,92369,92402,92379,92379,92379,92379,92365,92384,92399,92379,92372,92387,92390,92371,92388,92379,92379,92379,92402,92371,92411,92387,92362,92362,92372,92390,92375,92363,92367,92367,92372,92377,92368,92382,92370,92358,92374,92367,92382,92360,92368,92378,92368,92368,92368,92381,92413,92373,92369,92406,92398,92413,92362,92399,92402,92341,92387,92367,92399,92385,92385,92381,92380,92385,92392,92369,92401,92406,92420,92388,92395,92402,92395,92417,92420,92414,92420,92420,92420,92385,92421,92416,92416,92407,92404,92403,92415,92403,92415,92403,92416,92413,92413,92416,92414,92403,92403,92401,92411,92401,92411,92411,92390,92396,92411,92411,92397,92416,92411,92400,92411,92411,92411,92411,92400,92400,92408,92398,92390,92410,92397,92397,92397,92397,92397,92397,92382,92387,92397,92387,92387,92387,92387,92394,92387,92384,92394,92394,92394,92383,92394,92383,92380,92394,92394,92381,92393,92393,92384,92384,92384,92393,92384,92393,92397,92396,92396,92400,92380,92376,92390,92390,92373,92373,92373,92386,92386,92373,92369,92386,92386,92374,92374,92359,92359,92359,92373,92373,92386,92379,92358,92386,92386,92372,92358,92376,92376,92376,92379,92358,92358,92374,92379,92379,92379,92378,92351,92343,92345,92337,92356,92374,92365,92378,92370,92371,92370,92348,92337,92337,92337,92353,92353,92356,92340,92357,92357,92347,92337,92364,92348,92348,92357,92357,92357,92350,92350,92350,92348,92336,92358,92357,92346,92346,92357,92357,92349,92349,92349,92347,92371,92351,92351,92349,92349,92346,92346,92358,92346,92358,92367,92352,92352,92343,92343,92370,92370,92370,92370,92360,92360,92369,92360,92372,92372,92360,92360,92360,92369,92360,92372,92353,92374,92374,92374,92374,92374,92374,92375,92375,92375,92375,92373,92373,92409,92396,92479,92479,92441,92441,92481,92481,92514,92471,92572,92572,92538,92538,92882,92910,92943,92943,92945,92945,92945,92945,92949,92908,92957,92942,92946,92897,92897,92964,92966,92897,92916,92966,92897,92897,92897,92897,92897,92897,92933,92897,92919,92938,92972,92929,92899,92899,92948,92897,92973,92937,92980,92921,92820,92930,92997,92999,92999,92846,92934,92897,92958,92923,92999,92905,92951,92951,92955,92896,92907,92999,92896,92921,92928,92878,92890,92903,92881,92871,92888,92888,92843,92789,92846,92879,92836,92941,92902,92879,92879,92854,92854,92843,92835,92917,92917,92905,92886,92846,92853,92848,92846,92831,92879,92933,92828,92866,92829,92856,92856,92856,92823,92855,92834,92829,92825,92838,92844,92824,92821,92802,92763,92736,92788,92772,92784,92809,92809,92784,92782,92765,92778,92750,92771,92762,92747,92753,92752,92752,92752,92759,92762,92742,92749,92749,92742,92746,92742,92757,92762,92742,92742,92747,92742,92747,92744,92747,92747,92747,92731,92747,92761,92750,92750,92735,92750,92749,92759,92753,92753,92741,92738,92726,92730,92753,92726,92726,92726,92726,92733,92726,92778,92766,92775,92775,92778,92801,92752,92729,92747,92747,92743,92730,92736,92732,92732,92727,92738,92715,92746,92746,92771,92767,92742,92767,92755,92742,92793,92718,92739,92739,92739,92732,92742,92742,92720,92742,92750,92745,92745,92734,92730,92730,92730,92742,92742,92730,92745,92733,92745,92703,92725,92725,92693,92745,92731,92731,92706,92748,92754,92732,92745,92745,92745,92745,92707,92743,92733,92743,92743,92735,92743,92735,92787,92737,92730,92755,92730,92753,92742,92742,92770,92761,92751,92741,92736,92742,92742,92731,92751,92742,92771,92762,92748,92727,92723,92725,92744,92760,92760,92756,92758,92734,92739,92736,92736,92762,92739,92710,92780,92742,92742,92773,92761,92746,92758,92758,92746,92775,92758,92758,92765,92765,92765,92765,92765,92765,92780,92757,92757,92741,92741,92754,92769,92776,92753,92753,92753,92759,92747,92793,92756,92766,92769,92745,92764,92818,92779,92766,92763,92781,92777,92763,92773,92773,92818,92749,92752,92784,92774,92786,92755,92771,92749,92752,92749,92749,92749,92758,92758,92758,92749,92757,92749,92749,92749,92757,92757,92757,92757,92749,92749,92749,92749,92749,92749,92749,92757,92757,92757,92749,92749,92757,92757,92749,92749,92757,92757,92757,92749,92749,92749,92749,92757,92757,92757,92757,92757,92757,92757,92757,92752,92752,92757,92757,92757,92727,92742,92768,92746,92769,92749,92763,92763,92742,92727,92766,92729,92753,92755,92727,92727,92748,92727,92727,92743,92745,92735,92726,92744,92735,92731,92734,92747,92818,92759,92774,92777,92767,92767,92707,92762,92825,92787,92790,92780,92770,92770,92775,92775,92803,92793,92793,92782,92782,92814,92759,92766,92805,92780,92808,92784,92796,92778,92795,92829,92807,92785,92785,92788,92788,92799,92799,92746,92777,92777,92777,92767,92774,92774,92790,92790,92794,92769,92769,92769,92769,92769,92769,92769,92769,92797,92799,92799,92769,92769,92769,92769,92769,92769,92771,92771,92771,92771,92771,92771,92771,92763,92763,92763,92763,92763,92763,92763,92768,92768,92768,92768,92768,92781,92773,92773,92773,92781,92768,92772,92768,92770,92768,92781,92781,92781,92781,92781,92779,92779,92779,92779,92779,92779,92781,92781,92781,92752,92799,92752,92802,92793,92798,92803,92803,92803,92803,92803,92784,92784,92784,92801,92802,92792,92803,92803,92846,92822,92822,92812,92825,92798,92807,92829,92811,92808,92808,92805,92817,92805,92817,92805,92806,92805,92818,92805,92792,92811,92811,92814,92814,92814,92804,92814,92800,92813,92813,92796,92796,92808,92808,92796,92813,92796,92796,92796,92792,92789,92802,92802,92788,92778,92808,92772,92780,92791,92816,92816,92843,92794,92756,92810,92818,92818,92789,92818,92789,92789,92791,92802,92802,92804,92804,92804,92792,92804,92804,92804,92794,92807,92818,92798,92811,92811,92788,92788,92802,92806,92793,92804,92820,92793,92793,92806,92822,92790,92846,92790,92815,92776,92808,92794,92808,92798,92786,92807,92807,92772,92807,92805,92805,92795,92807,92794,92794,92788,92807,92793,92793,92790,92805,92804,92792,92805,92805,92788,92765,92806,92783,92794,92780,92780,92780,92805,92793,92771,92774,92771,92765,92765,92765,92793,92807,92774,92770,92780,92766,92792,92769,92767,92787,92779,92779,92779,92779,92735,92742,92747,92760,92745,92745,92774,92760,92760,92737,92755,92755,92741,92779,92745,92741,92741,92761,92741,92741,92753,92741,92726,92723,92743,92747,92719,92719,92719,92722,92717,92716,92733,92720,92708,92708,92711,92728,92708,92700,92721,92693,92720,92729,92710,92710,92729,92713,92698,92698,92705,92692,92691,92691,92697,92713,92724,92723,92727,92704,92727,92727,92729,92720,92729,92729,92723,92720,92722,92729,92722,92735,92723,92714,92714,92708,92745,92696,92771,92756,92748,92748,92736,92732,92744,92745,92717,92724,92739,92722,92693,92725,92740,92731,92733,92735,92690,92726,92687,92750,92713,92704,92720,92722,92707,92705,92702,92725,92690,92710,92731,92687,92676,92707,92691,92680,92750,92682,92672,92684,92656,92700,92712,92699,92721,92710,92710,92710,92713,92687,92665,92673,92617,92617,92705,92638,92631,92661,92629,92642,92642,92642,92624,92677,92653,92667,92672,92654,92676,92667,92667,92683,92687,92687,92679,92693,92693,92699,92680,92685,92685,92685,92700,92690,92704,92704,92696,92696,92710,92691,92685,92708,92710,92723,92714,92723,92706,92709,92706,92740,92703,92726,92711,92712,92679,92698,92684,92707,92707,92679,92687,92687,92639,92685,92707,92639,92679,92639,92653,92667,92617,92639,92639,92636,92652,92621,92647,92635,92667,92655,92639,92685,92680,92655,92653,92635,92674,92618,92654,92616,92635,92647,92621,92631,92645,92654,92626,92634,92647,92637,92605,92625,92619,92597,92650,92622,92637,92637,92637,92631,92631,92625,92609,92618,92609,92627,92617,92614,92603,92611,92622,92597,92621,92621,92626,92642,92636,92626,92639,92629,92629,92629,92613,92599,92615,92628,92628,92620,92620,92628,92620,92618,92610,92615,92625,92614,92625,92625,92625,92625,92607,92601,92621,92588,92624,92607,92621,92621,92610,92588,92613,92613,92601,92621,92621,92607,92618,92607,92618,92620,92601,92620,92601,92617,92619,92608,92607,92635,92635,92616,92616,92628,92628,92628,92629,92617,92615,92613,92622,92600,92605,92624,92588,92588,92605,92593,92586,92604,92591,92640,92611,92614,92611,92611,92599,92611,92599,92599,92611,92610,92610,92611,92599,92615,92599,92599,92640,92599,92611,92599,92609,92609,92597,92639,92618,92606,92632,92620,92584,92590,92622,92603,92603,92601,92599,92597,92624,92609,92612,92615,92591,92625,92586,92586,92586,92586,92598,92614,92614,92614,92617,92616,92603,92591,92594,92604,92594,92585,92582,92598,92598,92598,92598,92601,92601,92616,92616,92594,92594,92594,92594,92618,92618,92597,92597,92594,92594,92602,92637,92637,92602,92598,92598,92601,92590,92590,92594,92617,92617,92612,92618,92623,92617,92617,92617,92628,92635,92590,92613,92600,92600,92600,92600,92613,92596,92613,92613,92641,92577,92598,92611,92612,92659,92638,92639,92638,92638,92745,92670,92800,92715,92687,92695,92725,92714,92714,92714,92717,92733,92722,92696,92703,92711,92711,92698,92719,92698,92709,92694,92720,92710,92696,92683,92702,92701,92705,92691,92721,92721,92697,92709,92694,92691,92688,92686,92701,92699,92686,92686,92699,92686,92686,92686,92694,92686,92686,92696,92699,92697,92657,92688,92699,92686,92686,92703,92672,92674,92672,92683,92682,92669,92686,92663,92662,92674,92690,92666,92664,92690,92668,92668,92668,92668,92668,92704,92704,92671,92704,92696,92696,92707,92690,92685,92684,92674,92678,92671,92677,92677,92689,92677,92751,92675,92688,92671,92767,92719,92700,92699,92697,92697,92697,92697,92697,92697,92697,92697,92697,92708,92708,92698,92698,92697,92708,92713,92714,92697,92697,92697,92713,92722,92706,92719,92722,92711,92723,92724,92700,92718,92718,92721,92721,92695,92729,92707,92707,92716,92707,92707,92713,92713,92703,92703,92720,92720,92720,92720,92720,92710,92706,92706,92720,92733,92791,92721,92743,92756,92731,92756,92756,92741,92741,92675,92760,92729,92670,92711,92711,92696,92743,92679,92657,92724,92718,92718,92718,92718,92721,92709,92709,92722,92739,92697,92723,92723,92703,92797,92706,92735,92741,92731,92741,92730,92716,92729,92716,92716,92797,92701,92723,92723,92736,92798,92767,92742,92739,92726,92744,92785,92772,92751,92779,92773,92764,92773,92731,92747,92758,92773,92773,92757,92754,92694,92746,92733,92733,92733,92715,92737,92726,92726,92737,92743,92743,92727,92781,92767,92738,92751,92781,92781,92768,92755,92755,92755,92753,92726,92726,92727,92768,92786,92763,92792,92770,92770,92760,92769,92757,92756,92746,92782,92804,92757,92755,92750,92752,92762,92739,92743,92756,92756,92774,92793,92754,92754,92754,92754,92767,92787,92787,92836,92816,92754,92788,92768,92754,92781,92758,92758,92745,92765,92768,92745,92768,92745,92772,92772,92746,92746,92772,92763,92806,92834,92838,92736,92783,92768,92752,92759,92759,92759,92771,92759,92773,92834,92776,92797,92771,92771,92783,92783,92783,92783,92768,92768,92768,92754,92770,92747,92767,92753,92781,92741,92765,92760,92803,92751,92776,92813,92761,92838,92782,92810,92784,92795,92830,92793,92789,92785,92807,92807,92785,92796,92807,92824,92823,92811,92823,92798,92795,92824,92809,92792,92776,92796,92781,92779,92756,92781,92796,92738,92758,92755,92745,92749,92737,92740,92737,92764,92706,92714,92767,92747,92774,92738,92738,92738,92738,92772,92744,92754,92741,92729,92737,92764,92751,92742,92726,92748,92737,92750,92766,92751,92751,92755,92744,92755,92751,92752,92731,92731,92747,92780,92745,92815,92762,92762,92777,92795,92771,92754,92748,92771,92771,92771,92748,92768,92755,92755,92780,92760,92774,92753,92771,92763,92743,92744,92740,92761,92749,92750,92761,92746,92761,92761,92761,92761,92761,92754,92740,92761,92765,92776,92838,92807,92793,92800,92816,92789,92803,92821,92810,92782,92786,92810,92806,92792,92806,92789,92789,92789,92789,92793,92782,92793,92783,92783,92782,92793,92782,92782,92782,92782,92835,92790,92805,92810,92790,92802,92816,92838,92819,92819,92818,92818,92807,92836,92819,92819,92790,92790,92790,92826,92815,92792,92790,92794,92790,92838,92802,92802,92812,92802,92812,92812,92837,92808,92805,92818,92805,92802,92828,92790,92809,92810,92813,92813,92826,92805,92846,92814,92827,92827,92844,92833,92811,92811,92846,92742,92779,92729,92767,92765,92749,92793,92765,92782,92782,92761,92782,92752,92752,92781,92763,92759,92731,92778,92781,92744,92749,92736,92781,92742,92755,92755,92755,92781,92745,92745,92745,92732,92737,92734,92748,92748,92723,92744,92744,92780,92757,92734,92753,92675,92716,92729,92749,92737,92721,92721,92717,92715,92727,92702,92715,92727,92731,92708,92697,92731,92720,92731,92731,92725,92725,92704,92723,92741,92695,92718,92705,92741,92742,92700,92719,92722,92722,92726,92700,92720,92720,92720,92720,92720,92726,92726,92741,92721,92732,92732,92717,92717,92717,92717,92732,92693,92695,92721,92715,92703,92715,92715,92692,92588,92638,92721,92592,92588,92711,92690,92743,92674,92644,92648,92673,92673,92673,92607,92621,92595,92600,92594,92624,92679,92620,92727,92666,92652,92668,92688,92675,92575,92669,92653,92638,92639,92638,92653,92625,92629,92645,92620,92641,92640,92588,92632,92603,92630,92598,92608,92630,92626,92612,92612,92573,92573,92590,92606,92584,92576,92581,92597,92584,92618,92594,92790,92605,92605,92637,92637,92584,92631,92634,92611,92593,92579,92611,92611,92611,92591,92610,92648,92625,92622,92626,92626,92626,92629,92639,92610,92626,92626,92617,92614,92614,92614,92626,92626,92614,92614,92614,92614,92636,92614,92614,92636,92641,92641,92624,92624,92624,92624,92624,92641,92625,92636,92625,92623,92618,92618,92622,92622,92658,92632,92624,92635,92627,92650,92615,92639,92639,92639,92656,92634,92634,92644,92634,92644,92634,92625,92620,92624,92624,92644,92615,92623,92634,92644,92602,92625,92625,92625,92625,92625,92616,92616,92616,92605,92609,92620,92625,92625,92625,92614,92614,92614,92591,92605,92625,92625,92621,92621,92612,92610,92610,92591,92591,92609,92588,92586,92584,92600,92600,92582,92600,92600,92587,92587,92584,92574,92579,92579,92579,92576,92592,92579,92579,92579,92579,92579,92589,92589,92589,92579,92579,92579,92579,92579,92579,92600,92583,92579,92595,92579,92600,92597,92600,92584,92572,92553,92553,92553,92575,92553,92574,92559,92556,92556,92574,92553,92574,92557,92569,92564,92553,92553,92566,92553,92552,92552,92562,92566,92553,92550,92550,92578,92557,92549,92567,92569,92569,92559,92573,92584,92568,92579,92571,92582,92579,92571,92571,92593,92597,92587,92589,92597,92583,92627,92580,92592,92595,92595,92571,92572,92561,92593,92595,92580,92550,92558,92574,92586,92591,92559,92554,92569,92559,92571,92552,92558,92565,92565,92565,92565,92565,92565,92554,92546,92562,92571,92556,92556,92566,92539,92548,92560,92560,92551,92541,92547,92539,92568,92539,92539,92552,92542,92542,92542,92539,92550,92550,92539,92539,92585,92550,92550,92550,92576,92550,92576,92560,92560,92557,92556,92599,92555,92553,92571,92558,92558,92571,92560,92571,92571,92571,92561,92561,92571,92571,92571,92571,92571,92571,92571,92571,92571,92565,92558,92571,92571,92571,92571,92571,92562,92562,92583,92566,92562,92562,92558,92558,92558,92558,92569,92569,92599,92563,92567,92576,92578,92553,92554,92554,92585,92575,92585,92580,92585,92578,92578,92560,92554,92561,92586,92565,92577,92577,92568,92559,92576,92565,92565,92565,92564,92554,92554,92570,92600,92558,92551,92583,92583,92540,92575,92562,92562,92562,92550,92573,92572,92546,92568,92573,92557,92557,92603,92570,92570,92594,92576,92594,92592,92585,92606,92590,92588,92613,92595,92595,92585,92660,92634,92624,92612,92660,92673,92666,92655,92659,92645,92674,92665,92674,92655,92666,92666,92685,92674,92692,92682,92695,92700,92700,92715,92698,92727,92735,92730,92716,92717,92718,92719,92708,92698,92700,92699,92717,92719,92703,92715,92715,92703,92715,92699,92704,92715,92704,92715,92704,92698,92712,92702,92712,92712,92712,92715,92697,92715,92715,92715,92715,92697,92700,92715,92714,92702,92698,92694,92691,92691,92691,92719,92691,92691,92678,92685,92685,92682,92707,92737,92712,92685,92685,92712,92694,92705,92694,92738,92705,92684,92700,92700,92700,92689,92699,92662,92668,92674,92668,92671,92664,92667,92667,92675,92664,92675,92675,92675,92666,92675,92666,92666,92595,92679,92648,92648,92648,92648,92645,92645,92625,92633,92631,92623,92625,92625,92625,92633,92636,92636,92633,92646,92599,92599,92613,92605,92624,92624,92624,92615,92605,92605,92607,92599,92603,92625,92625,92611,92611,92633,92658,92682,92682,92662,92653,92635,92630,92636,92660,92660,92660,92649,92649,92682,92682,92704,92717,92684,92647,92682,92682,92682,92682,92652,92670,92682,92664,92664,92674,92663,92688,92657,92674,92660,92671,92687,92660,92662,92673,92651,92673,92651,92669,92694,92688,92669,92688,92682,92657,92681,92673,92673,92673,92662,92673,92673,92673,92673,92658,92666,92666,92666,92655,92631,92657,92644,92652,92639,92639,92652,92652,92649,92636,92608,92649,92649,92627,92627,92622,92622,92622,92615,92611,92599,92602,92612,92612,92612,92584,92584,92584,92601,92589,92581,92581,92582,92580,92580,92579,92577,92577,92577,92586,92576,92576,92571,92612,92570,92577,92570,92572,92572,92593,92581,92568,92563,92581,92581,92571,92558,92558,92558,92557,92558,92556,92556,92556,92580,92556,92556,92556,92608,92556,92531,92584,92542,92530,92545,92544,92558,92544,92561,92548,92544,92544,92544,92544,92544,92544,92558,92531,92556,92558,92570,92551,92564,92564,92556,92555,92556,92566,92543,92542,92562,92552,92553,92543,92565,92551,92564,92555,92565,92557,92552,92555,92552,92565,92570,92557,92557,92578,92564,92575,92563,92581,92570,92581,92593,92584,92577,92570,92598,92563,92604,92556,92568,92568,92549,92556,92590,92614,92530,92528,92528,92598,92563,92563,92576,92576,92576,92571,92571,92571,92572,92583,92567,92599,92616,92580,92580,92580,92634,92599,92599,92611,92611,92611,92602,92604,92580,92597,92597,92597,92615,92615,92592,92585,92594,92594,92602,92580,92580,92580,92572,92579,92592,92582,92582,92579,92589,92589,92580,92580,92597,92580,92564,92573,92564,92580,92582,92569,92571,92571,92569,92581,92571,92571,92579,92573,92569,92570,92581,92998,93125,930588,897399,896062,896954,894014,897383,898135,898134,898134,898174,898134,898174,898175,896769,896377,896377,896377,896377,895529,896378,896377,896377,895923,896377,895856,896108,896377,896378,896378,896154,895115,896014,894610,896014,896015,896015,891970,875736,845385,825820,699308,601149,520037,468436,392044,334799,303142,259950,226471,197685,169741,156425,138910,123044,116350],"eq":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.8,1.3,32566.3,33098.3,32889.4,32971.8,32893.7,32960.8,32966.1,32973.9,32973.9,32976.1,32975,32976.1,32976.1,32839.1,32876.7,32876.7,32876.7,32876.7,32853.2,32876.7,32876.7,32876.7,32864.1,32876.7,32854.8,32870.5,32876.7,32876.7,32876.7,32870.5,32831.7,32856.6,32817.7,32856.6,32856.6,32839.9,32683.8,31883.8,30089.2,29002.9,20508.2,16772.5,13457.8,11003.2,8288,6465.9,5542.2,4430.3,3643.1,3052.2,2690,2497.8,2360.7,2286.5,2280.1],"pos":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5000,5000,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,49115,45071,41039,39764,35566,31350,30135,26437,22230,18173,13862,11070,6847,1182,0],"from":7100,"firstOrder":7158,"orders":31,"spike":{"t":7160,"from":93125,"to":930588},"liqBtc":9360,"chain":26};
+// @data:end
+          document.fonts.ready.then(() => {
+            const P = DATA.p;
+            const ctx = canvas(".d-cv");
+            const world = $(".d-world");
+            const hud = chrome($(".d-hud"), "deyo", DATA.seed);
+            const FIRST = DATA.firstOrder; // 7158
+            const S = DATA.spike;
+            const left = 7200 - FIRST;
+
+            // fill the real numbers from the replay
+            $(".d-card .rank").textContent = `RANK 03 · FINAL +${yi(DATA.pnl)} 億 USDT`;
+            $(".d-card .tag").textContent = `兩小時的比賽，只在最後 ${left} 秒出手。`;
+            $(".d-cap .en").textContent = `${int(FIRST)} SECONDS · ZERO TRADES`;
+            $(".d-count .t").textContent = `00:${two(left)}`;
+            $(".d-x .px").textContent = `${usd(S.from)} → ${usd(S.to)}`;
+            const mult = `×${Math.round(S.to / S.from)}`;
+            $$(".d-x .stack span").forEach((s) => (s.textContent = mult));
+            $(".d-liq .chip").innerHTML = `<i></i><b>空單連環強平</b> ×${DATA.chain} · ${int(DATA.liqBtc)} BTC`;
+            $(".d-pos").textContent = int(DATA.pos[DATA.peakT - DATA.from]);
+            $(".d-left").textContent = String(7200 - DATA.peakT);
+            const orders = $(".d-orders");
+            for (let i = 0; i < DATA.orders; i++) orders.insertAdjacentHTML("beforeend", `<div class="o"><i></i>BUY 5,000 BTC MKT</div>`);
+            const chips = $$(".d-orders .o");
+
+            const t7 = bar(7), t8 = bar(8), t9 = bar(9), t10 = bar(10), t11 = bar(11), t12 = bar(12), tEnd = bar(13);
+            let lo = Infinity, hi = 0;
+            for (let i = 0; i <= FIRST; i++) (lo = Math.min(lo, P[i])), (hi = Math.max(hi, P[i]));
+            const RK = [
+              [t9, { x: 110, y: 450, w: 1700, h: 420 }],
+              [t10, { x: 110, y: 450, w: 1700, h: 420 }],
+              [t10 + 0.5, { x: 110, y: 640, w: 1360, h: 300 }, "inOut"],
+              [t11, { x: 110, y: 640, w: 1360, h: 300 }],
+              [t11 + 0.3, { x: 110, y: 170, w: 1700, h: 760 }, "expo"],
+            ];
+            // game time on the film clock: the whole game in one bar, then the last seconds in slow motion
+            const G = [
+              [t9, 0],
+              [t10, FIRST, "inOut"],
+              [bar(10, 1), FIRST],
+              [bar(10, 3), S.t],
+              [t11, S.t],
+              [t11 + 0.36, S.t + 1, "out4"],
+              [t12, S.t + 2, "out"],
+              [tEnd, S.t + 2.4],
+            ];
+            const V = [
+              [t9, { x0: 0, x1: 7200, y0: lo * 0.985, y1: hi * 1.015 }],
+              [t10, { x0: 0, x1: 7200, y0: lo * 0.985, y1: hi * 1.015 }],
+              [t10 + 0.5, { x0: 7030, x1: 7215, y0: P[FIRST] * 0.985, y1: P[FIRST] * 1.02 }, "inOut"],
+              [t11, { x0: 7030, x1: 7215, y0: P[FIRST] * 0.985, y1: P[FIRST] * 1.02 }],
+              [t11 + 0.3, { x0: 7030, x1: 7215, y0: S.from * 0.9, y1: S.to * 1.12 }, "expo"],
+            ];
+            const HITS = [
+              [t11, 30, 0.7],
+              [t11 + 0.36, 14, 0.4],
+            ];
+            const capN = $(".d-cap-n"), oc = $(".d-ocount"), pn = $(".d-pn");
+
+            const render = (ft) => {
+              const g = track(G, ft);
+              const v = { ...track(V, ft), log: true };
+              const R = track(RK, ft);
+              ctx.clearRect(0, 0, 1920, 1080);
+              if (ft >= t9) {
+                bgGrid(ctx, 0.045, -g * 0.08, 0);
+                const dimP = ft >= t12 ? 1 - 0.55 * prog(ft, t12, t12 + 0.3) : 1;
+                ctx.globalAlpha = dimP;
+                grid(ctx, v, R, niceTicks(v, R));
+                const h = priceLine(ctx, P, 0, g, v, R, { fill: 0.16, lw: 5, over: 200 });
+                if (h) {
+                  const hot = g > S.t + 0.05;
+                  head(ctx, h.x, h.y, hot ? "45,226,166" : "236,242,247", hot ? 1.5 : 1);
+                  ctx.font = '700 30px "JetBrains Mono"';
+                  ctx.textAlign = "right";
+                  ctx.fillStyle = hot ? "#2de2a6" : "#ecf2f7";
+                  ctx.fillText(usd(h.p), Math.min(h.x - 24, 1800), Math.max(h.y - 28, 70));
+                  burst(ctx, ft, t11 + 0.05, h.x, Math.max(h.y, 120), { n: 70, color: "255,79,110", speed: 1300, arc: Math.PI * 1.7, life: 1.4, size: 9, seed: 3 });
+                  burst(ctx, ft, t11 + 0.22, h.x, Math.max(h.y, 120), { n: 50, color: "45,226,166", speed: 900, arc: Math.PI * 2, life: 1.2, size: 6, seed: 11, g: 600 });
+                }
+                ctx.globalAlpha = 1;
+              }
+              hud(g);
+              setText(capN, int(Math.min(g, FIRST)));
+              const shown = Math.round(clamp((ft - bar(10, 1)) / (BAR * 0.62), 0, 1) * DATA.orders);
+              setText(oc, String(shown));
+              chips.forEach((c, i) => (c.style.opacity = i < shown ? 1 : 0));
+              setText(pn, "+" + yi(DATA.peak * prog(ft, t12, t12 + 1.0, "out")));
+              const sh = shake(ft, HITS);
+              world.style.transform = `translate(${sh.x}px, ${sh.y}px) rotate(${sh.r}deg)`;
+            };
+            drive(render);
+
+            // bar 7: the breath — hollow 3 breathes, then punches through on the last beat
+            drift(".d-breath .num", t7, bar(7, 3), { scale: 0.94 }, { scale: 1.03 });
+            fade(".d-breath", t7, 0.5);
+            tl.to($(".d-breath .num"), { scale: 6, opacity: 0, filter: "blur(10px)", duration: BEAT, ease: "power3.in" }, L(bar(7, 3)));
+            out(".d-breath .no, .d-breath .lab", bar(7, 3), { d: 0.2 });
+            flash(".d-flash", t8, 0.7, 0.4);
+
+            // bar 8: player card
+            slam(".d-card .big", t8, { from: 1.5, d: 0.26 });
+            snap(".d-card .rank", t8 + 0.06, { dx: -120 });
+            snap(".d-card .name", bar(8, 0.5), { dx: -260, d: 0.36 });
+            rise(".d-card .chip", bar(8, 1.5), { stagger: 0.08, dy: 50 });
+            wipe(".d-card .tag", bar(8, 2.5), { d: 0.4 });
+            out(".d-card .big", t9 - 0.12, { dx: -260, blur: 12, d: 0.2 });
+            out(".d-card .info", t9 - 0.12, { dx: -160, blur: 12, d: 0.2 });
+            fade(".d-ghost", t8, 0.6, 1);
+
+            // bar 9: timelapse
+            fade(".d-hud", t9, 0.25);
+            rise(".d-cap .big", t9 + 0.05);
+            snap(".d-cap .en", bar(9, 1), { dx: -80 });
+            rise(".d-cap .chip", bar(9, 2), { stagger: 0.1, dy: 40 });
+            out(".d-cap", t10, { dy: -40, d: 0.22, blur: 8 });
+
+            // bar 10: countdown + orders
+            slam(".d-count .lab", t10 + 0.04, { from: 1.4, d: 0.2 });
+            slam(".d-count .t", bar(10, 0.25), { from: 2.2, blur: 22, d: 0.24 });
+            rise(".d-count .sub", bar(10, 1));
+            tl.fromTo(".d-count .t", { opacity: 1 }, { opacity: 0.25, duration: 0.06, repeat: 5, yoyo: true, ease: "none", immediateRender: false }, L(bar(10, 2)));
+            out(".d-count", t11 - 0.05, { scale: 1.4, blur: 14, d: 0.12 });
+            out(".d-orders", t11 + 0.1, { dy: -260, blur: 18, d: 0.3, ease: "power3.in" });
+
+            // bar 11: the spike
+            flash(".d-flash", t11, 0.6, 0.28);
+            slam(".d-x .stack", t11 + 0.02, { from: 2.4, blur: 26, d: 0.22 });
+            const c1 = $(".d-x .c1"), c2 = $(".d-x .c2");
+            const amp = { a: 0 };
+            tl.set(amp, { a: 1 }, L(t11));
+            tl.set([c1, c2], { opacity: 0.9 }, L(t11));
+            tl.to(amp, {
+              a: 0,
+              duration: 0.55,
+              ease: "power3.in",
+              onUpdate: () => {
+                const step = Math.floor((SCENE.T0 + tl.time()) / 0.04);
+                [c1, c2].forEach((c, k) => gsap.set(c, { x: (hash(step * 13 + k * 7) * 2 - 1) * 26 * amp.a, y: (hash(step * 29 + k * 11) * 2 - 1) * 9 * amp.a }));
+              },
+            }, L(t11));
+            tl.set([c1, c2], { x: 0, y: 0, opacity: 0 }, L(t11 + 0.55));
+            snap(".d-x .px", bar(11, 1), { dx: -120 });
+            rise(".d-x .sec", bar(11, 1.5));
+            pop(".d-liq", bar(11, 2), { rot: 6 });
+            out(".d-x", t12 - 0.1, { dx: -200, blur: 14, d: 0.18 });
+            out(".d-liq", t12 - 0.1, { dy: -40, d: 0.18 });
+
+            // bar 12: paper profit
+            rise(".d-paper .lab", t12);
+            slam(".d-paper .row", t12 + 0.04, { from: 1.3, d: 0.3, ease: "expo.out" });
+            rise(".d-paper .chip", bar(12, 2), { stagger: 0.1, dy: 40 });
+            kick(".d-paper .n", bar(12, 2), 1.06);
+            out(".d-paper", tEnd - 0.14, { dx: -220, blur: 16, d: 0.14 });
+            fade(".d-glow", t12, 0.6, 1, 0.35);
+
+            window.__timelines["s2-deyo"] = tl;
+          });
+        })();
+      </script>
+    </template>
+  </body>
+</html>

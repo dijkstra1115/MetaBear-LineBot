@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template>
+      <style>
+        /* @kit-css:start */
+        @font-face {
+          font-family: "Barlow Condensed";
+          src: url("assets/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2");
+          font-weight: 700;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "Barlow Condensed";
+          src: url("assets/fonts/barlow-condensed-latin-500-normal.woff2") format("woff2");
+          font-weight: 500;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "JetBrains Mono";
+          src: url("assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+          font-weight: 100 800;
+          font-display: block;
+        }
+        @font-face {
+          font-family: "Noto Sans TC";
+          src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+          font-weight: 100 900;
+          font-display: block;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          background: #05070b;
+          color: #ecf2f7;
+          font-family: "Noto Sans TC", sans-serif;
+          --bg: #05070b;
+          --panel: #0b1118;
+          --ink: #ecf2f7;
+          --dim: #93a3b4;
+          --gold: #ffd36b;
+          --long: #2de2a6;
+          --short: #ff4f6e;
+        }
+        .abs {
+          position: absolute;
+        }
+        .full {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+        }
+        .world {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+          transform-origin: 0 0;
+        }
+        .disp {
+          font-family: "Barlow Condensed", "Noto Sans TC", sans-serif;
+          font-weight: 700;
+          line-height: 0.84;
+          letter-spacing: -0.01em;
+          white-space: nowrap;
+        }
+        .cn {
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          line-height: 1.12;
+          white-space: nowrap;
+        }
+        .mono {
+          font-family: "JetBrains Mono", monospace;
+          font-weight: 700;
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+        }
+        .paper {
+          color: transparent;
+          -webkit-text-stroke: 4px rgba(236, 242, 247, 0.92);
+        }
+        .paper-s {
+          color: transparent;
+          -webkit-text-stroke: 4px var(--short);
+        }
+        .paper-g {
+          color: transparent;
+          -webkit-text-stroke: 4px var(--gold);
+        }
+        .bank {
+          color: var(--gold);
+          text-shadow: 0 0 48px rgba(255, 211, 107, 0.5), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .hot {
+          color: var(--short);
+          text-shadow: 0 0 48px rgba(255, 79, 110, 0.55), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .up {
+          color: var(--long);
+          text-shadow: 0 0 48px rgba(45, 226, 166, 0.5), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .lift {
+          text-shadow: 0 0 40px rgba(236, 242, 247, 0.28), 0 5px 0 rgba(0, 0, 0, 0.4);
+        }
+        .dim {
+          color: var(--dim);
+        }
+        .chip {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          height: 58px;
+          padding: 0 24px;
+          border-radius: 8px;
+          background: rgba(11, 17, 24, 0.88);
+          border: 2px solid rgba(236, 242, 247, 0.22);
+          font: 700 26px "JetBrains Mono", "Noto Sans TC", monospace;
+          letter-spacing: 0.06em;
+          color: var(--ink);
+          white-space: nowrap;
+        }
+        .chip b {
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          letter-spacing: 0.02em;
+        }
+        .chip.gold {
+          border-color: rgba(255, 211, 107, 0.7);
+          color: var(--gold);
+        }
+        .chip.red {
+          border-color: rgba(255, 79, 110, 0.7);
+          color: var(--short);
+        }
+        .chip.green {
+          border-color: rgba(45, 226, 166, 0.6);
+          color: var(--long);
+        }
+        .chip i {
+          display: block;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: currentColor;
+          box-shadow: 0 0 16px currentColor;
+        }
+        /* broadcast chrome */
+        .bug {
+          position: absolute;
+          left: 72px;
+          top: 56px;
+          display: flex;
+          align-items: stretch;
+          height: 64px;
+          font: 700 26px "JetBrains Mono", monospace;
+          letter-spacing: 0.1em;
+          white-space: nowrap;
+        }
+        .bug .rec {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 0 22px;
+          background: #d7263d;
+          color: #ffffff;
+        }
+        .bug .rec i {
+          display: block;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #ffffff;
+        }
+        .bug .who {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding: 0 24px;
+          background: rgba(11, 17, 24, 0.92);
+          border: 2px solid rgba(236, 242, 247, 0.18);
+          border-left: 0;
+          color: var(--ink);
+        }
+        .bug .who span {
+          color: var(--dim);
+        }
+        .clockbox {
+          position: absolute;
+          right: 72px;
+          top: 56px;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 0 24px;
+          background: rgba(11, 17, 24, 0.92);
+          border: 2px solid rgba(236, 242, 247, 0.18);
+          font: 700 30px "JetBrains Mono", monospace;
+          letter-spacing: 0.04em;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+          color: var(--ink);
+        }
+        .clockbox span {
+          color: var(--dim);
+        }
+        .scrub {
+          position: absolute;
+          left: 72px;
+          right: 72px;
+          bottom: 54px;
+          height: 34px;
+        }
+        .scrub .rail {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 15px;
+          height: 4px;
+          background: rgba(236, 242, 247, 0.16);
+        }
+        .scrub .fill {
+          position: absolute;
+          left: 0;
+          top: 15px;
+          width: 1776px;
+          height: 4px;
+          background: var(--ink);
+          transform-origin: 0 50%;
+          transform: scaleX(0);
+        }
+        .scrub .tick {
+          position: absolute;
+          top: 9px;
+          width: 2px;
+          height: 16px;
+          background: rgba(236, 242, 247, 0.35);
+        }
+        .scrub .head {
+          position: absolute;
+          top: 3px;
+          left: -14px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: var(--ink);
+          box-shadow: 0 0 20px rgba(236, 242, 247, 0.7);
+        }
+        .ghostnum {
+          position: absolute;
+          font: 700 1300px "Barlow Condensed", sans-serif;
+          line-height: 0.8;
+          color: transparent;
+          -webkit-text-stroke: 3px rgba(236, 242, 247, 0.1);
+          white-space: nowrap;
+        }
+        .glow {
+          position: absolute;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255, 211, 107, 0.32) 0%, rgba(255, 211, 107, 0.1) 38%, rgba(255, 211, 107, 0) 70%);
+        }
+        .glow.red {
+          background: radial-gradient(circle, rgba(255, 79, 110, 0.34) 0%, rgba(255, 79, 110, 0.1) 38%, rgba(255, 79, 110, 0) 70%);
+        }
+        .glow.green {
+          background: radial-gradient(circle, rgba(45, 226, 166, 0.3) 0%, rgba(45, 226, 166, 0.09) 38%, rgba(45, 226, 166, 0) 70%);
+        }
+        .flash {
+          position: absolute;
+          inset: 0;
+          background: #ecf2f7;
+          opacity: 0;
+        }
+        .flash.red {
+          background: var(--short);
+        }
+        .flash.gold {
+          background: var(--gold);
+        }
+        .cut {
+          position: absolute;
+          inset: 0;
+          background: #05070b;
+          opacity: 0;
+        }
+        .stamp {
+          display: inline-flex;
+          align-items: center;
+          gap: 16px;
+          padding: 10px 26px 12px;
+          border: 5px solid currentColor;
+          border-radius: 10px;
+          font-family: "Noto Sans TC", sans-serif;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+/* @kit-css:end */
+        .b-bell {
+          position: absolute;
+          left: 110px;
+          top: 210px;
+        }
+        .b-bell .big {
+          display: block;
+          font-size: 290px;
+        }
+        .b-bell .en {
+          display: block;
+          margin-top: 10px;
+          font-size: 170px;
+        }
+        .b-bell .rule {
+          display: block;
+          margin-top: 40px;
+          font-size: 56px;
+        }
+        .b-bell .mono {
+          display: block;
+          margin-top: 16px;
+          font-size: 26px;
+          letter-spacing: 0.14em;
+        }
+        .b-ring {
+          position: absolute;
+          right: 110px;
+          top: 190px;
+          width: 700px;
+          height: 700px;
+        }
+        .b-ring .t {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 120px;
+        }
+        .b-pan {
+          position: absolute;
+          top: 150px;
+          width: 852px;
+          height: 830px;
+          background: rgba(11, 17, 24, 0.9);
+          border: 2px solid rgba(236, 242, 247, 0.16);
+          overflow: hidden;
+        }
+        .b-pan.l {
+          left: 72px;
+        }
+        .b-pan.r {
+          right: 72px;
+        }
+        .b-pan .top {
+          position: absolute;
+          left: 40px;
+          top: 34px;
+          right: 40px;
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+        }
+        .b-pan .nm {
+          font-size: 96px;
+        }
+        .b-pan .rk {
+          font-size: 26px;
+          letter-spacing: 0.14em;
+        }
+        .b-pan .nums {
+          position: absolute;
+          left: 40px;
+          right: 40px;
+          top: 160px;
+        }
+        .b-pan .lab {
+          display: flex;
+          align-items: baseline;
+          gap: 14px;
+          font-size: 40px;
+        }
+        .b-pan .lab .mono {
+          font-size: 22px;
+          letter-spacing: 0.14em;
+          margin-left: 8px;
+        }
+        .b-pan .lab .lb {
+          color: var(--gold);
+          opacity: 0.25;
+        }
+        .b-pan .vs {
+          position: relative;
+          height: 190px;
+          margin-top: 6px;
+        }
+        .b-pan .pv {
+          position: absolute;
+          left: 0;
+          top: 0;
+          font-size: 200px;
+        }
+        .b-pan .bank.pv {
+          opacity: 0;
+        }
+        .b-pan .yi {
+          position: absolute;
+          right: 0;
+          bottom: 6px;
+          font-size: 64px;
+          color: var(--dim);
+        }
+        .b-pan .posrow {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 20px;
+          font-size: 34px;
+        }
+        .b-pan .posrow .mono {
+          font-size: 32px;
+        }
+        .b-pan .posbar {
+          position: relative;
+          height: 14px;
+          margin-top: 12px;
+          background: rgba(236, 242, 247, 0.12);
+        }
+        .b-pan .posbar div {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          background: var(--short);
+          transform-origin: 0 50%;
+        }
+        .b-pan .stamp {
+          position: absolute;
+          right: 40px;
+          top: 140px;
+          font-size: 44px;
+          color: var(--short);
+          transform-origin: 50% 50%;
+        }
+        .b-pan .pct {
+          position: absolute;
+          right: 36px;
+          bottom: 40px;
+          font-size: 210px;
+        }
+        .b-pan .px {
+          position: absolute;
+          left: 40px;
+          bottom: 40px;
+          font-size: 30px;
+        }
+        .b-q {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 26px;
+        }
+        .b-q .cn {
+          font-size: 150px;
+        }
+        .b-q .mono {
+          font-size: 30px;
+          letter-spacing: 0.2em;
+        }
+      </style>
+      <div data-hf-id="hf-v4a2" id="root" data-composition-id="s4-bell" data-width="1920" data-height="1080">
+        <div data-hf-id="hf-b375" class="glow red b-glow" data-layout-ignore="" style="left: 960px; top: -80px; width: 1200px; height: 1200px"></div>
+        <canvas data-hf-id="hf-5mbd" class="full b-cv" data-layout-allow-overflow="" width="1920" height="1080"></canvas>
+
+        <div data-hf-id="hf-v3bg" class="b-bell">
+          <span data-hf-id="hf-1r0h" class="cn big">時間到</span>
+          <span data-hf-id="hf-m7k4" class="disp en paper-s">TIME'S UP</span>
+          <span data-hf-id="hf-i12o" class="cn rule">還沒平倉的部位，一律市價強制平倉。</span>
+          <span data-hf-id="hf-1gib" class="mono dim">RANKED RULE · OPEN POSITIONS CLOSE AT MARKET</span>
+        </div>
+        <div data-hf-id="hf-iqb9" class="b-ring"><span data-hf-id="hf-ualb" class="mono t hot">02:00:00</span></div>
+
+        <div data-hf-id="hf-cylo" class="b-pan l">
+          <div data-hf-id="hf-sijt" class="top"><span data-hf-id="hf-dkps" class="disp nm lift">deyo</span><span data-hf-id="hf-gkzl" class="mono rk dim">NO.3 · 20×</span></div>
+          <div data-hf-id="hf-mhlv" class="nums">
+            <span data-hf-id="hf-blqa" class="lab"><span data-hf-id="hf-olrn" class="cn lp">帳面</span><span data-hf-id="hf-cbe6" class="cn lb">帶走</span><span data-hf-id="hf-vghd" class="mono dim">PAPER → BANKED</span></span>
+            <div data-hf-id="hf-uvj5" class="vs">
+              <span data-hf-id="hf-ol47" class="disp pv paper b-pv">+0.00</span>
+              <span data-hf-id="hf-zdl3" class="disp pv bank b-bv">+0.00</span>
+              <span data-hf-id="hf-4wn0" class="cn yi">億</span>
+            </div>
+            <div data-hf-id="hf-1mxu" class="posrow"><span data-hf-id="hf-7zw0" class="cn">未平倉</span><span data-hf-id="hf-mnha" class="mono b-pos">0 BTC</span></div>
+            <div data-hf-id="hf-8215" class="posbar"><div data-hf-id="hf-yfhx" class="b-pf"></div></div>
+          </div>
+          <span data-hf-id="hf-s4ee" class="stamp b-st">觸發強平</span>
+          <span data-hf-id="hf-glys" class="disp pct hot b-pc">−0%</span>
+          <span data-hf-id="hf-644h" class="mono px dim b-px">$0</span>
+        </div>
+        <div data-hf-id="hf-nxkq" class="b-pan r">
+          <div data-hf-id="hf-8kpp" class="top"><span data-hf-id="hf-ibng" class="disp nm lift">easy_yu</span><span data-hf-id="hf-yk9y" class="mono rk dim">NO.2 · 20×</span></div>
+          <div data-hf-id="hf-ockj" class="nums">
+            <span data-hf-id="hf-9eee" class="lab"><span data-hf-id="hf-3gcz" class="cn lp">帳面</span><span data-hf-id="hf-56lu" class="cn lb">帶走</span><span data-hf-id="hf-wc2t" class="mono dim">PAPER → BANKED</span></span>
+            <div data-hf-id="hf-vu45" class="vs">
+              <span data-hf-id="hf-0687" class="disp pv paper b-pv">+0.00</span>
+              <span data-hf-id="hf-2jzb" class="disp pv bank b-bv">+0.00</span>
+              <span data-hf-id="hf-hgok" class="cn yi">億</span>
+            </div>
+            <div data-hf-id="hf-nl8m" class="posrow"><span data-hf-id="hf-s1u0" class="cn">未平倉</span><span data-hf-id="hf-2blu" class="mono b-pos">0 BTC</span></div>
+            <div data-hf-id="hf-bxa5" class="posbar"><div data-hf-id="hf-edrd" class="b-pf"></div></div>
+          </div>
+          <span data-hf-id="hf-358q" class="stamp b-st">觸發強平</span>
+          <span data-hf-id="hf-mc0c" class="disp pct hot b-pc">−0%</span>
+          <span data-hf-id="hf-e645" class="mono px dim b-px">$0</span>
+        </div>
+        <canvas data-hf-id="hf-05u7" class="full b-cv2" data-layout-allow-overflow="" width="1920" height="1080"></canvas>
+
+        <div data-hf-id="hf-pvj4" class="b-q">
+          <span data-hf-id="hf-sdvt" class="cn">那第一名呢？</span>
+          <span data-hf-id="hf-spdl" class="mono dim">SO WHAT DID NO.1 DO?</span>
+        </div>
+
+        <div data-hf-id="hf-tdtb" class="flash red b-rflash" data-layout-ignore=""></div>
+        <div data-hf-id="hf-dbng" class="flash b-flash" data-layout-ignore=""></div>
+      </div>
+      <script>
+        (() => {
+          // @scene:start
+        const SCENE = {"id":"s4-bell","T0":40.1616,"DUR":10.3449};
+// @scene:end
+          // @kit-js:start
+        // Shared scene kit, injected into every composition by scripts/build.mjs. Expects SCENE = { id, T0, DUR }.
+        // Everything visual is a pure function of film time: DOM entrances on the GSAP timeline, and one
+        // render(ft) driver per scene for canvas charts, counters, chrome and camera.
+        const BAR = 2.0689655;
+        const BEAT = BAR / 4;
+        const D0 = 0.8512931;
+        const bar = (n, beat = 0) => +(D0 + n * BAR + beat * BEAT).toFixed(4);
+        const ROOT = document.querySelector('[data-composition-id="' + SCENE.id + '"]');
+        const $ = (s) => ROOT.querySelector(s);
+        const $$ = (s) => Array.from(ROOT.querySelectorAll(s));
+        const el = (x) => (typeof x === "string" ? $$(x) : x);
+        const tl = gsap.timeline({ paused: true });
+        const L = (t) => Math.max(0, +(t - SCENE.T0).toFixed(4));
+        
+        // ---- entrances (each a different attack; see DESIGN.md) ----
+        const slam = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 0, scale: o.from ?? 1.6, filter: `blur(${o.blur ?? 16}px)`, x: o.x ?? 0, y: o.y ?? 0 },
+            { opacity: 1, scale: 1, filter: "blur(0px)", x: 0, y: 0, duration: o.d ?? 0.2, ease: o.ease ?? "power4.out", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const snap = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 0, x: o.dx ?? -180, skewX: o.skew ?? -14 },
+            { opacity: 1, x: 0, skewX: 0, duration: o.d ?? 0.3, ease: "expo.out", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const rise = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 0, y: o.dy ?? 80, clipPath: "inset(0% 0% 100% 0%)" },
+            { opacity: 1, y: 0, clipPath: "inset(0% 0% 0% 0%)", duration: o.d ?? 0.38, ease: o.ease ?? "circ.out", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const wipe = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 1, clipPath: o.from ?? "inset(0% 100% 0% 0%)" },
+            { clipPath: "inset(0% 0% 0% 0%)", duration: o.d ?? 0.34, ease: o.ease ?? "power3.inOut", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const pop = (x, t, o = {}) =>
+          tl.fromTo(
+            el(x),
+            { opacity: 0, scale: o.from ?? 0.3, rotation: o.rot ?? -10 },
+            { opacity: 1, scale: 1, rotation: 0, duration: o.d ?? 0.42, ease: "back.out(1.6)", stagger: o.stagger ?? 0, immediateRender: o.ir ?? true },
+            L(t),
+          );
+        const fade = (x, t, d = 0.3, to = 1, from = 0) =>
+          tl.fromTo(el(x), { opacity: from }, { opacity: to, duration: d, ease: "power2.out", immediateRender: false }, L(t));
+        const out = (x, t, o = {}) =>
+          tl.to(
+            el(x),
+            { opacity: 0, x: o.dx ?? 0, y: o.dy ?? 0, scale: o.scale ?? 1, filter: `blur(${o.blur ?? 0}px)`, duration: o.d ?? 0.2, ease: o.ease ?? "power2.in", stagger: o.stagger ?? 0 },
+            L(t),
+          );
+        const hide = (x, t) => tl.set(el(x), { opacity: 0 }, L(t));
+        const flash = (x, t, peak = 0.85, d = 0.4) =>
+          tl.fromTo(el(x), { opacity: peak }, { opacity: 0, duration: d, ease: "power2.out", immediateRender: false }, L(t));
+        const kick = (x, t, s = 1.14, d = 0.26) =>
+          tl.fromTo(el(x), { scale: s }, { scale: 1, duration: d, ease: "power2.out", immediateRender: false }, L(t));
+        const drift = (x, t0, t1, from, to) =>
+          tl.fromTo(el(x), from, { ...to, duration: Math.max(0.01, t1 - t0), ease: "sine.inOut", immediateRender: false }, L(t0));
+        
+        // ---- numbers and text ----
+        const usd = (v) => "$" + Math.round(v).toLocaleString("en-US");
+        const yi = (v, d = 2) => (v / 1e8).toFixed(d);
+        const int = (v) => Math.round(v).toLocaleString("en-US");
+        const two = (n) => String(n).padStart(2, "0");
+        const clock = (s) => {
+          s = Math.max(0, Math.floor(s));
+          return `${two(Math.floor(s / 3600))}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
+        };
+        const setText = (node, s) => {
+          if (node.__t !== s) {
+            node.textContent = s;
+            node.__t = s;
+          }
+        };
+        
+        // ---- pure time functions ----
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const EASE = {
+          lin: (x) => x,
+          in: (x) => x * x * x,
+          in2: (x) => x * x,
+          out: (x) => 1 - (1 - x) ** 3,
+          out4: (x) => 1 - (1 - x) ** 4,
+          inOut: (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2),
+          expo: (x) => (x >= 1 ? 1 : 1 - 2 ** (-10 * x)),
+          step: (x) => (x >= 1 ? 1 : 0),
+        };
+        const mix = (a, b, x) =>
+          typeof a === "number" ? a + (b - a) * x : Object.fromEntries(Object.keys(a).map((k) => [k, a[k] + (b[k] - a[k]) * x]));
+        // keys: [[t, value, ease?], ...] — a key's ease shapes the segment that ends at it
+        const track = (keys, t) => {
+          if (t <= keys[0][0]) return keys[0][1];
+          for (let i = 1; i < keys.length; i++) {
+            const k = keys[i];
+            if (t <= k[0]) {
+              const p = keys[i - 1];
+              return mix(p[1], k[1], EASE[k[2] || "lin"]((t - p[0]) / (k[0] - p[0] || 1)));
+            }
+          }
+          return keys[keys.length - 1][1];
+        };
+        const prog = (t, t0, t1, e = "lin") => EASE[e](clamp((t - t0) / (t1 - t0), 0, 1));
+        const hash = (n) => {
+          const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+          return x - Math.floor(x);
+        };
+        const sample = (a, x) => {
+          if (x <= 0) return a[0];
+          const n = a.length - 1;
+          if (x >= n) return a[n];
+          const i = Math.floor(x);
+          return a[i] + (a[i + 1] - a[i]) * (x - i);
+        };
+        // deterministic camera shake from impact events [[t, amplitude, duration], ...]
+        const shake = (t, hits) => {
+          let x = 0, y = 0, r = 0;
+          for (const [t0, amp, dur] of hits) {
+            if (t < t0 || t > t0 + dur) continue;
+            const env = (1 - (t - t0) / dur) ** 2 * amp;
+            const k = Math.floor(t * 60);
+            x += (hash(k * 3 + 1) - 0.5) * 2 * env;
+            y += (hash(k * 5 + 2) - 0.5) * 2 * env;
+            r += (hash(k * 7 + 3) - 0.5) * 0.06 * env;
+          }
+          return { x, y, r };
+        };
+        
+        // ---- canvas ----
+        const canvas = (sel) => {
+          const c = $(sel);
+          const ctx = c.getContext("2d");
+          return ctx;
+        };
+        const yMap = (v, r) =>
+          v.log
+            ? (p) => r.y + r.h * (1 - (Math.log(p) - Math.log(v.y0)) / (Math.log(v.y1) - Math.log(v.y0)))
+            : (p) => r.y + r.h * (1 - (p - v.y0) / (v.y1 - v.y0));
+        const xMap = (v, r) => (t) => r.x + ((t - v.x0) / (v.x1 - v.x0)) * r.w;
+        // price line from game second `from` to `to` (fractional) in view v inside rect r
+        const priceLine = (ctx, a, from, to, v, r, o = {}) => {
+          const X = xMap(v, r), Y = yMap(v, r);
+          const t0 = Math.max(from, v.x0), t1 = Math.min(to, v.x1, a.length - 1);
+          if (t1 <= t0) return null;
+          const step = Math.max(0.25, (v.x1 - v.x0) / r.w);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(r.x - 4, r.y - (o.over ?? 0), r.w + 8, r.h + (o.over ?? 0) * 2);
+          ctx.clip();
+          ctx.beginPath();
+          ctx.moveTo(X(t0), Y(sample(a, t0)));
+          for (let t = t0 + step; t < t1; t += step) ctx.lineTo(X(t), Y(sample(a, t)));
+          const end = sample(a, t1);
+          const hx = X(t1), hy = Y(end);
+          ctx.lineTo(hx, hy);
+          const color = o.color ?? "236,242,247";
+          if (o.fill) {
+            ctx.save();
+            ctx.lineTo(hx, r.y + r.h);
+            ctx.lineTo(X(t0), r.y + r.h);
+            ctx.closePath();
+            const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+            g.addColorStop(0, `rgba(${color},${o.fill})`);
+            g.addColorStop(1, `rgba(${color},0)`);
+            ctx.fillStyle = g;
+            ctx.fill();
+            ctx.restore();
+            ctx.beginPath();
+            ctx.moveTo(X(t0), Y(sample(a, t0)));
+            for (let t = t0 + step; t < t1; t += step) ctx.lineTo(X(t), Y(sample(a, t)));
+            ctx.lineTo(hx, hy);
+          }
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.strokeStyle = `rgba(${color},${(o.glow ?? 0.16) * (o.alpha ?? 1)})`;
+          ctx.lineWidth = (o.lw ?? 4) * 5;
+          ctx.stroke();
+          ctx.strokeStyle = `rgba(${color},${o.alpha ?? 1})`;
+          ctx.lineWidth = o.lw ?? 4;
+          ctx.stroke();
+          ctx.restore();
+          return { x: hx, y: hy, p: end };
+        };
+        const head = (ctx, x, y, color = "236,242,247", s = 1) => {
+          const g = ctx.createRadialGradient(x, y, 0, x, y, 46 * s);
+          g.addColorStop(0, `rgba(${color},0.55)`);
+          g.addColorStop(1, `rgba(${color},0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(x, y, 46 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgb(${color})`;
+          ctx.beginPath();
+          ctx.arc(x, y, 9 * s, 0, Math.PI * 2);
+          ctx.fill();
+        };
+        // readable price ticks for any view (linear or log): coarse round numbers first, then finer ones
+        // wherever they still keep minPx apart
+        const niceTicks = (v, r, minPx = 70) => {
+          const Y = yMap(v, r);
+          const lo = Math.min(v.y0, v.y1), hi = Math.max(v.y0, v.y1);
+          // across a wide log range only round mantissas read as round (100k, 150k, 200k, 300k…)
+          const wide = hi / lo > 2.5;
+          const roundish = (p) => {
+            const m = p / 10 ** Math.floor(Math.log10(p));
+            return [1, 1.5, 2, 3, 4, 5, 6, 8].some((x) => Math.abs(m - x) < 1e-9);
+          };
+          const steps = [];
+          for (let k = Math.floor(Math.log10(hi)); k >= Math.floor(Math.log10(Math.max(1, hi - lo))) - 1; k--)
+            for (const m of [5, 2, 1]) steps.push(m * 10 ** k);
+          const keep = [];
+          for (const step of steps)
+            for (let p = Math.ceil(lo / step) * step; p <= hi; p += step) {
+              const y = Y(p);
+              if (y < r.y + 20 || y > r.y + r.h - 8 || (wide && !roundish(p))) continue;
+              if (keep.every((q) => Math.abs(Y(q) - y) >= minPx)) keep.push(p);
+            }
+          return keep;
+        };
+        // faint price grid with labels on the right edge of r
+        const grid = (ctx, v, r, prices, o = {}) => {
+          const Y = yMap(v, r);
+          ctx.save();
+          ctx.font = `700 ${o.size ?? 22}px "JetBrains Mono"`;
+          ctx.textAlign = "right";
+          ctx.textBaseline = "bottom";
+          for (const p of prices) {
+            const y = Y(p);
+            if (y < r.y - 2 || y > r.y + r.h + 2) continue;
+            ctx.fillStyle = `rgba(236,242,247,${o.line ?? 0.08})`;
+            ctx.fillRect(r.x, Math.round(y), r.w, 2);
+            ctx.fillStyle = `rgba(147,163,180,${o.label ?? 0.85})`;
+            ctx.fillText(usd(p), r.x + r.w, y - 8);
+          }
+          ctx.restore();
+        };
+        const bgGrid = (ctx, alpha = 0.05, ox = 0, oy = 0) => {
+          ctx.fillStyle = `rgba(236,242,247,${alpha})`;
+          const sx = ((ox % 60) + 60) % 60, sy = ((oy % 60) + 60) % 60;
+          for (let x = sx; x < 1920; x += 60) ctx.fillRect(Math.round(x), 0, 1, 1080);
+          for (let y = sy; y < 1080; y += 60) ctx.fillRect(0, Math.round(y), 1920, 1);
+        };
+        // ballistic particle burst, a pure function of time since t0
+        const burst = (ctx, t, t0, x, y, o = {}) => {
+          const tau = t - t0;
+          const life = o.life ?? 1.2;
+          if (tau < 0 || tau > life) return;
+          const n = o.n ?? 40;
+          const color = o.color ?? "45,226,166";
+          for (let i = 0; i < n; i++) {
+            const a = (o.angle ?? -Math.PI / 2) + (hash(i * 7 + (o.seed ?? 1)) - 0.5) * (o.arc ?? Math.PI * 1.2);
+            const sp = (o.speed ?? 900) * (0.35 + hash(i * 13 + (o.seed ?? 1)) * 0.9);
+            const px = x + Math.cos(a) * sp * tau;
+            const py = y + Math.sin(a) * sp * tau + 0.5 * (o.g ?? 900) * tau * tau;
+            const k = 1 - tau / life;
+            const s = (o.size ?? 6) * (0.5 + hash(i * 3 + 9));
+            ctx.fillStyle = `rgba(${color},${k * k})`;
+            ctx.fillRect(px - s / 2, py - s / 2, s, s * (o.stretch ?? 1));
+          }
+        };
+        
+        // ---- broadcast chrome: REPLAY bug, game clock, 24-turn scrubber ----
+        const chrome = (box, who, seed) => {
+          box.insertAdjacentHTML(
+            "beforeend",
+            // the overlay's vignette deliberately grades the frame corners over the broadcast chrome
+            `<div class="bug"><div class="rec" data-layout-allow-occlusion><i></i>REPLAY</div><div class="who" data-layout-allow-occlusion>${who}<span data-layout-allow-occlusion>SEED ${seed}</span></div></div>` +
+              `<div class="clockbox"><span data-layout-allow-occlusion>T+</span><b class="ck" data-layout-allow-occlusion>00:00:00</b><span data-layout-allow-occlusion>/ 02:00:00</span></div>` +
+              `<div class="scrub"><div class="rail"></div>${Array.from({ length: 23 }, (_, i) => `<div class="tick" style="left:${((i + 1) / 24) * 1776}px"></div>`).join("")}<div class="fill"></div><div class="head"></div></div>`,
+          );
+          const ck = box.querySelector(".ck"), fill = box.querySelector(".fill"), hd = box.querySelector(".head");
+          return (gameT) => {
+            const g = clamp(gameT, 0, 7200);
+            setText(ck, clock(g));
+            fill.style.transform = `scaleX(${g / 7200})`;
+            hd.style.transform = `translateX(${(g / 7200) * 1776}px)`;
+          };
+        };
+        // one driver: render(ft) for the whole scene
+        const drive = (render) => {
+          const c = { v: 0 };
+          render(SCENE.T0);
+          tl.to(c, { v: SCENE.DUR, duration: SCENE.DUR, ease: "none", onUpdate: () => render(SCENE.T0 + c.v) }, 0);
+        };
+// @kit-js:end
+          // @data:start
+        const DATA = {"deyo":{"name":"deyo","seed":3193907700,"pnl":2280101613.77,"leverage":20,"actions":32,"ticks":7216,"peak":33098292591.543285,"peakT":7162,"bell":29002911175,"liqT":7208,"end":7215,"from":7190,"p":[896154,895115,896014,894610,896014,896015,896015,891970,875736,845385,825820,699308,601149,520037,468436,392044,334799,303142,259950,226471,197685,169741,156425,138910,123044,116350],"eq":[32870.5,32831.7,32856.6,32817.7,32856.6,32856.6,32839.9,32683.8,31883.8,30089.2,29002.9,20508.2,16772.5,13457.8,11003.2,8288,6465.9,5542.2,4430.3,3643.1,3052.2,2690,2497.8,2360.7,2286.5,2280.1],"rz":[-8.4,-8.4,-8.4,-8.4,-8.4,-8.4,-8.4,-8.4,-8.4,-8.4,-8.4,2820.2,4112.6,5076.3,5298.7,5735,5922.7,5927.9,5807.2,5517.7,5107.6,4564.6,4163.7,3489.7,2498.1,2280.1],"pos":[55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,55351,49115,45071,41039,39764,35566,31350,30135,26437,22230,18173,13862,11070,6847,1182,0]},"easy":{"name":"easy_yu","seed":4268361556,"pnl":2914744025.74,"leverage":20,"actions":24,"ticks":7223,"peak":18901783425.68677,"peakT":6751,"bell":18855605163,"liqT":7211,"end":7222,"from":7190,"p":[597515,597515,597516,597515,597515,597515,597515,597516,597516,597515,597516,490440,439344,372866,338850,300222,265999,231037,216822,212827,193683,185565,172679,166391,160033,155368,141792,144658,138674,127405,126090,117966,112411],"eq":[18855.6,18855.6,18855.6,18855.6,18855.6,18855.6,18855.6,18855.6,18855.6,18855.6,18855.6,12176,11281.5,8546.8,7056.6,5754.8,4794.5,4028.9,3766.6,3623.1,3424.4,3249.4,3141.1,3095.7,3058.9,3033.1,3014,2982.3,2961.5,2951.3,2925.8,2915.4,2914.7],"rz":[-2.8,-2.8,-2.8,-2.9,-2.9,-2.9,-2.9,-2.9,-2.9,-2.9,-2.9,1249.7,1402.1,2175.5,2729.5,3130.5,3398.3,3538.6,3584.8,3589.5,3546.8,3449.5,3392.3,3349.7,3304.1,3266.5,3228.9,3189.1,3140,3096.1,3016.6,2930.4,2914.7],"pos":[48595,48607,48609,48645,48646,48654,48665,48685,48687,48691,48697,44478,43826,39755,35766,31689,27475,23260,19782,16711,12476,8311,6728,5820,4954,4314,3723,3162,2513,1963,1075,165,0]}};
+// @data:end
+          document.fonts.ready.then(() => {
+            const ctx = canvas(".b-cv"), ctx2 = canvas(".b-cv2");
+            const t19 = bar(19), t20 = bar(20), t21 = bar(21), t22 = bar(22), t23 = bar(23), tEnd = bar(24);
+            const games = [DATA.deyo, DATA.easy];
+            const pans = $$(".b-pan");
+            // each settlement, bell to last fill, plays across bars 20–21
+            const G = (d) => [[t20, 7200], [t22, d.end, "out"]];
+            const W = games.map(G);
+            games.forEach((d, i) => {
+              const pan = pans[i];
+              const cut = 1 - d.pnl / d.bell;
+              pan.querySelector(".b-pc").textContent = `−${Math.round(cut * 100)}%`;
+            });
+            const liqFilm = games.map((d, i) => {
+              // invert the warp: film time when the liquidation fires
+              const k = W[i];
+              for (let ft = t20; ft <= t22; ft += 0.005) if (track(k, ft) >= d.liqT) return ft;
+              return t21;
+            });
+            const R = [
+              { x: 72 + 40, y: 150 + 560, w: 852 - 80, h: 190 },
+              { x: 1920 - 72 - 852 + 40, y: 150 + 560, w: 852 - 80, h: 190 },
+            ];
+            const RANGE = games.map((d) => [Math.min(...d.p) * 0.9, Math.max(...d.p) * 1.08]);
+            const pv = pans.map((p) => p.querySelector(".b-pv")), bv = pans.map((p) => p.querySelector(".b-bv"));
+            const px = pans.map((p) => p.querySelector(".b-px")), pos = pans.map((p) => p.querySelector(".b-pos")), pf = pans.map((p) => p.querySelector(".b-pf"));
+            const fmt = (m) => (m >= 0 ? "+" : "−") + Math.abs(m / 100).toFixed(2);
+            // film time when each settlement is done (position 0)
+            const doneFilm = games.map((d, i) => {
+              for (let ft = t20; ft <= t22; ft += 0.005) if (track(W[i], ft) >= d.end) return ft;
+              return t22;
+            });
+            const ring = (ft) => {
+              // 24 turn segments around the clock, all lit at the bell
+              const cx = 1920 - 110 - 350, cy = 190 + 350;
+              const a = prog(ft, t19, t19 + 0.5, "out");
+              const fadeOut = 1 - prog(ft, t20 - 0.2, t20, "lin");
+              if (fadeOut <= 0) return;
+              for (let i = 0; i < 24; i++) {
+                const lit = i / 24 <= a;
+                const a0 = -Math.PI / 2 + (i / 24) * Math.PI * 2 + 0.03, a1 = a0 + (Math.PI * 2) / 24 - 0.06;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 320, a0, a1);
+                ctx.strokeStyle = lit ? `rgba(255,79,110,${0.95 * fadeOut})` : `rgba(236,242,247,${0.12 * fadeOut})`;
+                ctx.lineWidth = 34;
+                ctx.stroke();
+              }
+            };
+            const render = (ft) => {
+              ctx.clearRect(0, 0, 1920, 1080);
+              ctx2.clearRect(0, 0, 1920, 1080);
+              bgGrid(ctx, 0.04);
+              if (ft < t20 + 0.1) ring(ft);
+              if (ft >= t20 - 0.2) {
+                games.forEach((d, i) => {
+                  const g = track(W[i], ft);
+                  const k = g - d.from;
+                  const r = R[i];
+                  // the series starts at d.from, so the view is in index space
+                  const vi = { x0: 7195 - d.from, x1: d.end + 1 - d.from, y0: RANGE[i][0], y1: RANGE[i][1], log: true };
+                  const line = priceLine(ctx2, d.p, 0, k, vi, r, { color: "255,79,110", fill: 0.18, lw: 5 });
+                  if (line) {
+                    head(ctx2, line.x, line.y, "255,79,110", 1.1);
+                    burst(ctx2, ft, liqFilm[i], line.x, line.y, { n: 60, color: "255,79,110", speed: 900, arc: Math.PI * 2, life: 1.1, size: 8, seed: 21 + i, g: 500 });
+                  }
+                  const val = fmt(sample(d.eq, Math.max(k, 10)));
+                  setText(pv[i], val);
+                  setText(bv[i], val);
+                  setText(px[i], usd(sample(d.p, Math.max(k, 10))));
+                  const left = sample(d.pos, Math.max(k, 10));
+                  setText(pos[i], int(left) + " BTC");
+                  pf[i].style.transform = `scaleX(${left / d.pos[10]})`;
+                });
+              }
+            };
+            drive(render);
+
+            // bar 19: the bell
+            flash(".b-flash", t19, 0.5, 0.3);
+            flash(".b-rflash", t19 + 0.05, 0.3, 0.55);
+            slam(".b-bell .big", t19, { from: 1.8, blur: 24, d: 0.24 });
+            snap(".b-bell .en", bar(19, 1), { dx: -220 });
+            rise(".b-bell .rule", bar(19, 2));
+            rise(".b-bell .mono", bar(19, 2.5), { dy: 30 });
+            slam(".b-ring", t19 + 0.05, { from: 0.6, blur: 10, d: 0.4, ease: "expo.out" });
+            out(".b-bell", t20 - 0.12, { dx: -200, blur: 16, d: 0.14 });
+            out(".b-ring", t20 - 0.12, { scale: 1.4, blur: 16, d: 0.14 });
+
+            // bars 20–21: split-screen settlement
+            tl.fromTo(pans[0], { x: -960, opacity: 1 }, { x: 0, duration: 0.32, ease: "expo.out" }, L(t20));
+            tl.fromTo(pans[1], { x: 960, opacity: 1 }, { x: 0, duration: 0.32, ease: "expo.out" }, L(t20));
+            pans.forEach((p, i) => {
+              const st = p.querySelector(".b-st");
+              tl.fromTo(st, { opacity: 0, scale: 2.4, rotation: -14 }, { opacity: 1, scale: 1, rotation: -8, duration: 0.24, ease: "back.out(1.6)" }, L(liqFilm[i]));
+              flash(".b-rflash", liqFilm[i], 0.22, 0.3);
+              // closed: the hollow paper number turns into solid gold
+              tl.to(p.querySelector(".b-pv"), { opacity: 0, duration: 0.18, ease: "power2.in" }, L(doneFilm[i]));
+              tl.fromTo(p.querySelector(".b-bv"), { opacity: 0, scale: 1.25 }, { opacity: 1, scale: 1, duration: 0.3, ease: "expo.out" }, L(doneFilm[i]));
+              tl.to(p.querySelector(".lp"), { opacity: 0.25, duration: 0.2 }, L(doneFilm[i]));
+              tl.to(p.querySelector(".lb"), { opacity: 1, duration: 0.2 }, L(doneFilm[i]));
+              const pc = p.querySelector(".b-pc");
+              slam(pc, bar(22, i * 0.5), { from: 1.8, blur: 18, d: 0.22 });
+            });
+
+            // bar 23: the question
+            tl.to(pans[0], { x: -980, duration: 0.4, ease: "power3.in" }, L(t23));
+            tl.to(pans[1], { x: 980, duration: 0.4, ease: "power3.in" }, L(t23));
+            tl.to([ctx2.canvas, ctx.canvas], { opacity: 0, duration: 0.3, ease: "power2.in" }, L(t23));
+            slam(".b-q .cn", bar(23, 1), { from: 0.7, blur: 18, d: 0.4, ease: "expo.out" });
+            rise(".b-q .mono", bar(23, 2), { dy: 30 });
+            out(".b-q", bar(23, 3.5), { d: 0.25, blur: 10 });
+            fade(".b-glow", t19, 0.4, 1, 0.2);
+            out(".b-glow", t23, { d: 0.5 });
+
+            window.__timelines["s4-bell"] = tl;
+          });
+        })();
+      </script>
+    </template>
+  </body>
+</html>

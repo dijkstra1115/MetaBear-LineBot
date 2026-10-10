@@ -11,7 +11,7 @@
 | 持續維護 | 網站、圖文教學、19 堂動態課程 | public/、web/ |
 | 持續維護 | LINE Bot、CRM、自動核實、VIP 邀請、行銷與分析師報單 | src/、migrations/ |
 | 繼續開發，同等優先 | FLOW ARENA 單人沙盤（半回合制、策略族群 NPC）；2–3 人 PvP 等沙盤穩定後再開發 | main 的 public/arena/；[說明](FLOW-ARENA.md) |
-| 繼續開發，同等優先 | Showreel、單課輸出、橫／直式宣傳片 | motion/；FLOW ARENA 宣傳片在 motion/flow-arena/，學院 46 秒宣傳片在 motion/academy-promo/（見 [motion/README.md](../motion/README.md)） |
+| 繼續開發，同等優先 | Showreel、單課輸出、橫／直式宣傳片 | motion/；FLOW ARENA 宣傳片在 motion/flow-arena/，學院的宣傳片在 motion/academy/（見 [motion/README.md](../motion/README.md)） |
 | 暫停 | 流動性、隨機掛單與方向對照實驗 | experiments/liquidity/ |
 | 封存 | 現貨交易沙盒 | archive/2026-09-29/flow-arena/ |
 | 封存 | FLOW ARENA V7、電腦對手與四人好友房 | [legacy/flow-arena-v7/](../legacy/flow-arena-v7/README.md) |
