@@ -48,8 +48,11 @@ quant/.data/
 *.sqlite-wal
 *.sqlite-shm
 motion/out/
-motion/showreel/out/
-motion/academy-promo/out/
+motion/academy/showreel/out/
+motion/academy/promo/out/
+# Shared audio library: songs (user-supplied/licensed), SFX and voice takes stay local; only the README is tracked
+motion/audio-library/*
+!motion/audio-library/README.md
 
 # Logs
 *.log

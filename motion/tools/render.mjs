@@ -240,22 +240,22 @@ const server = await serve(flag("serve") ? Number(opt("port", 8791)) : 0);
 const base = `http://127.0.0.1:${server.address().port}`;
 if (flag("serve")) {
   console.log(`lesson export preview: ${base}/motion/tools/export.html?lesson=<id>`);
-  console.log(`showreel preview:      ${base}/motion/showreel/index.html?preview`);
-  console.log(`promo preview:         ${base}/motion/academy-promo/index.html?preview&fmt=wide|tall`);
+  console.log(`showreel preview:      ${base}/motion/academy/showreel/index.html?preview`);
+  console.log(`promo preview:         ${base}/motion/academy/promo/index.html?preview&fmt=wide|tall`);
 } else {
   if (!target) throw new Error("usage: node motion/tools/render.mjs <lesson-id|showreel> [options]");
   await mkdir(outDir, { recursive: true });
   const showreel = target === "showreel";
   const promo = target === "promo" || target === "promo-tall";
   const url = showreel
-    ? `${base}/motion/showreel/index.html`
+    ? `${base}/motion/academy/showreel/index.html`
     : promo
-      ? `${base}/motion/academy-promo/index.html?fmt=${target === "promo" ? "wide" : "tall"}`
+      ? `${base}/motion/academy/promo/index.html?fmt=${target === "promo" ? "wide" : "tall"}`
       : `${base}/motion/tools/export.html?lesson=${target}&captions=${flag("no-captions") ? 0 : 1}`;
   const audio = showreel
-    ? join(root, "motion/showreel/out/soundtrack.wav")
+    ? join(root, "motion/academy/showreel/out/soundtrack.wav")
     : promo
-      ? join(root, "motion/academy-promo/out/promo.wav")
+      ? join(root, "motion/academy/promo/out/promo.wav")
       : join(root, "public/orderflow/motion/audio", `${target}.m4a`);
   const still = opt("still");
   if (still) await stills(url, target, still.split(",").map(Number));

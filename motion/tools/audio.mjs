@@ -3,7 +3,7 @@
 //
 //   node motion/tools/audio.mjs                 every lesson → public/orderflow/motion/audio/<id>.m4a
 //   node motion/tools/audio.mjs footprint wick  selected lessons
-//   node motion/tools/audio.mjs showreel        → motion/showreel/out/soundtrack.wav
+//   node motion/tools/audio.mjs showreel        → motion/academy/showreel/out/soundtrack.wav
 //
 // Encoding to AAC needs ffmpeg (FFMPEG env var, ffmpeg-static, or ffmpeg on PATH).
 import { readdir, rm } from "node:fs/promises";
@@ -60,17 +60,17 @@ async function lessonAudio(id) {
 }
 
 async function showreelAudio() {
-  const { CUES, TOTAL, MUSIC } = await import(pathToFileURL(join(root, "motion/showreel/src/timeline.js")).href);
+  const { CUES, TOTAL, MUSIC } = await import(pathToFileURL(join(root, "motion/academy/showreel/src/timeline.js")).href);
   const score = renderScore({ duration: TOTAL, cues: CUES, music: MUSIC });
-  const wav = join(root, "motion/showreel/out/soundtrack.wav");
+  const wav = join(root, "motion/academy/showreel/out/soundtrack.wav");
   await writeWav(wav, score);
   console.log(`showreel → ${wav}`);
 }
 
 async function promoAudio() {
-  const { DURATION, cues, music } = await import(pathToFileURL(join(root, "motion/academy-promo/promo.js")).href);
+  const { DURATION, cues, music } = await import(pathToFileURL(join(root, "motion/academy/promo/promo.js")).href);
   const score = renderScore({ duration: DURATION, cues, music });
-  const wav = join(root, "motion/academy-promo/out/promo.wav");
+  const wav = join(root, "motion/academy/promo/out/promo.wav");
   await writeWav(wav, score);
   console.log(`promo → ${wav}`);
 }
