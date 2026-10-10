@@ -22,3 +22,19 @@ surge-916/assets/audio/raya.*
 surge-916/assets/audio/soundtrack.wav
 surge-916/assets/video/*.mp4
 surge-916/scripts/.chars.txt
+# Highlights: the song and every mix that contains it stay out of Git
+highlights/assets/audio/song.*
+highlights/assets/audio/soundtrack.wav
+highlights/scripts/.chars.txt
+# Highlights (live footage): the song, its mixes, and the recordings stay out of Git
+highlights-live/assets/audio/song.*
+highlights-live/assets/audio/soundtrack.wav
+highlights-live/assets/video/*.mp4
+highlights-live/assets/video/*.log
+highlights-live/assets/video/probe-*
+highlights-live/scripts/.chars.txt
+# Highlights (Raya): the licensed song, its mixes, and the recordings stay out of Git
+highlights-raya/assets/audio/song.*
+highlights-raya/assets/audio/soundtrack.wav
+highlights-raya/assets/video/*.mp4
+highlights-raya/scripts/.chars.txt

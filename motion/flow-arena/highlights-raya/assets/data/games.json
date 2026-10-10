@@ -1,0 +1,760 @@
+[
+ {
+  "key": "liu",
+  "id": 45,
+  "name": "劉孟孟",
+  "pnl": 4165713724.49,
+  "seed": 905547980,
+  "actions": [
+   {
+    "t": 0,
+    "op": "leverage",
+    "args": {
+     "leverage": 3
+    }
+   },
+   {
+    "t": 0,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 10000000,
+     "price": 10000000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 2227,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 10000000,
+     "price": 20000000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 2765,
+    "op": "enqueue",
+    "args": {
+     "type": "close",
+     "fraction": 1
+    }
+   },
+   {
+    "t": 2878,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 10000000,
+     "price": 20000000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 3239,
+    "op": "enqueue",
+    "args": {
+     "type": "close",
+     "fraction": 1
+    }
+   },
+   {
+    "t": 3277,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 10000000,
+     "price": 20000000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 3535,
+    "op": "enqueue",
+    "args": {
+     "type": "close",
+     "fraction": 1
+    }
+   },
+   {
+    "t": 3579,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 10000000,
+     "price": 20000000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 3688,
+    "op": "enqueue",
+    "args": {
+     "type": "close",
+     "fraction": 1
+    }
+   },
+   {
+    "t": 3739,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 10000000,
+     "price": 20000000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 3951,
+    "op": "execute",
+    "args": {
+     "type": "close",
+     "fraction": 1
+    }
+   },
+   {
+    "t": 4005,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 10000000,
+     "price": 20000000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 4188,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 10000000,
+     "price": 50000000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 4256,
+    "op": "enqueue",
+    "args": {
+     "type": "close",
+     "fraction": 1
+    }
+   },
+   {
+    "t": 4603,
+    "op": "enqueue",
+    "args": {
+     "type": "close",
+     "fraction": 1
+    }
+   }
+  ],
+  "leverage": 3
+ },
+ {
+  "key": "easy",
+  "id": 20,
+  "name": "easy_yu",
+  "pnl": 2914744025.74,
+  "seed": 4268361556,
+  "actions": [
+   {
+    "t": 0,
+    "op": "leverage",
+    "args": {
+     "leverage": 20
+    }
+   },
+   {
+    "t": 0,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9576600,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 300,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9583000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 660,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9587300,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 1956,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9589800,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 2008,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9591200,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 2008,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9594900,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 2384,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9653600,
+     "reduceOnly": true
+    }
+   },
+   {
+    "t": 2384,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "sell",
+     "lots": 5000000,
+     "price": 9653600,
+     "reduceOnly": true
+    }
+   },
+   {
+    "t": 2384,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9598900,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 2534,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9609400,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 2660,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "sell",
+     "lots": 5000000,
+     "price": 9661800,
+     "reduceOnly": true
+    }
+   },
+   {
+    "t": 2660,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "sell",
+     "lots": 5000000,
+     "price": 9661800,
+     "reduceOnly": true
+    }
+   },
+   {
+    "t": 3000,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9620200,
+     "reduceOnly": true
+    }
+   },
+   {
+    "t": 3000,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9621400,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 3297,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9632600,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 4960,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9658600,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 5495,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9718100,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 5607,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 9807500,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 5845,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 10399100,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 6236,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 13656300,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 6417,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 17225100,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 6525,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 28117100,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 6725,
+    "op": "enqueue",
+    "args": {
+     "type": "limit",
+     "side": "buy",
+     "lots": 5000000,
+     "price": 59751500,
+     "reduceOnly": false
+    }
+   }
+  ],
+  "leverage": 20
+ },
+ {
+  "key": "deyo",
+  "id": 46,
+  "name": "deyo",
+  "pnl": 2280101613.77,
+  "seed": 3193907700,
+  "actions": [
+   {
+    "t": 0,
+    "op": "leverage",
+    "args": {
+     "leverage": 20
+    }
+   },
+   {
+    "t": 7158,
+    "op": "execute",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   },
+   {
+    "t": 7160,
+    "op": "enqueue",
+    "args": {
+     "type": "market",
+     "side": "buy",
+     "lots": 500000,
+     "reduceOnly": false
+    }
+   }
+  ],
+  "leverage": 20
+ }
+]

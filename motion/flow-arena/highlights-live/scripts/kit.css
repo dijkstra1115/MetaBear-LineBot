@@ -1,0 +1,342 @@
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("assets/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("assets/fonts/barlow-condensed-latin-500-normal.woff2") format("woff2");
+  font-weight: 500;
+  font-display: block;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: block;
+}
+@font-face {
+  font-family: "Noto Sans TC";
+  src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: block;
+}
+#root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: #ecf2f7;
+  font-family: "Noto Sans TC", sans-serif;
+  --bg: #05070b;
+  --panel: #0b1118;
+  --ink: #ecf2f7;
+  --dim: #93a3b4;
+  --gold: #ffd36b;
+  --long: #2de2a6;
+  --short: #ff4f6e;
+}
+.abs {
+  position: absolute;
+}
+.full {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+}
+.world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: 0 0;
+}
+.disp {
+  font-family: "Barlow Condensed", "Noto Sans TC", sans-serif;
+  font-weight: 700;
+  line-height: 0.84;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.cn {
+  font-family: "Noto Sans TC", sans-serif;
+  font-weight: 900;
+  line-height: 1.12;
+  white-space: nowrap;
+}
+.mono {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.paper {
+  color: transparent;
+  -webkit-text-stroke: 4px rgba(236, 242, 247, 0.92);
+}
+.paper-s {
+  color: transparent;
+  -webkit-text-stroke: 4px var(--short);
+}
+.paper-g {
+  color: transparent;
+  -webkit-text-stroke: 4px var(--gold);
+}
+.bank {
+  color: var(--gold);
+  text-shadow: 0 0 48px rgba(255, 211, 107, 0.5), 0 5px 0 rgba(0, 0, 0, 0.4);
+}
+.hot {
+  color: var(--short);
+  text-shadow: 0 0 48px rgba(255, 79, 110, 0.55), 0 5px 0 rgba(0, 0, 0, 0.4);
+}
+.up {
+  color: var(--long);
+  text-shadow: 0 0 48px rgba(45, 226, 166, 0.5), 0 5px 0 rgba(0, 0, 0, 0.4);
+}
+.lift {
+  text-shadow: 0 0 40px rgba(236, 242, 247, 0.28), 0 5px 0 rgba(0, 0, 0, 0.4);
+}
+.dim {
+  color: var(--dim);
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 58px;
+  padding: 0 24px;
+  border-radius: 8px;
+  background: rgba(11, 17, 24, 0.88);
+  border: 2px solid rgba(236, 242, 247, 0.22);
+  font: 700 26px "JetBrains Mono", "Noto Sans TC", monospace;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.chip b {
+  font-family: "Noto Sans TC", sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+.chip.gold {
+  border-color: rgba(255, 211, 107, 0.7);
+  color: var(--gold);
+}
+.chip.red {
+  border-color: rgba(255, 79, 110, 0.7);
+  color: var(--short);
+}
+.chip.green {
+  border-color: rgba(45, 226, 166, 0.6);
+  color: var(--long);
+}
+.chip i {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 16px currentColor;
+}
+/* broadcast chrome */
+.bug {
+  position: absolute;
+  left: 72px;
+  top: 56px;
+  display: flex;
+  align-items: stretch;
+  height: 64px;
+  font: 700 26px "JetBrains Mono", monospace;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.bug .rec {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 22px;
+  background: #d7263d;
+  color: #ffffff;
+}
+.bug .rec i {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+.bug .who {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 24px;
+  background: rgba(11, 17, 24, 0.92);
+  border: 2px solid rgba(236, 242, 247, 0.18);
+  border-left: 0;
+  color: var(--ink);
+}
+.bug .who span {
+  color: var(--dim);
+}
+.clockbox {
+  position: absolute;
+  right: 72px;
+  top: 56px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  background: rgba(11, 17, 24, 0.92);
+  border: 2px solid rgba(236, 242, 247, 0.18);
+  font: 700 30px "JetBrains Mono", monospace;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.clockbox span {
+  color: var(--dim);
+}
+.scrub {
+  position: absolute;
+  left: 72px;
+  right: 72px;
+  bottom: 54px;
+  height: 34px;
+}
+.scrub .rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 15px;
+  height: 4px;
+  background: rgba(236, 242, 247, 0.16);
+}
+.scrub .fill {
+  position: absolute;
+  left: 0;
+  top: 15px;
+  width: 1776px;
+  height: 4px;
+  background: var(--ink);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+.scrub .tick {
+  position: absolute;
+  top: 9px;
+  width: 2px;
+  height: 16px;
+  background: rgba(236, 242, 247, 0.35);
+}
+.scrub .head {
+  position: absolute;
+  top: 3px;
+  left: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 20px rgba(236, 242, 247, 0.7);
+}
+.ghostnum {
+  position: absolute;
+  font: 700 1300px "Barlow Condensed", sans-serif;
+  line-height: 0.8;
+  color: transparent;
+  -webkit-text-stroke: 3px rgba(236, 242, 247, 0.1);
+  white-space: nowrap;
+}
+.glow {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 211, 107, 0.32) 0%, rgba(255, 211, 107, 0.1) 38%, rgba(255, 211, 107, 0) 70%);
+}
+.glow.red {
+  background: radial-gradient(circle, rgba(255, 79, 110, 0.34) 0%, rgba(255, 79, 110, 0.1) 38%, rgba(255, 79, 110, 0) 70%);
+}
+.glow.green {
+  background: radial-gradient(circle, rgba(45, 226, 166, 0.3) 0%, rgba(45, 226, 166, 0.09) 38%, rgba(45, 226, 166, 0) 70%);
+}
+.flash {
+  position: absolute;
+  inset: 0;
+  background: #ecf2f7;
+  opacity: 0;
+}
+.flash.red {
+  background: var(--short);
+}
+.flash.gold {
+  background: var(--gold);
+}
+.cut {
+  position: absolute;
+  inset: 0;
+  background: #05070b;
+  opacity: 0;
+}
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 26px 12px;
+  border: 5px solid currentColor;
+  border-radius: 10px;
+  font-family: "Noto Sans TC", sans-serif;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* overlays sit on recorded gameplay: scrims keep the type readable over a busy page */
+.scrim-l {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1300px;
+  height: 1080px;
+  background: linear-gradient(90deg, rgba(5, 7, 11, 0.9) 0%, rgba(5, 7, 11, 0.66) 46%, rgba(5, 7, 11, 0) 100%);
+}
+.scrim-b {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1920px;
+  height: 620px;
+  background: linear-gradient(0deg, rgba(5, 7, 11, 0.94) 0%, rgba(5, 7, 11, 0.7) 45%, rgba(5, 7, 11, 0) 100%);
+}
+.shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 7, 11, 0.55);
+}
+.solid {
+  position: absolute;
+  inset: 0;
+  background: #05070b;
+}
+.lt {
+  position: absolute;
+  left: 96px;
+  bottom: 96px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 22px;
+  background: rgba(5, 7, 11, 0.86);
+  border-left: 6px solid var(--gold);
+  font: 700 30px "JetBrains Mono", "Noto Sans TC", monospace;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.tag b {
+  font-family: "Noto Sans TC", sans-serif;
+  font-weight: 900;
+}
