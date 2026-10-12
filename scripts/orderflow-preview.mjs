@@ -15,6 +15,7 @@ const types = {
   ".woff2": "font/woff2",
   ".m4a": "audio/mp4",
   ".txt": "text/plain",
+  ".json": "application/json",
 };
 createServer(async (req, res) => {
   try {
@@ -40,13 +41,15 @@ createServer(async (req, res) => {
       return;
     }
     const body = await readFile(file);
+    // The order-flow lab streams straight from the exchanges.
+    const lab = url.pathname.startsWith("/lab/") ? " wss://fstream.binance.com https://fapi.binance.com wss://ws.okx.com:8443" : "";
     const headers = {
       "Content-Type": types[extname(file)] + "; charset=utf-8",
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
       "Accept-Ranges": "bytes",
       "Content-Security-Policy":
-        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' wss://stream.bybit.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' wss://stream.bybit.com${lab}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
     };
     // Byte ranges make lesson audio seekable, as it is in production;
     // without them the player cannot move the soundtrack to the playhead.

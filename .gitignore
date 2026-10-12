@@ -61,3 +61,8 @@ motion/audio-library/*
 .DS_Store
 Thumbs.db
 
+
+# Order-flow lab: downloaded exchange archives and generated datasets
+.cache/
+.data/
+public/lab/data/

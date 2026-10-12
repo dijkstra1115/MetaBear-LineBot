@@ -41,6 +41,10 @@ for (const path of documents) {
   const csp = ["/orderflow/", "/orderflow/index.html"].includes(path) ? academy : analytics;
   rules.push(`https://metabear.io${path}\n  Content-Security-Policy: ${csp}`);
 }
+// The order-flow lab prototype streams trades, depth and liquidations straight from the exchanges.
+const lab = common.replace("connect-src 'self'", "connect-src 'self' wss://fstream.binance.com https://fapi.binance.com wss://stream.bybit.com wss://ws.okx.com:8443");
+for (const path of ["/lab/orderflow/", "/lab/orderflow/index.html"])
+  rules.push(`https://metabear.io${path}\n  Content-Security-Policy: ${lab}`);
 for (const host of ["metabear-site.pages.dev", ":branch.metabear-site.pages.dev"])
   rules.push(`https://${host}/*\n  X-Robots-Tag: noindex, nofollow, noarchive\n  Content-Security-Policy: ${common}`);
 await writeFile(new URL("_headers", output), rules.join("\n\n") + "\n");
