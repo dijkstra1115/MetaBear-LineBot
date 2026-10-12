@@ -22,6 +22,7 @@
     "lab:orderflow": "node scripts/orderflow-data.mjs",
     "lab:orderflow:collect": "node scripts/orderflow-collector.mjs",
     "lab:orderflow:backtest": "node scripts/orderflow-backtest.mjs",
+    "lab:strategy:cases": "node --max-old-space-size=6144 scripts/strategy-cases.mjs",
     "lab:flow-arena:long": "node scripts/flow-arena-longrun.mjs",
     "build": "wrangler deploy --dry-run",
     "build:staging": "wrangler deploy --env staging --dry-run",
