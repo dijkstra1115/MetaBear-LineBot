@@ -11,15 +11,17 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { P, SIGNALS, aggregate, attachLiqWipes, detect } from "../public/lab/orderflow/signals.js";
 import { buildLiqMap } from "../public/lab/orderflow/liqmap.js";
+import { fromArchive } from "../public/lab/orderflow/metrics.js";
 
 const args = Object.fromEntries(process.argv.slice(2).flatMap((x, i, all) => (x.startsWith("--") ? [[x.slice(2), all[i + 1]]] : [])));
 const HOLDOUT_DAYS = Number(args.holdout ?? 4);
 const root = fileURLToPath(new URL("..", import.meta.url));
 const raw = JSON.parse(await readFile(`${root}${args.data ?? "public/lab/data/btcusdt.json"}`, "utf8"));
 
-const bars = aggregate(raw.bars, raw.tick, raw.metrics);
+const readings = fromArchive(raw.metrics);
+const bars = aggregate(raw.bars, raw.tick, readings);
 const wipes = new Map();
-buildLiqMap(raw.bars, raw.tick, raw.metrics.map((r) => [r[0], r[1]]), { keepSteps: false, onStep: (t, w) => wipes.set(t, w) });
+buildLiqMap(raw.bars, raw.tick, readings.map((r) => [r[0], r[1]]), { keepSteps: false, onStep: (t, w) => wipes.set(t, w) });
 attachLiqWipes(bars, wipes);
 // Every detector, filtered and unfiltered, so the effect of each filter is visible.
 const events = detect(bars, Object.keys(SIGNALS));

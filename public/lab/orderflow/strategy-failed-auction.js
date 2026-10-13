@@ -11,6 +11,8 @@
 // The short side mirrors it at the prior-day high (the lesson teaches the long side).
 // Lesson numbers such as "1 below the low" are teaching values; P holds the BTC-scale ones.
 
+import { readingsAt } from "./metrics.js";
+
 export const P = {
   tfMs: 5 * 60_000,
   maxSweepPct: 0.01, // a break deeper than 1 % beyond the level is accepted, not a failed auction
@@ -83,7 +85,7 @@ export function dayProfiles(rows, tick) {
 }
 
 /** 1-minute rows → 5-minute bars with merged price levels and the OI at each close. */
-function bars5(rows, metrics) {
+function bars5(rows, readings) {
   const map = new Map();
   for (const [t, o, h, l, c, levels] of rows) {
     const k = Math.floor(t / P.tfMs) * P.tfMs;
@@ -102,11 +104,10 @@ function bars5(rows, metrics) {
     }
   }
   const out = [...map.values()].sort((a, b) => a.t - b.t);
-  let m = 0;
+  const at = readingsAt(readings);
   for (const b of out) {
     b.delta = b.buy - b.sell;
-    while (m + 1 < metrics.length && metrics[m + 1][0] <= b.t + P.tfMs) m++;
-    b.oi = metrics[m] && metrics[m][0] <= b.t + P.tfMs ? metrics[m][1] : null;
+    b.oi = at(b.t + P.tfMs)?.[1] ?? null;
   }
   return out;
 }
@@ -176,20 +177,21 @@ function simulate(rows, startT, dir, entry, stop, t1, t2) {
 /**
  * Finds every setup in the data. Each case records which checks passed, the trade plan and
  * the simulated outcome, so the film can show exactly what the strategy looked at.
+ * `readings` are reading-time metrics rows: pass an archive dataset through fromArchive().
  */
-export function findFailedAuctions(rows, tick, metrics, { sides = ["long", "short"], params = {} } = {}) {
+export function findFailedAuctions(rows, tick, readings, { sides = ["long", "short"], params = {} } = {}) {
   const saved = { ...P };
   Object.assign(P, params);
   try {
-    return search(rows, tick, metrics, sides);
+    return search(rows, tick, readings, sides);
   } finally {
     Object.assign(P, saved);
   }
 }
 
-function search(rows, tick, metrics, sides) {
+function search(rows, tick, readings, sides) {
   const profiles = dayProfiles(rows, tick);
-  const bars = bars5(rows, metrics);
+  const bars = bars5(rows, readings);
   const cases = [];
   for (const dir of sides) {
     const up = dir === "long";

@@ -4,6 +4,8 @@
 // Every detector looks only at bars that have closed, so a backtest sees exactly what
 // a live run would have seen. All thresholds live in P so a backtest can be reproduced.
 
+import { readingsAt } from "./metrics.js";
+
 export const P = {
   tfMs: 5 * 60_000,
   statsWindow: 48, // bars of history for z-scores and medians (4 h at 5 m)
@@ -49,8 +51,11 @@ export function attachLiqWipes(bars, wipes) {
 // What the lab page shows; the unfiltered versions stay for comparison in backtests.
 export const DEFAULT_KINDS = ["absorptionLevel", "sweepLevel", "divergenceLevel", "stackedRetest", "breakout", "oi"];
 
-/** 1-minute rows [t, o, h, l, c, [[bin, buy, sell]…], xbuy?, xsell?] → closed 5-minute bars. */
-export function aggregate(rows, tick, metrics = [], now = Infinity) {
+/**
+ * 1-minute rows [t, o, h, l, c, [[bin, buy, sell]…], xbuy?, xsell?] → closed 5-minute bars, each
+ * with the OI at its close. `readings` are reading-time rows [t, oi, …] (see metrics.js).
+ */
+export function aggregate(rows, tick, readings = [], now = Infinity) {
   const map = new Map();
   for (const [t, o, h, l, c, levels, xbuy = 0, xsell = 0] of rows) {
     const key = Math.floor(t / P.tfMs) * P.tfMs;
@@ -73,7 +78,7 @@ export function aggregate(rows, tick, metrics = [], now = Infinity) {
     }
   }
   let cvd = 0;
-  let m = 0;
+  const at = readingsAt(readings);
   const bars = [];
   for (const b of [...map.values()].sort((x, y) => x.t - y.t)) {
     b.end = b.t + P.tfMs;
@@ -83,8 +88,7 @@ export function aggregate(rows, tick, metrics = [], now = Infinity) {
     cvd += b.delta;
     b.cvd = cvd;
     b.tick = tick;
-    while (m + 1 < metrics.length && metrics[m + 1][0] <= b.end) m++;
-    b.oi = metrics[m] && metrics[m][0] <= b.end ? metrics[m][1] : null;
+    b.oi = at(b.end)?.[1] ?? null;
     bars.push(b);
   }
   attachLevels(bars);

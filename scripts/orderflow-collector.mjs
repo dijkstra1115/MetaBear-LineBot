@@ -48,7 +48,8 @@ async function getJson(path) {
 // ---------- state ----------
 
 const bars = new Map(); // minute → { o, h, l, c, levels: Map(bin → [buy, sell]), src }
-const metrics = new Map(); // t → [t, oi, oiValue, topPos, topAcc, global, taker]
+// Stamped at reading time, unlike the archive (see public/lab/orderflow/metrics.js).
+const metrics = new Map(); // t → [t, oi, oiValue, topPos, topAcc, global, taker over [t − 5m, t)]
 const liquidations = []; // [t, "long" | "short", price, qty, exchange]
 const heat = []; // [t, mid, lowBin, [qty per bin]]
 const status = { trades: "connecting", depth: "connecting", liquidations: {}, lastTrade: 0 };
@@ -240,6 +241,8 @@ async function pollMetrics(limit, persist) {
     getJson(`/futures/data/takerlongshortRatio?${q}`),
   ]);
   const at = (list, t) => list.find((r) => r.timestamp === t);
+  // OI and the long/short ratios are stamped when they were read; a taker row is stamped with
+  // the open of the 5 minutes it covers, so the period ending at reading t is the row at t − 5m.
   for (const r of oi) {
     const t = r.timestamp;
     if (metrics.has(t)) continue;
@@ -250,7 +253,7 @@ async function pollMetrics(limit, persist) {
       round(Number(at(topPos, t)?.longShortRatio ?? NaN), 4),
       round(Number(at(topAcc, t)?.longShortRatio ?? NaN), 4),
       round(Number(at(global, t)?.longShortRatio ?? NaN), 4),
-      round(Number(at(taker, t)?.buySellRatio ?? NaN), 4),
+      round(Number(at(taker, t - 300_000)?.buySellRatio ?? NaN), 4),
     ].map((v) => (Number.isNaN(v) ? null : v));
     metrics.set(t, row);
     if (persist) await append("metrics", t, row);

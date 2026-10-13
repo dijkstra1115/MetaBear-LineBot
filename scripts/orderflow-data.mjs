@@ -147,6 +147,9 @@ const out = {
       [...b.levels.entries()].sort((x, y) => x[0] - y[0]).map(([bin, [buy, sell]]) => [bin, round(buy), round(sell)]),
     ]),
   // [time, OI (BTC), OI (USDT), top-trader position ratio, top-trader account ratio, all-account ratio, taker buy/sell ratio]
+  // as the archive stamps them: time is the open of a 5-minute period, OI and the ratios are read
+  // at its close (time + 5 min), the taker ratio covers the period. The lab reads them through
+  // fromArchive() in public/lab/orderflow/metrics.js.
   metrics: metrics.sort((a, b) => a[0] - b[0]),
 };
 const json = JSON.stringify(out);

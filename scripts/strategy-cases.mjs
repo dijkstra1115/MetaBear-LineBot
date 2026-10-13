@@ -8,6 +8,7 @@
 // Writes .data/orderflow/cases-failed-auction.json.
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { fromArchive } from "../public/lab/orderflow/metrics.js";
 import { LOOSE, findFailedAuctions } from "../public/lab/orderflow/strategy-failed-auction.js";
 
 const args = Object.fromEntries(process.argv.slice(2).flatMap((x, i, all) => (x.startsWith("--") ? [[x.slice(2), all[i + 1]]] : [])));
@@ -17,7 +18,7 @@ const files = args.data ? [args.data] : [".data/orderflow/btcusdt-oos.json", ".d
 const all = [];
 for (const file of files) {
   const raw = JSON.parse(await readFile(`${root}${file}`, "utf8"));
-  const found = findFailedAuctions(raw.bars, raw.tick, raw.metrics, { params: args.preset === "loose" ? LOOSE : {} });
+  const found = findFailedAuctions(raw.bars, raw.tick, fromArchive(raw.metrics), { params: args.preset === "loose" ? LOOSE : {} });
   console.log(`${file}: ${raw.from} → ${raw.to}, ${found.length} breaks of a prior-day extreme that reclaimed value`);
   all.push(...found);
 }

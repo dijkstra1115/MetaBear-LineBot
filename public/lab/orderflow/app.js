@@ -4,6 +4,7 @@
 
 import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
+import { mergeReadings, readingsAt } from "./metrics.js";
 import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
 
 const DATA_URL = "/lab/data/btcusdt.json";
@@ -106,10 +107,9 @@ function build() {
       } else b.map.set(p, [buy, sell]);
     }
   }
-  const metricsByT = new Map(raw.metrics.map((r) => [r[0], r]));
-  for (const r of live?.metrics ?? []) if (!metricsByT.has(r[0])) metricsByT.set(r[0], r);
-  const metrics = [...metricsByT.values()].sort((x, y) => x[0] - y[0]);
-  let m = 0;
+  // Archive rows are stamped 5 minutes before their reading, collector rows at it (metrics.js).
+  const metrics = mergeReadings(raw.metrics, live?.metrics);
+  const readingAt = readingsAt(metrics);
   let cvd = 0;
   bars = [...groups.values()]
     .sort((a, b) => a.t - b.t)
@@ -131,18 +131,18 @@ function build() {
         lv.sellImb = lv.sell > 0 && lv.sell >= IMBALANCE * (above ? above.buy : 0) && (above?.buy ?? 0) > 0;
       }
       cvd += buy - sell;
-      // Latest metrics row published at or before the bar's close.
+      // Latest reading at or before the bar's close.
       const close = b.t + tfMs;
-      while (m + 1 < metrics.length && metrics[m + 1][0] <= close) m++;
-      const row = metrics[m] && metrics[m][0] <= close ? metrics[m] : null;
+      const row = readingAt(close);
       return {
         t: b.t, end: close, partial: b.partial, o: b.o, h: b.h, l: b.l, c: b.c, levels, buy, sell, delta: buy - sell, cvd, poc: poc?.p,
         oi: row?.[usd() ? 2 : 1] ?? null, topPos: row?.[3] ?? null, global: row?.[5] ?? null,
       };
     });
-  // Binance publishes OI every few seconds but ratios only every 5 minutes.
+  // Binance publishes OI every few seconds but ratios only every 5 minutes. A bar still
+  // forming has no reading at its close yet; a reading inside it is older than the live one.
   const last = bars.at(-1);
-  if (last && stream.oi && (!metrics.length || metrics.at(-1)[0] < last.t)) last.oi = usd() ? stream.oi * last.c : stream.oi;
+  if (last && stream.oi && last.end > Date.now()) last.oi = usd() ? stream.oi * last.c : stream.oi;
   attachLiquidations(tfMs);
   mergedOi = metrics.filter((m) => m[1] != null).map((m) => [m[0], m[1]]);
   if (stream.oi && mergedOi.length && Date.now() > mergedOi.at(-1)[0] + 30_000) mergedOi.push([Date.now(), stream.oi]);
