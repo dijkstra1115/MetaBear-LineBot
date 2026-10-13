@@ -7,7 +7,7 @@ destination: threads
 aspect: 1080x1920
 language: zh-Hant
 audience: 台灣幣圈交易者，想學訂單流策略的人
-length: 73s
+length: 96s
 angle: real-data replay of one strategy-01 trade, following the lesson's strategy rail
 voice: gemini-tts-charon
 ---
@@ -35,16 +35,12 @@ voice: gemini-tts-charon
 - 片中所有數字都要能在分鏡文件的核對表找到出處。
 - 依記憶：使用者曾表示 Gemini TTS 只用於非商業用途；公開發布前需再確認。
 
-## 接續工作（2026-10-13 交接）
+## 接續工作（2026-10-13 更新）
 
-目前狀態：第二版（3D 空間運鏡、新開場、Charon 人聲）已完成畫面；旁白只錄了第 1、2 段，且第 2 段的確認一已改稿（新說法：「跌破前低，觸發停損和強平……被洗出去的，是多單」），需要重錄。
+目前狀態：旁白三段都已用 Charon 錄好（第 2 段已換成確認一的新說法），`scripts/cues.mjs` 的時間與字幕已依 Whisper 逐字時間更新（`scripts/.vo-words.json`），片長 95.8 秒；第三版草稿預覽在 `../../out/drafts/replay-2025-12-09-preview-v3.mp4`。
 
-下一步，在本資料夾依序：
+下一步：使用者看過 v3 後，`npx --yes hyperframes@0.8.149 render` 出高畫質，再做 16:9。
 
-1. `python scripts/voice.py 2 3`：用 Charon 重錄第 2 段、補錄第 3 段（Gemini 免費配額一天約 5 次；每段錄完會用 Whisper 印出開頭，確認不是模型自己即興的內容）。
-2. 用 Whisper 取得逐字時間，更新 `scripts/cues.mjs`：`CHUNKS` 的實際長度、`RAW` 裡第 2、3 段的時間（第 3 段目前是估計值，函式 `est()`），以及 `CAPTIONS`。取時間的做法見 git 歷史中這段對話的指令：`whisper.load_model("small").transcribe(..., language="zh", word_timestamps=True)`。
-3. `node scripts/mix.mjs`、`node scripts/build.mjs`、`python scripts/subset-font.py`（改過字才需要）。
-4. `npx --yes hyperframes@0.8.149 check`，再 `snapshot --at …` 檢查畫面。
-5. `npx --yes hyperframes@0.8.149 render -q draft -f 30 -o ../../out/drafts/replay-2025-12-09-preview-v3.mp4` 給使用者看；確認後再出高畫質與 16:9。
+改稿流程：改 `scripts/vo-script.txt` → `python scripts/voice.py <段>`（Gemini 免費配額一天約 5 次）→ 用 `whisper.load_model("small").transcribe(..., language="zh", word_timestamps=True)` 取逐字時間，更新 `cues.mjs` 的 `CHUNKS`、`RAW`、`CAPTIONS` → `node scripts/mix.mjs`、`node scripts/build.mjs`、`python scripts/subset-font.py` → `check` → `render`。
 
-素材說明：`assets/audio/vo/1.wav`、`2.wav` 進 Git（配額有限，避免重錄）；`soundtrack.wav` 與試聽樣本不進 Git，可重建。舊的 Algenib 整段錄音（開頭有模型即興內容）已刪除。
+素材說明：`assets/audio/vo/1.wav`、`2.wav`、`3.wav` 進 Git（配額有限，避免重錄）；`soundtrack.wav` 與試聽樣本不進 Git，可重建。
