@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | 持續維護 | 網站、圖文教學、19 堂動態課程 | public/、web/ |
 | 持續維護 | LINE Bot、CRM、自動核實、VIP 邀請、行銷與分析師報單 | src/、migrations/ |
+| **核心方向** | 訂單流平台：研究內容、交易軟體、警報訂閱、電影級覆盤（2026-10-12 確認） | [VISION.md](VISION.md)；原型在分支 feat/orderflow-lab 的 public/lab/orderflow/ |
 | 繼續開發，同等優先 | FLOW ARENA 單人沙盤（半回合制、策略族群 NPC）；2–3 人 PvP 等沙盤穩定後再開發 | main 的 public/arena/；[說明](FLOW-ARENA.md) |
 | 繼續開發，同等優先 | Showreel、單課輸出、橫／直式宣傳片 | motion/；FLOW ARENA 宣傳片在 motion/flow-arena/，學院的宣傳片在 motion/academy/（見 [motion/README.md](../motion/README.md)） |
 | 暫停 | 流動性、隨機掛單與方向對照實驗 | experiments/liquidity/ |
@@ -20,6 +21,8 @@
 | 封存、退出公開網站 | 全部舊版學院、SVG 課程及被移除的故事 | archive/2026-09-29/main/public/orderflow/ |
 
 使用者沒有選擇保留任何舊版公開體驗。現行 19 課維持，不復活舊版長篇、重返價位、舊 CVD、標記價格、六段旅程及舊實戰／即時工作台。
+
+2026-10-12：新的訂單流平台（`public/lab/orderflow/`）是依 [VISION.md](VISION.md) 重新設計的產品，不是復活舊版即時工作台。
 
 ## 分支與尚未合併成果
 

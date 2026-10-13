@@ -1,7 +1,10 @@
 # CLAUDE.md
 
 Guidance for AI assistants working in this repository. Read this first, then
-[docs/PROJECT-MAP.md](docs/PROJECT-MAP.md), which records what is in scope.
+[docs/PROJECT-MAP.md](docs/PROJECT-MAP.md), which records what is in scope, and
+[docs/VISION.md](docs/VISION.md), the project's core direction (order-flow
+platform: research content, trading software, alert subscriptions, cinematic
+trade replays) and its non-negotiable principles.
 
 ## What this repo is
 

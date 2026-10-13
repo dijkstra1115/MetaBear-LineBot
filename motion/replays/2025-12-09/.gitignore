@@ -1,0 +1,12 @@
+# HyperFrames render outputs and caches
+renders/
+snapshots/
+.thumbnails/
+.hyperframes/
+.waveform-cache/
+check.log
+# Mix (rebuilt by scripts/mix.mjs) and the font glyph list
+assets/audio/soundtrack.wav
+scripts/.chars.txt
+# Voice audition samples (regenerate with scripts/voice-samples.py)
+assets/audio/voices/
