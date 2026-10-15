@@ -12,7 +12,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { createGunzip } from "node:zlib";
-import { PRINT_MIN, SYMBOL, TICK, addTrade, barRow, groupPrints } from "../public/lab/orderflow/bybit.js";
+import { ArchiveDay, PRINT_MIN, SYMBOL, archiveUrl } from "../public/lab/orderflow/bybit.js";
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -41,39 +41,19 @@ async function download(day) {
   try {
     if ((await stat(file)).size > 0) return file;
   } catch {}
-  const res = await fetch(`https://public.bybit.com/trading/${SYMBOL}/${SYMBOL}${day}.csv.gz`);
+  const res = await fetch(archiveUrl(day));
   if (!res.ok) throw new Error(`${day}: HTTP ${res.status}`);
   await writeFile(file, Buffer.from(await res.arrayBuffer()));
   return file;
 }
 
-// Columns: timestamp (seconds), symbol, side (taker), size, price, …
+// The collector imports each new day by itself (src/orderflow/collector.ts) with the same
+// ArchiveDay builder; this script re-imports older days or fills gaps.
 async function buildDay(file) {
-  const bars = new Map();
-  const prints = [];
-  // Fills of one taker order share a timestamp and side (groupPrints); collect each run.
-  let run = [];
-  const closeRun = () => {
-    for (const p of groupPrints(run)) if (p[3] >= PRINT_MIN) prints.push(p);
-    run = [];
-  };
+  const day = new ArchiveDay();
   const lines = createInterface({ input: createReadStream(file).pipe(createGunzip()), crlfDelay: Infinity });
-  let header = true;
-  let trades = 0;
-  for await (const line of lines) {
-    if (header) {
-      header = false;
-      continue;
-    }
-    const [ts, , side, size, price] = line.split(",", 5);
-    const trade = { t: Math.round(Number(ts) * 1000), price: Number(price), qty: Number(size), sell: side === "Sell" };
-    addTrade(bars, trade, TICK);
-    if (run.length && (run[0].t !== trade.t || run[0].sell !== trade.sell)) closeRun();
-    run.push(trade);
-    trades++;
-  }
-  closeRun();
-  return { rows: [...bars.entries()].sort((a, b) => a[0] - b[0]).map(([t, b]) => barRow(t, b)), prints, trades };
+  for await (const line of lines) day.add(line);
+  return { ...day.take(), trades: day.trades };
 }
 
 const auth = await token();

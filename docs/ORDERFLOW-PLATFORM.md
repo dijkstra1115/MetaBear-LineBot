@@ -40,7 +40,19 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 ## 中斷與補資料
 
 - 物件偶爾會被平台重啟（實測 45 分鐘內一次，約 10～20 秒）。重新連上後，用 REST `recent-trade`（最近 1000 筆，約 1～2 分鐘）補回漏掉的成交；超出範圍的缺口會記在 `/status` 的 `gaps`。
-- 每小時用 K 線補最近兩天收集器沒看到的分鐘；隔天再用封存檔匯入，取得完整的足跡。
+- 每小時用 K 線補最近兩天收集器沒看到的分鐘；隔天收集器會自己匯入封存檔，取得完整的足跡（見下一節）。
+
+## 每日封存檔自動匯入
+
+收集器每天自己下載前一個 UTC 日的 Bybit 成交封存檔（`public.bybit.com/trading/BTCUSDT/BTCUSDT<日期>.csv.gz`），重建足跡和大單，不必再手動執行 `lab:orderflow:bybit`。
+
+- **時間**：封存檔隔天約 01:10 UTC 出現（10/14 的檔案實測如此）。UTC 日結束 1 小時後第一次嘗試；檔案還沒出現（HTTP 404）就每 15 分鐘再試。超過 6 小時還沒有，會在 `/status` 的 `errors` 記一筆。請求要帶 `User-Agent`，否則 Bybit 的 CloudFront 會回 403（Workers 預設不帶）。
+- **串流處理**：用 `DecompressionStream` 邊下載邊解壓、逐行解析，不會把整個檔案放進記憶體；解析用 `bybit.js` 的 `ArchiveDay`，和匯入腳本同一份程式，結果逐位元組相同。
+- **分段**：每次 alarm 處理 40 萬行，處理中 alarm 改成每秒一次。每分鐘做完就寫入：足跡以 `src='archive'` 取代即時與 K 線的列，大單則把這段時間的整段換成封存檔的版本。
+- **中斷續傳**：下載中斷或物件重啟時，記下最後完成的分鐘（meta `archiveCursor`），重試時重新下載並跳過已寫入的分鐘。失敗會記在 `errors`，間隔 5、10、15… 分鐘重試（最多 60 分鐘）。
+- **紀錄**：最後匯入的日子存在 meta `archiveDone`，`/status` 的 `archive` 顯示 `last` 和目前狀態（`waiting`、`importing`、`retrying`、`done`）。收集器停擺後，最多往回補 3 天；更早的日子用腳本補。
+- **實測**（10/02，190 萬筆成交、72 MB gzip）：Node 22 解析約 1.3 秒、heap 14 MB；在 workerd 裡分 5 段完成，每段約 0.75 秒，遠低於 DO 每次呼叫 30 秒 CPU 與 128 MB 記憶體的上限，所以不需要調高 `limits.cpu_ms`。
+- **手動催一次**：`POST /api/orderflow/btcusdt/archive`（同一個權杖）會略過等待，馬上嘗試待匯入的那一天。
 - 每 5 分鐘的 cron 呼叫 `/wake`，萬一 alarm 鏈中斷也能重新啟動。
 
 ## 指標
@@ -79,18 +91,25 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | --- | --- | --- |
 | GET | `/api/orderflow/btcusdt/day?d=YYYY-MM-DD` | 一個 UTC 日的 `bars`、`prints`、`heat`、`metrics`、`liquidations`（最近 30 天） |
 | GET | `/api/orderflow/btcusdt/recent?since=<整分鐘毫秒>` | 最近兩天內某分鐘之後的全部資料，加上收集器狀態 |
-| GET | `/api/orderflow/btcusdt/status` | 連線狀態、最後成交時間、缺口、錯誤、各表筆數 |
+| GET | `/api/orderflow/btcusdt/status` | 連線狀態、最後成交時間、缺口、錯誤、各表筆數、封存檔匯入狀態（`archive`） |
 | POST | `/api/orderflow/btcusdt/import` | 封存檔匯入：`{ rows }` 是足跡；`{ prints, from, to }` 會換掉這段時間內的大單。需要 `Authorization: Bearer <ORDERFLOW_ADMIN_TOKEN>` |
+| POST | `/api/orderflow/btcusdt/archive` | 馬上嘗試待匯入的每日封存檔（略過重試等待）。權杖同上 |
 
 `metrics` 每一列的欄位：`[讀取時間, OI (BTC), OI (USDT), 大戶持倉比, 大戶帳戶比, 全體多空比, 主動買賣比, 資金費率]`。Bybit 沒有的欄位是 `null`。
 
 網頁每 5 秒讀一次 `recent`，`since` 設為最後一根 K 棒前兩分鐘。所有使用者在同一分鐘會讀到同一個網址，所以邊緣快取可以擋掉重複的請求。
 
+逐筆即時的部分不經過我們：網頁自己直連 Bybit WebSocket（成交、掛單簿、tickers），每筆成交 0.3 秒內重畫。合併規則：
+
+- 網頁開啟後完整收到的分鐘，用網頁自己算的版本；開啟當下那一分鐘只收到一部分，用收集器的版本。
+- 連線中斷再重連時，Bybit 不會補發中間的成交。中斷前最後一筆到重連後第一筆之間碰到的分鐘（`bybit.js` 的 `StreamGaps`），足跡和大單都改用收集器的版本，所以不會留下缺口。
+- OI、熱力圖歷史、爆倉紀錄等，仍由每 5 秒的 `recent` 更新。
+
 ## 本機開發
 
 ```sh
 npm run orderflow:dev                      # Worker + 收集器，http://127.0.0.1:8792（會真的連 Bybit）
-npm run lab:orderflow:bybit -- --days 3    # 匯入最近 3 天的封存檔（權杖讀 .dev.vars 的 ORDERFLOW_ADMIN_TOKEN）
+npm run lab:orderflow:bybit -- --days 3    # 補匯入最近 3 天的封存檔（權杖讀 .dev.vars 的 ORDERFLOW_ADMIN_TOKEN）；收集器本身也會自動匯入前一天
 npm run preview:academy                    # http://127.0.0.1:8790/lab/orderflow/，/api/orderflow/* 會轉到 8792
 ```
 
@@ -105,10 +124,9 @@ npm run preview:academy                    # http://127.0.0.1:8790/lab/orderflow
 3. `npm run orderflow:deploy`，再打開 `/api/orderflow/btcusdt/status` 確認 `bybit`、`okx` 都是 `open`。
 4. 匯入歷史：`ORDERFLOW_ADMIN_TOKEN=… npm run lab:orderflow:bybit -- --days 14 --api https://metabear.io/api/orderflow/btcusdt`
 5. 網頁的修改 push 到 `main`，Pages 會自動發布。
-6. 之後每天匯入前一天的封存檔（目前手動執行，之後可以讓收集器自己做）。
+6. 每天的封存檔由收集器自動匯入（見「每日封存檔自動匯入」），部署後隔天確認 `/status` 的 `archive.last` 是前一天、`errors` 沒有 `archive` 開頭的紀錄。收集器停擺超過 3 天、或要重匯更早的日子，再用第 4 步的腳本。
 
 ## 下一步
 
-- 收集器每天自動匯入前一天的封存檔（一天約 50 MB gzip，要先實測 DO 的 CPU 與記憶體）。
 - 對照驗證 REST OI 的時間戳和串流讀數。
 - 帳號、手機版、警報訂閱（VISION 第 3 階段的其餘部分）。

@@ -6,6 +6,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
 import {
+  ArchiveDay,
   BOOK_TOPIC,
   OrderBook,
   PING,
@@ -18,6 +19,7 @@ import {
   WS_URL,
   addTrade,
   applyTicker,
+  archiveUrl,
   barRow,
   groupPrints,
   parseRestTrades,
@@ -44,13 +46,33 @@ const BACKFILL_DAYS = 15; // OI, long/short ratio and funding history fetched fr
 const LIQ_TOPIC = `allLiquidation.${SYMBOL}`;
 const BYBIT_LIQ = LIQ_FEEDS.find((f) => f.ex === "bybit")!;
 const OKX_LIQ = LIQ_FEEDS.find((f) => f.ex === "okx")!;
+// Daily archive import. Bybit published 10/14's file at about 01:10 UTC, so a day is first tried
+// an hour after it ends and then every 15 minutes until the file is there. A busy day (1.9 M
+// trades, 72 MB gzip) parses in about 1.3 s with a 14 MB heap; it is still split into slices of
+// lines, one per alarm (about 0.75 s each in workerd), so a far busier day stays inside the
+// per-invocation CPU limit.
+const ARCHIVE_DUE = 3_600_000;
+const ARCHIVE_WAIT = 15 * MINUTE;
+const ARCHIVE_LATE = 6 * 3_600_000; // a file still missing this long after the day is reported as an error
+const ARCHIVE_SLICE = 400_000; // lines per alarm
+const ARCHIVE_NEXT_MS = 1_000; // alarm spacing while a day is being imported
+const ARCHIVE_CATCHUP = 3; // days the importer goes back for after an outage
 
 type Bar = { o: number; h: number; l: number; c: number; levels: Map<number, [number, number]>; first: number; last: number };
 type Socket = { ws: WebSocket; last: number; ping: ReturnType<typeof setInterval> | null };
 type Trade = { id: string; t: number; price: number; qty: number; sell: boolean };
 type Row = Record<string, SqlStorageValue>;
+// An archive day being streamed. Minutes before `cursor` are written; `open` is the minute
+// still being built. The reader stays open across alarms.
+type ArchiveJob = { day: string; from: number; cursor: number; open: number; reader: ReadableStreamDefaultReader<string>; build: ArchiveDay; carry: string };
 
 const iso = (t: number) => new Date(t).toISOString();
+// A stalled archive download must not hold up the alarm that also persists the live minutes.
+const within = <T>(p: Promise<T>, ms: number, what: string) =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${what} timed out`)), ms);
+    p.then(resolve, reject).finally(() => clearTimeout(timer));
+  });
 
 export class Collector extends DurableObject<OrderflowEnv> {
   private sql: SqlStorage;
@@ -61,7 +83,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private seen = new Set<string>();
   private heat: [number, number, number, number[]] | null = null; // latest column of the current minute
   private lastTradeT = 0;
-  private status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[] };
+  private archive: ArchiveJob | null = null;
+  private status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[], archive: null as Record<string, unknown> | null };
 
   constructor(ctx: DurableObjectState, env: OrderflowEnv) {
     super(ctx, env);
@@ -330,6 +353,120 @@ export class Collector extends DurableObject<OrderflowEnv> {
     }
   }
 
+  // ---------- daily trade archive ----------
+
+  // Archive rows are authoritative over live and kline rows; prints in [from, to) are replaced.
+  private writeArchive(rows: unknown[][], prints?: { from: number; to: number; list: [number, string, number, number][] }) {
+    for (const row of rows) this.sql.exec("INSERT INTO bars (t, src, row) VALUES (?, 'archive', ?) ON CONFLICT(t) DO UPDATE SET src = 'archive', row = excluded.row", row[0] as number, JSON.stringify(row));
+    if (!prints) return;
+    this.sql.exec("DELETE FROM prints WHERE t >= ? AND t < ?", prints.from, prints.to);
+    for (const [t, side, price, qty] of prints.list) if (t >= prints.from && t < prints.to) this.sql.exec("INSERT OR IGNORE INTO prints VALUES (?, ?, ?, ?)", t, side, price, qty);
+  }
+
+  // The day to import next: the one after the last imported, at most ARCHIVE_CATCHUP days back,
+  // and only once its file is due.
+  private archiveDue(now: number) {
+    const latest = Math.floor((now - ARCHIVE_DUE) / DAY) * DAY - DAY;
+    const done = this.meta("archiveDone");
+    const next = Math.max(done ? Date.parse(`${done}T00:00:00Z`) + DAY : latest, latest - (ARCHIVE_CATCHUP - 1) * DAY);
+    return next <= latest ? next : null;
+  }
+
+  private archiveRetry(day: string, wait: number, state: string, error?: string) {
+    const at = Date.now() + wait;
+    this.setMeta("archiveRetryAt", at);
+    this.status.archive = { day, state, retry: iso(at) };
+    if (error) this.note("errors", `archive ${day}: ${error}`);
+  }
+
+  private archiveFailed(day: string, error: string) {
+    const attempts = Number(this.meta("archiveAttempts") ?? 0) + 1;
+    this.setMeta("archiveAttempts", attempts);
+    this.archiveRetry(day, Math.min(attempts * 5 * MINUTE, 60 * MINUTE), "retrying", error);
+  }
+
+  private async startArchive(now: number) {
+    const from = this.archiveDue(now);
+    if (from == null || now < Number(this.meta("archiveRetryAt") ?? 0)) return null;
+    const day = iso(from).slice(0, 10);
+    // After a failure or a restart, minutes already written are skipped.
+    const saved = JSON.parse(this.meta("archiveCursor") ?? "null") as { day: string; t: number } | null;
+    const cursor = saved?.day === day ? saved.t : from;
+    let res: Response;
+    try {
+      // Bybit's CloudFront refuses requests without a User-Agent (403), which Workers omit.
+      res = await within(fetch(archiveUrl(day), { headers: { "user-agent": "metabear-orderflow (+https://metabear.io)" } }), 30_000, "fetch");
+    } catch (err) {
+      this.archiveFailed(day, `fetch: ${err}`);
+      return null;
+    }
+    // Bybit answers 404 until the file is published.
+    if (res.status === 404) {
+      await res.body?.cancel();
+      this.archiveRetry(day, ARCHIVE_WAIT, "waiting", now > from + DAY + ARCHIVE_LATE ? `still missing (HTTP ${res.status})` : undefined);
+      return null;
+    }
+    if (!res.ok || !res.body) {
+      await res.body?.cancel();
+      this.archiveFailed(day, `HTTP ${res.status}`);
+      return null;
+    }
+    const reader = res.body.pipeThrough(new DecompressionStream("gzip")).pipeThrough(new TextDecoderStream()).getReader();
+    this.status.archive = { day, state: "importing", from: iso(cursor) };
+    return (this.archive = { day, from, cursor, open: cursor, reader, build: new ArchiveDay(), carry: "" });
+  }
+
+  // Writes the finished minutes before `before` (all of them at the end of the file) and
+  // replaces the prints from the cursor up to it.
+  private flushArchive(job: ArchiveJob, before: number, end = false) {
+    const { rows, prints } = job.build.take(end ? Infinity : before);
+    this.writeArchive(rows, { from: job.cursor, to: before, list: prints });
+    job.cursor = before;
+  }
+
+  private archiveLine(job: ArchiveJob, line: string) {
+    // The header parses as NaN and passes through; add() skips it.
+    const t = Math.round(Number(line.slice(0, line.indexOf(","))) * 1000);
+    if (t < job.cursor || t >= job.from + DAY) return;
+    const minute = job.build.add(line);
+    if (minute != null && minute > job.open) {
+      this.flushArchive(job, minute);
+      job.open = minute;
+    }
+  }
+
+  // One slice of the day per alarm; the file is streamed and never held whole.
+  private async importArchive() {
+    const job = this.archive ?? (await this.startArchive(Date.now()));
+    if (!job) return;
+    try {
+      for (let lines = 0; lines < ARCHIVE_SLICE; ) {
+        const { value, done } = await within(job.reader.read(), 30_000, "read");
+        if (done) {
+          if (job.carry) this.archiveLine(job, job.carry);
+          this.flushArchive(job, job.from + DAY, true);
+          this.archive = null;
+          this.setMeta("archiveDone", job.day);
+          this.sql.exec("DELETE FROM meta WHERE k IN ('archiveCursor', 'archiveAttempts', 'archiveRetryAt')");
+          this.status.archive = { day: job.day, state: "done", trades: job.build.trades, at: iso(Date.now()) };
+          console.log(JSON.stringify({ event: "orderflow_archive_imported", day: job.day, trades: job.build.trades }));
+          return;
+        }
+        const parts = (job.carry + value).split("\n");
+        job.carry = parts.pop()!;
+        for (const line of parts) this.archiveLine(job, line);
+        lines += parts.length;
+      }
+      this.setMeta("archiveCursor", JSON.stringify({ day: job.day, t: job.cursor }));
+      this.status.archive = { day: job.day, state: "importing", minute: iso(job.cursor), trades: job.build.trades };
+    } catch (err) {
+      this.archive = null;
+      job.reader.cancel().catch(() => {});
+      this.setMeta("archiveCursor", JSON.stringify({ day: job.day, t: job.cursor }));
+      this.archiveFailed(job.day, `${err}`);
+    }
+  }
+
   private prune() {
     const now = Date.now();
     if (now - Number(this.meta("pruned") ?? 0) < 3_600_000) return;
@@ -352,11 +489,13 @@ export class Collector extends DurableObject<OrderflowEnv> {
         await this.pollRest();
         await this.fillKlines();
       }
+      // Runs with the streams off too (tests); it only reads public.bybit.com.
+      await this.importArchive();
       this.prune();
     } catch (err) {
       this.note("errors", `alarm: ${err}`);
     } finally {
-      await this.ctx.storage.setAlarm(Date.now() + ALARM_MS);
+      await this.ctx.storage.setAlarm(Date.now() + (this.archive ? ARCHIVE_NEXT_MS : ALARM_MS));
     }
   }
 
@@ -425,6 +564,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       bookReady: this.book.ready,
       open: [...this.sockets.keys()],
       oi: this.ticker.oi ?? null,
+      archive: { last: this.meta("archiveDone"), ...this.status.archive },
       counts: Object.fromEntries(["bars", "prints", "heat", "oi", "oi_rest", "ratios", "funding", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
     };
   }
@@ -448,14 +588,17 @@ export class Collector extends DurableObject<OrderflowEnv> {
       // Prints come with the [from, to) range they cover, which they replace.
       const body = (await request.json()) as { rows?: [number, ...unknown[]][]; prints?: [number, string, number, number][]; from?: number; to?: number };
       const rows = body.rows ?? [];
-      for (const row of rows) this.sql.exec("INSERT INTO bars (t, src, row) VALUES (?, 'archive', ?) ON CONFLICT(t) DO UPDATE SET src = 'archive', row = excluded.row", row[0], JSON.stringify(row));
       const prints = body.prints ?? [];
-      if (prints.length || body.from != null) {
-        if (!Number.isInteger(body.from) || !Number.isInteger(body.to)) return Response.json({ error: "prints need from and to" }, { status: 400 });
-        this.sql.exec("DELETE FROM prints WHERE t >= ? AND t < ?", body.from!, body.to!);
-        for (const [t, side, price, qty] of prints) if (t >= body.from! && t < body.to!) this.sql.exec("INSERT OR IGNORE INTO prints VALUES (?, ?, ?, ?)", t, side, price, qty);
-      }
+      const replace = prints.length > 0 || body.from != null;
+      if (replace && (!Number.isInteger(body.from) || !Number.isInteger(body.to))) return Response.json({ error: "prints need from and to" }, { status: 400 });
+      this.writeArchive(rows, replace ? { from: body.from!, to: body.to!, list: prints } : undefined);
       return Response.json({ imported: rows.length, prints: prints.length });
+    }
+    if (url.pathname === "/archive" && request.method === "POST") {
+      // Try the pending archive day now instead of at the next retry.
+      this.sql.exec("DELETE FROM meta WHERE k = 'archiveRetryAt'");
+      if (!this.archive) await this.ctx.storage.setAlarm(now);
+      return Response.json({ archive: { last: this.meta("archiveDone"), ...this.status.archive } });
     }
     return new Response("not found", { status: 404 });
   }
