@@ -16,6 +16,7 @@ production. Everything runs on Cloudflare:
 | --- | --- | --- |
 | Public site: home `/`, picture guides `/learn`, academy `/orderflow/` | `public/`, `web/` | Pages project `metabear-site` (built to `pages/dist/`) |
 | Lesson narration Range/seek (`/orderflow/motion/audio/*`) | `pages/functions/` → `src/lesson-audio.ts` | Pages Function |
+| Order-flow data API `/api/orderflow/*` (Bybit collector Durable Object) | `src/orderflow/`, `wrangler.orderflow.jsonc` | Worker `metabear-orderflow` (deploy: `npm run orderflow:deploy`) |
 | LINE webhook, CRM admin `/admin`, analyst desk `/desk`, login `/login`, `/api/*`, `/auth/*`, `/content.json`, `/rates/*`, `/health` | `src/`, `migrations/` | Worker `metabear-backend` (`src/backend.ts`) |
 | Lesson videos, showreel, promos | `motion/` | Local render only (outputs not in Git) |
 
@@ -109,6 +110,11 @@ npm run build:pages && npm run check:pages   # when touching the public site / P
 Site-only preview without the backend: `npm run build:site`, then
 `npm run preview:academy` → http://127.0.0.1:8790/index.html and
 `/orderflow/courses.html`.
+
+Order-flow platform: `npm run orderflow:dev` (collector + API on :8792, connects to
+Bybit), `npm run lab:orderflow:bybit -- --days 3` (import Bybit trade archives), then
+`npm run preview:academy` → http://127.0.0.1:8790/lab/orderflow/. See
+`docs/ORDERFLOW-PLATFORM.md`.
 
 Video tooling (needs Playwright Chromium and ffmpeg with libx264; `FFMPEG=` to
 override): `npm run motion:audio -- <id>`, `npm run motion:render -- <id>`

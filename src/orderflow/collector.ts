@@ -1,0 +1,429 @@
+// Order-flow collector: one Durable Object holding Bybit's BTCUSDT streams (trades, 1,000-level
+// book, tickers, liquidations) plus OKX liquidations, writing footprint bars, heatmap columns,
+// OI readings and liquidations to its SQLite storage. Binance refuses Cloudflare, see
+// docs/ORDERFLOW-CF-PROBE.md, which also explains the 10 s alarm: open outbound sockets alone
+// keep an object alive for at most 15 minutes.
+import { DurableObject } from "cloudflare:workers";
+import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
+import {
+  BOOK_TOPIC,
+  OrderBook,
+  PING,
+  REST_URL,
+  SYMBOL,
+  TICK,
+  TICKER_TOPIC,
+  TRADE_TOPIC,
+  WS_URL,
+  addTrade,
+  applyTicker,
+  barRow,
+  parseRestTrades,
+  parseTrades,
+  takerTotals,
+} from "../../public/lab/orderflow/bybit.js";
+
+export interface OrderflowEnv {
+  COLLECTOR: DurableObjectNamespace<Collector>;
+  ORDERFLOW_ADMIN_TOKEN?: string;
+  ORDERFLOW_STREAMS?: string; // "off" keeps the object from connecting (tests)
+}
+
+const MINUTE = 60_000;
+const FIVE_MIN = 5 * MINUTE;
+const DAY = 86_400_000;
+const ALARM_MS = 10_000;
+const SILENT_MS = 30_000;
+const SEEN_TRADES = 5_000; // trade ids kept to drop duplicates between the stream and a REST backfill
+const KEEP_MS = { bars: 120 * DAY, heat: 14 * DAY, oi: 120 * DAY, liqs: 120 * DAY };
+const BACKFILL_DAYS = 14; // OI and long/short ratio history fetched from REST
+const LIQ_TOPIC = `allLiquidation.${SYMBOL}`;
+const BYBIT_LIQ = LIQ_FEEDS.find((f) => f.ex === "bybit")!;
+const OKX_LIQ = LIQ_FEEDS.find((f) => f.ex === "okx")!;
+
+type Bar = { o: number; h: number; l: number; c: number; levels: Map<number, [number, number]>; first: number; last: number };
+type Socket = { ws: WebSocket; last: number; ping: ReturnType<typeof setInterval> | null };
+type Trade = { id: string; t: number; price: number; qty: number; sell: boolean };
+type Row = Record<string, SqlStorageValue>;
+
+const iso = (t: number) => new Date(t).toISOString();
+
+export class Collector extends DurableObject<OrderflowEnv> {
+  private sql: SqlStorage;
+  private bars = new Map<number, Bar>(); // minutes not yet closed and persisted
+  private book = new OrderBook();
+  private ticker: { oi?: number; oiValue?: number; ts?: number } = {};
+  private sockets = new Map<string, Socket>();
+  private seen = new Set<string>();
+  private heat: [number, number, number, number[]] | null = null; // latest column of the current minute
+  private lastTradeT = 0;
+  private status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[] };
+
+  constructor(ctx: DurableObjectState, env: OrderflowEnv) {
+    super(ctx, env);
+    this.sql = ctx.storage.sql;
+    this.sql.exec(`
+      CREATE TABLE IF NOT EXISTS bars (t INTEGER PRIMARY KEY, src TEXT NOT NULL, row TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS heat (t INTEGER PRIMARY KEY, row TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS oi (t INTEGER PRIMARY KEY, oi REAL, oi_value REAL, taker REAL);
+      CREATE TABLE IF NOT EXISTS oi_rest (t INTEGER PRIMARY KEY, oi REAL);
+      CREATE TABLE IF NOT EXISTS ratios (t INTEGER PRIMARY KEY, ratio REAL);
+      CREATE TABLE IF NOT EXISTS liqs (t INTEGER, side TEXT, price REAL, qty REAL, ex TEXT, PRIMARY KEY (t, side, price, qty, ex));
+      CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+    `);
+    // The current minute is persisted every alarm; pick it back up so a restart only loses
+    // the seconds since then, which the REST backfill on reconnect fills in.
+    this.lastTradeT = Number(this.meta("lastTradeT") ?? 0);
+    for (const r of this.rows("SELECT t, row FROM bars WHERE src = 'live' AND t >= ?", Math.floor(Date.now() / MINUTE) * MINUTE - MINUTE)) {
+      const [t, o, h, l, c, levels] = JSON.parse(String(r.row));
+      this.bars.set(t, { o, h, l, c, levels: new Map(levels.map(([bin, b, s]: number[]) => [bin, [b, s]])), first: t, last: Math.max(t, this.lastTradeT) });
+    }
+  }
+
+  // ---------- storage helpers ----------
+
+  private rows(query: string, ...args: SqlStorageValue[]): Row[] {
+    return [...this.sql.exec(query, ...args)] as Row[];
+  }
+
+  private meta(k: string): string | null {
+    const [r] = this.rows("SELECT v FROM meta WHERE k = ?", k);
+    return r ? String(r.v) : null;
+  }
+
+  private setMeta(k: string, v: string | number) {
+    this.sql.exec("INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", k, String(v));
+  }
+
+  private note(kind: "gaps" | "errors", text: string) {
+    const list = this.status[kind];
+    list.unshift(`${iso(Date.now()).slice(0, 19)} ${text}`);
+    list.length = Math.min(list.length, 20);
+    if (kind === "errors") console.error(JSON.stringify({ event: "orderflow_collector_error", detail: text }));
+  }
+
+  // ---------- streams ----------
+
+  private streamsOn() {
+    return this.env.ORDERFLOW_STREAMS !== "off";
+  }
+
+  private async openStream(name: "bybit" | "okx") {
+    const url = name === "bybit" ? WS_URL : OKX_LIQ.url;
+    let res: Response;
+    try {
+      // No AbortSignal: it stays attached to the upgraded socket and would cut it later.
+      res = await fetch(url.replace(/^wss:/, "https:"), { headers: { Upgrade: "websocket" } });
+    } catch (err) {
+      this.status[name] = "error";
+      this.note("errors", `${name} connect: ${err}`);
+      return;
+    }
+    const ws = res.webSocket;
+    if (!ws) {
+      this.status[name] = `rejected ${res.status}`;
+      this.note("errors", `${name} rejected: HTTP ${res.status}`);
+      return;
+    }
+    ws.accept();
+    const sock: Socket = { ws, last: Date.now(), ping: null };
+    this.sockets.set(name, sock);
+    this.status[name] = "open";
+    if (name === "bybit") {
+      this.book.reset();
+      ws.send(JSON.stringify({ op: "subscribe", args: [TRADE_TOPIC, BOOK_TOPIC, TICKER_TOPIC, LIQ_TOPIC] }));
+      sock.ping = setInterval(() => ws.send(PING), 20_000);
+    } else {
+      ws.send(JSON.stringify(OKX_LIQ.subscribe));
+      sock.ping = setInterval(() => ws.send(OKX_LIQ.ping!), 20_000);
+    }
+    ws.addEventListener("message", (e) => {
+      if (this.sockets.get(name) !== sock) return;
+      sock.last = Date.now();
+      const text = typeof e.data === "string" ? e.data : new TextDecoder().decode(e.data);
+      if (text === "pong") return;
+      try {
+        if (name === "bybit") this.onBybit(JSON.parse(text));
+        else this.saveLiqs(OKX_LIQ.parse(JSON.parse(text)));
+      } catch (err) {
+        this.note("errors", `${name} message: ${err}`);
+      }
+    });
+    const dropped = (why: string) => {
+      if (this.sockets.get(name) !== sock) return;
+      if (sock.ping) clearInterval(sock.ping);
+      this.sockets.delete(name);
+      this.status[name] = `closed ${why}`;
+    };
+    ws.addEventListener("close", (e) => dropped(String(e.code)));
+    ws.addEventListener("error", () => dropped("error"));
+    if (name === "bybit") await this.backfillTrades();
+  }
+
+  private async ensureStreams() {
+    for (const name of ["bybit", "okx"] as const) {
+      const sock = this.sockets.get(name);
+      if (sock && Date.now() - sock.last > SILENT_MS) {
+        this.note("gaps", `${name} silent, reconnecting`);
+        if (sock.ping) clearInterval(sock.ping);
+        this.sockets.delete(name);
+        try {
+          sock.ws.close(1000, "silent");
+        } catch {}
+      }
+      if (!this.sockets.has(name)) await this.openStream(name);
+    }
+  }
+
+  private onBybit(m: any) {
+    if (m.topic === TRADE_TOPIC) for (const tr of parseTrades(m)) this.addTradeOnce(tr);
+    else if (m.topic === BOOK_TOPIC) this.book.apply(m);
+    else if (m.topic === TICKER_TOPIC) this.onTicker(m);
+    else if (m.topic === LIQ_TOPIC) this.saveLiqs(BYBIT_LIQ.parse(m));
+  }
+
+  private addTradeOnce(tr: Trade) {
+    if (this.seen.has(tr.id)) return;
+    this.seen.add(tr.id);
+    if (this.seen.size > SEEN_TRADES) this.seen.delete(this.seen.values().next().value!);
+    addTrade(this.bars, tr, TICK);
+    if (tr.t > this.lastTradeT) this.lastTradeT = tr.t;
+  }
+
+  // Trades missed while the socket was down: Bybit serves the latest 1,000 (about one to two
+  // minutes of BTC), so longer outages leave a gap, recorded in the status.
+  private async backfillTrades() {
+    if (!this.lastTradeT) return;
+    try {
+      const res = await fetch(`${REST_URL}/v5/market/recent-trade?category=linear&symbol=${SYMBOL}&limit=1000`);
+      const list: Trade[] = parseRestTrades(((await res.json()) as any).result.list);
+      const oldest = Math.min(...list.map((tr) => tr.t));
+      if (oldest > this.lastTradeT) this.note("gaps", `trades ${iso(this.lastTradeT).slice(11, 19)}–${iso(oldest).slice(11, 19)} missing`);
+      const since = this.lastTradeT;
+      for (const tr of list) if (tr.t >= since) this.addTradeOnce(tr);
+    } catch (err) {
+      this.note("errors", `trade backfill: ${err}`);
+    }
+  }
+
+  // OI is read at 5-minute boundaries in reading time (public/lab/orderflow/metrics.js): the
+  // first ticker message past a boundary records the value held just before it.
+  private onTicker(m: any) {
+    const ts = Number(m.ts);
+    const prev = this.ticker.ts;
+    if (prev && this.ticker.oi != null && Math.floor(ts / FIVE_MIN) > Math.floor(prev / FIVE_MIN)) {
+      const t = Math.floor(ts / FIVE_MIN) * FIVE_MIN;
+      this.persistBars();
+      const window = this.rows("SELECT row FROM bars WHERE t >= ? AND t < ?", t - FIVE_MIN, t).map((r) => JSON.parse(String(r.row)));
+      const [buy, sell] = takerTotals(window);
+      this.sql.exec(
+        "INSERT INTO oi (t, oi, oi_value, taker) VALUES (?, ?, ?, ?) ON CONFLICT(t) DO NOTHING",
+        t,
+        this.ticker.oi,
+        this.ticker.oiValue ?? null,
+        sell > 0 ? Math.round((buy / sell) * 1e4) / 1e4 : null,
+      );
+    }
+    applyTicker(this.ticker, m);
+    this.ticker.ts = ts;
+  }
+
+  private saveLiqs(rows: [number, string, number, number, string][]) {
+    for (const [t, side, price, qty, ex] of rows) this.sql.exec("INSERT OR IGNORE INTO liqs VALUES (?, ?, ?, ?, ?)", t, side, price, qty, ex);
+  }
+
+  // ---------- persistence ----------
+
+  private persistBars() {
+    const current = Math.floor(Date.now() / MINUTE) * MINUTE;
+    for (const [t, bar] of this.bars) {
+      // An archive import is authoritative for its minutes.
+      this.sql.exec(
+        "INSERT INTO bars (t, src, row) VALUES (?, 'live', ?) ON CONFLICT(t) DO UPDATE SET src = 'live', row = excluded.row WHERE bars.src != 'archive'",
+        t,
+        JSON.stringify(barRow(t, bar)),
+      );
+      // Keep the last closed minute a little longer for late REST backfill trades.
+      if (t < current - MINUTE) this.bars.delete(t);
+    }
+    if (this.lastTradeT) this.setMeta("lastTradeT", this.lastTradeT);
+  }
+
+  private persistHeat() {
+    const col = this.book.column();
+    if (!col) return;
+    const minute = Math.floor(Date.now() / MINUTE) * MINUTE;
+    // One column per minute: the latest snapshot in it.
+    this.heat = [minute, ...col] as [number, number, number, number[]];
+    this.sql.exec("INSERT INTO heat (t, row) VALUES (?, ?) ON CONFLICT(t) DO UPDATE SET row = excluded.row", minute, JSON.stringify(this.heat));
+  }
+
+  // OI and account long/short ratio history from REST, one page per alarm, then every 5 minutes
+  // to fill readings the stream missed. Bybit's ratio is accounts long ÷ accounts short.
+  private async pollRest() {
+    const now = Date.now();
+    for (const [kind, pageMs] of [["oi", 200 * FIVE_MIN], ["ratio", 500 * FIVE_MIN]] as const) {
+      const key = `${kind}Cursor`;
+      let cursor = Number(this.meta(key) ?? 0) || now - BACKFILL_DAYS * DAY;
+      const caughtUp = cursor > now - 15 * MINUTE;
+      if (caughtUp && now - Number(this.meta(`${kind}Polled`) ?? 0) < FIVE_MIN) continue;
+      if (caughtUp) cursor = now - 30 * MINUTE;
+      const end = Math.min(now, cursor + pageMs);
+      const url =
+        kind === "oi"
+          ? `${REST_URL}/v5/market/open-interest?category=linear&symbol=${SYMBOL}&intervalTime=5min&limit=200&startTime=${cursor}&endTime=${end}`
+          : `${REST_URL}/v5/market/account-ratio?category=linear&symbol=${SYMBOL}&period=5min&limit=500&startTime=${cursor}&endTime=${end}`;
+      try {
+        const res = await fetch(url);
+        const body = (await res.json()) as any;
+        if (body.retCode !== 0) throw new Error(`${body.retCode} ${body.retMsg}`);
+        for (const r of body.result.list) {
+          if (kind === "oi") this.sql.exec("INSERT OR REPLACE INTO oi_rest (t, oi) VALUES (?, ?)", Number(r.timestamp), Number(r.openInterest));
+          else this.sql.exec("INSERT OR REPLACE INTO ratios (t, ratio) VALUES (?, ?)", Number(r.timestamp), Math.round((Number(r.buyRatio) / Number(r.sellRatio)) * 1e4) / 1e4);
+        }
+        this.setMeta(key, Math.max(Number(this.meta(key) ?? 0), end - 10 * MINUTE));
+        this.setMeta(`${kind}Polled`, now);
+      } catch (err) {
+        this.note("errors", `${kind} history: ${err}`);
+      }
+    }
+  }
+
+  // Minutes the collector never saw (before it started, or a long outage) get Bybit's 1-minute
+  // klines: price only, no footprint or taker split, so the lab marks them partial. Live and
+  // archive rows replace them.
+  private async fillKlines() {
+    const now = Date.now();
+    if (now - Number(this.meta("klinesFilled") ?? 0) < 3_600_000) return;
+    const end = Math.floor(now / MINUTE) * MINUTE - 2 * MINUTE;
+    try {
+      for (let start = end - 2 * DAY; start < end; start += 1000 * MINUTE) {
+        const stop = Math.min(end, start + 999 * MINUTE);
+        const res = await fetch(`${REST_URL}/v5/market/kline?category=linear&symbol=${SYMBOL}&interval=1&limit=1000&start=${start}&end=${stop}`);
+        const body = (await res.json()) as any;
+        if (body.retCode !== 0) throw new Error(`${body.retCode} ${body.retMsg}`);
+        for (const [t, o, h, l, c] of body.result.list as string[][])
+          this.sql.exec("INSERT OR IGNORE INTO bars (t, src, row) VALUES (?, 'kline', ?)", Number(t), JSON.stringify([Number(t), Number(o), Number(h), Number(l), Number(c), []]));
+      }
+      this.setMeta("klinesFilled", now);
+    } catch (err) {
+      this.note("errors", `kline fill: ${err}`);
+    }
+  }
+
+  private prune() {
+    const now = Date.now();
+    if (now - Number(this.meta("pruned") ?? 0) < 3_600_000) return;
+    this.sql.exec("DELETE FROM bars WHERE t < ?", now - KEEP_MS.bars);
+    this.sql.exec("DELETE FROM heat WHERE t < ?", now - KEEP_MS.heat);
+    this.sql.exec("DELETE FROM oi WHERE t < ?", now - KEEP_MS.oi);
+    this.sql.exec("DELETE FROM oi_rest WHERE t < ?", now - KEEP_MS.oi);
+    this.sql.exec("DELETE FROM ratios WHERE t < ?", now - KEEP_MS.oi);
+    this.sql.exec("DELETE FROM liqs WHERE t < ?", now - KEEP_MS.liqs);
+    this.setMeta("pruned", now);
+  }
+
+  // ---------- lifecycle ----------
+
+  async alarm() {
+    try {
+      if (this.streamsOn()) {
+        await this.ensureStreams();
+        this.persistBars();
+        this.persistHeat();
+        await this.pollRest();
+        await this.fillKlines();
+      }
+      this.prune();
+    } catch (err) {
+      this.note("errors", `alarm: ${err}`);
+    } finally {
+      await this.ctx.storage.setAlarm(Date.now() + ALARM_MS);
+    }
+  }
+
+  private async wake() {
+    if ((await this.ctx.storage.getAlarm()) == null) await this.ctx.storage.setAlarm(Date.now());
+  }
+
+  // ---------- queries ----------
+
+  // Rows are stored as JSON text; responses are assembled from it without re-parsing.
+  private series(from: number, to: number) {
+    const bars = new Map<number, string>(this.rows("SELECT t, row FROM bars WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [Number(r.t), String(r.row)]));
+    for (const [t, bar] of this.bars) if (t >= from && t < to) bars.set(t, JSON.stringify(barRow(t, bar)));
+    const heat = new Map<number, string>(this.rows("SELECT t, row FROM heat WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [Number(r.t), String(r.row)]));
+    if (this.heat && this.heat[0] >= from && this.heat[0] < to) heat.set(this.heat[0], JSON.stringify(this.heat));
+    return {
+      bars: `[${[...bars.entries()].sort((a, b) => a[0] - b[0]).map((e) => e[1]).join(",")}]`,
+      heat: `[${[...heat.entries()].sort((a, b) => a[0] - b[0]).map((e) => e[1]).join(",")}]`,
+      metrics: JSON.stringify(this.metrics(from, to)),
+      liquidations: JSON.stringify(this.rows("SELECT t, side, price, qty, ex FROM liqs WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [r.t, r.side, r.price, r.qty, r.ex])),
+    };
+  }
+
+  // Reading-time rows in the lab's shape: [t, OI (BTC), OI (USDT), top-trader position ratio,
+  // top-trader account ratio, all-account ratio, taker buy/sell over [t − 5m, t)]. Bybit has no
+  // top-trader ratios. Stream readings win; REST rows fill the rest (OI only, valued at bar close).
+  private metrics(from: number, to: number) {
+    const live = new Map(this.rows("SELECT t, oi, oi_value, taker FROM oi WHERE t >= ? AND t < ?", from, to).map((r) => [Number(r.t), r]));
+    const out = new Map<number, (number | null)[]>();
+    for (const [t, r] of live) out.set(t, [t, r.oi as number, r.oi_value == null ? null : Math.round(r.oi_value as number), null, null, null, (r.taker as number | null) ?? null]);
+    const closes = new Map(this.rows("SELECT t, row FROM bars WHERE t >= ? AND t < ?", from - MINUTE, to).map((r) => [Number(r.t), JSON.parse(String(r.row))[4] as number]));
+    for (const r of this.rows("SELECT t, oi FROM oi_rest WHERE t >= ? AND t < ?", from, to)) {
+      const t = Number(r.t);
+      if (out.has(t)) continue;
+      const close = closes.get(t - MINUTE);
+      out.set(t, [t, r.oi as number, close ? Math.round((r.oi as number) * close) : null, null, null, null, null]);
+    }
+    const ratios = this.rows("SELECT t, ratio FROM ratios WHERE t >= ? AND t < ? ORDER BY t", from - DAY, to);
+    const rows = [...out.values()].sort((a, b) => (a[0] as number) - (b[0] as number));
+    let k = -1;
+    for (const row of rows) {
+      while (k + 1 < ratios.length && Number(ratios[k + 1].t) <= (row[0] as number)) k++;
+      row[5] = k >= 0 ? (ratios[k].ratio as number) : null;
+    }
+    return rows;
+  }
+
+  private respond(parts: Record<string, string>, extra: Record<string, unknown>) {
+    const head = JSON.stringify({ symbol: SYMBOL, tick: TICK, source: "bybit", ...extra }).slice(0, -1);
+    const body = `${head},${Object.entries(parts).map(([k, v]) => `"${k}":${v}`).join(",")}}`;
+    return new Response(body, { headers: { "content-type": "application/json; charset=utf-8" } });
+  }
+
+  publicStatus() {
+    return {
+      ...this.status,
+      boot: iso(this.status.boot),
+      lastTrade: this.lastTradeT ? iso(this.lastTradeT) : null,
+      bookReady: this.book.ready,
+      open: [...this.sockets.keys()],
+      oi: this.ticker.oi ?? null,
+      counts: Object.fromEntries(["bars", "heat", "oi", "oi_rest", "ratios", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
+    };
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    await this.wake();
+    const url = new URL(request.url);
+    const now = Date.now();
+    if (url.pathname === "/wake") return new Response("ok");
+    if (url.pathname === "/status") return Response.json(this.publicStatus());
+    if (url.pathname === "/day") {
+      const from = Date.parse(`${url.searchParams.get("d")}T00:00:00Z`);
+      return this.respond(this.series(from, from + DAY), { day: url.searchParams.get("d"), updated: now });
+    }
+    if (url.pathname === "/recent") {
+      const since = Number(url.searchParams.get("since"));
+      return this.respond(this.series(since, now + MINUTE), { since, updated: now, status: { bybit: this.status.bybit, lastTrade: this.lastTradeT } });
+    }
+    if (url.pathname === "/import" && request.method === "POST") {
+      // Footprint rows rebuilt from Bybit's daily trade archive (scripts/orderflow-bybit-archive.mjs).
+      const { rows } = (await request.json()) as { rows: [number, ...unknown[]][] };
+      for (const row of rows) this.sql.exec("INSERT INTO bars (t, src, row) VALUES (?, 'archive', ?) ON CONFLICT(t) DO UPDATE SET src = 'archive', row = excluded.row", row[0], JSON.stringify(row));
+      return Response.json({ imported: rows.length });
+    }
+    return new Response("not found", { status: 404 });
+  }
+}

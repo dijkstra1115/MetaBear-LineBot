@@ -1,15 +1,19 @@
 // BTC order-flow lab: footprint, volume profile, CVD, OI and long/short
-// ratios drawn on one canvas from the dataset built by
-// scripts/orderflow-data.mjs (1-minute bars with $10 price bins).
+// ratios drawn on one canvas. History comes from the order-flow API (src/orderflow/),
+// whose collector records Bybit BTCUSDT 1-minute bars with $10 price bins; the page
+// streams the newest minutes straight from Bybit.
 
+import { BOOK_TOPIC, OrderBook, PING, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, parseTrades } from "./bybit.js";
 import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
-import { mergeReadings, readingsAt } from "./metrics.js";
+import { readingsAt } from "./metrics.js";
 import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
 
-const DATA_URL = "/lab/data/btcusdt.json";
-const LIVE_URL = "/lab/data/btcusdt-live.json";
-const HEAT_URL = "/lab/data/btcusdt-heatmap.json";
+const API = "/api/orderflow/btcusdt";
+const MINUTE = 60_000;
+const DAY = 86_400_000;
+// Days of history to load (today included); ?days=N up to 14.
+const DAYS = Math.min(14, Math.max(1, Math.floor(Number(new URLSearchParams(location.search).get("days"))) || 3));
 const C = {
   bg: "#05090f",
   grid: "rgba(120,160,190,0.08)",
@@ -32,8 +36,10 @@ const canvas = $("chart");
 const ctx = canvas.getContext("2d");
 const ui = { events: $("events"), lmap: $("lmap"), tf: $("tf"), tick: $("tick"), mode: $("mode"), unit: $("unit"), profile: $("profile"), heat: $("heat"), liq: $("liq"), live: $("live"), readout: $("readout"), status: $("status") };
 
-let raw = null; // archive dataset (complete days)
-let live = null; // collector output: recent bars, metrics, liquidations
+// Server rows by time: footprint bars (archive and collector) and reading-time metrics.
+const store = { bars: new Map(), metrics: new Map() };
+let server = null; // { updated, status } from the latest /recent poll
+let recentSince = 0;
 let heatCols = new Map(); // minute → [t, mid, lowBin, sizes]
 let liqs = [];
 let mergedRows = []; // 1-minute rows after merging archive, collector and stream
@@ -71,14 +77,11 @@ function build() {
   const tfMin = Number(ui.tf.value);
   const tfMs = tfMin * 60_000;
   tick = ui.tick.value === "auto" ? AUTO_TICK[tfMin] : Number(ui.tick.value);
-  const baseTick = raw.tick;
+  const baseTick = TICK;
   const groups = new Map();
-  // The archive is authoritative; collector bars only extend past its last minute.
-  const archiveEnd = raw.bars.at(-1)?.[0] ?? 0;
-  const rows = new Map(raw.bars.map((r) => [r[0], r]));
-  for (const r of live?.bars ?? []) if (r[0] > archiveEnd) rows.set(r[0], r);
+  const rows = new Map(store.bars);
   // Minutes streamed in full by this page win; the minute the page opened in is partial here.
-  for (const [t, b] of stream.bars) if (t > archiveEnd && (t > stream.start || !rows.has(t))) rows.set(t, streamRow(t, b));
+  for (const [t, b] of stream.bars) if (t > stream.start || !rows.has(t)) rows.set(t, barRow(t, b));
   mergedRows = [...rows.values()].sort((x, y) => x[0] - y[0]);
   for (const [t, o, h, l, c, levels, xbuy = 0, xsell = 0] of mergedRows) {
     const key = Math.floor(t / tfMs) * tfMs;
@@ -87,11 +90,11 @@ function build() {
     if (h > b.h) b.h = h;
     if (l < b.l) b.l = l;
     b.c = c;
-    // Kline-backfilled minutes have totals but no price levels.
+    // Kline-filled minutes have prices but no price levels or taker split.
     const k = usd() ? c : 1;
     b.xbuy += xbuy * k;
     b.xsell += xsell * k;
-    if (!levels.length && (xbuy || xsell)) b.partial = true;
+    if (!levels.length) b.partial = true;
     for (let [bin, buy, sell] of levels) {
       const p = Math.floor((bin * baseTick) / tick) * tick;
       if (usd()) {
@@ -107,8 +110,8 @@ function build() {
       } else b.map.set(p, [buy, sell]);
     }
   }
-  // Archive rows are stamped 5 minutes before their reading, collector rows at it (metrics.js).
-  const metrics = mergeReadings(raw.metrics, live?.metrics);
+  // The API stamps every metrics row at its reading time (metrics.js).
+  const metrics = [...store.metrics.values()].sort((a, b) => a[0] - b[0]);
   const readingAt = readingsAt(metrics);
   let cvd = 0;
   bars = [...groups.values()]
@@ -139,7 +142,7 @@ function build() {
         oi: row?.[usd() ? 2 : 1] ?? null, topPos: row?.[3] ?? null, global: row?.[5] ?? null,
       };
     });
-  // Binance publishes OI every few seconds but ratios only every 5 minutes. A bar still
+  // Bybit streams OI several times a second but ratios only every 5 minutes. A bar still
   // forming has no reading at its close yet; a reading inside it is older than the live one.
   const last = bars.at(-1);
   if (last && stream.oi && last.end > Date.now()) last.oi = usd() ? stream.oi * last.c : stream.oi;
@@ -158,7 +161,7 @@ function updateEvents() {
   const key = `${mergedRows.length}:${Math.floor(now / 300_000)}`;
   if (key === eventsKey) return;
   eventsKey = key;
-  events = detect(aggregateSignals(mergedRows, raw.tick, mergedOi, now));
+  events = detect(aggregateSignals(mergedRows, TICK, mergedOi, now));
 }
 
 function eventsIn(b) {
@@ -170,7 +173,7 @@ function updateLiqMap(force) {
   // The model replays every interval; refreshing it every 10 s is plenty.
   if (!force && Date.now() - liqMapAt < 10_000) return;
   liqMapAt = Date.now();
-  liqMap = buildLiqMap(mergedRows, raw.tick, mergedOi);
+  liqMap = buildLiqMap(mergedRows, TICK, mergedOi);
 }
 
 function attachLiquidations(tfMs) {
@@ -211,7 +214,7 @@ function layout() {
     cvd: { y: priceH, h: sub, label: "CVD", key: "cvd" },
     liq: { y: priceH + sub, h: sub, label: "爆倉 (USD)" },
     oi: { y: priceH + sub * 2, h: sub, label: `OI (${usd() ? "USD" : "BTC"})`, key: "oi" },
-    ratio: { y: priceH + sub * 3, h: sub, label: "大戶持倉比", key: "topPos" },
+    ratio: { y: priceH + sub * 3, h: sub, label: "多空比（Bybit 全體帳戶）", key: "global" },
   };
   return { axisW, timeH, plotW, panes, timeY: avail };
 }
@@ -425,7 +428,7 @@ function drawHeat(L, from, to, yOf) {
   if (!cols.length) return;
   const all = cols.flatMap(([, c]) => c[3]).filter((q) => q > 0).sort((x, y) => x - y);
   const ref = all[Math.floor(all.length * 0.98)] || 1;
-  const bin = raw.tick;
+  const bin = TICK;
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, L.panes.price.y, L.plotW, L.panes.price.h);
@@ -730,21 +733,8 @@ function drawSub(L, P, from, to) {
   ctx.font = `11px ${MONO}`;
   ctx.textBaseline = "top";
   ctx.fillText(P.label, 8, P.y + 6);
-  if (P.key === "topPos") {
-    ctx.fillStyle = C.dim;
-    ctx.fillText("— 全體帳戶多空比", 8 + ctx.measureText(P.label).width + 10, P.y + 6);
-  }
   ctx.textBaseline = "middle";
   if (!Number.isFinite(lo)) return;
-  if (P.key === "topPos") {
-    for (let i = from; i <= to; i++) {
-      const g = bars[i].global;
-      if (g != null) {
-        lo = Math.min(lo, g);
-        hi = Math.max(hi, g);
-      }
-    }
-  }
   const pad = (hi - lo) * 0.12 || 1;
   lo -= pad;
   hi += pad;
@@ -766,7 +756,7 @@ function drawSub(L, P, from, to) {
       ctx.fillRect(xOf(i, L) + (view.barW - w) / 2, d >= 0 ? mid - bh : mid, w, bh);
     }
   }
-  if (P.key === "topPos" && lo < 1 && hi > 1) {
+  if (P.key === "global" && lo < 1 && hi > 1) {
     const y = Math.round(yOf(1)) + 0.5;
     ctx.strokeStyle = C.grid;
     ctx.beginPath();
@@ -797,12 +787,11 @@ function drawSub(L, P, from, to) {
   ctx.beginPath();
   ctx.rect(0, P.y, L.plotW, P.h);
   ctx.clip();
-  if (P.key === "topPos") line("global", C.dim, 1.2);
   line(P.key, P.key === "cvd" ? C.buy : C.gold, 1.6);
   ctx.restore();
 
   ctx.fillStyle = C.muted;
-  const fmt = (v) => (P.key === "topPos" ? v.toFixed(2) : P.key === "oi" ? fmtVol(v) : fmtSigned(v));
+  const fmt = (v) => (P.key === "global" ? v.toFixed(2) : P.key === "oi" ? fmtVol(v) : fmtSigned(v));
   ctx.fillText(fmt(hi - pad), L.plotW + 8, yOf(hi - pad));
   ctx.fillText(fmt(lo + pad), L.plotW + 8, yOf(lo + pad));
   ctx.strokeStyle = C.line;
@@ -878,7 +867,7 @@ function updateReadout() {
     `買 ${span("buy", fmtVol(b.buy))} 賣 ${span("sell", fmtVol(b.sell))} Δ ${span(b.delta >= 0 ? "buy" : "sell", fmtSigned(b.delta))}`,
     `CVD ${fmtSigned(b.cvd)}`,
     b.oi != null ? `OI ${fmtVol(b.oi)} ${usd() ? "USD" : "BTC"}` : "",
-    b.topPos != null ? `大戶持倉比 ${span("gold", b.topPos.toFixed(2))} 全體 ${b.global.toFixed(2)}` : "",
+    b.global != null ? `多空比 ${span("gold", b.global.toFixed(2))}` : "",
     b.liq
       ? `爆倉 多 ${span("sell", fmtVol(b.liq.long.usd))} 空 ${span("buy", fmtVol(b.liq.short.usd))} USD（${Object.entries(b.liq.byEx).map(([ex, v]) => `${LIQ_EXCHANGES[ex] ?? ex} ${fmtVol(v)}`).join("、")}）`
       : "",
@@ -1040,13 +1029,10 @@ const stream = {
   bars: new Map(), // minute → { o, h, l, c, levels: Map(bin → [buy, sell]) }
   lastTrade: 0,
   oi: null,
-  book: { bids: new Map(), asks: new Map(), lastU: 0, ready: false, needFirst: false, buffer: [], syncing: false },
+  ticker: {},
+  book: new OrderBook(),
 };
 const liqKeys = new Set();
-
-function streamRow(t, b) {
-  return [t, b.o, b.h, b.l, b.c, [...b.levels.entries()].map(([bin, [buy, sell]]) => [bin, buy, sell])];
-}
 
 function mergeLiquidations(rows) {
   let added = false;
@@ -1105,101 +1091,32 @@ function connectWs(url, { onOpen, onMessage, ping: pingText }) {
   open();
 }
 
-function onTrade(d) {
-  const price = Number(d.p);
-  const minute = Math.floor(d.T / 60_000) * 60_000;
-  let b = stream.bars.get(minute);
-  if (!b) stream.bars.set(minute, (b = { o: price, h: price, l: price, c: price, levels: new Map() }));
-  if (price > b.h) b.h = price;
-  if (price < b.l) b.l = price;
-  b.c = price;
-  const bin = Math.floor(price / raw.tick);
-  let lv = b.levels.get(bin);
-  if (!lv) b.levels.set(bin, (lv = [0, 0]));
-  lv[d.m ? 1 : 0] += Number(d.q);
+function onTrade(tr) {
+  addTrade(stream.bars, tr, TICK);
   stream.lastTrade = Date.now();
   scheduleRefresh();
 }
 
-// Local order book, maintained the way Binance documents for diff depth streams.
-async function syncBook() {
-  const book = stream.book;
-  if (book.syncing) return;
-  book.syncing = true;
-  book.ready = false;
-  try {
-    const res = await fetch("https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=1000");
-    const snap = await res.json();
-    book.bids = new Map(snap.bids.map(([p, q]) => [Number(p), Number(q)]));
-    book.asks = new Map(snap.asks.map(([p, q]) => [Number(p), Number(q)]));
-    const pending = book.buffer.filter((e) => e.u >= snap.lastUpdateId);
-    book.buffer = [];
-    book.lastU = snap.lastUpdateId;
-    book.ready = true;
-    book.needFirst = true;
-    for (const e of pending) applyDepth(e);
-  } catch {
-    setTimeout(syncBook, 3000);
-  } finally {
-    book.syncing = false;
-  }
-}
-
-function applyDepth(e) {
-  const book = stream.book;
-  if (!book.ready) {
-    book.buffer.push(e);
-    if (book.buffer.length > 2000) book.buffer.shift();
-    return;
-  }
-  if (book.needFirst) {
-    if (e.u < book.lastU) return;
-    if (e.U > book.lastU) {
-      book.buffer = [e];
-      syncBook();
-      return;
-    }
-    book.needFirst = false;
-  } else if (e.pu !== book.lastU) {
-    book.buffer = [e];
-    syncBook();
-    return;
-  }
-  for (const [p, q] of e.b) Number(q) === 0 ? book.bids.delete(Number(p)) : book.bids.set(Number(p), Number(q));
-  for (const [p, q] of e.a) Number(q) === 0 ? book.asks.delete(Number(p)) : book.asks.set(Number(p), Number(q));
-  book.lastU = e.u;
-}
-
 function snapshotBook() {
-  const book = stream.book;
-  if (!book.ready || !book.bids.size || !book.asks.size) return;
-  let bid = -Infinity;
-  let ask = Infinity;
-  for (const p of book.bids.keys()) if (p > bid) bid = p;
-  for (const p of book.asks.keys()) if (p < ask) ask = p;
-  const mid = (bid + ask) / 2;
-  const lowBin = Math.floor((mid * 0.98) / raw.tick);
-  const sizes = new Array(Math.floor((mid * 1.02) / raw.tick) - lowBin + 1).fill(0);
-  for (const side of [book.bids, book.asks])
-    for (const [p, q] of side) {
-      const i = Math.floor(p / raw.tick) - lowBin;
-      if (i >= 0 && i < sizes.length) sizes[i] += q;
-    }
+  const col = stream.book.column();
+  if (!col) return;
   const minute = Math.floor(Date.now() / 60_000) * 60_000;
-  heatCols.set(minute, [minute, mid, lowBin, sizes]);
+  heatCols.set(minute, [minute, ...col]);
   redraw();
 }
 
 function startStreams() {
-  connectWs("wss://fstream.binance.com/market/stream?streams=btcusdt@aggTrade", {
-    onMessage: (m) => m.data?.e === "aggTrade" && onTrade(m.data),
-  });
-  connectWs("wss://fstream.binance.com/public/stream?streams=btcusdt@depth@100ms", {
-    onOpen: () => {
-      stream.book.buffer = [];
-      syncBook();
+  connectWs(WS_URL, {
+    ping: PING,
+    onOpen: (ws) => {
+      stream.book.reset();
+      ws.send(JSON.stringify({ op: "subscribe", args: [TRADE_TOPIC, BOOK_TOPIC, TICKER_TOPIC] }));
     },
-    onMessage: (m) => m.data?.e === "depthUpdate" && applyDepth(m.data),
+    onMessage: (m) => {
+      if (m.topic === TRADE_TOPIC) for (const tr of parseTrades(m)) onTrade(tr);
+      else if (m.topic === BOOK_TOPIC) stream.book.apply(m);
+      else if (m.topic === TICKER_TOPIC) stream.oi = applyTicker(stream.ticker, m).oi ?? null;
+    },
   });
   for (const feed of LIQ_FEEDS) {
     connectWs(feed.url, {
@@ -1209,14 +1126,6 @@ function startStreams() {
     });
   }
   setInterval(snapshotBook, 1_000);
-  const pollOi = async () => {
-    try {
-      const r = await (await fetch("https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT")).json();
-      stream.oi = Number(r.openInterest);
-    } catch {}
-  };
-  pollOi();
-  setInterval(pollOi, 10_000);
 }
 
 // ---------- live ----------
@@ -1234,43 +1143,57 @@ function refresh() {
 
 function showLive() {
   if (Date.now() - stream.lastTrade < 5_000) {
-    ui.live.textContent = "即時 · 直連交易所";
+    ui.live.textContent = "即時 · 直連 Bybit";
     ui.live.dataset.state = "on";
     return;
   }
-  if (!live) {
+  const lastTrade = server?.status?.lastTrade;
+  if (!lastTrade) {
     ui.live.textContent = "僅歷史資料";
     ui.live.dataset.state = "off";
     return;
   }
-  const age = Math.round((Date.now() - live.updated) / 1000);
+  const age = Math.round((Date.now() - lastTrade) / 1000);
   const stale = age > 30;
-  ui.live.textContent = stale ? `即時資料中斷（${age} 秒前）` : `即時 · ${age} 秒前更新`;
+  ui.live.textContent = stale ? `即時資料中斷（${age} 秒前）` : `即時 · 收集器 ${age} 秒前`;
   ui.live.dataset.state = stale ? "stale" : "on";
 }
 
-async function pollLive() {
-  try {
-    const res = await fetch(LIVE_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(String(res.status));
-    live = await res.json();
-    mergeLiquidations(live.liquidations ?? []);
-    refresh();
-  } catch {
-    // Collector not running: the page keeps working from the archive.
-  }
-  showLive();
+function ingest(d) {
+  for (const r of d.bars) store.bars.set(r[0], r);
+  for (const m of d.metrics) store.metrics.set(m[0], m);
+  // Columns this page built from its own stream are newer; keep them.
+  for (const c of d.heat) if (c[0] <= stream.start || !heatCols.has(c[0])) heatCols.set(c[0], c);
+  mergeLiquidations(d.liquidations);
 }
 
-async function pollHeat() {
+const utcDay = (t) => new Date(t).toISOString().slice(0, 10);
+
+async function loadDays() {
+  const today = Math.floor(Date.now() / DAY) * DAY;
+  const days = [];
+  for (let k = DAYS - 1; k >= 1; k--) days.push(utcDay(today - k * DAY));
+  const results = await Promise.all(days.map((d) => fetch(`${API}/day?d=${d}`).then((res) => (res.ok ? res.json() : null), () => null)));
+  for (const d of results) if (d) ingest(d);
+  recentSince = today;
+  await pollRecent();
+}
+
+async function pollRecent() {
   try {
-    const res = await fetch(HEAT_URL, { cache: "no-store" });
-    if (!res.ok) return;
-    const heat = await res.json();
-    // Columns this page built from its own stream are newer; keep them.
-    for (const c of heat.columns) if (c[0] <= stream.start || !heatCols.has(c[0])) heatCols.set(c[0], c);
-    redraw();
-  } catch {}
+    const res = await fetch(`${API}/recent?since=${recentSince}`);
+    if (!res.ok) throw new Error(String(res.status));
+    const d = await res.json();
+    ingest(d);
+    server = { updated: d.updated, status: d.status };
+    // Re-read the last two minutes each time; minute-aligned URLs let viewers share the edge cache.
+    const last = d.bars.at(-1)?.[0];
+    if (last) recentSince = Math.max(recentSince, last - 2 * MINUTE);
+    if (bars.length) refresh();
+  } catch {
+    // Collector unreachable: the page keeps what it has and its own Bybit stream.
+  }
+  showLive();
 }
 
 ui.heat.addEventListener("change", redraw);
@@ -1288,14 +1211,12 @@ ui.liq.addEventListener("change", redraw);
 // ---------- boot ----------
 
 try {
-  const res = await fetch(DATA_URL, { cache: "no-store" });
-  raw = res.ok ? await res.json() : { tick: 10, bars: [], metrics: [] };
-  await Promise.all([pollLive(), pollHeat()]);
-  if (!raw.bars.length && !live) throw new Error("no data");
+  await loadDays();
+  if (!store.bars.size) throw new Error("no data");
   $("source").textContent =
-    "資料：幣安 BTCUSDT 永續合約（USDT 本位，僅單一交易所，未含 BTCUSD 幣本位合約與其他交易所）" +
-    (raw.from ? `；歷史 ${raw.from} 至 ${raw.to}（UTC）` : "") +
-    "；之後的資料來自本機收集器，收集器啟動前的分鐘只有 K 線與主動買賣量，沒有足跡。爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）。";
+    "資料：Bybit BTCUSDT 永續合約（USDT 本位，僅單一交易所）。歷史足跡由 Bybit 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄；" +
+    "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單。多空比是 Bybit 全體帳戶多空比。" +
+    "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
   build();
   view.end = bars.length + 2;
   view.barW = 14;
@@ -1304,9 +1225,8 @@ try {
   resize();
   updateReadout();
   startStreams();
-  setInterval(pollLive, 5_000);
-  setInterval(pollHeat, 30_000);
+  setInterval(pollRecent, 5_000);
   setInterval(showLive, 1_000);
 } catch {
-  ui.status.textContent = "找不到資料。請先執行 npm run lab:orderflow -- --days 3，或啟動 npm run lab:orderflow:collect。";
+  ui.status.textContent = "找不到資料。本機請先執行 npm run orderflow:dev，再用 npm run lab:orderflow:bybit 匯入歷史。";
 }

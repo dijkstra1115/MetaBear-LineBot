@@ -1,0 +1,15 @@
+// Throwaway connectivity probe for the order-flow platform (VISION stage 3, step 0).
+// Deployed separately from the production Worker; delete with `npx wrangler delete`
+// from this folder once the results are recorded.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "metabear-orderflow-probe",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-11",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [{ "name": "PROBE", "class_name": "Probe" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Probe"] }],
+  "observability": { "enabled": true },
+}
