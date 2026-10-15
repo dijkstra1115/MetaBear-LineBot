@@ -27,6 +27,8 @@ before(async () => {
       durableObjects: { COLLECTOR: { className: "Collector", useSQLite: true } },
       // Streams stay off so tests never reach Bybit or OKX.
       bindings: { ORDERFLOW_ADMIN_TOKEN: token, ORDERFLOW_STREAMS: "off" },
+      // The daily archive import still runs; it finds no file (tests/orderflow-archive.test.ts covers it).
+      outboundService: async () => new Response("not found", { status: 404 }),
     }),
   );
 });

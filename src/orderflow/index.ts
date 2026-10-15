@@ -5,6 +5,7 @@
 //   GET  /api/orderflow/btcusdt/recent?since=ms    everything since a minute in the last 2 days
 //   GET  /api/orderflow/btcusdt/status             collector health
 //   POST /api/orderflow/btcusdt/import             archive footprint rows (Bearer ORDERFLOW_ADMIN_TOKEN)
+//   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token)
 //
 // Every viewer polls the same minute-aligned URLs, so the edge cache absorbs repeat requests
 // and the single collector object only answers each URL once per few seconds.
@@ -55,11 +56,12 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   const now = Date.now();
   const stub = collector(env);
 
-  if (route === "/import") {
+  if (route === "/import" || route === "/archive") {
     if (request.method !== "POST") return json({ error: "只接受 POST" }, 405);
     const token = env.ORDERFLOW_ADMIN_TOKEN;
     const auth = request.headers.get("authorization") ?? "";
     if (!token || !timingSafeEqual(auth, `Bearer ${token}`)) return json({ error: "未授權" }, 401);
+    if (route === "/archive") return json(await (await stub.fetch("https://collector/archive", { method: "POST" })).json());
     return stub.fetch("https://collector/import", { method: "POST", body: request.body, headers: { "content-type": "application/json" } });
   }
   if (request.method !== "GET") return json({ error: "只接受 GET" }, 405);

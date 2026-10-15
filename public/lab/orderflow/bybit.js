@@ -75,6 +75,52 @@ export function barRow(t, bar) {
   return [t, bar.o, bar.h, bar.l, bar.c, levels];
 }
 
+// Bybit's daily trade archive: one gzipped CSV per UTC day, published early the next day.
+export const ARCHIVE_URL = "https://public.bybit.com/trading";
+export const archiveUrl = (day, base = ARCHIVE_URL) => `${base}/${SYMBOL}/${SYMBOL}${day}.csv.gz`;
+
+/**
+ * Footprint rows and large prints rebuilt from archive lines, fed in file order (by time).
+ * `take(before)` hands over the finished minutes before `before`, so a day can be streamed
+ * without holding it all; `take()` closes and returns the rest.
+ */
+export class ArchiveDay {
+  constructor(tick = TICK) {
+    this.tick = tick;
+    this.bars = new Map();
+    this.prints = [];
+    this.run = []; // fills of one taker order share a timestamp and side (groupPrints)
+    this.trades = 0;
+  }
+
+  /** Columns: timestamp (seconds), symbol, side (taker), size, price, …; returns the trade's minute, or null for the header and blank lines. */
+  add(line) {
+    const [ts, , side, size, price] = line.split(",", 5);
+    const t = Math.round(Number(ts) * 1000);
+    if (!(t > 0)) return null;
+    const trade = { t, price: Number(price), qty: Number(size), sell: side === "Sell" };
+    if (this.run.length && (this.run[0].t !== t || this.run[0].sell !== trade.sell)) this.closeRun();
+    this.run.push(trade);
+    this.trades++;
+    return addTrade(this.bars, trade, this.tick);
+  }
+
+  closeRun() {
+    for (const p of groupPrints(this.run)) if (p[3] >= PRINT_MIN) this.prints.push(p);
+    this.run = [];
+  }
+
+  take(before = Infinity) {
+    if (before === Infinity) this.closeRun();
+    const rows = [];
+    for (const [t, bar] of this.bars) if (t < before) rows.push(barRow(t, bar)), this.bars.delete(t);
+    rows.sort((a, b) => a[0] - b[0]);
+    let n = 0;
+    while (n < this.prints.length && this.prints[n][0] < before) n++;
+    return { rows, prints: this.prints.splice(0, n) };
+  }
+}
+
 /** Total taker buy and sell over rows. */
 export function takerTotals(rows) {
   let buy = 0;
