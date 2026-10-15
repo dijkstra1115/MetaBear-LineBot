@@ -25,6 +25,18 @@ createServer(async (req, res) => {
       return;
     }
     const url = new URL(req.url, "http://127.0.0.1:8790");
+    // The order-flow API is its own Worker; forward to `npm run orderflow:dev`.
+    if (url.pathname.startsWith("/api/orderflow/")) {
+      try {
+        const upstream = await fetch(`http://127.0.0.1:8792${url.pathname}${url.search}`);
+        res.writeHead(upstream.status, { "Content-Type": upstream.headers.get("content-type") ?? "application/json", "Cache-Control": "no-store" });
+        res.end(Buffer.from(await upstream.arrayBuffer()));
+      } catch {
+        res.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ error: "order-flow Worker not running (npm run orderflow:dev)" }));
+      }
+      return;
+    }
     if (url.pathname === "/" || url.pathname === "/orderflow") {
       res.writeHead(302, { Location: `/orderflow/${url.search}` });
       res.end();
@@ -41,8 +53,8 @@ createServer(async (req, res) => {
       return;
     }
     const body = await readFile(file);
-    // The order-flow lab streams straight from the exchanges.
-    const lab = url.pathname.startsWith("/lab/") ? " wss://fstream.binance.com https://fapi.binance.com wss://ws.okx.com:8443" : "";
+    // The order-flow lab streams straight from the exchanges (same list as scripts/build-pages.mjs).
+    const lab = url.pathname.startsWith("/lab/") ? " wss://ws.okx.com:8443 wss://fstream.binance.com" : "";
     const headers = {
       "Content-Type": types[extname(file)] + "; charset=utf-8",
       "Cache-Control": "no-store",

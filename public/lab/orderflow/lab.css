@@ -92,6 +92,64 @@ input {
 .check input {
   accent-color: var(--teal);
 }
+.ind {
+  position: relative;
+}
+.ind summary {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0e1822;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+}
+.ind summary::-webkit-details-marker {
+  display: none;
+}
+.ind summary::after {
+  content: " ▾";
+  color: var(--muted);
+}
+.ind[open] summary,
+.ind summary:hover {
+  border-color: var(--teal);
+}
+.ind-panel {
+  position: absolute;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  gap: 18px;
+  margin-top: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.ind-panel fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 190px;
+}
+.ind-panel legend {
+  margin-bottom: 6px;
+  color: var(--gold);
+  font-size: 12px;
+}
+.ind-list {
+  display: grid;
+  gap: 6px;
+}
+.ind-select {
+  margin-top: 10px;
+}
+.ind-select select {
+  margin-left: 6px;
+}
 .live {
   font-family: var(--f-mono);
   font-size: 12px;
@@ -171,6 +229,14 @@ input {
 @media (max-width: 720px) {
   .controls {
     margin-left: 0;
+  }
+  .ind-panel {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    flex-direction: column;
+    max-height: 70vh;
+    overflow-y: auto;
   }
   .stage {
     height: max(520px, calc(100vh - 240px));

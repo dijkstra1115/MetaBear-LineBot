@@ -41,8 +41,9 @@ for (const path of documents) {
   const csp = ["/orderflow/", "/orderflow/index.html"].includes(path) ? academy : analytics;
   rules.push(`https://metabear.io${path}\n  Content-Security-Policy: ${csp}`);
 }
-// The order-flow lab prototype streams trades, depth and liquidations straight from the exchanges.
-const lab = common.replace("connect-src 'self'", "connect-src 'self' wss://fstream.binance.com https://fapi.binance.com wss://stream.bybit.com wss://ws.okx.com:8443");
+// The order-flow lab prototype streams Bybit trades, depth and tickers, and liquidations from
+// Bybit, OKX and Binance, straight from the exchanges; history comes from /api/orderflow/.
+const lab = common.replace("connect-src 'self'", "connect-src 'self' wss://stream.bybit.com wss://ws.okx.com:8443 wss://fstream.binance.com");
 for (const path of ["/lab/orderflow/", "/lab/orderflow/index.html"])
   rules.push(`https://metabear.io${path}\n  Content-Security-Policy: ${lab}`);
 for (const host of ["metabear-site.pages.dev", ":branch.metabear-site.pages.dev"])

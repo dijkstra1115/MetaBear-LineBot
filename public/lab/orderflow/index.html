@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#05090f" />
   <meta name="robots" content="noindex" />
-  <meta name="description" content="MetaBear 訂單流實驗室原型：幣安 BTCUSDT 永續合約的足跡圖、CVD、未平倉量、大戶持倉比與成交量分布。" />
+  <meta name="description" content="MetaBear 訂單流實驗室原型：Bybit BTCUSDT 永續合約的足跡圖、CVD、未平倉量、多空比、掛單熱力圖與爆倉。" />
   <title>BTC 訂單流實驗室 · MetaBear</title>
   <link rel="icon" href="/metabear-logo-transparent-64.png" />
   <link rel="stylesheet" href="/orderflow/motion/fonts/fonts.css" />
@@ -49,11 +49,28 @@
           <option value="250">$250</option>
         </select>
       </label>
-      <label class="check"><input id="profile" type="checkbox" checked />成交量分布</label>
-      <label class="check"><input id="heat" type="checkbox" checked />掛單熱力圖</label>
-      <label class="check"><input id="liq" type="checkbox" checked />爆倉</label>
-      <label class="check"><input id="lmap" type="checkbox" />爆倉地圖（估算）</label>
-      <label class="check"><input id="events" type="checkbox" checked />事件</label>
+      <details class="ind">
+        <summary>指標</summary>
+        <div class="ind-panel">
+          <fieldset>
+            <legend>主圖</legend>
+            <div id="ind-overlay" class="ind-list"></div>
+            <label class="ind-select">大單門檻
+              <select id="print-min">
+                <option value="2">≥ 2 BTC</option>
+                <option value="5">≥ 5 BTC</option>
+                <option value="10">≥ 10 BTC</option>
+                <option value="25">≥ 25 BTC</option>
+                <option value="50">≥ 50 BTC</option>
+              </select>
+            </label>
+          </fieldset>
+          <fieldset>
+            <legend>副圖</legend>
+            <div id="ind-pane" class="ind-list"></div>
+          </fieldset>
+        </div>
+      </details>
       <div class="zoom" role="group" aria-label="縮放">
         <button id="zoom-out" type="button" aria-label="縮小">−</button>
         <button id="zoom-in" type="button" aria-label="放大">+</button>
@@ -71,7 +88,7 @@
 
   <footer class="note">
     <p id="source"></p>
-    <p>滾輪縮放時間、拖曳平移；在右側價格軸上下拖曳或滾輪可縮放價格，雙擊價格軸恢復自動；切到「足跡」並放大到夠寬時顯示足跡數字（左賣右買）。亮色數字為斜向 3 倍以上的不平衡。爆倉地圖是用 OI 變化與假設的槓桿分布推算的估計值，不是交易所資料。事件標記是 5 分鐘 K 棒收盤後偵測到的盤面現象（上方三角偏空、下方偏多、金色為 OI 異動），不是買賣建議。時間為台灣時間。僅供研究，非投資建議。</p>
+    <p>「指標」選單可以個別開關每個指標，設定會記在這個瀏覽器。圓形泡泡是大額成交（同一張主動單的成交合計，綠色主動買、橘色主動賣，面積代表數量）；三角形是爆倉（▼ 多單被強平、▲ 空單被強平）。VWAP 每個 UTC 日重新計算。滾輪縮放時間、拖曳平移；在右側價格軸上下拖曳或滾輪可縮放價格，雙擊價格軸恢復自動；切到「足跡」並放大到夠寬時顯示足跡數字（左賣右買）。亮色數字為斜向 3 倍以上的不平衡。爆倉地圖是用 OI 變化與假設的槓桿分布推算的估計值，不是交易所資料。事件標記是 5 分鐘 K 棒收盤後偵測到的盤面現象（上方三角偏空、下方偏多、金色為 OI 異動），不是買賣建議。時間為台灣時間。僅供研究，非投資建議。</p>
   </footer>
 </body>
 </html>
