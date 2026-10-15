@@ -75,6 +75,35 @@ export function barRow(t, bar) {
   return [t, bar.o, bar.h, bar.l, bar.c, levels];
 }
 
+/**
+ * Trade-time ranges a page's own stream missed while its socket was down. Bybit does not replay
+ * trades after a reconnect, so minutes touching a gap are taken from the collector instead.
+ */
+export class StreamGaps {
+  constructor() {
+    this.list = []; // [last trade before the drop, first trade after it]
+    this.last = 0;
+    this.pending = false;
+  }
+
+  /** The socket (re)opened; anything after the last trade seen may be missing. */
+  reconnect() {
+    if (this.last) this.pending = true;
+  }
+
+  /** Trade times in arrival order. */
+  trade(t) {
+    if (this.pending) this.list.push([this.last, t]), (this.pending = false);
+    if (t > this.last) this.last = t;
+  }
+
+  /** Whether [from, to) touches a gap, or a drop the stream has not recovered from yet. */
+  covers(from, to) {
+    if (this.pending && this.last < to) return true;
+    return this.list.some(([a, b]) => a < to && b >= from);
+  }
+}
+
 // Bybit's daily trade archive: one gzipped CSV per UTC day, published early the next day.
 export const ARCHIVE_URL = "https://public.bybit.com/trading";
 export const archiveUrl = (day, base = ARCHIVE_URL) => `${base}/${SYMBOL}/${SYMBOL}${day}.csv.gz`;

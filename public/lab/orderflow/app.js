@@ -3,7 +3,7 @@
 // whose collector records Bybit BTCUSDT 1-minute bars with $10 price bins; the page
 // streams the newest minutes straight from Bybit.
 
-import { BOOK_TOPIC, OrderBook, PING, PRINT_MIN, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, groupPrints, parseTrades } from "./bybit.js";
+import { BOOK_TOPIC, OrderBook, PING, PRINT_MIN, StreamGaps, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, groupPrints, parseTrades } from "./bybit.js";
 import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
 import { readingsAt } from "./metrics.js";
@@ -124,8 +124,9 @@ function build() {
   const baseTick = TICK;
   const groups = new Map();
   const rows = new Map(store.bars);
-  // Minutes streamed in full by this page win; the minute the page opened in is partial here.
-  for (const [t, b] of stream.bars) if (t > stream.start || !rows.has(t)) rows.set(t, barRow(t, b));
+  // Minutes streamed in full by this page win; the minute the page opened in, and minutes around
+  // a dropped connection, are partial here and come from the collector.
+  for (const [t, b] of stream.bars) if ((t > stream.start && !stream.gaps.covers(t, t + MINUTE)) || !rows.has(t)) rows.set(t, barRow(t, b));
   mergedRows = [...rows.values()].sort((x, y) => x[0] - y[0]);
   for (const [t, o, h, l, c, levels, xbuy = 0, xsell = 0] of mergedRows) {
     const key = Math.floor(t / tfMs) * tfMs;
@@ -1359,7 +1360,8 @@ const stream = {
   oi: null,
   ticker: {},
   book: new OrderBook(),
-  firstTrade: 0, // prints after this come from the page's own stream
+  firstTrade: 0, // prints after this come from the page's own stream, except in gaps
+  gaps: new StreamGaps(),
 };
 
 function addPrint(p) {
@@ -1428,6 +1430,7 @@ function connectWs(url, { onOpen, onMessage, ping: pingText }) {
 }
 
 function onTrade(tr) {
+  stream.gaps.trade(tr.t);
   addTrade(stream.bars, tr, TICK);
   stream.lastTrade = Date.now();
   scheduleRefresh();
@@ -1445,6 +1448,7 @@ function startStreams() {
   connectWs(WS_URL, {
     ping: PING,
     onOpen: (ws) => {
+      stream.gaps.reconnect();
       stream.book.reset();
       ws.send(JSON.stringify({ op: "subscribe", args: [TRADE_TOPIC, BOOK_TOPIC, TICKER_TOPIC] }));
     },
@@ -1506,7 +1510,7 @@ function ingest(d) {
   // Columns this page built from its own stream are newer; keep them.
   for (const c of d.heat) if (c[0] <= stream.start || !heatCols.has(c[0])) heatCols.set(c[0], c);
   mergeLiquidations(d.liquidations);
-  for (const p of d.prints ?? []) if (!stream.firstTrade || p[0] < stream.firstTrade) addPrint(p);
+  for (const p of d.prints ?? []) if (!stream.firstTrade || p[0] < stream.firstTrade || stream.gaps.covers(p[0], p[0] + 1)) addPrint(p);
 }
 
 const utcDay = (t) => new Date(t).toISOString().slice(0, 10);

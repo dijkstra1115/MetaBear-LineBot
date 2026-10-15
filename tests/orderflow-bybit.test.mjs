@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOOK_TOPIC, OrderBook, TICKER_TOPIC, TRADE_TOPIC, addTrade, applyTicker, barRow, groupPrints, parseTrades, takerTotals } from "../public/lab/orderflow/bybit.js";
+import { BOOK_TOPIC, OrderBook, StreamGaps, TICKER_TOPIC, TRADE_TOPIC, addTrade, applyTicker, barRow, groupPrints, parseTrades, takerTotals } from "../public/lab/orderflow/bybit.js";
 
 const T0 = Date.UTC(2026, 9, 15, 13, 0);
 
@@ -64,4 +64,20 @@ test("fills of one taker order merge into a print at their average price", () =>
     [T0 + 1, "buy", 80_000, 0.5],
   ]);
   assert.deepEqual(groupPrints([]), []);
+});
+
+test("a dropped page stream hands the minutes around the gap back to the collector", () => {
+  const M = 60_000;
+  const gaps = new StreamGaps();
+  gaps.reconnect(); // the first connection is not a gap
+  gaps.trade(T0 + 10_000);
+  gaps.trade(T0 + M + 30_000);
+  assert.equal(gaps.covers(T0, T0 + M), false);
+  gaps.reconnect();
+  assert.equal(gaps.covers(T0 + M, T0 + 2 * M), true, "while down, the last minute and later ones");
+  assert.equal(gaps.covers(T0 + 5 * M, T0 + 6 * M), true);
+  assert.equal(gaps.covers(T0, T0 + M), false, "minutes before the drop stay the page's");
+  gaps.trade(T0 + 3 * M + 5_000);
+  assert.deepEqual(gaps.list, [[T0 + M + 30_000, T0 + 3 * M + 5_000]]);
+  for (const [m, missed] of [[0, false], [1, true], [2, true], [3, true], [4, false]]) assert.equal(gaps.covers(T0 + m * M, T0 + (m + 1) * M), missed, `minute ${m}`);
 });
