@@ -1,6 +1,6 @@
 # 訂單流平台：Cloudflare 連線實測（第 0 步）
 
-一次性的探測 Worker（`metabear-orderflow-probe`），用來確認收集器能不能放在 Cloudflare Durable Object 上。和正式的 Worker、CRM 資料庫完全分開；結果記錄完就可以刪除（在這個資料夾執行 `npx wrangler delete`）。
+一次性的探測 Worker（`metabear-orderflow-probe`），用來確認收集器能不能放在 Cloudflare Durable Object 上。和正式的 Worker、CRM 資料庫完全分開。2026-10-16 已用 `npx wrangler delete` 從 Cloudflare 刪除，這裡的程式只留作紀錄；要重測的話，重新部署並設定 `PROBE_KEY` secret 即可。
 
 ## 路由
 

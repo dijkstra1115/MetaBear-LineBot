@@ -37,6 +37,9 @@ try {
     assert.ok(csp.includes("cloudflareinsights.com"), path);
     assert.equal(csp.includes("wss://stream.bybit.com"), path === "/orderflow/", path);
   }
+  const lab = (await serve(new Request("https://metabear.io/lab/orderflow/"))).headers.get("Content-Security-Policy");
+  assert.ok(lab.includes("https://static.cloudflareinsights.com/beacon.min.js/") && lab.includes("https://cloudflareinsights.com"), "lab analytics");
+  assert.ok(lab.includes("wss://stream.bybit.com") && lab.includes("wss://ws.okx.com:8443"), "lab exchange streams");
   for (const path of ["/admin", "/admin.html", "/desk", "/login", "/api/customers", "/arena/api/scores", "/orderflow/challenge", "/orderflow/flow-arena-engine.js", "/missing-page"]) {
     const response = await serve(new Request("https://metabear-site.pages.dev" + path));
     assert.equal(response.status, 404, path);
