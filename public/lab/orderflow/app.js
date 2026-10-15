@@ -47,6 +47,7 @@ const INDICATORS = [
   ["liqmark", "overlay", "爆倉標記 ▲▼", true],
   ["events", "overlay", "事件", true],
   ["lmap", "overlay", "爆倉地圖（估算）", false],
+  ["stats", "pane", "K 棒統計列", true],
   ["volume", "pane", "成交量", true],
   ["delta", "pane", "Delta", false],
   ["cvd", "pane", "CVD", true],
@@ -131,7 +132,7 @@ function build() {
   for (const [t, o, h, l, c, levels, xbuy = 0, xsell = 0] of mergedRows) {
     const key = Math.floor(t / tfMs) * tfMs;
     let b = groups.get(key);
-    if (!b) groups.set(key, (b = { t: key, o, h, l, c, map: new Map(), xbuy: 0, xsell: 0, partial: false }));
+    if (!b) groups.set(key, (b = { t: key, o, h, l, c, map: new Map(), xbuy: 0, xsell: 0, partial: false, run: 0, maxD: -Infinity, minD: Infinity }));
     if (h > b.h) b.h = h;
     if (l < b.l) b.l = l;
     b.c = c;
@@ -140,6 +141,7 @@ function build() {
     b.xbuy += xbuy * k;
     b.xsell += xsell * k;
     if (!levels.length) b.partial = true;
+    let minuteDelta = (xbuy - xsell) * k;
     for (let [bin, buy, sell] of levels) {
       const p = Math.floor((bin * baseTick) / tick) * tick;
       if (usd()) {
@@ -148,12 +150,17 @@ function build() {
         buy *= mid;
         sell *= mid;
       }
+      minuteDelta += buy - sell;
       const lv = b.map.get(p);
       if (lv) {
         lv[0] += buy;
         lv[1] += sell;
       } else b.map.set(p, [buy, sell]);
     }
+    // Highest and lowest running delta inside the bar, sampled at each minute's close.
+    b.run += minuteDelta;
+    if (b.run > b.maxD) b.maxD = b.run;
+    if (b.run < b.minD) b.minD = b.run;
   }
   // The API stamps every metrics row at its reading time (metrics.js).
   const metrics = [...store.metrics.values()].sort((a, b) => a[0] - b[0]);
@@ -183,7 +190,7 @@ function build() {
       const close = b.t + tfMs;
       const row = readingAt(close);
       return {
-        t: b.t, end: close, partial: b.partial, o: b.o, h: b.h, l: b.l, c: b.c, levels, buy, sell, delta: buy - sell, cvd, poc: poc?.p,
+        t: b.t, end: close, partial: b.partial, maxD: b.maxD, minD: b.minD, o: b.o, h: b.h, l: b.l, c: b.c, levels, buy, sell, delta: buy - sell, cvd, poc: poc?.p,
         oi: row?.[usd() ? 2 : 1] ?? null, topPos: row?.[3] ?? null, global: row?.[5] ?? null, funding: row?.[7] ?? null,
       };
     });
@@ -340,6 +347,7 @@ function resize() {
 const unitLabel = () => (usd() ? "USD" : "BTC");
 // Sub-panes in display order: `key` panes draw a line of that bar field, the rest are histograms.
 const PANES = {
+  stats: { label: () => "K 棒統計" },
   volume: { label: () => `成交量 (${unitLabel()})` },
   delta: { label: () => `Delta (${unitLabel()})` },
   cvd: { label: () => "CVD", key: "cvd" },
@@ -351,17 +359,36 @@ const PANES = {
   imb: { label: () => "掛單簿失衡（現價 ±0.25%，買 − 賣）" },
 };
 
+// K-bar statistics under the chart, one line each, like the footprint tools' statistics table.
+// Max and min delta are the running delta's extremes at minute closes within the bar.
+const STAT_ROW = 15;
+const STATS = [
+  ["量", (b) => b.buy + b.sell, "vol"],
+  ["Δ", (b) => b.delta, "signed"],
+  ["Δ%", (b) => (b.buy + b.sell > 0 ? (b.delta / (b.buy + b.sell)) * 100 : null), "pct"],
+  ["最大Δ", (b) => (Number.isFinite(b.maxD) ? b.maxD : null), "signed"],
+  ["最小Δ", (b) => (Number.isFinite(b.minD) ? b.minD : null), "signed"],
+  ["ΔOI", (b) => b.doi, "signed"],
+];
+
 function layout() {
   const axisW = 74;
   const timeH = 24;
   const plotW = size.w - axisW;
   const avail = size.h - timeH;
   const subIds = Object.keys(PANES).filter(on);
+  const statsH = on("stats") ? STATS.length * STAT_ROW + 6 : 0;
+  const flex = subIds.length - (on("stats") ? 1 : 0);
   // Sub-panes share at most 55 % of the height, so many panes get thinner, not the price chart.
-  const sub = subIds.length ? Math.max(40, Math.min(Math.round(avail * 0.12), Math.floor((avail * 0.55) / subIds.length))) : 0;
-  const priceH = avail - sub * subIds.length;
+  const sub = flex ? Math.max(40, Math.min(Math.round(avail * 0.12), Math.floor((avail * 0.55 - statsH) / flex))) : 0;
+  const priceH = avail - sub * flex - statsH;
   const panes = { price: { y: 0, h: priceH } };
-  subIds.forEach((id, k) => (panes[id] = { id, y: priceH + sub * k, h: sub, label: PANES[id].label(), key: PANES[id].key }));
+  let y = priceH;
+  for (const id of subIds) {
+    const h = id === "stats" ? statsH : sub;
+    panes[id] = { id, y, h, label: PANES[id].label(), key: PANES[id].key };
+    y += h;
+  }
   return { axisW, timeH, plotW, panes, subIds, timeY: avail };
 }
 
@@ -397,7 +424,8 @@ function draw() {
   const [from, to] = visibleRange(L);
   drawPrice(L, from, to);
   for (const id of L.subIds) {
-    if (id === "liq") drawLiqPane(L, L.panes.liq, from, to);
+    if (id === "stats") drawStats(L, L.panes.stats, from, to);
+    else if (id === "liq") drawLiqPane(L, L.panes.liq, from, to);
     else if (PANES[id].key) drawSub(L, L.panes[id], from, to);
     else drawHist(L, L.panes[id], from, to);
   }
@@ -1051,6 +1079,44 @@ function drawSub(L, P, from, to) {
   ctx.stroke();
 }
 
+// One row per statistic: cells tinted by sign and size relative to the visible bars, with the
+// number once a bar is wide enough to hold it.
+function drawStats(L, P, from, to) {
+  const showText = view.barW >= 44;
+  ctx.font = `10px ${MONO}`;
+  ctx.textBaseline = "middle";
+  STATS.forEach(([name, value, kind], row) => {
+    const y = P.y + 3 + row * STAT_ROW;
+    let max = 0;
+    for (let i = from; i <= to; i++) max = Math.max(max, Math.abs(value(bars[i]) ?? 0));
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, y, L.plotW, STAT_ROW);
+    ctx.clip();
+    for (let i = from; i <= to; i++) {
+      const v = value(bars[i]);
+      if (v == null) continue;
+      const x = xOf(i, L);
+      const a = 0.06 + 0.4 * (max ? Math.abs(v) / max : 0);
+      ctx.fillStyle = kind === "vol" ? `rgba(148,168,185,${a.toFixed(3)})` : `rgba(${v >= 0 ? BUY_RGB : SELL_RGB},${a.toFixed(3)})`;
+      ctx.fillRect(x + 0.5, y + 1, Math.max(1, view.barW - 1), STAT_ROW - 2);
+      if (!showText) continue;
+      ctx.fillStyle = kind === "vol" ? C.text : v >= 0 ? "#c9fff7" : "#ffd2b0";
+      ctx.textAlign = "center";
+      ctx.fillText(kind === "pct" ? `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}%` : kind === "vol" ? fmtVol(v) : fmtSigned(v), x + view.barW / 2, y + STAT_ROW / 2);
+    }
+    ctx.restore();
+    ctx.textAlign = "left";
+    ctx.fillStyle = C.muted;
+    ctx.fillText(name, L.plotW + 8, y + STAT_ROW / 2);
+  });
+  ctx.strokeStyle = C.line;
+  ctx.beginPath();
+  ctx.moveTo(0, P.y + P.h + 0.5);
+  ctx.lineTo(size.w, P.y + P.h + 0.5);
+  ctx.stroke();
+}
+
 // Histogram panes: volume stacked by taker side, signed delta and OI change, imbalance on ±1.
 function drawHist(L, P, from, to) {
   const id = P.id;
@@ -1191,6 +1257,7 @@ function updateReadout() {
     `開 ${fmtPrice(b.o)} 高 ${fmtPrice(b.h)} 低 ${fmtPrice(b.l)} 收 <b>${fmtPrice(b.c)}</b>`,
     `買 ${span("buy", fmtVol(b.buy))} 賣 ${span("sell", fmtVol(b.sell))} Δ ${span(b.delta >= 0 ? "buy" : "sell", fmtSigned(b.delta))}`,
     `量 ${fmtVol(b.buy + b.sell)}`,
+    Number.isFinite(b.maxD) && Number(ui.tf.value) > 1 ? `最大Δ ${fmtSigned(b.maxD)} 最小Δ ${fmtSigned(b.minD)}` : "",
     `CVD ${fmtSigned(b.cvd)}`,
     on("vwap") && b.vwap != null ? `VWAP ${fmtPrice(Math.round(b.vwap * 10) / 10)}` : "",
     b.oi != null ? `OI ${fmtVol(b.oi)} ${usd() ? "USD" : "BTC"}${b.doi != null ? `（${fmtSigned(b.doi)}）` : ""}` : "",
