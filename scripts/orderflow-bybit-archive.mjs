@@ -1,4 +1,4 @@
-// Rebuilds 1-minute footprint bars from Bybit's daily BTCUSDT trade archive
+// Rebuilds 1-minute footprint bars and large prints from Bybit's daily BTCUSDT trade archive
 // (public.bybit.com/trading) and imports them into the order-flow collector, which treats
 // them as authoritative over its own live minutes:
 //
@@ -12,7 +12,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { createGunzip } from "node:zlib";
-import { SYMBOL, TICK, addTrade, barRow } from "../public/lab/orderflow/bybit.js";
+import { PRINT_MIN, SYMBOL, TICK, addTrade, barRow, groupPrints } from "../public/lab/orderflow/bybit.js";
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -50,6 +50,13 @@ async function download(day) {
 // Columns: timestamp (seconds), symbol, side (taker), size, price, …
 async function buildDay(file) {
   const bars = new Map();
+  const prints = [];
+  // Fills of one taker order share a timestamp and side (groupPrints); collect each run.
+  let run = [];
+  const closeRun = () => {
+    for (const p of groupPrints(run)) if (p[3] >= PRINT_MIN) prints.push(p);
+    run = [];
+  };
   const lines = createInterface({ input: createReadStream(file).pipe(createGunzip()), crlfDelay: Infinity });
   let header = true;
   let trades = 0;
@@ -59,10 +66,14 @@ async function buildDay(file) {
       continue;
     }
     const [ts, , side, size, price] = line.split(",", 5);
-    addTrade(bars, { t: Math.round(Number(ts) * 1000), price: Number(price), qty: Number(size), sell: side === "Sell" }, TICK);
+    const trade = { t: Math.round(Number(ts) * 1000), price: Number(price), qty: Number(size), sell: side === "Sell" };
+    addTrade(bars, trade, TICK);
+    if (run.length && (run[0].t !== trade.t || run[0].sell !== trade.sell)) closeRun();
+    run.push(trade);
     trades++;
   }
-  return { rows: [...bars.entries()].sort((a, b) => a[0] - b[0]).map(([t, b]) => barRow(t, b)), trades };
+  closeRun();
+  return { rows: [...bars.entries()].sort((a, b) => a[0] - b[0]).map(([t, b]) => barRow(t, b)), prints, trades };
 }
 
 const auth = await token();
@@ -78,13 +89,17 @@ for (let k = DAYS; k >= 1; k--) {
     console.log(`${day}: skipped (${err.message})`);
     continue;
   }
-  for (let i = 0; i < built.rows.length; i += BATCH) {
+  const post = async (body) => {
     const res = await fetch(`${API}/import`, {
       method: "POST",
       headers: { authorization: `Bearer ${auth}`, "content-type": "application/json" },
-      body: JSON.stringify({ rows: built.rows.slice(i, i + BATCH) }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`${day}: import HTTP ${res.status} ${await res.text()}`);
-  }
-  console.log(`${day}: ${built.trades.toLocaleString()} trades → ${built.rows.length} bars`);
+  };
+  for (let i = 0; i < built.rows.length; i += BATCH) await post({ rows: built.rows.slice(i, i + BATCH) });
+  // The day's prints replace whatever the collector stored for it.
+  const from = Date.parse(`${day}T00:00:00Z`);
+  await post({ prints: built.prints, from, to: from + 86_400_000 });
+  console.log(`${day}: ${built.trades.toLocaleString()} trades → ${built.rows.length} bars, ${built.prints.length.toLocaleString()} prints ≥ ${PRINT_MIN} BTC`);
 }

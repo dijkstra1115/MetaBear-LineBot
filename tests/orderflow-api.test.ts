@@ -49,7 +49,7 @@ test("archive imports need the admin token and come back by UTC day and as recen
   assert.equal((await call("/import")).status, 405);
   const imported = await importRows(rows);
   assert.equal(imported.status, 200);
-  assert.deepEqual(await imported.json(), { imported: 3 });
+  assert.deepEqual(await imported.json(), { imported: 3, prints: 0 });
 
   const d = new Date(yesterday).toISOString().slice(0, 10);
   const day = await call(`/day?d=${d}`);
@@ -65,6 +65,23 @@ test("archive imports need the admin token and come back by UTC day and as recen
   const recentBody = (await since.json()) as any;
   assert.deepEqual(recentBody.bars, [rows[2]]);
   assert.match(since.headers.get("cache-control")!, /max-age=3/);
+});
+
+test("an archive day's prints replace the stored prints in its range only", async () => {
+  // Days no other test reads, so the edge cache holds nothing for them yet.
+  const from = Math.floor(Date.now() / DAY) * DAY - 3 * DAY;
+  const post = (body: unknown) =>
+    call("/import", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) });
+  const d = new Date(from).toISOString().slice(0, 10);
+  const next = new Date(from + DAY).toISOString().slice(0, 10);
+  assert.equal((await post({ prints: [[from + 5, "buy", 80_000, 12]] })).status, 400, "prints need their range");
+  assert.equal((await post({ prints: [[from + 5, "buy", 80_000, 12], [from + DAY + 5, "sell", 80_100, 3]], from, to: from + 2 * DAY })).status, 200);
+  const replaced = await post({ prints: [[from + 9, "sell", 79_950, 20.5]], from, to: from + DAY });
+  assert.deepEqual(await replaced.json(), { imported: 0, prints: 1 });
+  const day = (await (await call(`/day?d=${d}`)).json()) as any;
+  assert.deepEqual(day.prints, [[from + 9, "sell", 79_950, 20.5]]);
+  const after = (await (await call(`/day?d=${next}`)).json()) as any;
+  assert.deepEqual(after.prints, [[from + DAY + 5, "sell", 80_100, 3]], "the next day is untouched");
 });
 
 test("requests outside the allowed shapes are refused before reaching the collector", async () => {

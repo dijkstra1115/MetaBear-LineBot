@@ -15,7 +15,7 @@ export { Collector };
 const PREFIX = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
 const DAY = 86_400_000;
-const HISTORY_DAYS = 120;
+const HISTORY_DAYS = 30; // matches the collector's KEEP_MS
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {

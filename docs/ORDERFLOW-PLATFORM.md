@@ -9,7 +9,7 @@ Bybit WebSocket（成交、1000 檔掛單簿、tickers、爆倉）＋ OKX 爆倉
         │
         ▼
 收集器 Durable Object（src/orderflow/collector.ts，亞太，每 10 秒 alarm）
-  SQLite：1 分鐘足跡、每分鐘熱力圖欄、5 分鐘 OI、多空比、爆倉
+  SQLite：1 分鐘足跡、大單、每分鐘熱力圖欄、5 分鐘 OI 與資金費率、多空比、爆倉
         │
         ▼
 Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orderflow/*
@@ -32,8 +32,10 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | 多空比 | REST `account-ratio`（全體帳戶） | Bybit 沒有大戶持倉比 |
 | 爆倉 | Bybit（完整）、OKX | 網頁另外直連幣安爆倉（每秒最多一筆），但收集器記錄不到幣安 |
 | 主動買賣比 | 收集器以自己的成交計算 | 只有收集器的 OI 列才有 |
+| 大單（大額成交） | 同一毫秒、同一方向的連續成交合併成一筆（同一張主動單吃多個價位）；只存 ≥ 2 BTC | 收集器即時記錄；封存檔匯入時，會把那一天的大單整天換成封存檔的版本 |
+| 資金費率 | 收集器在每個 OI 讀數記下當時的預估資金費率；歷史用 REST 補已結算的費率（每 8 小時） | 歷史段落是階梯狀 |
 
-保存期限：足跡、OI、多空比、爆倉 120 天；熱力圖 14 天（`KEEP_MS`）。
+保存期限（`KEEP_MS`）：訂單流看的是幾小時到幾天，所以只保留足跡、大單、OI、多空比、資金費率和爆倉 30 天；熱力圖每分鐘約 3 KB，是最大的資料，只留 7 天。每小時清理一次。一個月的資料總量大約只有 100～200 MB，遠低於 Durable Object 5 GB 的額度。
 
 ## 中斷與補資料
 
@@ -41,14 +43,46 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 - 每小時用 K 線補最近兩天收集器沒看到的分鐘；隔天再用封存檔匯入，取得完整的足跡。
 - 每 5 分鐘的 cron 呼叫 `/wake`，萬一 alarm 鏈中斷也能重新啟動。
 
+## 指標
+
+網頁的「指標」選單可以個別開關每個指標，設定記在瀏覽器的 localStorage。
+
+| 位置 | 指標 | 說明 |
+| --- | --- | --- |
+| 主圖 | 足跡、斜向不平衡、POC | 「圖表」選單切換成足跡，放大後才會顯示 |
+| 主圖 | 成交量分布（POC、VAH、VAL） | 可見範圍內的成交量分布 |
+| 主圖 | 掛單熱力圖 | Bybit 1000 檔，現價上下約 0.25% |
+| 主圖 | 大單泡泡 | 圓形，面積代表數量，綠色主動買、橘色主動賣；門檻可選 2／5／10／25／50 BTC |
+| 主圖 | VWAP ±1σ、±2σ | 每個 UTC 日重新計算，用足跡的價位中點加權 |
+| 主圖 | 前日高低點與價值區 | 前一個 UTC 日的高、低、POC、VAH、VAL |
+| 主圖 | 爆倉標記 | 三角形：▼ 多單被強平、▲ 空單被強平，依金額分三種大小 |
+| 主圖 | 事件、爆倉地圖（估算） | 原有功能 |
+| 副圖 | 成交量 | 依主動買賣方向分色堆疊 |
+| 副圖 | Delta、CVD | 每根 K 棒的主動買減賣，以及累積值 |
+| 副圖 | 爆倉 | 上方空單、下方多單 |
+| 副圖 | OI、OI 變化 | OI 變化是每根 K 棒收盤 OI 和前一根的差 |
+| 副圖 | 資金費率 | 0 軸以上代表多方付費 |
+| 副圖 | 多空比 | Bybit 全體帳戶多空比 |
+| 副圖 | 掛單簿失衡 | (買單 − 賣單) ÷ 總掛單，取每根 K 棒最後一個熱力圖欄，只代表現價附近 |
+
+常見但這次沒有做的指標：
+
+- **TPO／市場輪廓**：需要另一種圖表型態。
+- **現貨與合約價差（Coinbase 溢價、基差）**：需要現貨資料。
+- **多交易所合併的 CVD 與成交量**：目前只有 Bybit。
+- **成交筆數與成交速度**：足跡資料沒有存成交筆數。
+- **大戶持倉比**：Bybit 不提供。
+
 ## API
 
 | 方法 | 路徑 | 說明 |
 | --- | --- | --- |
-| GET | `/api/orderflow/btcusdt/day?d=YYYY-MM-DD` | 一個 UTC 日的 `bars`、`heat`、`metrics`、`liquidations` |
+| GET | `/api/orderflow/btcusdt/day?d=YYYY-MM-DD` | 一個 UTC 日的 `bars`、`prints`、`heat`、`metrics`、`liquidations`（最近 30 天） |
 | GET | `/api/orderflow/btcusdt/recent?since=<整分鐘毫秒>` | 最近兩天內某分鐘之後的全部資料，加上收集器狀態 |
 | GET | `/api/orderflow/btcusdt/status` | 連線狀態、最後成交時間、缺口、錯誤、各表筆數 |
-| POST | `/api/orderflow/btcusdt/import` | 封存檔足跡匯入，需要 `Authorization: Bearer <ORDERFLOW_ADMIN_TOKEN>` |
+| POST | `/api/orderflow/btcusdt/import` | 封存檔匯入：`{ rows }` 是足跡；`{ prints, from, to }` 會換掉這段時間內的大單。需要 `Authorization: Bearer <ORDERFLOW_ADMIN_TOKEN>` |
+
+`metrics` 每一列的欄位：`[讀取時間, OI (BTC), OI (USDT), 大戶持倉比, 大戶帳戶比, 全體多空比, 主動買賣比, 資金費率]`。Bybit 沒有的欄位是 `null`。
 
 網頁每 5 秒讀一次 `recent`，`since` 設為最後一根 K 棒前兩分鐘。所有使用者在同一分鐘會讀到同一個網址，所以邊緣快取可以擋掉重複的請求。
 
@@ -62,7 +96,9 @@ npm run preview:academy                    # http://127.0.0.1:8790/lab/orderflow
 
 `?days=N`（1～14，預設 3）可以調整頁面載入幾天的歷史。
 
-## 上線步驟（尚未執行）
+## 上線步驟
+
+2026-10-15 已執行第 1～4 步：Worker 上線，匯入了 10/01～10/14。正式環境的匯入權杖存在本機不進版控的 `.data/orderflow/admin-token`。
 
 1. 升級 Workers Paid：一個常駐的物件每天約用 10,800 GB-s，免費方案上限是 13,000 GB-s，而且超過就會直接失敗。
 2. `npx wrangler secret put ORDERFLOW_ADMIN_TOKEN -c wrangler.orderflow.jsonc`

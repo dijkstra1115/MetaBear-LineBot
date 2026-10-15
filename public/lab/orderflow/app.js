@@ -3,11 +3,11 @@
 // whose collector records Bybit BTCUSDT 1-minute bars with $10 price bins; the page
 // streams the newest minutes straight from Bybit.
 
-import { BOOK_TOPIC, OrderBook, PING, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, parseTrades } from "./bybit.js";
+import { BOOK_TOPIC, OrderBook, PING, PRINT_MIN, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, groupPrints, parseTrades } from "./bybit.js";
 import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
 import { readingsAt } from "./metrics.js";
-import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
+import { SIGNALS, aggregate as aggregateSignals, detect, valueArea } from "./signals.js";
 
 const API = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
@@ -34,7 +34,45 @@ const MONO = '"JetBrains Mono Variable", ui-monospace, Menlo, monospace';
 const $ = (id) => document.getElementById(id);
 const canvas = $("chart");
 const ctx = canvas.getContext("2d");
-const ui = { events: $("events"), lmap: $("lmap"), tf: $("tf"), tick: $("tick"), mode: $("mode"), unit: $("unit"), profile: $("profile"), heat: $("heat"), liq: $("liq"), live: $("live"), readout: $("readout"), status: $("status") };
+const ui = { tf: $("tf"), tick: $("tick"), mode: $("mode"), unit: $("unit"), printMin: $("print-min"), live: $("live"), readout: $("readout"), status: $("status") };
+
+// Every indicator can be switched on and off; choices persist per browser.
+// [id, where, label, on by default]
+const INDICATORS = [
+  ["profile", "overlay", "成交量分布", true],
+  ["heat", "overlay", "掛單熱力圖", true],
+  ["prints", "overlay", "大單泡泡", true],
+  ["vwap", "overlay", "VWAP（日內 ±1σ、±2σ）", true],
+  ["levels", "overlay", "前日高低點與價值區", false],
+  ["liqmark", "overlay", "爆倉標記 ▲▼", true],
+  ["events", "overlay", "事件", true],
+  ["lmap", "overlay", "爆倉地圖（估算）", false],
+  ["volume", "pane", "成交量", true],
+  ["delta", "pane", "Delta", false],
+  ["cvd", "pane", "CVD", true],
+  ["liq", "pane", "爆倉", true],
+  ["oi", "pane", "OI", true],
+  ["doi", "pane", "OI 變化", false],
+  ["funding", "pane", "資金費率", false],
+  ["ratio", "pane", "多空比", true],
+  ["imb", "pane", "掛單簿失衡", false],
+];
+const PREFS_KEY = "metabear-orderflow-indicators";
+const prefs = (() => {
+  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def])), printMin: 10 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
+    if (saved?.show) for (const id of Object.keys(out.show)) if (typeof saved.show[id] === "boolean") out.show[id] = saved.show[id];
+    if (Number(saved?.printMin) >= PRINT_MIN) out.printMin = Number(saved.printMin);
+  } catch {}
+  return out;
+})();
+const on = (id) => prefs.show[id];
+function savePrefs() {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {}
+}
 
 // Server rows by time: footprint bars (archive and collector) and reading-time metrics.
 const store = { bars: new Map(), metrics: new Map() };
@@ -42,6 +80,11 @@ let server = null; // { updated, status } from the latest /recent poll
 let recentSince = 0;
 let heatCols = new Map(); // minute → [t, mid, lowBin, sizes]
 let liqs = [];
+const prints = new Map(); // "t|side|price|qty" → [t, side, price, BTC]
+let printList = []; // sorted by time, rebuilt when prints change
+let printsDirty = false;
+let barIndex = new Map(); // bar start → index in bars
+let dayLevels = new Map(); // UTC day → previous day's high, low, POC, VAH, VAL
 let mergedRows = []; // 1-minute rows after merging archive, collector and stream
 let mergedOi = []; // [t, OI in BTC]
 let liqMap = null;
@@ -70,6 +113,7 @@ const fmtVol = (v) =>
 const usd = () => ui.unit.value === "usd";
 const fmtSigned = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + fmtVol(Math.abs(v));
 const fmtPrice = (p) => p.toLocaleString("en-US", { maximumFractionDigits: 1 });
+const fmtRate = (v) => `${(v * 100).toFixed(4)}%`;
 
 // ---------- data ----------
 
@@ -139,13 +183,26 @@ function build() {
       const row = readingAt(close);
       return {
         t: b.t, end: close, partial: b.partial, o: b.o, h: b.h, l: b.l, c: b.c, levels, buy, sell, delta: buy - sell, cvd, poc: poc?.p,
-        oi: row?.[usd() ? 2 : 1] ?? null, topPos: row?.[3] ?? null, global: row?.[5] ?? null,
+        oi: row?.[usd() ? 2 : 1] ?? null, topPos: row?.[3] ?? null, global: row?.[5] ?? null, funding: row?.[7] ?? null,
       };
     });
+  barIndex = new Map(bars.map((b, i) => [b.t, i]));
+  for (let i = 0; i < bars.length; i++) {
+    const a = bars[i - 1]?.oi;
+    const b = bars[i].oi;
+    bars[i].doi = a != null && b != null ? b - a : null;
+    bars[i].imb = bookImbalance(bars[i]);
+  }
+  attachVwap(mergedRows, bars);
+  dayLevels = priorDayLevels(mergedRows);
   // Bybit streams OI several times a second but ratios only every 5 minutes. A bar still
   // forming has no reading at its close yet; a reading inside it is older than the live one.
   const last = bars.at(-1);
-  if (last && stream.oi && last.end > Date.now()) last.oi = usd() ? stream.oi * last.c : stream.oi;
+  if (last && stream.oi && last.end > Date.now()) {
+    last.oi = usd() ? stream.oi * last.c : stream.oi;
+    last.doi = bars.at(-2)?.oi != null ? last.oi - bars.at(-2).oi : null;
+  }
+  if (last && stream.ticker.funding != null && last.end > Date.now()) last.funding = stream.ticker.funding;
   attachLiquidations(tfMs);
   mergedOi = metrics.filter((m) => m[1] != null).map((m) => [m[0], m[1]]);
   if (stream.oi && mergedOi.length && Date.now() > mergedOi.at(-1)[0] + 30_000) mergedOi.push([Date.now(), stream.oi]);
@@ -153,8 +210,85 @@ function build() {
   updateEvents();
 }
 
+// Session VWAP per UTC day from the footprint (bin midpoints), with its volume-weighted standard
+// deviation; a bar shows the value at its last minute. Kline-only minutes add nothing.
+function attachVwap(rows, list) {
+  const series = [];
+  let day = -1;
+  let pv = 0;
+  let p2v = 0;
+  let vol = 0;
+  for (const [t, , , , , levels] of rows) {
+    const d = Math.floor(t / DAY);
+    if (d !== day) (day = d), (pv = 0), (p2v = 0), (vol = 0);
+    for (const [bin, buy, sell] of levels) {
+      const price = bin * TICK + TICK / 2;
+      const v = buy + sell;
+      pv += price * v;
+      p2v += price * price * v;
+      vol += v;
+    }
+    if (vol > 0) {
+      const vwap = pv / vol;
+      series.push([t, d, vwap, Math.sqrt(Math.max(0, p2v / vol - vwap * vwap))]);
+    }
+  }
+  let j = -1;
+  for (const b of list) {
+    while (j + 1 < series.length && series[j + 1][0] < b.end) j++;
+    const s = j >= 0 && series[j][1] === Math.floor(b.t / DAY) ? series[j] : null;
+    b.vwap = s ? s[2] : null;
+    b.vwapSd = s ? s[3] : null;
+  }
+}
+
+// Previous UTC day's high, low and value area for each day, from 1-minute rows.
+function priorDayLevels(rows) {
+  const days = new Map();
+  for (const [t, , h, l, , levels] of rows) {
+    const d = Math.floor(t / DAY);
+    let day = days.get(d);
+    if (!day) days.set(d, (day = { high: -Infinity, low: Infinity, volume: new Map() }));
+    day.high = Math.max(day.high, h);
+    day.low = Math.min(day.low, l);
+    for (const [bin, buy, sell] of levels) day.volume.set(bin, (day.volume.get(bin) ?? 0) + buy + sell);
+  }
+  const out = new Map();
+  for (const [d, day] of days) {
+    const va = valueArea(day.volume);
+    const mid = (bin) => bin * TICK + TICK / 2;
+    const list = [
+      { name: "前日高", price: day.high, color: C.muted },
+      { name: "前日低", price: day.low, color: C.muted },
+    ];
+    if (va) list.push({ name: "前日 POC", price: mid(va.poc), color: C.gold }, { name: "前日 VAH", price: mid(va.vah), color: C.dim }, { name: "前日 VAL", price: mid(va.val), color: C.dim });
+    out.set(d + 1, list);
+  }
+  return out;
+}
+
+// Resting size below mid against above it, (bid − ask) ÷ (bid + ask), from the last heatmap column
+// in the bar. Bybit's book reaches about ±0.25 %, so this is near-touch pressure only.
+function bookImbalance(b) {
+  for (let t = b.end - MINUTE; t >= b.t; t -= MINUTE) {
+    const col = heatCols.get(t);
+    if (!col) continue;
+    const [, mid, lowBin, sizes] = col;
+    const midBin = Math.floor(mid / TICK);
+    let bid = 0;
+    let ask = 0;
+    for (let i = 0; i < sizes.length; i++) {
+      const bin = lowBin + i;
+      if (bin < midBin) bid += sizes[i];
+      else if (bin > midBin) ask += sizes[i];
+    }
+    return bid + ask > 0 ? (bid - ask) / (bid + ask) : null;
+  }
+  return null;
+}
+
 function updateEvents() {
-  if (!ui.events.checked) return;
+  if (!on("events")) return;
   // Detection runs on its own closed 5-minute bars, whatever the chart shows; only
   // redo it when a new 5-minute bar has closed.
   const now = Date.now();
@@ -169,7 +303,7 @@ function eventsIn(b) {
 }
 
 function updateLiqMap(force) {
-  if (!ui.lmap.checked) return;
+  if (!on("lmap")) return;
   // The model replays every interval; refreshing it every 10 s is plenty.
   if (!force && Date.now() - liqMapAt < 10_000) return;
   liqMapAt = Date.now();
@@ -202,21 +336,32 @@ function resize() {
   draw();
 }
 
+const unitLabel = () => (usd() ? "USD" : "BTC");
+// Sub-panes in display order: `key` panes draw a line of that bar field, the rest are histograms.
+const PANES = {
+  volume: { label: () => `成交量 (${unitLabel()})` },
+  delta: { label: () => `Delta (${unitLabel()})` },
+  cvd: { label: () => "CVD", key: "cvd" },
+  liq: { label: () => "爆倉 (USD)" },
+  oi: { label: () => `OI (${unitLabel()})`, key: "oi" },
+  doi: { label: () => `OI 變化 (${unitLabel()})` },
+  funding: { label: () => "資金費率（每 8 小時）", key: "funding" },
+  ratio: { label: () => "多空比（Bybit 全體帳戶）", key: "global" },
+  imb: { label: () => "掛單簿失衡（現價 ±0.25%，買 − 賣）" },
+};
+
 function layout() {
   const axisW = 74;
   const timeH = 24;
   const plotW = size.w - axisW;
   const avail = size.h - timeH;
-  const sub = Math.max(52, Math.round(avail * 0.12));
-  const priceH = avail - sub * 4;
-  const panes = {
-    price: { y: 0, h: priceH },
-    cvd: { y: priceH, h: sub, label: "CVD", key: "cvd" },
-    liq: { y: priceH + sub, h: sub, label: "爆倉 (USD)" },
-    oi: { y: priceH + sub * 2, h: sub, label: `OI (${usd() ? "USD" : "BTC"})`, key: "oi" },
-    ratio: { y: priceH + sub * 3, h: sub, label: "多空比（Bybit 全體帳戶）", key: "global" },
-  };
-  return { axisW, timeH, plotW, panes, timeY: avail };
+  const subIds = Object.keys(PANES).filter(on);
+  // Sub-panes share at most 55 % of the height, so many panes get thinner, not the price chart.
+  const sub = subIds.length ? Math.max(40, Math.min(Math.round(avail * 0.12), Math.floor((avail * 0.55) / subIds.length))) : 0;
+  const priceH = avail - sub * subIds.length;
+  const panes = { price: { y: 0, h: priceH } };
+  subIds.forEach((id, k) => (panes[id] = { id, y: priceH + sub * k, h: sub, label: PANES[id].label(), key: PANES[id].key }));
+  return { axisW, timeH, plotW, panes, subIds, timeY: avail };
 }
 
 const xOf = (i, L) => L.plotW - (view.end - i) * view.barW;
@@ -250,8 +395,11 @@ function draw() {
   const L = layout();
   const [from, to] = visibleRange(L);
   drawPrice(L, from, to);
-  for (const key of ["cvd", "oi", "ratio"]) drawSub(L, L.panes[key], from, to);
-  drawLiqPane(L, L.panes.liq, from, to);
+  for (const id of L.subIds) {
+    if (id === "liq") drawLiqPane(L, L.panes.liq, from, to);
+    else if (PANES[id].key) drawSub(L, L.panes[id], from, to);
+    else drawHist(L, L.panes[id], from, to);
+  }
   drawTimeAxis(L, from, to);
   drawCrosshair(L);
 }
@@ -296,16 +444,16 @@ function drawPrice(L, from, to) {
     ctx.fillText(fmtPrice(p), L.plotW + 8, y);
   }
 
-  if (ui.heat.checked && heatCols.size) drawHeat(L, from, to, yOf);
-  if (ui.lmap.checked && liqMap) drawLiqMap(L, from, to, yOf);
-  if (ui.lmap.checked && liqMap) {
+  if (on("heat") && heatCols.size) drawHeat(L, from, to, yOf);
+  if (on("lmap") && liqMap) drawLiqMap(L, from, to, yOf);
+  if (on("lmap") && liqMap) {
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, P.y, L.plotW, P.h);
     ctx.clip();
     drawLiqProfile(L, yOf);
     ctx.restore();
-  } else if (ui.profile.checked) {
+  } else if (on("profile")) {
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, P.y, L.plotW, P.h);
@@ -375,8 +523,11 @@ function drawPrice(L, from, to) {
       drawCandle(x0 + (view.barW - w) / 2, w, b, yOf, up);
     }
   }
-  if (ui.liq.checked) drawLiquidations(L, from, to, yOf);
-  if (ui.events.checked) drawEvents(L, from, to, yOf);
+  if (on("levels")) drawLevels(L, from, to, yOf);
+  if (on("vwap")) drawVwap(L, from, to, yOf);
+  if (on("prints")) drawPrints(L, from, to, yOf);
+  if (on("liqmark")) drawLiquidations(L, from, to, yOf);
+  if (on("events")) drawEvents(L, from, to, yOf);
   ctx.restore();
 
   // last price tag
@@ -449,6 +600,8 @@ function drawHeat(L, from, to, yOf) {
   ctx.restore();
 }
 
+// Liquidations as triangles in the forced direction (longs force-sold ▼ amber, shorts force-bought
+// ▲ mint) at their average price, three sizes by USD; bubbles are reserved for large trades.
 function drawLiquidations(L, from, to, yOf) {
   for (let i = from; i <= to; i++) {
     const liq = bars[i].liq;
@@ -457,16 +610,111 @@ function drawLiquidations(L, from, to, yOf) {
     for (const side of ["long", "short"]) {
       const s = liq[side];
       if (s.usd < 20_000) continue;
-      const r = Math.min(22, Math.max(3, Math.sqrt(s.usd) / 90));
+      const r = s.usd >= 1_000_000 ? 9 : s.usd >= 200_000 ? 6.5 : 4.5;
+      const y = yOf(s.pq / s.q);
+      const dir = side === "long" ? 1 : -1;
       ctx.beginPath();
-      ctx.arc(cx, yOf(s.pq / s.q), r, 0, Math.PI * 2);
-      // Longs are force-sold (amber), shorts force-bought (mint).
-      ctx.fillStyle = side === "long" ? "rgba(240,154,90,0.35)" : "rgba(120,225,213,0.35)";
-      ctx.strokeStyle = side === "long" ? C.sell : C.buy;
+      ctx.moveTo(cx - r, y - dir * r * 0.6);
+      ctx.lineTo(cx + r, y - dir * r * 0.6);
+      ctx.lineTo(cx, y + dir * r * 0.9);
+      ctx.closePath();
+      ctx.fillStyle = side === "long" ? C.sell : C.buy;
+      ctx.strokeStyle = C.bg;
       ctx.fill();
       ctx.stroke();
     }
   }
+}
+
+// Large prints: one bubble per aggregated taker order of at least the chosen size, placed at its
+// time within the bar and its average price; area grows with size.
+function drawPrints(L, from, to, yOf) {
+  if (printsDirty) {
+    printList = [...prints.values()].sort((a, b) => a[0] - b[0]);
+    printsDirty = false;
+  }
+  const tfMs = Number(ui.tf.value) * MINUTE;
+  const t0 = bars[from].t;
+  const t1 = bars[to].t + tfMs;
+  let lo = 0;
+  let hi = printList.length;
+  while (lo < hi) {
+    const m = (lo + hi) >> 1;
+    if (printList[m][0] < t0) lo = m + 1;
+    else hi = m;
+  }
+  const shown = [];
+  for (let k = lo; k < printList.length && printList[k][0] < t1; k++) if (printList[k][3] >= prefs.printMin) shown.push(printList[k]);
+  shown.sort((a, b) => a[3] - b[3]); // largest on top
+  for (const [t, side, price, qty] of shown) {
+    const i = barIndex.get(Math.floor(t / tfMs) * tfMs);
+    if (i == null) continue;
+    const x = xOf(i, L) + ((t - bars[i].t) / tfMs) * view.barW;
+    const r = Math.min(30, Math.max(3, 2.2 * Math.sqrt(qty)));
+    ctx.beginPath();
+    ctx.arc(x, yOf(price), r, 0, Math.PI * 2);
+    ctx.fillStyle = side === "buy" ? `rgba(${BUY_RGB},0.3)` : `rgba(${SELL_RGB},0.3)`;
+    ctx.strokeStyle = side === "buy" ? C.buy : C.sell;
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+function drawVwap(L, from, to, yOf) {
+  const path = (k, color, width, dash) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.setLineDash(dash);
+    ctx.beginPath();
+    let prevDay = null;
+    for (let i = from; i <= to; i++) {
+      const b = bars[i];
+      if (b.vwap == null) {
+        prevDay = null;
+        continue;
+      }
+      const x = xOf(i, L) + view.barW / 2;
+      const y = yOf(b.vwap + k * b.vwapSd);
+      const day = Math.floor(b.t / DAY);
+      // Each UTC day starts a new line.
+      if (day === prevDay) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+      prevDay = day;
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1;
+  };
+  for (const k of [-2, 2]) path(k, "rgba(196,160,255,0.28)", 1, [2, 4]);
+  for (const k of [-1, 1]) path(k, "rgba(196,160,255,0.45)", 1, [5, 4]);
+  path(0, "#c4a0ff", 1.6, []);
+}
+
+function drawLevels(L, from, to, yOf) {
+  ctx.font = `10px ${MONO}`;
+  ctx.textBaseline = "bottom";
+  let i = from;
+  while (i <= to) {
+    const day = Math.floor(bars[i].t / DAY);
+    let j = i;
+    while (j + 1 <= to && Math.floor(bars[j + 1].t / DAY) === day) j++;
+    const x0 = Math.max(0, xOf(i, L));
+    const x1 = Math.min(L.plotW, xOf(j, L) + view.barW);
+    for (const lv of dayLevels.get(day) ?? []) {
+      const y = Math.round(yOf(lv.price)) + 0.5;
+      ctx.strokeStyle = lv.color;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = lv.color;
+      ctx.fillText(lv.name, x0 + 4, y - 2);
+    }
+    i = j + 1;
+  }
+  ctx.textBaseline = "middle";
 }
 
 function drawLiqPane(L, P, from, to) {
@@ -756,8 +1004,9 @@ function drawSub(L, P, from, to) {
       ctx.fillRect(xOf(i, L) + (view.barW - w) / 2, d >= 0 ? mid - bh : mid, w, bh);
     }
   }
-  if (P.key === "global" && lo < 1 && hi > 1) {
-    const y = Math.round(yOf(1)) + 0.5;
+  const base = P.key === "global" ? 1 : P.key === "funding" ? 0 : null;
+  if (base != null && lo < base && hi > base) {
+    const y = Math.round(yOf(base)) + 0.5;
     ctx.strokeStyle = C.grid;
     ctx.beginPath();
     ctx.moveTo(0, y);
@@ -791,9 +1040,69 @@ function drawSub(L, P, from, to) {
   ctx.restore();
 
   ctx.fillStyle = C.muted;
-  const fmt = (v) => (P.key === "global" ? v.toFixed(2) : P.key === "oi" ? fmtVol(v) : fmtSigned(v));
+  const fmt = (v) => (P.key === "global" ? v.toFixed(2) : P.key === "funding" ? fmtRate(v) : P.key === "oi" ? fmtVol(v) : fmtSigned(v));
   ctx.fillText(fmt(hi - pad), L.plotW + 8, yOf(hi - pad));
   ctx.fillText(fmt(lo + pad), L.plotW + 8, yOf(lo + pad));
+  ctx.strokeStyle = C.line;
+  ctx.beginPath();
+  ctx.moveTo(0, P.y + P.h + 0.5);
+  ctx.lineTo(size.w, P.y + P.h + 0.5);
+  ctx.stroke();
+}
+
+// Histogram panes: volume stacked by taker side, signed delta and OI change, imbalance on ±1.
+function drawHist(L, P, from, to) {
+  const id = P.id;
+  const value = (b) => (id === "volume" ? b.buy + b.sell : id === "delta" ? b.delta : id === "doi" ? b.doi : b.imb);
+  let max = id === "imb" ? 1 : 0;
+  if (id !== "imb") for (let i = from; i <= to; i++) max = Math.max(max, Math.abs(value(bars[i]) ?? 0));
+  ctx.fillStyle = C.muted;
+  ctx.font = `11px ${MONO}`;
+  ctx.textBaseline = "top";
+  ctx.fillText(P.label, 8, P.y + 6);
+  ctx.textBaseline = "middle";
+  const top = P.y + 22;
+  const h = P.h - 26;
+  const signed = id !== "volume";
+  const base = signed ? Math.round(top + h / 2) + 0.5 : top + h;
+  const scale = (signed ? h / 2 : h) / (max || 1);
+  if (signed) {
+    ctx.strokeStyle = C.grid;
+    ctx.beginPath();
+    ctx.moveTo(0, base);
+    ctx.lineTo(L.plotW, base);
+    ctx.stroke();
+  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, P.y, L.plotW, P.h);
+  ctx.clip();
+  const w = Math.max(1, view.barW * 0.7);
+  for (let i = from; i <= to; i++) {
+    const b = bars[i];
+    const x = xOf(i, L) + (view.barW - w) / 2;
+    if (id === "volume") {
+      const hs = b.sell * scale;
+      const hb = b.buy * scale;
+      ctx.fillStyle = `rgba(${SELL_RGB},0.75)`;
+      ctx.fillRect(x, base - hs, w, hs);
+      ctx.fillStyle = `rgba(${BUY_RGB},0.75)`;
+      ctx.fillRect(x, base - hs - hb, w, hb);
+      continue;
+    }
+    const v = value(b);
+    if (v == null) continue;
+    const bh = Math.abs(v) * scale;
+    ctx.fillStyle = v >= 0 ? C.buy : C.sell;
+    ctx.fillRect(x, v >= 0 ? base - bh : base, w, bh);
+  }
+  ctx.restore();
+  ctx.fillStyle = C.muted;
+  const fmt = (v) => (id === "imb" ? v.toFixed(1) : fmtVol(v));
+  if (max > 0) {
+    ctx.fillText(fmt(max), L.plotW + 8, top + 4);
+    if (signed) ctx.fillText("−" + fmt(max), L.plotW + 8, top + h - 4);
+  }
   ctx.strokeStyle = C.line;
   ctx.beginPath();
   ctx.moveTo(0, P.y + P.h + 0.5);
@@ -847,7 +1156,7 @@ function drawCrosshair(L) {
 }
 
 function liqHint() {
-  if (!ui.lmap.checked || !liqMap || !hover) return "";
+  if (!on("lmap") || !liqMap || !hover) return "";
   const P = pricePane;
   if (!P || hover.y <= P.y || hover.y >= P.y + P.h) return "";
   const p = P.pOf(hover.y);
@@ -855,6 +1164,21 @@ function liqHint() {
   if (!est) return "";
   const cls = est.down ? "sell" : "buy";
   return `估算：${est.down ? "跌" : "漲"}到 ${fmtPrice(Math.round(p))} 累計${est.down ? "多單" : "空單"}強平 <span class="${cls}">${fmtVol(est.usd)}</span> USD`;
+}
+
+function printsHint(b) {
+  let nb = 0;
+  let qb = 0;
+  let ns = 0;
+  let qs = 0;
+  for (const [t, side, , qty] of printList) {
+    if (t < b.t || t >= b.end || qty < prefs.printMin) continue;
+    if (side === "buy") (nb++, (qb += qty));
+    else (ns++, (qs += qty));
+  }
+  if (!nb && !ns) return "";
+  const span = (cls, v) => `<span class="${cls}">${v}</span>`;
+  return `大單 ≥${prefs.printMin} 買 ${span("buy", `${nb} 筆 ${fmtVol(qb)}`)} 賣 ${span("sell", `${ns} 筆 ${fmtVol(qs)}`)} BTC`;
 }
 
 function updateReadout() {
@@ -865,15 +1189,20 @@ function updateReadout() {
     `<b>${fmtTime(b.t)}</b>`,
     `開 ${fmtPrice(b.o)} 高 ${fmtPrice(b.h)} 低 ${fmtPrice(b.l)} 收 <b>${fmtPrice(b.c)}</b>`,
     `買 ${span("buy", fmtVol(b.buy))} 賣 ${span("sell", fmtVol(b.sell))} Δ ${span(b.delta >= 0 ? "buy" : "sell", fmtSigned(b.delta))}`,
+    `量 ${fmtVol(b.buy + b.sell)}`,
     `CVD ${fmtSigned(b.cvd)}`,
-    b.oi != null ? `OI ${fmtVol(b.oi)} ${usd() ? "USD" : "BTC"}` : "",
+    on("vwap") && b.vwap != null ? `VWAP ${fmtPrice(Math.round(b.vwap * 10) / 10)}` : "",
+    b.oi != null ? `OI ${fmtVol(b.oi)} ${usd() ? "USD" : "BTC"}${b.doi != null ? `（${fmtSigned(b.doi)}）` : ""}` : "",
+    on("funding") && b.funding != null ? `資金費率 ${span(b.funding >= 0 ? "buy" : "sell", fmtRate(b.funding))}` : "",
     b.global != null ? `多空比 ${span("gold", b.global.toFixed(2))}` : "",
+    on("imb") && b.imb != null ? `掛單失衡 ${span(b.imb >= 0 ? "buy" : "sell", b.imb.toFixed(2))}` : "",
+    on("prints") ? printsHint(b) : "",
     b.liq
       ? `爆倉 多 ${span("sell", fmtVol(b.liq.long.usd))} 空 ${span("buy", fmtVol(b.liq.short.usd))} USD（${Object.entries(b.liq.byEx).map(([ex, v]) => `${LIQ_EXCHANGES[ex] ?? ex} ${fmtVol(v)}`).join("、")}）`
       : "",
     b.partial ? "（部分分鐘無足跡）" : "",
     liqHint(),
-    ...(ui.events.checked
+    ...(on("events")
       ? eventsIn(b).map((e) => `<span class="${e.dir === "up" ? "buy" : e.dir === "down" ? "sell" : "gold"}">${SIGNALS[e.kind].name}</span> ${e.note}`)
       : []),
   ]
@@ -1017,7 +1346,6 @@ function rebuild() {
 }
 ui.tf.addEventListener("change", rebuild);
 ui.tick.addEventListener("change", rebuild);
-ui.profile.addEventListener("change", redraw);
 ui.mode.addEventListener("change", redraw);
 ui.unit.addEventListener("change", rebuild);
 new ResizeObserver(resize).observe(canvas);
@@ -1031,7 +1359,15 @@ const stream = {
   oi: null,
   ticker: {},
   book: new OrderBook(),
+  firstTrade: 0, // prints after this come from the page's own stream
 };
+
+function addPrint(p) {
+  const key = p.join("|");
+  if (prints.has(key)) return;
+  prints.set(key, p);
+  printsDirty = true;
+}
 const liqKeys = new Set();
 
 function mergeLiquidations(rows) {
@@ -1113,7 +1449,12 @@ function startStreams() {
       ws.send(JSON.stringify({ op: "subscribe", args: [TRADE_TOPIC, BOOK_TOPIC, TICKER_TOPIC] }));
     },
     onMessage: (m) => {
-      if (m.topic === TRADE_TOPIC) for (const tr of parseTrades(m)) onTrade(tr);
+      if (m.topic === TRADE_TOPIC) {
+        const trades = parseTrades(m);
+        for (const tr of trades) onTrade(tr);
+        if (!stream.firstTrade && trades.length) stream.firstTrade = trades[0].t;
+        for (const p of groupPrints(trades)) if (p[3] >= PRINT_MIN) addPrint(p);
+      }
       else if (m.topic === BOOK_TOPIC) stream.book.apply(m);
       else if (m.topic === TICKER_TOPIC) stream.oi = applyTicker(stream.ticker, m).oi ?? null;
     },
@@ -1165,6 +1506,7 @@ function ingest(d) {
   // Columns this page built from its own stream are newer; keep them.
   for (const c of d.heat) if (c[0] <= stream.start || !heatCols.has(c[0])) heatCols.set(c[0], c);
   mergeLiquidations(d.liquidations);
+  for (const p of d.prints ?? []) if (!stream.firstTrade || p[0] < stream.firstTrade) addPrint(p);
 }
 
 const utcDay = (t) => new Date(t).toISOString().slice(0, 10);
@@ -1196,17 +1538,34 @@ async function pollRecent() {
   showLive();
 }
 
-ui.heat.addEventListener("change", redraw);
-ui.events.addEventListener("change", () => {
-  eventsKey = "";
-  updateEvents();
-  redraw();
-});
-ui.lmap.addEventListener("change", () => {
-  updateLiqMap(true);
-  redraw();
-});
-ui.liq.addEventListener("change", redraw);
+function buildIndicatorPanel() {
+  for (const [id, where, label] of INDICATORS) {
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = on(id);
+    box.addEventListener("change", () => {
+      prefs.show[id] = box.checked;
+      savePrefs();
+      if (id === "lmap") updateLiqMap(true);
+      if (id === "events") {
+        eventsKey = "";
+        updateEvents();
+      }
+      redraw();
+    });
+    const row = document.createElement("label");
+    row.className = "check";
+    row.append(box, label);
+    $(`ind-${where}`).append(row);
+  }
+  ui.printMin.value = String(prefs.printMin);
+  ui.printMin.addEventListener("change", () => {
+    prefs.printMin = Number(ui.printMin.value);
+    savePrefs();
+    redraw();
+  });
+}
+buildIndicatorPanel();
 
 // ---------- boot ----------
 
@@ -1215,7 +1574,7 @@ try {
   if (!store.bars.size) throw new Error("no data");
   $("source").textContent =
     "資料：Bybit BTCUSDT 永續合約（USDT 本位，僅單一交易所）。歷史足跡由 Bybit 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄；" +
-    "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單。多空比是 Bybit 全體帳戶多空比。" +
+    "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單。多空比是 Bybit 全體帳戶多空比。資料保留 30 天，熱力圖 7 天。" +
     "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
   build();
   view.end = bars.length + 2;

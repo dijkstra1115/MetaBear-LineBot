@@ -1,6 +1,6 @@
 // Order-flow collector: one Durable Object holding Bybit's BTCUSDT streams (trades, 1,000-level
-// book, tickers, liquidations) plus OKX liquidations, writing footprint bars, heatmap columns,
-// OI readings and liquidations to its SQLite storage. Binance refuses Cloudflare, see
+// book, tickers, liquidations) plus OKX liquidations, writing footprint bars, large prints,
+// heatmap columns, OI and funding readings and liquidations to its SQLite storage. Binance refuses Cloudflare, see
 // docs/ORDERFLOW-CF-PROBE.md, which also explains the 10 s alarm: open outbound sockets alone
 // keep an object alive for at most 15 minutes.
 import { DurableObject } from "cloudflare:workers";
@@ -9,6 +9,7 @@ import {
   BOOK_TOPIC,
   OrderBook,
   PING,
+  PRINT_MIN,
   REST_URL,
   SYMBOL,
   TICK,
@@ -18,6 +19,7 @@ import {
   addTrade,
   applyTicker,
   barRow,
+  groupPrints,
   parseRestTrades,
   parseTrades,
   takerTotals,
@@ -35,8 +37,10 @@ const DAY = 86_400_000;
 const ALARM_MS = 10_000;
 const SILENT_MS = 30_000;
 const SEEN_TRADES = 5_000; // trade ids kept to drop duplicates between the stream and a REST backfill
-const KEEP_MS = { bars: 120 * DAY, heat: 14 * DAY, oi: 120 * DAY, liqs: 120 * DAY };
-const BACKFILL_DAYS = 14; // OI and long/short ratio history fetched from REST
+// Order flow is read over hours to days, so storage stays small: a month of footprints, prints,
+// readings and liquidations, and a week of heatmap columns (the largest rows, ~3 KB a minute).
+export const KEEP_MS = { bars: 30 * DAY, prints: 30 * DAY, heat: 7 * DAY, readings: 30 * DAY, liqs: 30 * DAY };
+const BACKFILL_DAYS = 15; // OI, long/short ratio and funding history fetched from REST
 const LIQ_TOPIC = `allLiquidation.${SYMBOL}`;
 const BYBIT_LIQ = LIQ_FEEDS.find((f) => f.ex === "bybit")!;
 const OKX_LIQ = LIQ_FEEDS.find((f) => f.ex === "okx")!;
@@ -52,7 +56,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private sql: SqlStorage;
   private bars = new Map<number, Bar>(); // minutes not yet closed and persisted
   private book = new OrderBook();
-  private ticker: { oi?: number; oiValue?: number; ts?: number } = {};
+  private ticker: { oi?: number; oiValue?: number; funding?: number; ts?: number } = {};
   private sockets = new Map<string, Socket>();
   private seen = new Set<string>();
   private heat: [number, number, number, number[]] | null = null; // latest column of the current minute
@@ -69,8 +73,12 @@ export class Collector extends DurableObject<OrderflowEnv> {
       CREATE TABLE IF NOT EXISTS oi_rest (t INTEGER PRIMARY KEY, oi REAL);
       CREATE TABLE IF NOT EXISTS ratios (t INTEGER PRIMARY KEY, ratio REAL);
       CREATE TABLE IF NOT EXISTS liqs (t INTEGER, side TEXT, price REAL, qty REAL, ex TEXT, PRIMARY KEY (t, side, price, qty, ex));
+      CREATE TABLE IF NOT EXISTS prints (t INTEGER, side TEXT, price REAL, qty REAL, PRIMARY KEY (t, side, price, qty));
+      CREATE TABLE IF NOT EXISTS funding (t INTEGER PRIMARY KEY, rate REAL);
       CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
     `);
+    // Added after the first deploy: the funding rate held at each OI reading.
+    if (!this.rows("PRAGMA table_info(oi)").some((c) => c.name === "funding")) this.sql.exec("ALTER TABLE oi ADD COLUMN funding REAL");
     // The current minute is persisted every alarm; pick it back up so a restart only loses
     // the seconds since then, which the REST backfill on reconnect fills in.
     this.lastTradeT = Number(this.meta("lastTradeT") ?? 0);
@@ -176,18 +184,24 @@ export class Collector extends DurableObject<OrderflowEnv> {
   }
 
   private onBybit(m: any) {
-    if (m.topic === TRADE_TOPIC) for (const tr of parseTrades(m)) this.addTradeOnce(tr);
+    if (m.topic === TRADE_TOPIC) this.addTrades(parseTrades(m));
     else if (m.topic === BOOK_TOPIC) this.book.apply(m);
     else if (m.topic === TICKER_TOPIC) this.onTicker(m);
     else if (m.topic === LIQ_TOPIC) this.saveLiqs(BYBIT_LIQ.parse(m));
   }
 
-  private addTradeOnce(tr: Trade) {
-    if (this.seen.has(tr.id)) return;
-    this.seen.add(tr.id);
-    if (this.seen.size > SEEN_TRADES) this.seen.delete(this.seen.values().next().value!);
-    addTrade(this.bars, tr, TICK);
-    if (tr.t > this.lastTradeT) this.lastTradeT = tr.t;
+  private addTrades(trades: Trade[]) {
+    const fresh: Trade[] = [];
+    for (const tr of trades) {
+      if (this.seen.has(tr.id)) continue;
+      this.seen.add(tr.id);
+      if (this.seen.size > SEEN_TRADES) this.seen.delete(this.seen.values().next().value!);
+      addTrade(this.bars, tr, TICK);
+      if (tr.t > this.lastTradeT) this.lastTradeT = tr.t;
+      fresh.push(tr);
+    }
+    for (const [t, side, price, qty] of groupPrints(fresh))
+      if (qty >= PRINT_MIN) this.sql.exec("INSERT OR IGNORE INTO prints VALUES (?, ?, ?, ?)", t, side, price, qty);
   }
 
   // Trades missed while the socket was down: Bybit serves the latest 1,000 (about one to two
@@ -200,7 +214,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
       const oldest = Math.min(...list.map((tr) => tr.t));
       if (oldest > this.lastTradeT) this.note("gaps", `trades ${iso(this.lastTradeT).slice(11, 19)}–${iso(oldest).slice(11, 19)} missing`);
       const since = this.lastTradeT;
-      for (const tr of list) if (tr.t >= since) this.addTradeOnce(tr);
+      // REST lists newest first; prints group consecutive fills in time order.
+      this.addTrades(list.filter((tr) => tr.t >= since).sort((a, b) => a.t - b.t));
     } catch (err) {
       this.note("errors", `trade backfill: ${err}`);
     }
@@ -217,11 +232,12 @@ export class Collector extends DurableObject<OrderflowEnv> {
       const window = this.rows("SELECT row FROM bars WHERE t >= ? AND t < ?", t - FIVE_MIN, t).map((r) => JSON.parse(String(r.row)));
       const [buy, sell] = takerTotals(window);
       this.sql.exec(
-        "INSERT INTO oi (t, oi, oi_value, taker) VALUES (?, ?, ?, ?) ON CONFLICT(t) DO NOTHING",
+        "INSERT INTO oi (t, oi, oi_value, taker, funding) VALUES (?, ?, ?, ?, ?) ON CONFLICT(t) DO NOTHING",
         t,
         this.ticker.oi,
         this.ticker.oiValue ?? null,
         sell > 0 ? Math.round((buy / sell) * 1e4) / 1e4 : null,
+        this.ticker.funding ?? null,
       );
     }
     applyTicker(this.ticker, m);
@@ -262,23 +278,26 @@ export class Collector extends DurableObject<OrderflowEnv> {
   // to fill readings the stream missed. Bybit's ratio is accounts long ÷ accounts short.
   private async pollRest() {
     const now = Date.now();
-    for (const [kind, pageMs] of [["oi", 200 * FIVE_MIN], ["ratio", 500 * FIVE_MIN]] as const) {
+    for (const [kind, pageMs] of [["oi", 200 * FIVE_MIN], ["ratio", 500 * FIVE_MIN], ["funding", 200 * 8 * 3_600_000]] as const) {
       const key = `${kind}Cursor`;
       let cursor = Number(this.meta(key) ?? 0) || now - BACKFILL_DAYS * DAY;
       const caughtUp = cursor > now - 15 * MINUTE;
       if (caughtUp && now - Number(this.meta(`${kind}Polled`) ?? 0) < FIVE_MIN) continue;
       if (caughtUp) cursor = now - 30 * MINUTE;
       const end = Math.min(now, cursor + pageMs);
-      const url =
-        kind === "oi"
-          ? `${REST_URL}/v5/market/open-interest?category=linear&symbol=${SYMBOL}&intervalTime=5min&limit=200&startTime=${cursor}&endTime=${end}`
-          : `${REST_URL}/v5/market/account-ratio?category=linear&symbol=${SYMBOL}&period=5min&limit=500&startTime=${cursor}&endTime=${end}`;
+      const url = {
+        oi: `${REST_URL}/v5/market/open-interest?category=linear&symbol=${SYMBOL}&intervalTime=5min&limit=200&startTime=${cursor}&endTime=${end}`,
+        ratio: `${REST_URL}/v5/market/account-ratio?category=linear&symbol=${SYMBOL}&period=5min&limit=500&startTime=${cursor}&endTime=${end}`,
+        // Settled rates, every 8 hours.
+        funding: `${REST_URL}/v5/market/funding/history?category=linear&symbol=${SYMBOL}&limit=200&startTime=${cursor}&endTime=${end}`,
+      }[kind];
       try {
         const res = await fetch(url);
         const body = (await res.json()) as any;
         if (body.retCode !== 0) throw new Error(`${body.retCode} ${body.retMsg}`);
         for (const r of body.result.list) {
           if (kind === "oi") this.sql.exec("INSERT OR REPLACE INTO oi_rest (t, oi) VALUES (?, ?)", Number(r.timestamp), Number(r.openInterest));
+          else if (kind === "funding") this.sql.exec("INSERT OR REPLACE INTO funding (t, rate) VALUES (?, ?)", Number(r.fundingRateTimestamp), Number(r.fundingRate));
           else this.sql.exec("INSERT OR REPLACE INTO ratios (t, ratio) VALUES (?, ?)", Number(r.timestamp), Math.round((Number(r.buyRatio) / Number(r.sellRatio)) * 1e4) / 1e4);
         }
         this.setMeta(key, Math.max(Number(this.meta(key) ?? 0), end - 10 * MINUTE));
@@ -315,10 +334,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
     const now = Date.now();
     if (now - Number(this.meta("pruned") ?? 0) < 3_600_000) return;
     this.sql.exec("DELETE FROM bars WHERE t < ?", now - KEEP_MS.bars);
+    this.sql.exec("DELETE FROM prints WHERE t < ?", now - KEEP_MS.prints);
     this.sql.exec("DELETE FROM heat WHERE t < ?", now - KEEP_MS.heat);
-    this.sql.exec("DELETE FROM oi WHERE t < ?", now - KEEP_MS.oi);
-    this.sql.exec("DELETE FROM oi_rest WHERE t < ?", now - KEEP_MS.oi);
-    this.sql.exec("DELETE FROM ratios WHERE t < ?", now - KEEP_MS.oi);
+    for (const table of ["oi", "oi_rest", "ratios", "funding"]) this.sql.exec(`DELETE FROM ${table} WHERE t < ?`, now - KEEP_MS.readings);
     this.sql.exec("DELETE FROM liqs WHERE t < ?", now - KEEP_MS.liqs);
     this.setMeta("pruned", now);
   }
@@ -359,29 +377,36 @@ export class Collector extends DurableObject<OrderflowEnv> {
       heat: `[${[...heat.entries()].sort((a, b) => a[0] - b[0]).map((e) => e[1]).join(",")}]`,
       metrics: JSON.stringify(this.metrics(from, to)),
       liquidations: JSON.stringify(this.rows("SELECT t, side, price, qty, ex FROM liqs WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [r.t, r.side, r.price, r.qty, r.ex])),
+      prints: JSON.stringify(this.rows("SELECT t, side, price, qty FROM prints WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [r.t, r.side, r.price, r.qty])),
     };
   }
 
   // Reading-time rows in the lab's shape: [t, OI (BTC), OI (USDT), top-trader position ratio,
-  // top-trader account ratio, all-account ratio, taker buy/sell over [t − 5m, t)]. Bybit has no
-  // top-trader ratios. Stream readings win; REST rows fill the rest (OI only, valued at bar close).
+  // top-trader account ratio, all-account ratio, taker buy/sell over [t − 5m, t), funding rate].
+  // Bybit has no top-trader ratios. Stream readings win; REST rows fill the rest (OI valued at bar
+  // close, funding as the last settled rate).
   private metrics(from: number, to: number) {
-    const live = new Map(this.rows("SELECT t, oi, oi_value, taker FROM oi WHERE t >= ? AND t < ?", from, to).map((r) => [Number(r.t), r]));
+    const live = new Map(this.rows("SELECT t, oi, oi_value, taker, funding FROM oi WHERE t >= ? AND t < ?", from, to).map((r) => [Number(r.t), r]));
     const out = new Map<number, (number | null)[]>();
-    for (const [t, r] of live) out.set(t, [t, r.oi as number, r.oi_value == null ? null : Math.round(r.oi_value as number), null, null, null, (r.taker as number | null) ?? null]);
+    for (const [t, r] of live)
+      out.set(t, [t, r.oi as number, r.oi_value == null ? null : Math.round(r.oi_value as number), null, null, null, (r.taker as number | null) ?? null, (r.funding as number | null) ?? null]);
     const closes = new Map(this.rows("SELECT t, row FROM bars WHERE t >= ? AND t < ?", from - MINUTE, to).map((r) => [Number(r.t), JSON.parse(String(r.row))[4] as number]));
     for (const r of this.rows("SELECT t, oi FROM oi_rest WHERE t >= ? AND t < ?", from, to)) {
       const t = Number(r.t);
       if (out.has(t)) continue;
       const close = closes.get(t - MINUTE);
-      out.set(t, [t, r.oi as number, close ? Math.round((r.oi as number) * close) : null, null, null, null, null]);
+      out.set(t, [t, r.oi as number, close ? Math.round((r.oi as number) * close) : null, null, null, null, null, null]);
     }
     const ratios = this.rows("SELECT t, ratio FROM ratios WHERE t >= ? AND t < ? ORDER BY t", from - DAY, to);
+    const settled = this.rows("SELECT t, rate FROM funding WHERE t >= ? AND t < ? ORDER BY t", from - DAY, to);
     const rows = [...out.values()].sort((a, b) => (a[0] as number) - (b[0] as number));
     let k = -1;
+    let f = -1;
     for (const row of rows) {
       while (k + 1 < ratios.length && Number(ratios[k + 1].t) <= (row[0] as number)) k++;
+      while (f + 1 < settled.length && Number(settled[f + 1].t) <= (row[0] as number)) f++;
       row[5] = k >= 0 ? (ratios[k].ratio as number) : null;
+      row[7] ??= f >= 0 ? (settled[f].rate as number) : null;
     }
     return rows;
   }
@@ -400,7 +425,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       bookReady: this.book.ready,
       open: [...this.sockets.keys()],
       oi: this.ticker.oi ?? null,
-      counts: Object.fromEntries(["bars", "heat", "oi", "oi_rest", "ratios", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
+      counts: Object.fromEntries(["bars", "prints", "heat", "oi", "oi_rest", "ratios", "funding", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
     };
   }
 
@@ -420,9 +445,17 @@ export class Collector extends DurableObject<OrderflowEnv> {
     }
     if (url.pathname === "/import" && request.method === "POST") {
       // Footprint rows rebuilt from Bybit's daily trade archive (scripts/orderflow-bybit-archive.mjs).
-      const { rows } = (await request.json()) as { rows: [number, ...unknown[]][] };
+      // Prints come with the [from, to) range they cover, which they replace.
+      const body = (await request.json()) as { rows?: [number, ...unknown[]][]; prints?: [number, string, number, number][]; from?: number; to?: number };
+      const rows = body.rows ?? [];
       for (const row of rows) this.sql.exec("INSERT INTO bars (t, src, row) VALUES (?, 'archive', ?) ON CONFLICT(t) DO UPDATE SET src = 'archive', row = excluded.row", row[0], JSON.stringify(row));
-      return Response.json({ imported: rows.length });
+      const prints = body.prints ?? [];
+      if (prints.length || body.from != null) {
+        if (!Number.isInteger(body.from) || !Number.isInteger(body.to)) return Response.json({ error: "prints need from and to" }, { status: 400 });
+        this.sql.exec("DELETE FROM prints WHERE t >= ? AND t < ?", body.from!, body.to!);
+        for (const [t, side, price, qty] of prints) if (t >= body.from! && t < body.to!) this.sql.exec("INSERT OR IGNORE INTO prints VALUES (?, ?, ?, ?)", t, side, price, qty);
+      }
+      return Response.json({ imported: rows.length, prints: prints.length });
     }
     return new Response("not found", { status: 404 });
   }

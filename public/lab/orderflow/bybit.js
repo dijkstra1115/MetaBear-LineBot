@@ -31,6 +31,27 @@ export function parseRestTrades(list) {
   return list.map((d) => ({ id: d.execId, t: Number(d.time), price: Number(d.price), qty: Number(d.size), sell: d.side === "Sell" }));
 }
 
+// Large prints: fills of one taker order share a timestamp and side, so consecutive trades with
+// both equal are summed into one print [t, "buy" | "sell", VWAP price, BTC]. Different orders in
+// the same millisecond merge too, as they do on other order-flow tools.
+export const PRINT_MIN = 2; // BTC; smaller prints are not stored
+
+export function groupPrints(trades) {
+  const out = [];
+  let cur = null;
+  for (const { t, price, qty, sell } of trades) {
+    if (cur && cur.t === t && cur.sell === sell) {
+      cur.qty += qty;
+      cur.pq += price * qty;
+      continue;
+    }
+    if (cur) out.push(cur);
+    cur = { t, sell, qty, pq: price * qty };
+  }
+  if (cur) out.push(cur);
+  return out.map((p) => [p.t, p.sell ? "sell" : "buy", round(p.pq / p.qty, 1), round(p.qty, 3)]);
+}
+
 /** Adds one trade to minute bars: Map(minute → { o, h, l, c, levels: Map(bin → [buy, sell]) }). */
 export function addTrade(bars, { t, price, qty, sell }, tick = TICK) {
   const minute = Math.floor(t / 60_000) * 60_000;

@@ -96,7 +96,7 @@ export function aggregate(rows, tick, readings = [], now = Infinity) {
 }
 
 // Value area: grow from the POC toward the heavier neighbour until 70 % of volume.
-function valueArea(volumeByBin) {
+export function valueArea(volumeByBin) {
   const bins = [...volumeByBin.keys()].sort((x, y) => x - y);
   if (!bins.length) return null;
   const vol = bins.map((b) => volumeByBin.get(b));

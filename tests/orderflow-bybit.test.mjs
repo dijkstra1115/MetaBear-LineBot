@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOOK_TOPIC, OrderBook, TICKER_TOPIC, TRADE_TOPIC, addTrade, applyTicker, barRow, parseTrades, takerTotals } from "../public/lab/orderflow/bybit.js";
+import { BOOK_TOPIC, OrderBook, TICKER_TOPIC, TRADE_TOPIC, addTrade, applyTicker, barRow, groupPrints, parseTrades, takerTotals } from "../public/lab/orderflow/bybit.js";
 
 const T0 = Date.UTC(2026, 9, 15, 13, 0);
 
@@ -48,4 +48,20 @@ test("ticker deltas only overwrite the fields they carry", () => {
   assert.deepEqual(state, { oi: 60_000.5, oiValue: 4.8e9, funding: 0.0001 });
   applyTicker(state, { topic: "other", data: { openInterest: "1" } });
   assert.equal(state.oi, 60_000.5);
+});
+
+test("fills of one taker order merge into a print at their average price", () => {
+  const fill = (t, price, qty, sell) => ({ t, price, qty, sell });
+  const prints = groupPrints([
+    fill(T0, 80_000, 3, false),
+    fill(T0, 80_010, 1, false), // same order walking the book
+    fill(T0, 79_990, 2, true), // same millisecond, other side: another print
+    fill(T0 + 1, 80_000, 0.5, false),
+  ]);
+  assert.deepEqual(prints, [
+    [T0, "buy", 80_002.5, 4],
+    [T0, "sell", 79_990, 2],
+    [T0 + 1, "buy", 80_000, 0.5],
+  ]);
+  assert.deepEqual(groupPrints([]), []);
 });
