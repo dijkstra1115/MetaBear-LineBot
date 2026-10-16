@@ -1278,7 +1278,9 @@ function updateReadout() {
       : []),
   ]
     .filter(Boolean)
-    .join("　");
+    // One box per value, so lines break between values, never inside one.
+    .map((item) => `<span class="ro">${item}</span>`)
+    .join("");
 }
 
 // ---------- interaction ----------
