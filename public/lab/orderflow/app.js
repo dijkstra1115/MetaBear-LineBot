@@ -70,7 +70,8 @@ const PREFS_KEY = "metabear-orderflow-indicators";
 const NARROW = matchMedia("(max-width: 720px)").matches;
 const NARROW_OFF = new Set(["stats", "ratio", "levels"]);
 const prefs = (() => {
-  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: 10 };
+  // Phones show fewer, larger prints by default so 15-minute bars do not drown in bubbles.
+  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: NARROW ? 25 : 10 };
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     if (saved?.show) for (const id of Object.keys(out.show)) if (typeof saved.show[id] === "boolean") out.show[id] = saved.show[id];
@@ -119,7 +120,27 @@ let events = []; // order-flow events on closed 5-minute bars
 let eventsKey = "";
 let bars = [];
 let tick = 25;
-const view = { end: 0, barW: 14, yScale: 1, yShift: 0 };
+// end: bar index at the right edge; follow: keep the newest bar in view as it forms (off once the
+// user pans, back on at the right edge or with the latest button); yRange: a price scale the user
+// dragged or zoomed, null for automatic.
+const view = { end: 0, barW: 14, yRange: null, follow: true };
+const RIGHT_PAD = 3; // empty bars right of the newest one
+let lastAuto = null; // the automatic price range of the last frame
+// Sub-pane heights the user dragged, per pane id, kept per browser apart from the indicator choice.
+const PANES_KEY = "metabear-orderflow-panes";
+const paneH = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PANES_KEY) ?? "{}");
+    return Object.fromEntries(Object.entries(saved).filter(([, v]) => Number.isFinite(v) && v > 0));
+  } catch {
+    return {};
+  }
+})();
+const savePanes = () => {
+  try {
+    localStorage.setItem(PANES_KEY, JSON.stringify(paneH));
+  } catch {}
+};
 let lastPricePerPx = 1;
 let pricePane = null; // last drawn price pane, for hit-testing outside draw()
 let hover = null; // { i, y }
@@ -487,14 +508,18 @@ function layout() {
   const avail = size.h - timeH;
   const subIds = Object.keys(PANES).filter(on);
   const statsH = on("stats") ? STATS.length * STAT_ROW + 6 : 0;
-  const flex = subIds.length - (on("stats") ? 1 : 0);
-  // Sub-panes share at most 55 % of the height, so many panes get thinner, not the price chart.
-  const sub = flex ? Math.max(40, Math.min(Math.round(avail * 0.12), Math.floor((avail * 0.55 - statsH) / flex))) : 0;
-  const priceH = avail - sub * flex - statsH;
+  const flexIds = subIds.filter((id) => id !== "stats");
+  const sub = flexIds.length ? Math.max(40, Math.min(Math.round(avail * 0.12), Math.floor((avail * 0.55 - statsH) / flexIds.length))) : 0;
+  // Dragged heights win; together the sub-panes never take more than 75 % of the chart.
+  const want = Object.fromEntries(flexIds.map((id) => [id, paneH[id] ?? sub]));
+  const total = flexIds.reduce((sum, id) => sum + want[id], 0);
+  const fit = total > avail * 0.75 - statsH ? (avail * 0.75 - statsH) / total : 1;
+  const heights = Object.fromEntries(flexIds.map((id) => [id, Math.max(28, Math.round(want[id] * fit))]));
+  const priceH = avail - statsH - flexIds.reduce((sum, id) => sum + heights[id], 0);
   const panes = { price: { y: 0, h: priceH } };
   let y = priceH;
   for (const id of subIds) {
-    const h = id === "stats" ? statsH : sub;
+    const h = id === "stats" ? statsH : heights[id];
     panes[id] = { id, y, h, label: PANES[id].label(), key: PANES[id].key };
     y += h;
   }
@@ -511,7 +536,9 @@ function clampView() {
   const minW = 2;
   const maxW = 260;
   view.barW = Math.min(maxW, Math.max(minW, view.barW));
-  view.end = Math.min(bars.length + 8, Math.max(8, view.end));
+  // Up to half a screen of empty space past the newest bar, as on other charting tools.
+  const plotW = Math.max(100, size.w - 74);
+  view.end = Math.min(bars.length + Math.max(8, (plotW / view.barW) * 0.5), Math.max(5, view.end));
 }
 
 // ---------- drawing ----------
@@ -539,6 +566,7 @@ function draw() {
     else drawHist(L, L.panes[id], from, to);
   }
   drawTimeAxis(L, from, to);
+  drawLegend(L);
   drawCrosshair(L);
 }
 
@@ -550,14 +578,12 @@ function drawPrice(L, from, to) {
     lo = Math.min(lo, bars[i].l);
     hi = Math.max(hi, bars[i].h + tick);
   }
-  const pad = (hi - lo) * 0.04 || tick;
+  const pad = (hi - lo) * 0.06 || tick;
   lo -= pad;
   hi += pad;
-  // Manual vertical scale: yScale > 1 zooms into prices, yShift pans them.
-  const mid = (lo + hi) / 2 + view.yShift;
-  const half = (hi - lo) / 2 / view.yScale;
-  lo = mid - half;
-  hi = mid + half;
+  lastAuto = { lo, hi };
+  // A dragged or zoomed price scale stays where the user put it until reset.
+  if (view.yRange) ({ lo, hi } = view.yRange);
   const top = P.y + 8;
   const h = P.h - 16;
   P.pricePerPx = (hi - lo) / h;
@@ -939,12 +965,12 @@ function drawLiqPane(L, P, from, to) {
   ctx.font = `11px ${MONO}`;
   ctx.textBaseline = "top";
   ctx.fillStyle = C.muted;
-  ctx.fillText(P.label, 8, P.y + 6);
-  const labelW = ctx.measureText(P.label).width;
+  drawPaneLabel(P);
+  const labelW = drawPaneLabel(P);
   ctx.fillStyle = C.buy;
-  ctx.fillText("▲ 空單", 8 + labelW + 10, P.y + 6);
+  ctx.fillText("▲ 空單", labelW + 12, P.y + 6);
   ctx.fillStyle = C.sell;
-  ctx.fillText("▼ 多單", 8 + labelW + 64, P.y + 6);
+  ctx.fillText("▼ 多單", labelW + 66, P.y + 6);
   ctx.textBaseline = "middle";
   const top = P.y + 22;
   const h = P.h - 26;
@@ -1192,7 +1218,7 @@ function drawSub(L, P, from, to) {
   ctx.fillStyle = C.muted;
   ctx.font = `11px ${MONO}`;
   ctx.textBaseline = "top";
-  ctx.fillText(P.label, 8, P.y + 6);
+  drawPaneLabel(P);
   ctx.textBaseline = "middle";
   if (!Number.isFinite(lo)) return;
   const pad = (hi - lo) * 0.12 || 1;
@@ -1309,7 +1335,7 @@ function drawHist(L, P, from, to) {
   ctx.fillStyle = C.muted;
   ctx.font = `11px ${MONO}`;
   ctx.textBaseline = "top";
-  ctx.fillText(P.label, 8, P.y + 6);
+  drawPaneLabel(P);
   ctx.textBaseline = "middle";
   const top = P.y + 22;
   const h = P.h - 26;
@@ -1380,6 +1406,108 @@ function drawTimeAxis(L, from, to) {
   ctx.textAlign = "left";
 }
 
+const focusBar = () => bars[hover?.i ?? bars.length - 1] ?? bars.at(-1);
+
+// The bar under the pointer (or the newest), in each pane's own terms.
+function paneValue(id, b) {
+  switch (id) {
+    case "volume":
+      return `${fmtVol(b.buy + b.sell)}  買 ${fmtVol(b.buy)}  賣 ${fmtVol(b.sell)}`;
+    case "delta":
+      return fmtSigned(b.delta);
+    case "cvd":
+      return fmtSigned(b.cvd);
+    case "oi":
+      return b.oi != null ? `${fmtVol(b.oi)}${b.doi != null ? `  ${fmtSigned(b.doi)}` : ""}` : "";
+    case "doi":
+      return b.doi != null ? fmtSigned(b.doi) : "";
+    case "funding":
+      return b.funding != null ? fmtRate(b.funding) : "";
+    case "ratio":
+      return b.global != null ? b.global.toFixed(2) : "";
+    case "imb":
+      return b.imb != null ? (b.imb >= 0 ? "+" : "") + b.imb.toFixed(2) : "";
+    case "liq":
+      return b.liq ? `多 ${fmtVol(b.liq.long.usd)}  空 ${fmtVol(b.liq.short.usd)}` : "";
+    default:
+      return "";
+  }
+}
+
+// Draws "Label  value" at the pane's top-left; returns the x where it ends.
+function drawPaneLabel(P) {
+  ctx.font = `11px ${MONO}`;
+  ctx.textBaseline = "top";
+  ctx.fillStyle = C.muted;
+  ctx.fillText(P.label, 8, P.y + 6);
+  let x = 8 + ctx.measureText(P.label).width;
+  const b = focusBar();
+  const value = b ? paneValue(P.id, b) : "";
+  if (value) {
+    ctx.fillStyle = C.text;
+    ctx.fillText(value, x + 8, P.y + 6);
+    x += 8 + ctx.measureText(value).width;
+  }
+  return x;
+}
+
+// OHLC of the bar under the pointer (or the newest) at the chart's top-left, and below it only
+// what that bar has: events, large prints, liquidation estimates, missing footprint.
+function drawLegend(L) {
+  const b = focusBar();
+  if (!b) return;
+  const P = L.panes.price;
+  const up = b.c >= b.o;
+  const change = b.o ? ((b.c - b.o) / b.o) * 100 : 0;
+  // Narrow screens already show the symbol in the top bar and need the room for prices.
+  const narrow = L.plotW < 600;
+  const gap = narrow ? " " : "  ";
+  const parts = [
+    ...(narrow ? [] : [["BTCUSDT", C.text], [` · Bybit · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.dim]]),
+    ["O ", C.dim],
+    [fmtPrice(b.o), C.muted],
+    [`${gap}H `, C.dim],
+    [fmtPrice(b.h), C.muted],
+    [`${gap}L `, C.dim],
+    [fmtPrice(b.l), C.muted],
+    [`${gap}C `, C.dim],
+    [fmtPrice(b.c), up ? C.buy : C.sell],
+    [`${gap}${change >= 0 ? "+" : ""}${change.toFixed(2)}%`, up ? C.buy : C.sell],
+  ];
+  ctx.font = `${narrow ? 11 : 12}px ${MONO}`;
+  ctx.textBaseline = "top";
+  // A soft backing keeps the legend readable over candles and bubbles.
+  const width = parts.reduce((w, [text]) => w + ctx.measureText(text).width, 0);
+  ctx.fillStyle = "rgba(5,9,15,0.78)";
+  ctx.fillRect(4, P.y + 4, width + 12, 20);
+  let x = 10;
+  for (const [text, color] of parts) {
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, P.y + 8);
+    x += ctx.measureText(text).width;
+  }
+  // Details only for a bar the user points at or pinned; the resting legend is just OHLC.
+  if (!hover) return;
+  const notes = [
+    hover ? fmtTime(b.t) : "",
+    b.partial ? "部分分鐘無足跡" : "",
+    on("prints") ? printsText(b) : "",
+    ...(on("events") ? eventsIn(b).map((e) => `${SIGNALS[e.kind].name} ${e.note}`) : []),
+    liqText(),
+  ].filter(Boolean);
+  if (!notes.length) return;
+  ctx.font = `11px ${MONO}`;
+  let line = notes.join("   ");
+  while (line.length > 4 && ctx.measureText(line).width > L.plotW - 20) line = line.slice(0, -2);
+  if (line !== notes.join("   ")) line += "…";
+  ctx.fillStyle = "rgba(5,9,15,0.78)";
+  ctx.fillRect(4, P.y + 24, ctx.measureText(line).width + 12, 18);
+  ctx.fillStyle = C.muted;
+  ctx.fillText(line, 10, P.y + 27);
+}
+
+const TF_NAMES = { 1: "1m", 5: "5m", 15: "15m", 60: "1h", 240: "4h" };
+
 function drawCrosshair(L) {
   if (!hover || hover.i < 0 || hover.i >= bars.length) return;
   const x = Math.round(xOf(hover.i, L) + view.barW / 2) + 0.5;
@@ -1401,22 +1529,24 @@ function drawCrosshair(L) {
     ctx.fillRect(L.plotW, hover.y - 9, L.axisW, 18);
     ctx.fillStyle = C.text;
     ctx.font = `11px ${MONO}`;
+    ctx.textBaseline = "middle";
     ctx.fillText(fmtPrice(P.pOf(hover.y)), L.plotW + 8, hover.y);
   }
+  // The bar's time on the time axis.
+  const label = fmtTime(bars[hover.i].t);
+  ctx.font = `11px ${MONO}`;
+  const w = ctx.measureText(label).width + 14;
+  const bx = Math.min(L.plotW - w, Math.max(0, x - w / 2));
+  ctx.fillStyle = "#1b2a38";
+  ctx.fillRect(bx, L.timeY + 2, w, L.timeH - 4);
+  ctx.fillStyle = C.text;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, bx + w / 2, L.timeY + L.timeH / 2);
+  ctx.textAlign = "left";
 }
 
-function liqHint() {
-  if (!on("lmap") || !liqMap || !hover) return "";
-  const P = pricePane;
-  if (!P || hover.y <= P.y || hover.y >= P.y + P.h) return "";
-  const p = P.pOf(hover.y);
-  const est = liqUntil(p);
-  if (!est) return "";
-  const cls = est.down ? "sell" : "buy";
-  return `估算：${est.down ? "跌" : "漲"}到 ${fmtPrice(Math.round(p))} 累計${est.down ? "多單" : "空單"}強平 <span class="${cls}">${fmtVol(est.usd)}</span> USD`;
-}
-
-function printsHint(b) {
+function printsText(b) {
   let nb = 0;
   let qb = 0;
   let ns = 0;
@@ -1426,41 +1556,23 @@ function printsHint(b) {
     if (side === "buy") (nb++, (qb += qty));
     else (ns++, (qs += qty));
   }
-  if (!nb && !ns) return "";
-  const span = (cls, v) => `<span class="${cls}">${v}</span>`;
-  return `大單 ≥${prefs.printMin} 買 ${span("buy", `${nb} 筆 ${fmtVol(qb)}`)} 賣 ${span("sell", `${ns} 筆 ${fmtVol(qs)}`)} BTC`;
+  return nb || ns ? `大單 買 ${nb} 筆 ${fmtVol(qb)} / 賣 ${ns} 筆 ${fmtVol(qs)} BTC` : "";
 }
 
+function liqText() {
+  if (!on("lmap") || !liqMap || !hover) return "";
+  const P = pricePane;
+  if (!P || hover.y <= P.y || hover.y >= P.y + P.h) return "";
+  const p = P.pOf(hover.y);
+  const est = liqUntil(p);
+  return est ? `估算：${est.down ? "跌" : "漲"}到 ${fmtPrice(Math.round(p))} 累計${est.down ? "多單" : "空單"}強平 ${fmtVol(est.usd)} USD` : "";
+}
+
+// The visible legend is drawn on the canvas; this keeps the same values for screen readers.
 function updateReadout() {
   const b = bars[hover?.i ?? bars.length - 1];
   if (!b) return;
-  const span = (cls, v) => `<span class="${cls}">${v}</span>`;
-  ui.readout.innerHTML = [
-    `<b>${fmtTime(b.t)}</b>`,
-    `開 ${fmtPrice(b.o)} 高 ${fmtPrice(b.h)} 低 ${fmtPrice(b.l)} 收 <b>${fmtPrice(b.c)}</b>`,
-    `買 ${span("buy", fmtVol(b.buy))} 賣 ${span("sell", fmtVol(b.sell))} Δ ${span(b.delta >= 0 ? "buy" : "sell", fmtSigned(b.delta))}`,
-    `量 ${fmtVol(b.buy + b.sell)}`,
-    Number.isFinite(b.maxD) && Number(ui.tf.value) > 1 ? `最大Δ ${fmtSigned(b.maxD)} 最小Δ ${fmtSigned(b.minD)}` : "",
-    `CVD ${fmtSigned(b.cvd)}`,
-    on("vwap") && b.vwap != null ? `VWAP ${fmtPrice(Math.round(b.vwap * 10) / 10)}` : "",
-    b.oi != null ? `OI ${fmtVol(b.oi)} ${usd() ? "USD" : "BTC"}${b.doi != null ? `（${fmtSigned(b.doi)}）` : ""}` : "",
-    on("funding") && b.funding != null ? `資金費率 ${span(b.funding >= 0 ? "buy" : "sell", fmtRate(b.funding))}` : "",
-    b.global != null ? `多空比 ${span("gold", b.global.toFixed(2))}` : "",
-    on("imb") && b.imb != null ? `掛單失衡 ${span(b.imb >= 0 ? "buy" : "sell", b.imb.toFixed(2))}` : "",
-    on("prints") ? printsHint(b) : "",
-    b.liq
-      ? `爆倉 多 ${span("sell", fmtVol(b.liq.long.usd))} 空 ${span("buy", fmtVol(b.liq.short.usd))} USD（${Object.entries(b.liq.byEx).map(([ex, v]) => `${LIQ_EXCHANGES[ex] ?? ex} ${fmtVol(v)}`).join("、")}）`
-      : "",
-    b.partial ? "（部分分鐘無足跡）" : "",
-    liqHint(),
-    ...(on("events")
-      ? eventsIn(b).map((e) => `<span class="${e.dir === "up" ? "buy" : e.dir === "down" ? "sell" : "gold"}">${SIGNALS[e.kind].name}</span> ${e.note}`)
-      : []),
-  ]
-    .filter(Boolean)
-    // One box per value, so lines break between values, never inside one.
-    .map((item) => `<span class="ro">${item}</span>`)
-    .join("");
+  ui.readout.textContent = `${fmtTime(b.t)} 開 ${fmtPrice(b.o)} 高 ${fmtPrice(b.h)} 低 ${fmtPrice(b.l)} 收 ${fmtPrice(b.c)}，CVD ${fmtSigned(b.cvd)}`;
 }
 
 // ---------- interaction ----------
@@ -1477,6 +1589,8 @@ function redraw() {
 
 function zoomAt(factor, px) {
   const L = layout();
+  // While following the newest bar, zoom around the right edge so it stays in view.
+  if (view.follow) px = L.plotW;
   const anchor = view.end - (L.plotW - px) / view.barW;
   view.barW *= factor;
   clampView();
@@ -1494,6 +1608,7 @@ canvas.addEventListener(
       zoomY(e.deltaY < 0 ? 1.15 : 1 / 1.15);
     } else if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
       view.end += (e.deltaX || e.deltaY) / view.barW;
+      view.follow = view.end >= bars.length;
       clampView();
       redraw();
     } else zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, Math.min(e.clientX - rect.left, layout().plotW));
@@ -1502,18 +1617,35 @@ canvas.addEventListener(
 );
 
 function zoomY(factor) {
-  view.yScale = Math.min(40, Math.max(0.5, view.yScale * factor));
+  const range = view.yRange ?? lastAuto;
+  if (!range) return;
+  const mid = (range.lo + range.hi) / 2;
+  const half = Math.max(tick * 2, (range.hi - range.lo) / 2 / factor);
+  view.yRange = { lo: mid - half, hi: mid + half };
   redraw();
 }
 function resetY() {
-  view.yScale = 1;
-  view.yShift = 0;
+  view.yRange = null;
   redraw();
 }
 
 const pointers = new Map();
 let pinch = null;
 let dragAxis = false;
+let drag = null; // one-finger or mouse drag: { dy, inPrice }
+let paneDrag = null; // dragging a pane border: { id, above, startY, startH, aboveH }
+
+// The border at the top of a sub-pane, within a few pixels of y; the statistics row has a fixed height.
+function borderAt(L, x, y) {
+  if (x > L.plotW) return null;
+  for (let k = 0; k < L.subIds.length; k++) {
+    const id = L.subIds[k];
+    if (id === "stats" || Math.abs(y - L.panes[id].y) > 5) continue;
+    const above = k > 0 ? L.subIds[k - 1] : "price";
+    return { id, above: above === "stats" ? "price" : above };
+  }
+  return null;
+}
 let tap = null; // a press that has not moved yet: releasing it pins the bar under it
 let pinnedT = null; // start time of the pinned bar, kept across timeframe changes
 const pinnedIndex = () => (pinnedT == null ? -1 : bars.findIndex((b) => b.t <= pinnedT && pinnedT < b.end));
@@ -1528,8 +1660,16 @@ canvas.addEventListener("pointerdown", (e) => {
   tap = pointers.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
   const L = layout();
   const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
-  dragAxis = pointers.size === 1 && e.clientX - rect.left > L.plotW && y < L.panes.price.h;
+  const border = pointers.size === 1 ? borderAt(L, x, y) : null;
+  if (border) {
+    paneDrag = { ...border, startY: e.clientY, startH: L.panes[border.id].h, aboveH: L.panes[border.above].h };
+    tap = null;
+    return;
+  }
+  dragAxis = pointers.size === 1 && x > L.plotW && y < L.panes.price.h;
+  drag = pointers.size === 1 ? { dy: 0, inPrice: y < L.panes.price.h && x <= L.plotW } : null;
   if (pointers.size === 2) {
     const [a, b] = [...pointers.values()];
     pinch = { dist: Math.abs(a.x - b.x), barW: view.barW };
@@ -1542,6 +1682,15 @@ canvas.addEventListener("dblclick", (e) => {
 canvas.addEventListener("pointermove", (e) => {
   const rect = canvas.getBoundingClientRect();
   if (tap?.id === e.pointerId && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap = null;
+  if (paneDrag && pointers.has(e.pointerId)) {
+    const dy = e.clientY - paneDrag.startY;
+    const max = Math.max(60, size.h * 0.6);
+    paneH[paneDrag.id] = Math.min(max, Math.max(28, paneDrag.startH - dy));
+    if (paneDrag.above !== "price") paneH[paneDrag.above] = Math.min(max, Math.max(28, paneDrag.aboveH + dy));
+    redraw();
+    return;
+  }
+  if (!pointers.size && e.pointerType === "mouse") canvas.classList.toggle("row-resize", !!borderAt(layout(), e.clientX - rect.left, e.clientY - rect.top));
   if (pointers.has(e.pointerId)) {
     const last = pointers.get(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1557,8 +1706,17 @@ canvas.addEventListener("pointermove", (e) => {
       return;
     }
     view.end -= (e.clientX - last.x) / view.barW;
-    // Vertical panning only makes sense once the price scale is manual.
-    if (view.yScale !== 1 || view.yShift !== 0) view.yShift += (e.clientY - last.y) * lastPricePerPx;
+    if (e.clientX !== last.x) view.follow = false;
+    // Dragging the price chart up or down frees the price scale, as on other charting tools; a
+    // few pixels of wobble while panning sideways do not.
+    if (drag?.inPrice && lastAuto) {
+      drag.dy += e.clientY - last.y;
+      if (view.yRange || Math.abs(drag.dy) > 12) {
+        const range = view.yRange ?? lastAuto;
+        const shift = (view.yRange ? e.clientY - last.y : drag.dy) * lastPricePerPx;
+        view.yRange = { lo: range.lo + shift, hi: range.hi + shift };
+      }
+    }
     clampView();
   }
   // A finger dragging the chart pans it; the crosshair stays where it was tapped.
@@ -1566,6 +1724,13 @@ canvas.addEventListener("pointermove", (e) => {
   redraw();
 });
 const release = (e) => {
+  if (paneDrag) {
+    paneDrag = null;
+    savePanes();
+  }
+  // Panning back to the newest bar resumes following it.
+  if (drag && view.end >= bars.length) view.follow = true;
+  drag = null;
   if (e.type === "pointerup" && tap?.id === e.pointerId) {
     hoverAt(e.clientX, e.clientY);
     pinnedT = bars[hover.i]?.t ?? null;
@@ -1591,13 +1756,15 @@ $("zoom-out").addEventListener("click", () => zoomAt(1 / 1.4, layout().plotW));
 $("latest").addEventListener("click", () => {
   pinnedT = null;
   hover = null;
-  view.end = bars.length + 2;
+  view.follow = true;
+  view.end = bars.length + RIGHT_PAD;
   resetY();
 });
 window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
   if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
     view.end += (e.key === "ArrowLeft" ? -10 : 10) * (14 / view.barW);
+    view.follow = view.end >= bars.length;
     clampView();
     redraw();
   } else if (e.key === "+" || e.key === "=") zoomAt(1.25, layout().plotW);
@@ -1605,11 +1772,12 @@ window.addEventListener("keydown", (e) => {
 });
 
 function rebuild() {
-  view.yScale = 1;
-  view.yShift = 0;
+  view.yRange = null;
+  // A new timeframe changes every index; keep the same moment at the right edge.
   const anchorT = bars[Math.min(bars.length - 1, Math.floor(view.end))]?.t;
   build();
-  if (anchorT != null) {
+  if (view.follow) view.end = bars.length + RIGHT_PAD;
+  else if (anchorT != null) {
     const idx = bars.findIndex((b) => b.t >= anchorT);
     view.end = (idx < 0 ? bars.length : idx) + 1;
   }
@@ -1783,13 +1951,19 @@ function refresh(full = true) {
     staleWhileHidden = true;
     return;
   }
-  // Keep following the newest bar if the view was already at the right edge.
-  const following = view.end >= bars.length - 1;
-  const anchorT = bars[Math.min(bars.length - 1, Math.floor(view.end))]?.t;
+  const following = view.follow;
+  // Not following: keep the same moment at the same place, fraction of a bar included. Snapping
+  // to a whole bar and adding one on every update used to creep the view toward the newest bar.
+  const anchorI = Math.min(bars.length - 1, Math.floor(view.end));
+  const anchorT = bars[anchorI]?.t;
+  const offset = view.end - anchorI;
   if (full) build();
   else buildTail();
-  if (following) view.end = bars.length + 2;
-  else if (anchorT != null) view.end = bars.findIndex((b) => b.t >= anchorT) + 1;
+  if (following) view.end = bars.length + RIGHT_PAD;
+  else if (anchorT != null) {
+    const idx = bars.findIndex((b) => b.t >= anchorT);
+    if (idx >= 0) view.end = idx + offset;
+  }
   clampView();
   redraw();
 }
@@ -1891,6 +2065,22 @@ function buildIndicatorPanel() {
 }
 buildIndicatorPanel();
 
+// Timeframe and chart-type buttons set the hidden selects the chart reads.
+function bindSegment(selector, select, attr) {
+  const buttons = [...document.querySelectorAll(selector)];
+  const sync = () => buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset[attr] === select.value)));
+  for (const b of buttons)
+    b.addEventListener("click", () => {
+      if (select.value === b.dataset[attr]) return;
+      select.value = b.dataset[attr];
+      select.dispatchEvent(new Event("change"));
+      sync();
+    });
+  sync();
+}
+bindSegment("[data-tf]", ui.tf, "tf");
+bindSegment("[data-mode]", ui.mode, "mode");
+
 // ---------- sharing ----------
 
 // The link reproduces timeframe, chart mode, indicators, print size and the selected bar; with no
@@ -1943,7 +2133,7 @@ try {
     "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是 Bybit 全體帳戶多空比。資料保留 30 天。" +
     "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
   build();
-  view.end = bars.length + 2;
+  view.end = bars.length + RIGHT_PAD;
   view.barW = NARROW ? 9 : 14;
   ui.status.hidden = true;
   resize();
@@ -1951,6 +2141,7 @@ try {
   const shared = SHARED_AT ? bars.findIndex((b) => b.t <= SHARED_AT && SHARED_AT < b.end) : -1;
   if (shared >= 0) {
     pinnedT = bars[shared].t;
+    view.follow = false;
     hover = { i: shared, y: -1 };
     view.end = shared + 1 + (layout().plotW / view.barW) * 0.35;
   }
