@@ -22,42 +22,16 @@
   <script type="module" src="./app.js"></script>
 </head>
 <body>
-  <header class="bar">
-    <a class="brand" href="/" aria-label="MetaBear 首頁"><img src="/metabear-logo-transparent-64.png" width="24" height="24" alt="" /><span>MetaBear</span></a>
-    <h1>BTC 訂單流實驗室 <em>原型</em></h1>
-    <span id="live" class="live" data-state="off">僅歷史資料</span>
-    <div class="controls" role="group" aria-label="圖表設定">
-      <label>圖表
-        <select id="mode">
-          <option value="candles" selected>K 線</option>
-          <option value="footprint">足跡</option>
-        </select>
-      </label>
-      <label>單位
-        <select id="unit">
-          <option value="btc" selected>BTC</option>
-          <option value="usd">USD</option>
-        </select>
-      </label>
-      <label>週期
-        <select id="tf">
-          <option value="1">1 分</option>
-          <option value="5">5 分</option>
-          <option value="15" selected>15 分</option>
-          <option value="60">1 小時</option>
-          <option value="240">4 小時</option>
-        </select>
-      </label>
-      <label>價格格距
-        <select id="tick">
-          <option value="auto" selected>自動</option>
-          <option value="10">$10</option>
-          <option value="25">$25</option>
-          <option value="50">$50</option>
-          <option value="100">$100</option>
-          <option value="250">$250</option>
-        </select>
-      </label>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="MetaBear 首頁"><img src="/metabear-logo-transparent-64.png" width="22" height="22" alt="" /><span>MetaBear</span></a>
+    <div class="symbol"><b>BTCUSDT</b><small>永續 · Bybit</small></div>
+    <div class="tools" role="toolbar" aria-label="圖表設定">
+      <div class="seg" role="group" aria-label="週期">
+        <button type="button" data-tf="1">1m</button><button type="button" data-tf="5">5m</button><button type="button" data-tf="15">15m</button><button type="button" data-tf="60">1h</button><button type="button" data-tf="240">4h</button>
+      </div>
+      <div class="seg" role="group" aria-label="圖表">
+        <button type="button" data-mode="candles">K 線</button><button type="button" data-mode="footprint">足跡</button>
+      </div>
       <details class="ind">
         <summary>指標</summary>
         <div class="ind-panel">
@@ -78,6 +52,25 @@
             <legend>副圖</legend>
             <div id="ind-pane" class="ind-list"></div>
           </fieldset>
+          <fieldset>
+            <legend>顯示</legend>
+            <label class="ind-select">單位
+              <select id="unit">
+                <option value="btc" selected>BTC</option>
+                <option value="usd">USD</option>
+              </select>
+            </label>
+            <label class="ind-select">價格格距
+              <select id="tick">
+                <option value="auto" selected>自動</option>
+                <option value="10">$10</option>
+                <option value="25">$25</option>
+                <option value="50">$50</option>
+                <option value="100">$100</option>
+                <option value="250">$250</option>
+              </select>
+            </label>
+          </fieldset>
         </div>
       </details>
       <details class="share">
@@ -91,26 +84,40 @@
           </div>
         </div>
       </details>
-      <div class="zoom" role="group" aria-label="縮放">
-        <button id="zoom-out" type="button" aria-label="縮小">−</button>
-        <button id="zoom-in" type="button" aria-label="放大">+</button>
-        <button id="latest" type="button">最新</button>
-      </div>
     </div>
+    <span id="live" class="live" data-state="off">僅歷史資料</span>
   </header>
-
-  <div id="readout" class="readout" aria-live="polite"></div>
+  <!-- The buttons above drive these; the chart code reads their values. -->
+  <div hidden>
+    <select id="tf" aria-hidden="true">
+      <option value="1">1 分</option>
+      <option value="5">5 分</option>
+      <option value="15" selected>15 分</option>
+      <option value="60">1 小時</option>
+      <option value="240">4 小時</option>
+    </select>
+    <select id="mode" aria-hidden="true">
+      <option value="candles" selected>K 線</option>
+      <option value="footprint">足跡</option>
+    </select>
+  </div>
 
   <main class="stage">
     <canvas id="chart" aria-label="BTC 足跡圖、CVD、未平倉量與多空比"></canvas>
+    <div class="chart-tools" role="group" aria-label="縮放">
+      <button id="zoom-out" type="button" aria-label="縮小">−</button>
+      <button id="zoom-in" type="button" aria-label="放大">+</button>
+      <button id="latest" type="button" aria-label="回到最新並恢復自動價格範圍">最新 →|</button>
+    </div>
     <p id="status" class="status">載入資料中…</p>
   </main>
+  <div id="readout" class="sr-only" aria-live="polite"></div>
 
   <footer class="note">
     <p>時間為台灣時間。僅供研究，非投資建議。</p>
     <details class="help">
       <summary>使用說明與資料來源</summary>
-      <p>手機：單指拖曳平移、雙指縮放、點一下 K 棒看它的數值；在右側價格軸上下拖曳可縮放價格。</p>
+      <p>操作：拖曳圖表可以左右、上下自由移動（上下拖曳後價格範圍會固定，雙擊價格軸或按「最新」恢復自動）；滾輪或雙指縮放；在右側價格軸上下拖曳可縮放價格；拖曳副圖之間的分隔線可以調整高度。點一下 K 棒會固定顯示它的數值。往回看時不會被拉回最新的 K 棒，捲回最右邊或按「最新」才會繼續跟著。</p>
       <p>「分享」會產生目前畫面的連結：週期、圖表、指標和大單門檻都會帶過去；先點選一根 K 棒，對方打開時會直接看到那根。</p>
       <p id="source"></p>
       <p>「指標」選單可以個別開關每個指標，設定會記在這個瀏覽器。圓形泡泡是大額成交（同一張主動單的成交合計，綠色主動買、橘色主動賣，面積代表數量）；三角形是爆倉（▼ 多單被強平、▲ 空單被強平）。VWAP 每個 UTC 日重新計算。K 棒統計列依序是成交量、Delta、Delta 占成交量的比例、K 棒內累積 Delta 的最高與最低（以每分鐘收盤取樣，1 分鐘 K 棒時等於 Delta），以及 OI 變化；K 棒夠寬時才顯示數字。滾輪縮放時間、拖曳平移；在右側價格軸上下拖曳或滾輪可縮放價格，雙擊價格軸恢復自動；切到「足跡」並放大到夠寬時顯示足跡數字（左賣右買）。亮色數字為斜向 3 倍以上的不平衡。爆倉地圖是用 OI 變化與假設的槓桿分布推算的估計值，不是交易所資料。事件標記是 5 分鐘 K 棒收盤後偵測到的盤面現象（上方三角偏空、下方偏多、金色為 OI 異動），不是買賣建議。</p>
