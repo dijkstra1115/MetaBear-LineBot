@@ -7,6 +7,9 @@ import { DurableObject } from "cloudflare:workers";
 import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
 import {
   ArchiveDay,
+  BOOK_CHUNK_MS,
+  BOOK_STEP_MS,
+  BOOK_TICK,
   BOOK_TOPIC,
   OrderBook,
   PING,
@@ -41,7 +44,7 @@ const SILENT_MS = 30_000;
 const SEEN_TRADES = 5_000; // trade ids kept to drop duplicates between the stream and a REST backfill
 // Order flow is read over hours to days, so storage stays small: a month of footprints, prints,
 // readings and liquidations, and a week of heatmap columns (the largest rows, ~3 KB a minute).
-export const KEEP_MS = { bars: 30 * DAY, prints: 30 * DAY, heat: 7 * DAY, readings: 30 * DAY, liqs: 30 * DAY };
+export const KEEP_MS = { bars: 30 * DAY, prints: 30 * DAY, heat: 30 * DAY, book: 30 * DAY, readings: 30 * DAY, liqs: 30 * DAY, alerts: 30 * DAY };
 const BACKFILL_DAYS = 15; // OI, long/short ratio and funding history fetched from REST
 const LIQ_TOPIC = `allLiquidation.${SYMBOL}`;
 const BYBIT_LIQ = LIQ_FEEDS.find((f) => f.ex === "bybit")!;
@@ -92,6 +95,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS bars (t INTEGER PRIMARY KEY, src TEXT NOT NULL, row TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS heat (t INTEGER PRIMARY KEY, row TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS book (t INTEGER PRIMARY KEY, row TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS oi (t INTEGER PRIMARY KEY, oi REAL, oi_value REAL, taker REAL);
       CREATE TABLE IF NOT EXISTS oi_rest (t INTEGER PRIMARY KEY, oi REAL);
       CREATE TABLE IF NOT EXISTS ratios (t INTEGER PRIMARY KEY, ratio REAL);
@@ -291,10 +295,15 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private persistHeat() {
     const col = this.book.column();
     if (!col) return;
-    const minute = Math.floor(Date.now() / MINUTE) * MINUTE;
-    // One column per minute: the latest snapshot in it.
+    const now = Date.now();
+    const minute = Math.floor(now / MINUTE) * MINUTE;
+    // One coarse column per minute (the latest snapshot in it) for long views, and the whole book
+    // at $1 every 10 s for detail. A fine row is about 2 KB, about 520 MB over 30 days.
     this.heat = [minute, ...col] as [number, number, number, number[]];
     this.sql.exec("INSERT INTO heat (t, row) VALUES (?, ?) ON CONFLICT(t) DO UPDATE SET row = excluded.row", minute, JSON.stringify(this.heat));
+    const fine = this.book.span(BOOK_TICK);
+    const slot = Math.floor(now / BOOK_STEP_MS) * BOOK_STEP_MS;
+    if (fine) this.sql.exec("INSERT OR REPLACE INTO book (t, row) VALUES (?, ?)", slot, JSON.stringify([slot, ...fine]));
   }
 
   // OI and account long/short ratio history from REST, one page per alarm, then every 5 minutes
@@ -473,6 +482,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     this.sql.exec("DELETE FROM bars WHERE t < ?", now - KEEP_MS.bars);
     this.sql.exec("DELETE FROM prints WHERE t < ?", now - KEEP_MS.prints);
     this.sql.exec("DELETE FROM heat WHERE t < ?", now - KEEP_MS.heat);
+    this.sql.exec("DELETE FROM book WHERE t < ?", now - KEEP_MS.book);
     for (const table of ["oi", "oi_rest", "ratios", "funding"]) this.sql.exec(`DELETE FROM ${table} WHERE t < ?`, now - KEEP_MS.readings);
     this.sql.exec("DELETE FROM liqs WHERE t < ?", now - KEEP_MS.liqs);
     this.setMeta("pruned", now);
@@ -565,7 +575,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       open: [...this.sockets.keys()],
       oi: this.ticker.oi ?? null,
       archive: { last: this.meta("archiveDone"), ...this.status.archive },
-      counts: Object.fromEntries(["bars", "prints", "heat", "oi", "oi_rest", "ratios", "funding", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
+      counts: Object.fromEntries(["bars", "prints", "heat", "book", "oi", "oi_rest", "ratios", "funding", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
     };
   }
 
@@ -582,6 +592,14 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (url.pathname === "/recent") {
       const since = Number(url.searchParams.get("since"));
       return this.respond(this.series(since, now + MINUTE), { since, updated: now, status: { bybit: this.status.bybit, lastTrade: this.lastTradeT } });
+    }
+    if (url.pathname === "/book") {
+      // One 30-minute chunk of fine order-book columns.
+      const from = Number(url.searchParams.get("from"));
+      const rows = this.rows("SELECT row FROM book WHERE t >= ? AND t < ? ORDER BY t", from, from + BOOK_CHUNK_MS);
+      return new Response(`{"from":${from},"step":${BOOK_STEP_MS},"tick":${BOOK_TICK},"columns":[${rows.map((r) => String(r.row)).join(",")}]}`, {
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
     }
     if (url.pathname === "/import" && request.method === "POST") {
       // Footprint rows rebuilt from Bybit's daily trade archive (scripts/orderflow-bybit-archive.mjs).
