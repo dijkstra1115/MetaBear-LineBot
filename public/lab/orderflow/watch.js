@@ -6,6 +6,8 @@
 // made-up streams and the collector with the live ones.
 
 export const ALERT_DEFAULTS = {
+  marketOn: 1, // 1 sends market alerts, 0 only records them
+  healthOn: 1, // 1 sends collector health alerts, 0 only records them
   printBtc: 50, // one aggregated taker order
   liqUsd: 2_000_000, // liquidations on one side within liqWindowMs
   liqWindowMs: 60_000,
@@ -17,10 +19,12 @@ export const ALERT_DEFAULTS = {
   wallBin: 10,
   icebergBtc: 25, // filled at one price
   icebergRatio: 3, // and this many times the most ever shown there
-  spoofBtc: 50, // size gone from one $10 band
-  spoofRatio: 3, // the band held at least this many times the book's median band
+  // A live trial with 50 BTC, 3× and 3 s flagged about one a minute, mostly second- and third-level
+  // quotes being moved, so a spoofed wall must be as large as a reported wall and stand 10 s.
+  spoofBtc: 100, // size gone from one $10 band
+  spoofRatio: 4, // the band held at least this many times the book's median band
   spoofWindowMs: 1_000, // within this long
-  spoofHoldMs: 3_000, // after standing at least this long
+  spoofHoldMs: 10_000, // after standing at least this long
   spoofNearPct: 0.1, // while price was this close to the band
   spoofTradeRatio: 0.2, // and trades in the band made up less than this share of it
   cooldownMs: 10 * 60_000, // per kind and side or price
@@ -306,6 +310,15 @@ export class IcebergWatch {
   }
 }
 
+/** Whether a tuning value is acceptable: switches are 0 or 1, everything else positive. */
+export function validSetting(key, value) {
+  if (!(key in ALERT_DEFAULTS) || !Number.isFinite(value)) return false;
+  return key.endsWith("On") ? value === 0 || value === 1 : value > 0;
+}
+
+/** Health events are about the collector itself, not the market. */
+export const HEALTH_KINDS = new Set(["health_down", "health_up", "health_archive", "health_errors", "health_unreachable"]);
+
 const usdText = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${Math.round(v / 1e3)}k`);
 const priceText = (p) => p.toLocaleString("en-US", { maximumFractionDigits: 1 });
 const timeText = (t) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(t);
@@ -332,6 +345,16 @@ export function describe(e) {
       return `🧊 冰山 ${e.side === "bid" ? "買方" : "賣方"} ${priceText(e.price)} 已成交 ${e.filled.toFixed(1)} BTC，最多只顯示 ${e.shown.toFixed(1)} BTC（${at}）`;
     case "test":
       return `✅ 測試通知（${at}）`;
+    case "health_down":
+      return `⚠️ 收集器與 ${e.feed} 斷線已 ${Math.round(e.downMs / 60_000)} 分鐘${e.lastTrade ? `，最後一筆成交 ${timeText(e.lastTrade)}` : ""}（${at}）`;
+    case "health_up":
+      return `✅ ${e.feed} 連線恢復，中斷約 ${Math.max(1, Math.round(e.downMs / 60_000))} 分鐘${e.feed === "Bybit" ? "；缺的成交隔天由封存檔補齊" : ""}（${at}）`;
+    case "health_archive":
+      return `⚠️ ${e.day} 的封存檔還沒匯入：${e.reason}（${at}）`;
+    case "health_errors":
+      return `⚠️ 收集器 10 分鐘內有 ${e.count} 個錯誤，最近一個：${e.last}（${at}）`;
+    case "health_unreachable":
+      return `⚠️ 訂單流收集器沒有回應：${e.reason}（${at}）`;
     default:
       return `${e.kind}（${at}）`;
   }

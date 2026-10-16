@@ -113,6 +113,10 @@ test("alert thresholds are tuned over the admin API and a test alert reaches the
   assert.equal(tested.sentToday, 1);
   assert.equal(tested.recent[0].state, "sent");
 
+  // Switching market alerts off keeps test messages and health alerts going.
+  const off = (await (await alerts({ method: "POST", body: JSON.stringify({ config: { marketOn: 0, healthOn: 2 } }) })).json()) as any;
+  assert.deepEqual([off.config.marketOn, off.config.healthOn], [0, 1], "a switch only takes 0 or 1");
   const reset = (await (await alerts({ method: "POST", body: JSON.stringify({ config: null }) })).json()) as any;
   assert.equal(reset.config.printBtc, 50);
+  assert.equal(reset.config.marketOn, 1);
 });

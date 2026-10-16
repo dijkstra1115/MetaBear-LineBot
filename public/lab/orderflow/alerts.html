@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#05090f" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>訂單流通知管理 · MetaBear</title>
+  <link rel="icon" href="/metabear-logo-transparent-64.png" />
+  <link rel="stylesheet" href="/orderflow/motion/fonts/fonts.css" />
+  <link rel="stylesheet" href="./lab.css" />
+  <link rel="stylesheet" href="./alerts.css" />
+  <script type="module" src="./alerts.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="/lab/orderflow/" aria-label="回訂單流"><img src="/metabear-logo-transparent-64.png" width="24" height="24" alt="" /><span>MetaBear</span></a>
+    <h1>訂單流通知管理</h1>
+  </header>
+
+  <main class="admin">
+    <form id="login" class="card" autocomplete="off">
+      <label>管理權杖
+        <input id="token" type="password" required />
+      </label>
+      <label class="check"><input id="remember" type="checkbox" />記在這台裝置</label>
+      <button type="submit">登入</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+
+    <div id="panel" hidden>
+      <section class="card">
+        <h2>狀態</h2>
+        <p id="summary"></p>
+        <div class="switches">
+          <label class="check"><input id="marketOn" type="checkbox" />市場通知（大單、爆倉、OI、牆、誘單、冰山）</label>
+          <label class="check"><input id="healthOn" type="checkbox" />收集器健康通知（斷線、封存檔、錯誤）</label>
+        </div>
+        <p class="hint">關掉時事件仍會記錄在下面的列表，只是不推到 LINE。</p>
+        <div class="actions">
+          <button id="test" type="button">送測試通知</button>
+          <button id="logout" type="button" class="ghost">登出</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>門檻</h2>
+        <form id="config" class="grid"></form>
+        <div class="actions">
+          <button id="save" type="button">儲存門檻與開關</button>
+          <button id="reset" type="button" class="ghost">全部恢復預設</button>
+        </div>
+        <p id="saved" class="hint" role="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>最近 50 則事件</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>時間</th><th>狀態</th><th>內容</th></tr></thead>
+            <tbody id="recent"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -47,6 +47,9 @@ for (const path of documents) {
 const lab = analytics.replace("connect-src 'self'", "connect-src 'self' wss://stream.bybit.com wss://ws.okx.com:8443 wss://fstream.binance.com");
 for (const path of ["/lab/orderflow/", "/lab/orderflow/index.html"])
   rules.push(`https://metabear.io${path}\n  Content-Security-Policy: ${lab}`);
+// The alert admin page only talks to /api/orderflow/ on this origin.
+for (const path of ["/lab/orderflow/alerts", "/lab/orderflow/alerts.html"])
+  rules.push(`https://metabear.io${path}\n  Content-Security-Policy: ${common}\n  X-Robots-Tag: noindex, nofollow`);
 for (const host of ["metabear-site.pages.dev", ":branch.metabear-site.pages.dev"])
   rules.push(`https://${host}/*\n  X-Robots-Tag: noindex, nofollow, noarchive\n  Content-Security-Policy: ${common}`);
 await writeFile(new URL("_headers", output), rules.join("\n\n") + "\n");

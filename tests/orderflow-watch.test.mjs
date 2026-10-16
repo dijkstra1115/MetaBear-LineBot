@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ALERT_DEFAULTS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, watchPrint } from "../public/lab/orderflow/watch.js";
+import { ALERT_DEFAULTS, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../public/lab/orderflow/watch.js";
 
 const T0 = Date.UTC(2026, 9, 16, 12, 0);
 const S = 1_000;
@@ -89,6 +89,8 @@ test("an iceberg is far more traded at a price than ever shown, while the level 
 });
 
 test("a wall cancelled within a second as price closes in is spoofing; one eaten or far away is not", () => {
+  // Lower lines than the defaults keep the book small.
+  const cfg = { ...ALERT_DEFAULTS, spoofBtc: 50, spoofRatio: 3, spoofHoldMs: 3_000 };
   const MID = { bid: 80_995, ask: 81_005, mid: 81_000 };
   // An ask band at 81,050–81,060 (0.06 % above mid) holding 100 BTC for five seconds.
   const setup = () => {
@@ -130,4 +132,18 @@ test("a wall cancelled within a second as price closes in is spoofing; one eaten
   brief.reset(T0, new Map(), new Map([[81_052, 100]]));
   brief.update(T0, [["ask", 81_052, 100, 100]], MID);
   assert.deepEqual(brief.update(T0 + 1.5 * S, [["ask", 81_052, 100, 0]], MID), [], "it stood under three seconds");
+});
+
+test("switches take 0 or 1, thresholds only positive numbers, and health events read plainly", () => {
+  assert.equal(validSetting("marketOn", 0), true);
+  assert.equal(validSetting("healthOn", 1), true);
+  assert.equal(validSetting("marketOn", 2), false);
+  assert.equal(validSetting("printBtc", 0), false);
+  assert.equal(validSetting("printBtc", 80), true);
+  assert.equal(validSetting("unknown", 1), false);
+  assert.equal(validSetting("printBtc", Number.NaN), false);
+  assert.ok(HEALTH_KINDS.has("health_down") && !HEALTH_KINDS.has("print"));
+  assert.match(describe({ kind: "health_down", t: T0, feed: "Bybit", downMs: 180_000, lastTrade: T0 - 180_000 }), /收集器與 Bybit 斷線已 3 分鐘，最後一筆成交/);
+  assert.match(describe({ kind: "health_up", t: T0, feed: "Bybit", downMs: 240_000 }), /Bybit 連線恢復，中斷約 4 分鐘；缺的成交隔天由封存檔補齊/);
+  assert.match(describe({ kind: "health_archive", t: T0, day: "2026-10-16", reason: "HTTP 403" }), /2026-10-16 的封存檔還沒匯入：HTTP 403/);
 });
