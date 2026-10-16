@@ -143,18 +143,21 @@ const fmtRate = (v) => `${(v * 100).toFixed(4)}%`;
 
 // ---------- data ----------
 
-function build() {
-  const tfMin = Number(ui.tf.value);
-  const tfMs = tfMin * 60_000;
-  tick = ui.tick.value === "auto" ? AUTO_TICK[tfMin] : Number(ui.tick.value);
+// One minute row as the chart uses it: the page's own stream wins for minutes it saw in full,
+// the collector's row otherwise (the minute the page opened in, and minutes around a dropped
+// connection, are partial in the stream).
+function mergedRow(t) {
+  const own = stream.bars.get(t);
+  const server = store.bars.get(t);
+  if (own && ((t > stream.start && !stream.gaps.covers(t, t + MINUTE)) || !server)) return barRow(t, own);
+  return server ?? null;
+}
+
+// Sorted 1-minute rows → bar groups for the timeframe.
+function groupBars(rows, tfMs) {
   const baseTick = TICK;
   const groups = new Map();
-  const rows = new Map(store.bars);
-  // Minutes streamed in full by this page win; the minute the page opened in, and minutes around
-  // a dropped connection, are partial here and come from the collector.
-  for (const [t, b] of stream.bars) if ((t > stream.start && !stream.gaps.covers(t, t + MINUTE)) || !rows.has(t)) rows.set(t, barRow(t, b));
-  mergedRows = [...rows.values()].sort((x, y) => x[0] - y[0]);
-  for (const [t, o, h, l, c, levels, xbuy = 0, xsell = 0] of mergedRows) {
+  for (const [t, o, h, l, c, levels, xbuy = 0, xsell = 0] of rows) {
     const key = Math.floor(t / tfMs) * tfMs;
     let b = groups.get(key);
     if (!b) groups.set(key, (b = { t: key, o, h, l, c, map: new Map(), xbuy: 0, xsell: 0, partial: false, run: 0, maxD: -Infinity, minD: Infinity }));
@@ -187,38 +190,60 @@ function build() {
     if (b.run > b.maxD) b.maxD = b.run;
     if (b.run < b.minD) b.minD = b.run;
   }
+  return [...groups.values()].sort((x, y) => x.t - y.t);
+}
+
+// Bar groups → bars with levels, imbalances, POC, CVD from `cvd` on, and the readings at close.
+function finishBars(groups, tfMs, readingAt, cvd = 0) {
+  return groups.map((b) => {
+    const levels = [...b.map.entries()].map(([p, [buy, sell]]) => ({ p, buy, sell })).sort((x, y) => y.p - x.p);
+    let buy = b.xbuy;
+    let sell = b.xsell;
+    let poc = levels[0];
+    for (const lv of levels) {
+      buy += lv.buy;
+      sell += lv.sell;
+      if (lv.buy + lv.sell > poc.buy + poc.sell) poc = lv;
+    }
+    const byPrice = new Map(levels.map((lv) => [lv.p, lv]));
+    for (const lv of levels) {
+      const below = byPrice.get(lv.p - tick);
+      const above = byPrice.get(lv.p + tick);
+      lv.buyImb = lv.buy > 0 && lv.buy >= IMBALANCE * (below ? below.sell : 0) && (below?.sell ?? 0) > 0;
+      lv.sellImb = lv.sell > 0 && lv.sell >= IMBALANCE * (above ? above.buy : 0) && (above?.buy ?? 0) > 0;
+    }
+    cvd += buy - sell;
+    // Latest reading at or before the bar's close.
+    const close = b.t + tfMs;
+    const row = readingAt(close);
+    return {
+      t: b.t, end: close, partial: b.partial, maxD: b.maxD, minD: b.minD, o: b.o, h: b.h, l: b.l, c: b.c, levels, buy, sell, delta: buy - sell, cvd, poc: poc?.p,
+      oi: row?.[usd() ? 2 : 1] ?? null, topPos: row?.[3] ?? null, global: row?.[5] ?? null, funding: row?.[7] ?? null,
+    };
+  });
+}
+
+// The forming bar follows the live stream: OI several times a second, the predicted funding rate.
+function applyLive(last, prev) {
+  if (!last || last.end <= Date.now()) return;
+  if (stream.oi) {
+    last.oi = usd() ? stream.oi * last.c : stream.oi;
+    last.doi = prev?.oi != null ? last.oi - prev.oi : null;
+  }
+  if (stream.ticker.funding != null) last.funding = stream.ticker.funding;
+}
+
+let metricsSorted = [];
+
+function build() {
+  const tfMin = Number(ui.tf.value);
+  const tfMs = tfMin * 60_000;
+  tick = ui.tick.value === "auto" ? AUTO_TICK[tfMin] : Number(ui.tick.value);
+  const minutes = new Set([...store.bars.keys(), ...stream.bars.keys()]);
+  mergedRows = [...minutes].sort((x, y) => x - y).map(mergedRow).filter(Boolean);
   // The API stamps every metrics row at its reading time (metrics.js).
-  const metrics = [...store.metrics.values()].sort((a, b) => a[0] - b[0]);
-  const readingAt = readingsAt(metrics);
-  let cvd = 0;
-  bars = [...groups.values()]
-    .sort((a, b) => a.t - b.t)
-    .map((b) => {
-      const levels = [...b.map.entries()].map(([p, [buy, sell]]) => ({ p, buy, sell })).sort((x, y) => y.p - x.p);
-      let buy = b.xbuy;
-      let sell = b.xsell;
-      let poc = levels[0];
-      for (const lv of levels) {
-        buy += lv.buy;
-        sell += lv.sell;
-        if (lv.buy + lv.sell > poc.buy + poc.sell) poc = lv;
-      }
-      const byPrice = new Map(levels.map((lv) => [lv.p, lv]));
-      for (const lv of levels) {
-        const below = byPrice.get(lv.p - tick);
-        const above = byPrice.get(lv.p + tick);
-        lv.buyImb = lv.buy > 0 && lv.buy >= IMBALANCE * (below ? below.sell : 0) && (below?.sell ?? 0) > 0;
-        lv.sellImb = lv.sell > 0 && lv.sell >= IMBALANCE * (above ? above.buy : 0) && (above?.buy ?? 0) > 0;
-      }
-      cvd += buy - sell;
-      // Latest reading at or before the bar's close.
-      const close = b.t + tfMs;
-      const row = readingAt(close);
-      return {
-        t: b.t, end: close, partial: b.partial, maxD: b.maxD, minD: b.minD, o: b.o, h: b.h, l: b.l, c: b.c, levels, buy, sell, delta: buy - sell, cvd, poc: poc?.p,
-        oi: row?.[usd() ? 2 : 1] ?? null, topPos: row?.[3] ?? null, global: row?.[5] ?? null, funding: row?.[7] ?? null,
-      };
-    });
+  metricsSorted = [...store.metrics.values()].sort((a, b) => a[0] - b[0]);
+  bars = finishBars(groupBars(mergedRows, tfMs), tfMs, readingsAt(metricsSorted));
   barIndex = new Map(bars.map((b, i) => [b.t, i]));
   for (let i = 0; i < bars.length; i++) {
     const a = bars[i - 1]?.oi;
@@ -228,16 +253,38 @@ function build() {
   }
   attachVwap(mergedRows, bars);
   dayLevels = priorDayLevels(mergedRows);
-  // Bybit streams OI several times a second but ratios only every 5 minutes. A bar still
-  // forming has no reading at its close yet; a reading inside it is older than the live one.
-  const last = bars.at(-1);
-  if (last && stream.oi && last.end > Date.now()) {
-    last.oi = usd() ? stream.oi * last.c : stream.oi;
-    last.doi = bars.at(-2)?.oi != null ? last.oi - bars.at(-2).oi : null;
-  }
-  if (last && stream.ticker.funding != null && last.end > Date.now()) last.funding = stream.ticker.funding;
+  applyLive(bars.at(-1), bars.at(-2));
   attachLiquidations(tfMs);
-  mergedOi = metrics.filter((m) => m[1] != null).map((m) => [m[0], m[1]]);
+  mergedOi = metricsSorted.filter((m) => m[1] != null).map((m) => [m[0], m[1]]);
+  if (stream.oi && mergedOi.length && Date.now() > mergedOi.at(-1)[0] + 30_000) mergedOi.push([Date.now(), stream.oi]);
+  updateLiqMap(false);
+  updateEvents();
+}
+
+// New trades only change the forming bar, so redo just that one (about every 0.3 s while trading)
+// instead of every minute of history; a full build runs when a new bar opens or older data lands.
+function buildTail() {
+  const tfMs = Number(ui.tf.value) * MINUTE;
+  const last = bars.at(-1);
+  if (!last || Math.floor(Date.now() / tfMs) * tfMs !== last.t) return build();
+  const rows = [];
+  for (let t = last.t; t < last.end; t += MINUTE) {
+    const row = mergedRow(t);
+    if (row) rows.push(row);
+  }
+  let cut = mergedRows.length;
+  while (cut > 0 && mergedRows[cut - 1][0] >= last.t) cut--;
+  mergedRows.length = cut;
+  mergedRows.push(...rows);
+  const prev = bars.at(-2);
+  const [bar] = finishBars(groupBars(rows, tfMs), tfMs, readingsAt(metricsSorted), prev?.cvd ?? 0);
+  if (!bar) return;
+  bar.doi = prev?.oi != null && bar.oi != null ? bar.oi - prev.oi : null;
+  bar.imb = bookImbalance(bar);
+  vwapTail(bar, prev, rows);
+  applyLive(bar, prev);
+  bar.liq = liquidationsIn(bar.t, bar.end);
+  bars[bars.length - 1] = bar;
   if (stream.oi && mergedOi.length && Date.now() > mergedOi.at(-1)[0] + 30_000) mergedOi.push([Date.now(), stream.oi]);
   updateLiqMap(false);
   updateEvents();
@@ -261,18 +308,41 @@ function attachVwap(rows, list) {
       p2v += price * price * v;
       vol += v;
     }
-    if (vol > 0) {
-      const vwap = pv / vol;
-      series.push([t, d, vwap, Math.sqrt(Math.max(0, p2v / vol - vwap * vwap))]);
-    }
+    series.push([t, d, pv, p2v, vol]);
   }
   let j = -1;
   for (const b of list) {
     while (j + 1 < series.length && series[j + 1][0] < b.end) j++;
     const s = j >= 0 && series[j][1] === Math.floor(b.t / DAY) ? series[j] : null;
-    b.vwap = s ? s[2] : null;
-    b.vwapSd = s ? s[3] : null;
+    setVwap(b, s ? s.slice(1) : null);
   }
+}
+
+// b.vw = [UTC day, Σ price·volume, Σ price²·volume, Σ volume] at the bar's close.
+function setVwap(b, sums) {
+  b.vw = sums;
+  const vol = sums?.[3] ?? 0;
+  if (!vol) {
+    b.vwap = b.vwapSd = null;
+    return;
+  }
+  const vwap = sums[1] / vol;
+  b.vwap = vwap;
+  b.vwapSd = Math.sqrt(Math.max(0, sums[2] / vol - vwap * vwap));
+}
+
+function vwapTail(bar, prev, rows) {
+  const day = Math.floor(bar.t / DAY);
+  const sums = prev?.vw && prev.vw[0] === day ? [...prev.vw] : [day, 0, 0, 0];
+  for (const [, , , , , levels] of rows)
+    for (const [bin, buy, sell] of levels) {
+      const price = bin * TICK + TICK / 2;
+      const v = buy + sell;
+      sums[1] += price * v;
+      sums[2] += price * price * v;
+      sums[3] += v;
+    }
+  setVwap(bar, sums);
 }
 
 // Previous UTC day's high, low and value area for each day, from 1-minute rows.
@@ -341,6 +411,20 @@ function updateLiqMap(force) {
   if (!force && Date.now() - liqMapAt < 10_000) return;
   liqMapAt = Date.now();
   liqMap = buildLiqMap(mergedRows, TICK, mergedOi);
+}
+
+function liquidationsIn(from, to) {
+  let liq = null;
+  for (const [t, side, price, qty, ex = "bybit"] of liqs) {
+    if (t < from || t >= to) continue;
+    liq ??= { long: { usd: 0, pq: 0, q: 0 }, short: { usd: 0, pq: 0, q: 0 }, byEx: {} };
+    const s = liq[side];
+    s.usd += price * qty;
+    s.pq += price * qty;
+    s.q += qty;
+    liq.byEx[ex] = (liq.byEx[ex] ?? 0) + price * qty;
+  }
+  return liq;
 }
 
 function attachLiquidations(tfMs) {
@@ -655,14 +739,19 @@ function drawFineHeat(L, from, to, yOf) {
     for (let t = b.t; t < b.t + tfMs; t += BOOK_STEP_MS) {
       const col = fineCols.get(t);
       if (!col) continue;
-      const rows = new Map();
-      const [, , lowBin, sizes] = col;
-      for (let k = 0; k < sizes.length; k++) {
-        if (!sizes[k]) continue;
-        const row = Math.floor(((lowBin + k) * BOOK_TICK) / step);
-        rows.set(row, (rows.get(row) ?? 0) + sizes[k]);
+      // Merging $1 rows is the costly part; columns are immutable once stored, so do it once.
+      if (col.step !== step) {
+        const rows = new Map();
+        const [, , lowBin, sizes] = col;
+        for (let k = 0; k < sizes.length; k++) {
+          if (!sizes[k]) continue;
+          const row = Math.floor(((lowBin + k) * BOOK_TICK) / step);
+          rows.set(row, (rows.get(row) ?? 0) + sizes[k]);
+        }
+        col.step = step;
+        col.rows = rows;
       }
-      cells.push([xOf(i, L) + ((t - b.t) / tfMs) * view.barW, rows]);
+      cells.push([xOf(i, L) + ((t - b.t) / tfMs) * view.barW, col.rows]);
     }
   }
   if (!cells.length) return false;
@@ -1574,7 +1663,7 @@ function scheduleRefresh() {
   if (refreshTimer) return;
   refreshTimer = setTimeout(() => {
     refreshTimer = 0;
-    refresh();
+    refresh(false);
   }, 300);
 }
 
@@ -1674,17 +1763,31 @@ function startStreams() {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     resumeBybit();
+    if (staleWhileHidden) (staleWhileHidden = false), refresh(true);
     pollRecent();
   });
+  // A long-open page keeps only the recent half day of fine book columns; older chunks reload on demand.
+  setInterval(() => {
+    const keep = Date.now() - 12 * 3_600_000;
+    for (const t of fineCols.keys()) if (t < keep) fineCols.delete(t);
+    for (const c of fineChunks.keys()) if (c + BOOK_CHUNK_MS < keep) fineChunks.delete(c);
+  }, 60_000);
 }
 
 // ---------- live ----------
 
-function refresh() {
+let staleWhileHidden = false;
+function refresh(full = true) {
+  // A phone keeps background pages running for a while; do the work once it is visible again.
+  if (document.hidden) {
+    staleWhileHidden = true;
+    return;
+  }
   // Keep following the newest bar if the view was already at the right edge.
   const following = view.end >= bars.length - 1;
   const anchorT = bars[Math.min(bars.length - 1, Math.floor(view.end))]?.t;
-  build();
+  if (full) build();
+  else buildTail();
   if (following) view.end = bars.length + 2;
   else if (anchorT != null) view.end = bars.findIndex((b) => b.t >= anchorT) + 1;
   clampView();
@@ -1709,13 +1812,20 @@ function showLive() {
   ui.live.dataset.state = stale ? "stale" : "on";
 }
 
+// Returns whether anything older than the forming bar changed, which needs a full build.
 function ingest(d) {
-  for (const r of d.bars) store.bars.set(r[0], r);
+  const tail = bars.at(-1)?.t ?? Infinity;
+  let older = d.metrics.some((m) => !store.metrics.has(m[0])) || d.liquidations.some((l) => l[0] < tail);
+  for (const r of d.bars) {
+    if (r[0] < tail && JSON.stringify(store.bars.get(r[0])) !== JSON.stringify(r)) older = true;
+    store.bars.set(r[0], r);
+  }
   for (const m of d.metrics) store.metrics.set(m[0], m);
   // Columns this page built from its own stream are newer; keep them.
   for (const c of d.heat) if (c[0] <= stream.start || !heatCols.has(c[0])) heatCols.set(c[0], c);
   mergeLiquidations(d.liquidations);
   for (const p of d.prints ?? []) if (!stream.firstTrade || p[0] < stream.firstTrade || stream.gaps.covers(p[0], p[0] + 1)) addPrint(p);
+  return older;
 }
 
 const utcDay = (t) => new Date(t).toISOString().slice(0, 10);
@@ -1735,12 +1845,12 @@ async function pollRecent() {
     const res = await fetch(`${API}/recent?since=${recentSince}`);
     if (!res.ok) throw new Error(String(res.status));
     const d = await res.json();
-    ingest(d);
+    const older = ingest(d);
     server = { updated: d.updated, status: d.status };
     // Re-read the last two minutes each time; minute-aligned URLs let viewers share the edge cache.
     const last = d.bars.at(-1)?.[0];
     if (last) recentSince = Math.max(recentSince, last - 2 * MINUTE);
-    if (bars.length) refresh();
+    if (bars.length) refresh(older);
   } catch {
     // Collector unreachable: the page keeps what it has and its own Bybit stream.
   }
