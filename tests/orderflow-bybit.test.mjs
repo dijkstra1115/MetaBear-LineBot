@@ -81,3 +81,12 @@ test("a dropped page stream hands the minutes around the gap back to the collect
   assert.deepEqual(gaps.list, [[T0 + M + 30_000, T0 + 3 * M + 5_000]]);
   for (const [m, missed] of [[0, false], [1, true], [2, true], [3, true], [4, false]]) assert.equal(gaps.covers(T0 + m * M, T0 + (m + 1) * M), missed, `minute ${m}`);
 });
+
+test("live fills merge by Bybit's seq, so orders sharing a millisecond stay apart", () => {
+  const fill = (seq, price, qty) => ({ t: T0, price, qty, sell: false, seq });
+  assert.deepEqual(groupPrints([fill(7, 80_000, 1), fill(7, 80_010, 3), fill(8, 80_010, 2)]), [
+    [T0, "buy", 80_007.5, 4],
+    [T0, "buy", 80_010, 2],
+  ]);
+  assert.deepEqual(parseTrades({ topic: TRADE_TOPIC, data: [{ i: "x", T: T0, S: "Buy", v: "1", p: "80000", seq: 42 }] })[0].seq, 42);
+});

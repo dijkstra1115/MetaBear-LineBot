@@ -13,6 +13,7 @@
 // Every viewer polls the same minute-aligned URLs, so the edge cache absorbs repeat requests
 // and the single collector object only answers each URL once per few seconds.
 import { BOOK_CHUNK_MS } from "../../public/lab/orderflow/bybit.js";
+import { describe } from "../../public/lab/orderflow/watch.js";
 import { Collector, type OrderflowEnv } from "./collector";
 
 export { Collector };
@@ -106,8 +107,26 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
 
 export default {
   fetch: handleOrderflow,
-  // The collector re-arms its own alarm; the cron only restarts the chain if it ever breaks.
-  async scheduled(_event: ScheduledController, env: OrderflowEnv) {
-    await collector(env).fetch("https://collector/wake");
+  // The collector re-arms its own alarm; the cron only restarts the chain if it ever breaks. It
+  // also covers the one failure the collector cannot report itself: not answering at all.
+  async scheduled(event: ScheduledController, env: OrderflowEnv) {
+    try {
+      const res = await Promise.race([
+        collector(env).fetch("https://collector/wake"),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("20 秒沒有回應")), 20_000)),
+      ]);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      console.error(JSON.stringify({ event: "orderflow_collector_unreachable", detail: String(err) }));
+      // Every 30 minutes while it lasts (the cron runs every 5).
+      if (Math.floor(event.scheduledTime / 300_000) % 6 !== 0) return;
+      if (env.ORDERFLOW_ALERTS !== "live" || !env.BACKEND || !env.ORDERFLOW_ALERT_TOKEN) return;
+      const text = `MetaBear 訂單流通知\n${describe({ kind: "health_unreachable", t: Date.now(), reason: err instanceof Error ? err.message : String(err) })}`;
+      await env.BACKEND.fetch("https://backend/api/internal/orderflow-alert", {
+        method: "POST",
+        headers: { authorization: `Bearer ${env.ORDERFLOW_ALERT_TOKEN}`, "content-type": "application/json" },
+        body: JSON.stringify({ text, key: `orderflow-down-${Math.floor(event.scheduledTime / 300_000)}` }),
+      }).catch(() => {});
+    }
   },
 } satisfies ExportedHandler<OrderflowEnv>;

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ALERT_DEFAULTS, IcebergWatch, LiqWatch, OiWatch, WallWatch, describe, watchPrint } from "../public/lab/orderflow/watch.js";
+import { ALERT_DEFAULTS, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../public/lab/orderflow/watch.js";
 
 const T0 = Date.UTC(2026, 9, 16, 12, 0);
 const S = 1_000;
@@ -86,4 +86,64 @@ test("an iceberg is far more traded at a price than ever shown, while the level 
   const cleared = new IcebergWatch(cfg);
   for (let k = 0; k < 12; k++) cleared.trade(T0 + k * S, 80_000, 2.5, true, 5);
   assert.deepEqual(cleared.check(T0 + 13 * S, new Map(), new Map()), [], "the level is gone: it was simply eaten");
+});
+
+test("a wall cancelled within a second as price closes in is spoofing; one eaten or far away is not", () => {
+  // Lower lines than the defaults keep the book small.
+  const cfg = { ...ALERT_DEFAULTS, spoofBtc: 50, spoofRatio: 3, spoofHoldMs: 3_000 };
+  const MID = { bid: 80_995, ask: 81_005, mid: 81_000 };
+  // An ask band at 81,050–81,060 (0.06 % above mid) holding 100 BTC for five seconds.
+  const setup = () => {
+    const w = new SpoofWatch(cfg);
+    w.reset(T0, new Map([[80_995, 3]]), new Map([[81_005, 3], [81_052, 60], [81_057, 40]]));
+    for (let k = 0; k <= 5; k++) w.update(T0 + k * S, [["ask", 81_005, 3, 3 + (k % 2)]], MID); // other levels move
+    w.update(T0 + 5 * S, [["ask", 81_052, 60, 60]], MID); // the band is seen at 100 BTC
+    return w;
+  };
+  const pulled = setup();
+  pulled.trade(T0 + 5 * S + 100, 81_051, 1.5);
+  const [e] = pulled.update(T0 + 5 * S + 400, [["ask", 81_052, 60, 0], ["ask", 81_057, 40, 0]], MID);
+  assert.deepEqual([e.kind, e.side, e.price, e.size, e.traded], ["spoof", "ask", 81_050, 100, 1.5]);
+  assert.ok(e.distPct < 0.1 && e.heldMs >= 5_000);
+  assert.match(describe(e), /疑似誘單 賣單牆 81,050–81,060：價格距離 0\.06% 時，1 秒內撤掉 100 BTC，期間只成交 1\.5 BTC/);
+
+  // Most of it cancelled counts too: 60 of 100 BTC gone, 40 left below the 50 BTC line.
+  const [partial] = setup().update(T0 + 5 * S + 200, [["ask", 81_052, 60, 0]], MID);
+  assert.deepEqual([partial.kind, partial.size], ["spoof", 60]);
+
+  const eaten = setup();
+  eaten.trade(T0 + 5 * S + 100, 81_052, 60);
+  eaten.trade(T0 + 5 * S + 150, 81_057, 30);
+  assert.deepEqual(eaten.update(T0 + 5 * S + 400, [["ask", 81_052, 60, 0], ["ask", 81_057, 40, 0]], MID), [], "trades took most of it");
+
+  const far = setup();
+  assert.deepEqual(far.update(T0 + 5 * S + 400, [["ask", 81_052, 60, 0], ["ask", 81_057, 40, 0]], { bid: 80_495, ask: 80_505, mid: 80_500 }), [], "price 0.7 % away");
+
+  // The same size at the touch is quoting, not a wall: price has reached the band already.
+  const touch = setup();
+  assert.deepEqual(touch.update(T0 + 5 * S + 400, [["ask", 81_052, 60, 0], ["ask", 81_057, 40, 0]], { bid: 81_049, ask: 81_051, mid: 81_050 }), [], "the band holds the best ask");
+
+  const slow = setup();
+  slow.update(T0 + 6 * S, [["ask", 81_052, 60, 40]], MID); // 80
+  slow.update(T0 + 7.5 * S, [["ask", 81_052, 40, 20]], MID); // 60
+  assert.deepEqual(slow.update(T0 + 9 * S, [["ask", 81_057, 40, 20]], MID), [], "it shrank over seconds, not within one");
+
+  const brief = new SpoofWatch(cfg);
+  brief.reset(T0, new Map(), new Map([[81_052, 100]]));
+  brief.update(T0, [["ask", 81_052, 100, 100]], MID);
+  assert.deepEqual(brief.update(T0 + 1.5 * S, [["ask", 81_052, 100, 0]], MID), [], "it stood under three seconds");
+});
+
+test("switches take 0 or 1, thresholds only positive numbers, and health events read plainly", () => {
+  assert.equal(validSetting("marketOn", 0), true);
+  assert.equal(validSetting("healthOn", 1), true);
+  assert.equal(validSetting("marketOn", 2), false);
+  assert.equal(validSetting("printBtc", 0), false);
+  assert.equal(validSetting("printBtc", 80), true);
+  assert.equal(validSetting("unknown", 1), false);
+  assert.equal(validSetting("printBtc", Number.NaN), false);
+  assert.ok(HEALTH_KINDS.has("health_down") && !HEALTH_KINDS.has("print"));
+  assert.match(describe({ kind: "health_down", t: T0, feed: "Bybit", downMs: 180_000, lastTrade: T0 - 180_000 }), /收集器與 Bybit 斷線已 3 分鐘，最後一筆成交/);
+  assert.match(describe({ kind: "health_up", t: T0, feed: "Bybit", downMs: 240_000 }), /Bybit 連線恢復，中斷約 4 分鐘；缺的成交隔天由封存檔補齊/);
+  assert.match(describe({ kind: "health_archive", t: T0, day: "2026-10-16", reason: "HTTP 403" }), /2026-10-16 的封存檔還沒匯入：HTTP 403/);
 });

@@ -19,16 +19,17 @@ const types = {
 };
 createServer(async (req, res) => {
   try {
-    if (!["GET", "HEAD"].includes(req.method)) {
-      res.writeHead(405);
-      res.end();
-      return;
-    }
     const url = new URL(req.url, "http://127.0.0.1:8790");
-    // The order-flow API is its own Worker; forward to `npm run orderflow:dev`.
+    // The order-flow API is its own Worker; forward to `npm run orderflow:dev` (GET and the admin POSTs).
     if (url.pathname.startsWith("/api/orderflow/")) {
       try {
-        const upstream = await fetch(`http://127.0.0.1:8792${url.pathname}${url.search}`);
+        const chunks = [];
+        for await (const chunk of req) chunks.push(chunk);
+        const upstream = await fetch(`http://127.0.0.1:8792${url.pathname}${url.search}`, {
+          method: req.method,
+          headers: { authorization: req.headers.authorization ?? "", "content-type": req.headers["content-type"] ?? "application/json" },
+          body: ["GET", "HEAD"].includes(req.method) ? undefined : Buffer.concat(chunks),
+        });
         res.writeHead(upstream.status, { "Content-Type": upstream.headers.get("content-type") ?? "application/json", "Cache-Control": "no-store" });
         res.end(Buffer.from(await upstream.arrayBuffer()));
       } catch {
@@ -39,6 +40,11 @@ createServer(async (req, res) => {
     }
     if (url.pathname === "/" || url.pathname === "/orderflow") {
       res.writeHead(302, { Location: `/orderflow/${url.search}` });
+      res.end();
+      return;
+    }
+    if (!["GET", "HEAD"].includes(req.method)) {
+      res.writeHead(405);
       res.end();
       return;
     }
