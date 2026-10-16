@@ -5,6 +5,7 @@
 // keep an object alive for at most 15 minutes.
 import { DurableObject } from "cloudflare:workers";
 import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
+import { ALERT_DEFAULTS, IcebergWatch, LiqWatch, OiWatch, WallWatch, describe, watchPrint } from "../../public/lab/orderflow/watch.js";
 import {
   ArchiveDay,
   BOOK_CHUNK_MS,
@@ -34,7 +35,21 @@ export interface OrderflowEnv {
   COLLECTOR: DurableObjectNamespace<Collector>;
   ORDERFLOW_ADMIN_TOKEN?: string;
   ORDERFLOW_STREAMS?: string; // "off" keeps the object from connecting (tests)
+  // Alerts go to the admin's LINE through the CRM backend, which holds the LINE token:
+  // "live" sends, "log" only records them (the default, also for local dev).
+  ORDERFLOW_ALERTS?: string;
+  ORDERFLOW_ALERT_TOKEN?: string;
+  BACKEND?: Fetcher;
 }
+
+// Alert delivery: queued events are merged into one LINE message at most once a minute, at most
+// ALERT_DAILY_CAP messages per Taipei day, so a busy market cannot use up the account's quota.
+const ALERT_EVERY_MS = 60_000;
+const ALERT_DAILY_CAP = 30;
+const ALERT_LINES = 8;
+const ALERT_FRESH_MS = 120_000; // trades and liquidations replayed after a reconnect are not news
+type AlertConfig = typeof ALERT_DEFAULTS;
+type AlertEvent = { kind: string; t: number; [k: string]: unknown };
 
 const MINUTE = 60_000;
 const FIVE_MIN = 5 * MINUTE;
@@ -86,6 +101,12 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private seen = new Set<string>();
   private heat: [number, number, number, number[]] | null = null; // latest column of the current minute
   private lastTradeT = 0;
+  private lastPrice = 0;
+  private alertConfig: AlertConfig = { ...ALERT_DEFAULTS };
+  private liqWatch = new LiqWatch(this.alertConfig);
+  private oiWatch = new OiWatch(this.alertConfig);
+  private wallWatch = new WallWatch(this.alertConfig);
+  private iceWatch = new IcebergWatch(this.alertConfig);
   private archive: ArchiveJob | null = null;
   private status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[], archive: null as Record<string, unknown> | null };
 
@@ -96,6 +117,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       CREATE TABLE IF NOT EXISTS bars (t INTEGER PRIMARY KEY, src TEXT NOT NULL, row TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS heat (t INTEGER PRIMARY KEY, row TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS book (t INTEGER PRIMARY KEY, row TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, t INTEGER, kind TEXT, text TEXT, state TEXT);
       CREATE TABLE IF NOT EXISTS oi (t INTEGER PRIMARY KEY, oi REAL, oi_value REAL, taker REAL);
       CREATE TABLE IF NOT EXISTS oi_rest (t INTEGER PRIMARY KEY, oi REAL);
       CREATE TABLE IF NOT EXISTS ratios (t INTEGER PRIMARY KEY, ratio REAL);
@@ -109,6 +131,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
     // The current minute is persisted every alarm; pick it back up so a restart only loses
     // the seconds since then, which the REST backfill on reconnect fills in.
     this.lastTradeT = Number(this.meta("lastTradeT") ?? 0);
+    this.loadAlertConfig();
+    // The OI watcher compares a change with the last day's, so replay the stored readings.
+    for (const r of this.rows("SELECT t, oi FROM oi WHERE t >= ? ORDER BY t", Date.now() - DAY)) this.oiWatch.add(Number(r.t), Number(r.oi), 0);
     for (const r of this.rows("SELECT t, row FROM bars WHERE src = 'live' AND t >= ?", Math.floor(Date.now() / MINUTE) * MINUTE - MINUTE)) {
       const [t, o, h, l, c, levels] = JSON.parse(String(r.row));
       this.bars.set(t, { o, h, l, c, levels: new Map(levels.map(([bin, b, s]: number[]) => [bin, [b, s]])), first: t, last: Math.max(t, this.lastTradeT) });
@@ -224,11 +249,19 @@ export class Collector extends DurableObject<OrderflowEnv> {
       this.seen.add(tr.id);
       if (this.seen.size > SEEN_TRADES) this.seen.delete(this.seen.values().next().value!);
       addTrade(this.bars, tr, TICK);
-      if (tr.t > this.lastTradeT) this.lastTradeT = tr.t;
+      if (tr.t > this.lastTradeT) (this.lastTradeT = tr.t), (this.lastPrice = tr.price);
       fresh.push(tr);
+      this.wallWatch.trade(tr.price);
+      // The book has not seen this fill yet, so it shows the size the trade met.
+      this.iceWatch.trade(tr.t, tr.price, tr.qty, tr.sell, (tr.sell ? this.book.bids : this.book.asks).get(tr.price) ?? 0);
     }
-    for (const [t, side, price, qty] of groupPrints(fresh))
-      if (qty >= PRINT_MIN) this.sql.exec("INSERT OR IGNORE INTO prints VALUES (?, ?, ?, ?)", t, side, price, qty);
+    const now = Date.now();
+    for (const print of groupPrints(fresh)) {
+      const [t, side, price, qty] = print;
+      if (qty < PRINT_MIN) continue;
+      this.sql.exec("INSERT OR IGNORE INTO prints VALUES (?, ?, ?, ?)", t, side, price, qty);
+      if (t > now - ALERT_FRESH_MS) this.alert(watchPrint(print, this.alertConfig));
+    }
   }
 
   // Trades missed while the socket was down: Bybit serves the latest 1,000 (about one to two
@@ -266,13 +299,110 @@ export class Collector extends DurableObject<OrderflowEnv> {
         sell > 0 ? Math.round((buy / sell) * 1e4) / 1e4 : null,
         this.ticker.funding ?? null,
       );
+      this.alert(this.oiWatch.add(t, this.ticker.oi, this.lastPrice));
     }
     applyTicker(this.ticker, m);
     this.ticker.ts = ts;
   }
 
   private saveLiqs(rows: [number, string, number, number, string][]) {
-    for (const [t, side, price, qty, ex] of rows) this.sql.exec("INSERT OR IGNORE INTO liqs VALUES (?, ?, ?, ?, ?)", t, side, price, qty, ex);
+    const now = Date.now();
+    for (const row of rows) {
+      const [t, side, price, qty, ex] = row;
+      this.sql.exec("INSERT OR IGNORE INTO liqs VALUES (?, ?, ?, ?, ?)", t, side, price, qty, ex);
+      if (t > now - ALERT_FRESH_MS) this.alert(this.liqWatch.add(row));
+    }
+  }
+
+  // ---------- alerts ----------
+
+  private loadAlertConfig() {
+    const saved = JSON.parse(this.meta("alertConfig") ?? "{}") as Partial<AlertConfig>;
+    // The watchers hold this object, so tuning takes effect without a restart.
+    Object.assign(this.alertConfig, ALERT_DEFAULTS);
+    for (const [k, v] of Object.entries(saved)) if (k in ALERT_DEFAULTS && Number.isFinite(v) && (v as number) > 0) (this.alertConfig as Record<string, number>)[k] = v as number;
+  }
+
+  private alert(e: AlertEvent | null) {
+    if (!e) return;
+    this.sql.exec("INSERT INTO alerts (t, kind, text, state) VALUES (?, ?, ?, 'pending')", e.t, e.kind, describe(e));
+  }
+
+  // Walls and icebergs need the book after updates; checked every alarm.
+  private watchBook() {
+    if (!this.book.ready) return;
+    const now = Date.now();
+    for (const e of this.wallWatch.check(now, this.book.bids, this.book.asks)) this.alert(e);
+    for (const e of this.iceWatch.check(now, this.book.bids, this.book.asks)) this.alert(e);
+  }
+
+  private async flushAlerts() {
+    const mode = this.env.ORDERFLOW_ALERTS ?? "log";
+    const pending = this.rows("SELECT id, t, text FROM alerts WHERE state = 'pending' ORDER BY id");
+    if (!pending.length) return;
+    const ids = (list: Row[]) => list.map((r) => Number(r.id));
+    const mark = (list: number[], state: string) => {
+      for (const id of list) this.sql.exec("UPDATE alerts SET state = ? WHERE id = ?", state, id);
+    };
+    if (mode !== "live" || !this.env.BACKEND || !this.env.ORDERFLOW_ALERT_TOKEN) {
+      for (const r of pending) console.log(JSON.stringify({ event: "orderflow_alert", kind: "logged", text: r.text }));
+      mark(ids(pending), "logged");
+      return;
+    }
+    const now = Date.now();
+    if (now - Number(this.meta("alertSentAt") ?? 0) < ALERT_EVERY_MS) return;
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(now);
+    const sentToday = this.meta("alertDay") === day ? Number(this.meta("alertCount") ?? 0) : 0;
+    if (sentToday >= ALERT_DAILY_CAP) {
+      mark(ids(pending), "capped");
+      return;
+    }
+    const lines = pending.slice(0, ALERT_LINES).map((r) => String(r.text));
+    if (pending.length > ALERT_LINES) lines.push(`…另有 ${pending.length - ALERT_LINES} 則`);
+    const at = Math.floor(Number(pending[0].t) / MINUTE) * MINUTE;
+    const text = [
+      "MetaBear 訂單流通知",
+      ...lines,
+      `https://metabear.io/lab/orderflow/?tf=1&at=${at}`,
+      sentToday + 1 === ALERT_DAILY_CAP ? "今天的通知已達上限，之後的事件只記錄不推送。" : "",
+      "盤面事件，不是買賣建議。",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    try {
+      const res = await this.env.BACKEND.fetch("https://backend/api/internal/orderflow-alert", {
+        method: "POST",
+        headers: { authorization: `Bearer ${this.env.ORDERFLOW_ALERT_TOKEN}`, "content-type": "application/json" },
+        body: JSON.stringify({ text, key: `orderflow-${pending[0].id}` }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 120)}`);
+      const result = (await res.json()) as { sent?: boolean; reason?: string };
+      // The backend answers sent: false when its LINE delivery is switched off.
+      if (!result.sent) {
+        mark(ids(pending), "undelivered");
+        this.note("errors", `alert delivery: ${result.reason ?? "not sent"}`);
+        return;
+      }
+      mark(ids(pending), "sent");
+      this.setMeta("alertSentAt", now);
+      this.setMeta("alertDay", day);
+      this.setMeta("alertCount", sentToday + 1);
+    } catch (err) {
+      this.note("errors", `alert delivery: ${err}`);
+      this.setMeta("alertSentAt", now); // retry next minute
+    }
+  }
+
+  private alertsView() {
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(Date.now());
+    return {
+      mode: this.env.ORDERFLOW_ALERTS ?? "log",
+      config: this.alertConfig,
+      defaults: ALERT_DEFAULTS,
+      sentToday: this.meta("alertDay") === day ? Number(this.meta("alertCount") ?? 0) : 0,
+      dailyCap: ALERT_DAILY_CAP,
+      recent: this.rows("SELECT id, t, kind, text, state FROM alerts ORDER BY id DESC LIMIT 50").map((r) => ({ ...r, t: iso(Number(r.t)) })),
+    };
   }
 
   // ---------- persistence ----------
@@ -483,6 +613,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     this.sql.exec("DELETE FROM prints WHERE t < ?", now - KEEP_MS.prints);
     this.sql.exec("DELETE FROM heat WHERE t < ?", now - KEEP_MS.heat);
     this.sql.exec("DELETE FROM book WHERE t < ?", now - KEEP_MS.book);
+    this.sql.exec("DELETE FROM alerts WHERE t < ?", now - KEEP_MS.alerts);
     for (const table of ["oi", "oi_rest", "ratios", "funding"]) this.sql.exec(`DELETE FROM ${table} WHERE t < ?`, now - KEEP_MS.readings);
     this.sql.exec("DELETE FROM liqs WHERE t < ?", now - KEEP_MS.liqs);
     this.setMeta("pruned", now);
@@ -498,7 +629,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
         this.persistHeat();
         await this.pollRest();
         await this.fillKlines();
+        this.watchBook();
       }
+      await this.flushAlerts();
       // Runs with the streams off too (tests); it only reads public.bybit.com.
       await this.importArchive();
       this.prune();
@@ -592,6 +725,26 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (url.pathname === "/recent") {
       const since = Number(url.searchParams.get("since"));
       return this.respond(this.series(since, now + MINUTE), { since, updated: now, status: { bybit: this.status.bybit, lastTrade: this.lastTradeT } });
+    }
+    if (url.pathname === "/alerts") {
+      if (request.method === "POST") {
+        // { config: { printBtc: 80, … } } tunes thresholds (null restores the defaults);
+        // { test: true } queues a test message.
+        const body = (await request.json()) as { config?: Record<string, number> | null; test?: boolean };
+        if (body.config === null) this.sql.exec("DELETE FROM meta WHERE k = 'alertConfig'");
+        else if (body.config) {
+          const next = { ...JSON.parse(this.meta("alertConfig") ?? "{}") };
+          for (const [k, v] of Object.entries(body.config)) if (k in ALERT_DEFAULTS && Number.isFinite(v) && v > 0) next[k] = v;
+          this.setMeta("alertConfig", JSON.stringify(next));
+        }
+        this.loadAlertConfig();
+        if (body.test) {
+          this.alert({ kind: "test", t: now });
+          this.sql.exec("DELETE FROM meta WHERE k = 'alertSentAt'");
+          await this.flushAlerts();
+        }
+      }
+      return Response.json(this.alertsView());
     }
     if (url.pathname === "/book") {
       // One 30-minute chunk of fine order-book columns.

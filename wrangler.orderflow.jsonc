@@ -13,5 +13,9 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Collector"] }],
   "triggers": { "crons": ["*/5 * * * *"] },
+  // Alerts reach the admin's LINE through the CRM backend (src/orderflow-alert.ts), which holds
+  // the LINE token. Both Workers need the ORDERFLOW_ALERT_TOKEN secret.
+  "services": [{ "binding": "BACKEND", "service": "metabear-backend" }],
+  "vars": { "ORDERFLOW_ALERTS": "live" },
   "observability": { "enabled": true },
 }

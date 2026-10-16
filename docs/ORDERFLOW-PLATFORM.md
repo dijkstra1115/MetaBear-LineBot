@@ -27,7 +27,7 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | --- | --- | --- |
 | 足跡（價位 × 主動買賣量） | 收集器即時記錄；過去的日子以 Bybit 每日成交封存檔重建 | 封存檔隔天才出，匯入後會取代收集器同一分鐘的資料 |
 | 收集器沒看到的分鐘 | Bybit 1 分鐘 K 線 | 只有價格，沒有足跡與買賣分量；頁面標示「部分分鐘無足跡」，CVD 在這段是平的 |
-| 掛單熱力圖 | 收集器每 10 秒讀一次掛單簿，每分鐘存最後一筆 | 只有收集器啟動後的資料；Bybit 1000 檔只涵蓋現價上下約 0.25% |
+| 掛單熱力圖 | 收集器每 10 秒存一次完整掛單簿（$1 格距，約 2.4 KB），另外每分鐘存一欄 $10 格距的 | 只有收集器啟動後的資料；Bybit 1000 檔只涵蓋現價上下約 0.25%，這是交易所的上限 |
 | OI | tickers 串流，在每個 5 分鐘整點記下整點前的最後讀數；缺的用 REST 歷史補 | 時間都是讀取時間（見 `metrics.js`）。REST 的時間戳語意尚未對照驗證 |
 | 多空比 | REST `account-ratio`（全體帳戶） | Bybit 沒有大戶持倉比 |
 | 爆倉 | Bybit（完整）、OKX | 網頁另外直連幣安爆倉（每秒最多一筆），但收集器記錄不到幣安 |
@@ -35,7 +35,7 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | 大單（大額成交） | 同一毫秒、同一方向的連續成交合併成一筆（同一張主動單吃多個價位）；只存 ≥ 2 BTC | 收集器即時記錄；封存檔匯入時，會把那一天的大單整天換成封存檔的版本 |
 | 資金費率 | 收集器在每個 OI 讀數記下當時的預估資金費率；歷史用 REST 補已結算的費率（每 8 小時） | 歷史段落是階梯狀 |
 
-保存期限（`KEEP_MS`）：訂單流看的是幾小時到幾天，所以只保留足跡、大單、OI、多空比、資金費率和爆倉 30 天；熱力圖每分鐘約 3 KB，是最大的資料，只留 7 天。每小時清理一次。一個月的資料總量大約只有 100～200 MB，遠低於 Durable Object 5 GB 的額度。
+保存期限（`KEEP_MS`）：訂單流看的是幾小時到幾天，所以所有資料（足跡、大單、掛單簿、OI、多空比、資金費率、爆倉、通知紀錄）都只保留 30 天，每小時清理一次。最大的是每 10 秒的掛單簿，30 天約 520 MB；全部加起來約 0.7 GB，在 Durable Object 5 GB 的額度內。
 
 ## 中斷與補資料
 
@@ -85,6 +85,27 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 - **成交筆數與成交速度**：足跡資料沒有存成交筆數。
 - **大戶持倉比**：Bybit 不提供。
 
+## 通知（目前只推給管理員）
+
+收集器在 `public/lab/orderflow/watch.js` 監看即時資料，事件經 CRM 後端（`src/orderflow-alert.ts`，透過 service binding `BACKEND`）推到管理員綁定的 LINE。後端沿用既有的管理員頻道與 LINE 權杖，`LINE_DELIVERY_MODE` 不是 `live` 時不會送出。
+
+| 事件 | 規則（預設門檻） |
+| --- | --- |
+| 🐋 大單 | 同一張主動單合計 ≥ 50 BTC |
+| 💥 連環爆倉 | 同一方向 60 秒內爆倉 ≥ $2M（Bybit＋OKX） |
+| 📊 OI 急變 | 5 分鐘 OI 變化的 z 分數 ≥ 3（以過去一天為基準），且幅度 ≥ 0.4%；依價格方向判讀成新多、新空、空回補、多平倉 |
+| 🧱 掛單牆 | 某個 $10 價位帶掛單 ≥ 60 BTC，且 ≥ 全簿中位數的 4 倍，持續 60 秒；之後消失時，依價格有沒有碰到該價位，回報「被吃掉」或「撤單」 |
+| 🧊 冰山 | 同一價格成交 ≥ 25 BTC，且 ≥ 該價位顯示過的最大量的 3 倍，價位還在（持續補單） |
+
+- 同一種事件、同一方向或同一價格，10 分鐘內只通知一次。重連後補回的舊成交和爆倉不會觸發通知。
+- 每分鐘最多推一則，多個事件合併在一起，最多列 8 行，附上那一分鐘的分享連結。每天（台灣時間）最多 30 則，超過就只記錄不推送，以免用掉 LINE 官方帳號的推播額度。
+- 門檻可以不用重新部署就調整：`POST /api/orderflow/btcusdt/alerts`，body 帶 `{ "config": { "printBtc": 80 } }`；帶 `{ "config": null }` 恢復預設，帶 `{ "test": true }` 會送一則測試通知。`GET` 同一路徑可以看目前門檻和最近 50 則事件。這兩個都要帶管理權杖。
+- 牆與冰山只看得到 Bybit 1000 檔的範圍（現價上下約 0.25%），而且每 10 秒才檢查一次，幾秒內出現又撤掉的假單抓不到。
+
+## 分享
+
+網頁的「分享」選單會產生目前畫面的連結（`?tf=&mode=&at=&ind=&pm=`），可以複製或分享到 LINE。先點一根 K 棒，對方打開時會直接選在那一根。指標設定只套用在這次瀏覽，不會覆蓋對方自己存的設定。`og.png` 是 LINE 預覽卡用的 1200×630 圖，用正式網站的圖表截圖合成，畫面改版時要重新產生。
+
 ## API
 
 | 方法 | 路徑 | 說明 |
@@ -94,6 +115,8 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | GET | `/api/orderflow/btcusdt/status` | 連線狀態、最後成交時間、缺口、錯誤、各表筆數、封存檔匯入狀態（`archive`） |
 | POST | `/api/orderflow/btcusdt/import` | 封存檔匯入：`{ rows }` 是足跡；`{ prints, from, to }` 會換掉這段時間內的大單。需要 `Authorization: Bearer <ORDERFLOW_ADMIN_TOKEN>` |
 | POST | `/api/orderflow/btcusdt/archive` | 馬上嘗試待匯入的每日封存檔（略過重試等待）。權杖同上 |
+| GET | `/api/orderflow/btcusdt/book?from=<對齊 30 分鐘的毫秒>` | 30 分鐘的細掛單簿（每 10 秒一欄、$1 格距），網頁在 1、5 分 K 時使用 |
+| GET/POST | `/api/orderflow/btcusdt/alerts` | 通知門檻與最近的事件；POST 可調整門檻或送測試通知。權杖同上 |
 
 `metrics` 每一列的欄位：`[讀取時間, OI (BTC), OI (USDT), 大戶持倉比, 大戶帳戶比, 全體多空比, 主動買賣比, 資金費率]`。Bybit 沒有的欄位是 `null`。
 
@@ -113,7 +136,7 @@ npm run lab:orderflow:bybit -- --days 3    # 補匯入最近 3 天的封存檔�
 npm run preview:academy                    # http://127.0.0.1:8790/lab/orderflow/，/api/orderflow/* 會轉到 8792
 ```
 
-`?days=N`（1～14，預設 3）可以調整頁面載入幾天的歷史。
+`?days=N`（1～30，預設 3）可以調整頁面載入幾天的歷史；分享連結會自動載入到那根 K 棒所在的日子。
 
 ## 上線步驟
 
@@ -126,7 +149,11 @@ npm run preview:academy                    # http://127.0.0.1:8790/lab/orderflow
 5. 網頁的修改 push 到 `main`，Pages 會自動發布。
 6. 每天的封存檔由收集器自動匯入（見「每日封存檔自動匯入」），部署後隔天確認 `/status` 的 `archive.last` 是前一天、`errors` 沒有 `archive` 開頭的紀錄。收集器停擺超過 3 天、或要重匯更早的日子，再用第 4 步的腳本。
 
+7. 通知：兩個 Worker 都要設定同一個 `ORDERFLOW_ALERT_TOKEN` secret（`npx wrangler secret put ORDERFLOW_ALERT_TOKEN --env production` 給後端，加上 `-c wrangler.orderflow.jsonc` 給訂單流 Worker），後端要部署（`npm run deploy`）才有 `/api/internal/orderflow-alert`。部署後用 `{ "test": true }` 確認 LINE 收得到。
+
 ## 下一步
 
+- 依實際通知頻率調整門檻，穩定後再開放會員訂閱（ORDERFLOW-SIGNALS-PLAN 的階段 C、D）。
+- 在圖上標出掛單牆與冰山（`watch.js` 可以直接在網頁重用）。
 - 對照驗證 REST OI 的時間戳和串流讀數。
 - 帳號、手機版、警報訂閱（VISION 第 3 階段的其餘部分）。

@@ -7,6 +7,8 @@
 //   GET  /api/orderflow/btcusdt/status             collector health
 //   POST /api/orderflow/btcusdt/import             archive footprint rows (Bearer ORDERFLOW_ADMIN_TOKEN)
 //   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token)
+//   GET  /api/orderflow/btcusdt/alerts             alert thresholds and the latest alerts (same token)
+//   POST /api/orderflow/btcusdt/alerts             { config } tunes thresholds, { test: true } sends a test
 //
 // Every viewer polls the same minute-aligned URLs, so the edge cache absorbs repeat requests
 // and the single collector object only answers each URL once per few seconds.
@@ -58,12 +60,18 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   const now = Date.now();
   const stub = collector(env);
 
-  if (route === "/import" || route === "/archive") {
-    if (request.method !== "POST") return json({ error: "只接受 POST" }, 405);
+  if (route === "/import" || route === "/archive" || route === "/alerts") {
+    if (request.method !== "POST" && route !== "/alerts") return json({ error: "只接受 POST" }, 405);
     const token = env.ORDERFLOW_ADMIN_TOKEN;
     const auth = request.headers.get("authorization") ?? "";
     if (!token || !timingSafeEqual(auth, `Bearer ${token}`)) return json({ error: "未授權" }, 401);
     if (route === "/archive") return json(await (await stub.fetch("https://collector/archive", { method: "POST" })).json());
+    if (route === "/alerts") {
+      if (!["GET", "POST"].includes(request.method)) return json({ error: "只接受 GET 或 POST" }, 405);
+      const body = request.method === "POST" ? await request.text() : undefined;
+      if (body && body.length > 4_000) return json({ error: "內容太長" }, 413);
+      return json(await (await stub.fetch("https://collector/alerts", { method: request.method, body, headers: { "content-type": "application/json" } })).json());
+    }
     return stub.fetch("https://collector/import", { method: "POST", body: request.body, headers: { "content-type": "application/json" } });
   }
   if (request.method !== "GET") return json({ error: "只接受 GET" }, 405);

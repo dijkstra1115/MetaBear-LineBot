@@ -10,3 +10,5 @@ BINGX_SECRET_KEY=
 
 # Order-flow Worker (wrangler.orderflow.jsonc): archive import token.
 ORDERFLOW_ADMIN_TOKEN=replace-with-a-random-token-at-least-32-characters
+# Shared by the CRM backend and the order-flow Worker: the collector's alerts reach the admin's LINE.
+ORDERFLOW_ALERT_TOKEN=replace-with-a-random-token-at-least-32-characters
