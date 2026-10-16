@@ -7,6 +7,15 @@
   <meta name="robots" content="noindex" />
   <meta name="description" content="MetaBear 訂單流實驗室原型：Bybit BTCUSDT 永續合約的足跡圖、CVD、未平倉量、多空比、掛單熱力圖與爆倉。" />
   <title>BTC 訂單流實驗室 · MetaBear</title>
+  <!-- Link preview in LINE and other apps; og.png is a 1200×630 render of the live chart. -->
+  <meta property="og:title" content="BTC 即時訂單流｜MetaBear" />
+  <meta property="og:description" content="即時足跡、大單泡泡、爆倉、OI 與掛單熱力圖，手機也能看。資料來自 Bybit，僅供研究，非投資建議。" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://metabear.io/lab/orderflow/" />
+  <meta property="og:image" content="https://metabear.io/lab/orderflow/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="/metabear-logo-transparent-64.png" />
   <link rel="stylesheet" href="/orderflow/motion/fonts/fonts.css" />
   <link rel="stylesheet" href="./lab.css" />
@@ -71,6 +80,17 @@
           </fieldset>
         </div>
       </details>
+      <details class="share">
+        <summary>分享</summary>
+        <div class="share-panel">
+          <p id="share-note" class="share-note"></p>
+          <input id="share-url" type="text" readonly aria-label="分享連結" />
+          <div class="share-actions">
+            <button id="share-copy" type="button">複製連結</button>
+            <a id="share-line" class="share-line" href="https://line.me/R/share" target="_blank" rel="noopener noreferrer">分享到 LINE</a>
+          </div>
+        </div>
+      </details>
       <div class="zoom" role="group" aria-label="縮放">
         <button id="zoom-out" type="button" aria-label="縮小">−</button>
         <button id="zoom-in" type="button" aria-label="放大">+</button>
@@ -91,6 +111,7 @@
     <details class="help">
       <summary>使用說明與資料來源</summary>
       <p>手機：單指拖曳平移、雙指縮放、點一下 K 棒看它的數值；在右側價格軸上下拖曳可縮放價格。</p>
+      <p>「分享」會產生目前畫面的連結：週期、圖表、指標和大單門檻都會帶過去；先點選一根 K 棒，對方打開時會直接看到那根。</p>
       <p id="source"></p>
       <p>「指標」選單可以個別開關每個指標，設定會記在這個瀏覽器。圓形泡泡是大額成交（同一張主動單的成交合計，綠色主動買、橘色主動賣，面積代表數量）；三角形是爆倉（▼ 多單被強平、▲ 空單被強平）。VWAP 每個 UTC 日重新計算。K 棒統計列依序是成交量、Delta、Delta 占成交量的比例、K 棒內累積 Delta 的最高與最低（以每分鐘收盤取樣，1 分鐘 K 棒時等於 Delta），以及 OI 變化；K 棒夠寬時才顯示數字。滾輪縮放時間、拖曳平移；在右側價格軸上下拖曳或滾輪可縮放價格，雙擊價格軸恢復自動；切到「足跡」並放大到夠寬時顯示足跡數字（左賣右買）。亮色數字為斜向 3 倍以上的不平衡。爆倉地圖是用 OI 變化與假設的槓桿分布推算的估計值，不是交易所資料。事件標記是 5 分鐘 K 棒收盤後偵測到的盤面現象（上方三角偏空、下方偏多、金色為 OI 異動），不是買賣建議。</p>
     </details>

@@ -3,7 +3,7 @@
 // whose collector records Bybit BTCUSDT 1-minute bars with $10 price bins; the page
 // streams the newest minutes straight from Bybit.
 
-import { BOOK_TOPIC, OrderBook, PING, PRINT_MIN, StreamGaps, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, groupPrints, parseTrades } from "./bybit.js";
+import { BOOK_CHUNK_MS, BOOK_STEP_MS, BOOK_TICK, BOOK_TOPIC, OrderBook, PING, PRINT_MIN, StreamGaps, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, groupPrints, parseTrades } from "./bybit.js";
 import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
 import { readingsAt } from "./metrics.js";
@@ -12,8 +12,15 @@ import { SIGNALS, aggregate as aggregateSignals, detect, valueArea } from "./sig
 const API = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
 const DAY = 86_400_000;
-// Days of history to load (today included); ?days=N up to 14.
-const DAYS = Math.min(14, Math.max(1, Math.floor(Number(new URLSearchParams(location.search).get("days"))) || 3));
+// A shared link (see shareUrl) opens the same view: ?tf=&mode=&at=<bar start ms>&ind=<ids>&pm=.
+const query = new URLSearchParams(location.search);
+const SHARED_AT = Number(query.get("at")) || 0;
+// Days of history to load (today included): ?days=N, enough to reach a shared bar, at most the
+// 30 days the collector keeps.
+const DAYS = Math.min(
+  30,
+  Math.max(1, Math.floor(Number(query.get("days"))) || 3, SHARED_AT ? Math.floor(Date.now() / DAY) - Math.floor(SHARED_AT / DAY) + 1 : 0),
+);
 const C = {
   bg: "#05090f",
   grid: "rgba(120,160,190,0.08)",
@@ -69,9 +76,19 @@ const prefs = (() => {
     if (saved?.show) for (const id of Object.keys(out.show)) if (typeof saved.show[id] === "boolean") out.show[id] = saved.show[id];
     if (Number(saved?.printMin) >= PRINT_MIN) out.printMin = Number(saved.printMin);
   } catch {}
+  // A shared view shows the sender's indicators without changing this browser's saved choice.
+  if (query.has("ind")) {
+    const shown = new Set(query.get("ind").split(","));
+    for (const id of Object.keys(out.show)) out.show[id] = shown.has(id);
+  }
+  if (Number(query.get("pm")) >= PRINT_MIN) out.printMin = Number(query.get("pm"));
   return out;
 })();
 const on = (id) => prefs.show[id];
+for (const [param, select] of [["tf", "tf"], ["mode", "mode"]]) {
+  const value = query.get(param);
+  if (value && [...$(select).options].some((o) => o.value === value)) $(select).value = value;
+}
 function savePrefs() {
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
@@ -82,7 +99,12 @@ function savePrefs() {
 const store = { bars: new Map(), metrics: new Map() };
 let server = null; // { updated, status } from the latest /recent poll
 let recentSince = 0;
-let heatCols = new Map(); // minute → [t, mid, lowBin, sizes]
+let heatCols = new Map(); // minute → [t, mid, lowBin, sizes] at $10
+// Fine book columns every 10 s at $1, fetched in 30-minute chunks for short timeframes.
+const fineCols = new Map(); // t → [t, mid, lowBin, sizes]
+const fineChunks = new Map(); // chunk start → "loading" | "done"
+const FINE_MAX_TF = 5; // minutes; longer bars use the per-minute columns
+const FINE_MAX_SPAN = 6 * 3_600_000; // load fine columns only for views this short
 let liqs = [];
 const prints = new Map(); // "t|side|price|qty" → [t, side, price, BTC]
 let printList = []; // sorted by time, rebuilt when prints change
@@ -476,7 +498,7 @@ function drawPrice(L, from, to) {
     ctx.fillText(fmtPrice(p), L.plotW + 8, y);
   }
 
-  if (on("heat") && heatCols.size) drawHeat(L, from, to, yOf);
+  if (on("heat") && !drawFineHeat(L, from, to, yOf) && heatCols.size) drawHeat(L, from, to, yOf);
   if (on("lmap") && liqMap) drawLiqMap(L, from, to, yOf);
   if (on("lmap") && liqMap) {
     ctx.save();
@@ -594,6 +616,75 @@ function drawCandle(x, w, b, yOf, up) {
   const y2 = yOf(Math.min(b.o, b.c));
   ctx.fillStyle = color;
   ctx.fillRect(x, y1, w, Math.max(1, y2 - y1));
+}
+
+// Fetches the 30-minute chunks of fine columns a short view needs; the page's own stream adds
+// columns after it opened.
+function loadFine(t0, t1) {
+  for (let c = Math.floor(t0 / BOOK_CHUNK_MS) * BOOK_CHUNK_MS; c < t1; c += BOOK_CHUNK_MS) {
+    if (fineChunks.has(c) || c + BOOK_CHUNK_MS <= Date.now() - 30 * DAY || c > Date.now()) continue;
+    fineChunks.set(c, "loading");
+    fetch(`${API}/book?from=${c}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((d) => {
+        for (const col of d.columns) if (!fineCols.has(col[0])) fineCols.set(col[0], col);
+        // The current chunk is still filling; let a later view fetch it again.
+        if (c + BOOK_CHUNK_MS <= Date.now()) fineChunks.set(c, "done");
+        else setTimeout(() => fineChunks.delete(c), 60_000);
+        redraw();
+      })
+      .catch(() => setTimeout(() => fineChunks.delete(c), 30_000));
+  }
+}
+
+// Book detail for 1- and 5-minute bars: a slice per 10 s inside each bar and price rows of $1,
+// merged to $2, $5 or $10 when rows would be thinner than 2 px. Returns false to fall back to the
+// per-minute columns.
+function drawFineHeat(L, from, to, yOf) {
+  const tfMs = Number(ui.tf.value) * MINUTE;
+  if (tfMs > FINE_MAX_TF * MINUTE) return false;
+  const t0 = bars[from].t;
+  const t1 = bars[to].t + tfMs;
+  if (t1 - t0 > FINE_MAX_SPAN) return false;
+  loadFine(t0, t1);
+  const pxPerDollar = Math.abs(yOf(0) - yOf(1));
+  const step = [1, 2, 5, 10].find((s) => pxPerDollar * s >= 2) ?? 10;
+  const cells = [];
+  for (let i = from; i <= to; i++) {
+    const b = bars[i];
+    for (let t = b.t; t < b.t + tfMs; t += BOOK_STEP_MS) {
+      const col = fineCols.get(t);
+      if (!col) continue;
+      const rows = new Map();
+      const [, , lowBin, sizes] = col;
+      for (let k = 0; k < sizes.length; k++) {
+        if (!sizes[k]) continue;
+        const row = Math.floor(((lowBin + k) * BOOK_TICK) / step);
+        rows.set(row, (rows.get(row) ?? 0) + sizes[k]);
+      }
+      cells.push([xOf(i, L) + ((t - b.t) / tfMs) * view.barW, rows]);
+    }
+  }
+  if (!cells.length) return false;
+  const all = cells.flatMap(([, rows]) => [...rows.values()]).sort((x, y) => x - y);
+  const ref = all[Math.floor(all.length * 0.985)] || 1;
+  const w = Math.max(1, (view.barW * BOOK_STEP_MS) / tfMs + 0.5);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, L.panes.price.y, L.plotW, L.panes.price.h);
+  ctx.clip();
+  for (const [x, rows] of cells) {
+    for (const [row, q] of rows) {
+      const v = Math.min(1, q / ref);
+      if (v < 0.05) continue;
+      const y1 = yOf((row + 1) * step);
+      const y2 = yOf(row * step);
+      ctx.fillStyle = v > 0.6 ? `rgba(232,189,125,${(0.25 + 0.6 * v).toFixed(3)})` : `rgba(90,140,200,${(0.08 + 0.45 * v).toFixed(3)})`;
+      ctx.fillRect(x, y1, w, Math.max(1, y2 - y1));
+    }
+  }
+  ctx.restore();
+  return true;
 }
 
 function drawHeat(L, from, to, yOf) {
@@ -1278,7 +1369,9 @@ function updateReadout() {
       : []),
   ]
     .filter(Boolean)
-    .join("　");
+    // One box per value, so lines break between values, never inside one.
+    .map((item) => `<span class="ro">${item}</span>`)
+    .join("");
 }
 
 // ---------- interaction ----------
@@ -1332,7 +1425,9 @@ function resetY() {
 const pointers = new Map();
 let pinch = null;
 let dragAxis = false;
-let tap = null; // a touch that has not moved yet: lifting it selects the bar under it
+let tap = null; // a press that has not moved yet: releasing it pins the bar under it
+let pinnedT = null; // start time of the pinned bar, kept across timeframe changes
+const pinnedIndex = () => (pinnedT == null ? -1 : bars.findIndex((b) => b.t <= pinnedT && pinnedT < b.end));
 const hoverAt = (clientX, clientY) => {
   const rect = canvas.getBoundingClientRect();
   const L = layout();
@@ -1341,7 +1436,7 @@ const hoverAt = (clientX, clientY) => {
 canvas.addEventListener("pointerdown", (e) => {
   canvas.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  tap = e.pointerType === "touch" && pointers.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
+  tap = pointers.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
   const L = layout();
   const rect = canvas.getBoundingClientRect();
   const y = e.clientY - rect.top;
@@ -1384,6 +1479,7 @@ canvas.addEventListener("pointermove", (e) => {
 const release = (e) => {
   if (e.type === "pointerup" && tap?.id === e.pointerId) {
     hoverAt(e.clientX, e.clientY);
+    pinnedT = bars[hover.i]?.t ?? null;
     redraw();
   }
   tap = null;
@@ -1394,7 +1490,9 @@ canvas.addEventListener("pointerup", release);
 canvas.addEventListener("pointercancel", release);
 canvas.addEventListener("pointerleave", (e) => {
   if (e.pointerType !== "touch" && !pointers.size) {
-    hover = null;
+    // Leaving the chart falls back to the pinned bar, so the share menu can still link to it.
+    const i = pinnedIndex();
+    hover = i >= 0 ? { i, y: -1 } : null;
     redraw();
   }
 });
@@ -1402,6 +1500,8 @@ canvas.addEventListener("pointerleave", (e) => {
 $("zoom-in").addEventListener("click", () => zoomAt(1.4, layout().plotW));
 $("zoom-out").addEventListener("click", () => zoomAt(1 / 1.4, layout().plotW));
 $("latest").addEventListener("click", () => {
+  pinnedT = null;
+  hover = null;
   view.end = bars.length + 2;
   resetY();
 });
@@ -1424,6 +1524,9 @@ function rebuild() {
     const idx = bars.findIndex((b) => b.t >= anchorT);
     view.end = (idx < 0 ? bars.length : idx) + 1;
   }
+  // Bar indices change with the timeframe; keep the pinned time selected.
+  const pin = pinnedIndex();
+  hover = pin >= 0 ? { i: pin, y: -1 } : null;
   clampView();
   redraw();
 }
@@ -1531,8 +1634,12 @@ function onTrade(tr) {
 function snapshotBook() {
   const col = stream.book.column();
   if (!col) return;
-  const minute = Math.floor(Date.now() / 60_000) * 60_000;
+  const now = Date.now();
+  const minute = Math.floor(now / 60_000) * 60_000;
   heatCols.set(minute, [minute, ...col]);
+  const slot = Math.floor(now / BOOK_STEP_MS) * BOOK_STEP_MS;
+  const fine = stream.book.span(BOOK_TICK);
+  if (fine) fineCols.set(slot, [slot, ...fine]);
   redraw();
 }
 
@@ -1674,6 +1781,48 @@ function buildIndicatorPanel() {
 }
 buildIndicatorPanel();
 
+// ---------- sharing ----------
+
+// The link reproduces timeframe, chart mode, indicators, print size and the selected bar; with no
+// bar selected it opens live.
+function shareUrl() {
+  const url = new URL("/lab/orderflow/", location.origin);
+  url.searchParams.set("tf", ui.tf.value);
+  if (ui.mode.value !== "candles") url.searchParams.set("mode", ui.mode.value);
+  const b = hover ? bars[hover.i] : null;
+  if (b && b.end <= Date.now()) url.searchParams.set("at", String(b.t));
+  url.searchParams.set("ind", INDICATORS.map(([id]) => id).filter(on).join(","));
+  url.searchParams.set("pm", String(prefs.printMin));
+  return url.href;
+}
+
+function shareText() {
+  const b = hover ? bars[hover.i] : null;
+  return b && b.end <= Date.now() ? `BTC 訂單流 ${fmtTime(b.t)}（MetaBear）` : "BTC 即時訂單流（MetaBear）";
+}
+
+const sharePanel = document.querySelector(".share");
+sharePanel.addEventListener("toggle", () => {
+  if (!sharePanel.open) return;
+  $("share-url").value = shareUrl();
+  $("share-line").href = `https://line.me/R/share?text=${encodeURIComponent(`${shareText()}\n${shareUrl()}`)}`;
+  $("share-note").textContent = hover && bars[hover.i]?.end <= Date.now() ? `連結會打開 ${fmtTime(bars[hover.i].t)} 這根 K 棒。` : "沒有選 K 棒，連結會打開即時畫面。";
+});
+document.addEventListener("pointerdown", (e) => {
+  if (sharePanel.open && !sharePanel.contains(e.target)) sharePanel.open = false;
+});
+$("share-copy").addEventListener("click", async () => {
+  const input = $("share-url");
+  try {
+    await navigator.clipboard.writeText(input.value);
+  } catch {
+    input.select();
+    document.execCommand("copy");
+  }
+  $("share-copy").textContent = "已複製";
+  setTimeout(() => ($("share-copy").textContent = "複製連結"), 1600);
+});
+
 // ---------- boot ----------
 
 try {
@@ -1681,14 +1830,22 @@ try {
   if (!store.bars.size) throw new Error("no data");
   $("source").textContent =
     "資料：Bybit BTCUSDT 永續合約（USDT 本位，僅單一交易所）。歷史足跡由 Bybit 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄；" +
-    "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單。多空比是 Bybit 全體帳戶多空比。資料保留 30 天，熱力圖 7 天。" +
+    "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是 Bybit 全體帳戶多空比。資料保留 30 天。" +
     "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
   build();
   view.end = bars.length + 2;
   view.barW = NARROW ? 9 : 14;
-  clampView();
   ui.status.hidden = true;
   resize();
+  // A shared bar is selected and placed about two thirds across the chart.
+  const shared = SHARED_AT ? bars.findIndex((b) => b.t <= SHARED_AT && SHARED_AT < b.end) : -1;
+  if (shared >= 0) {
+    pinnedT = bars[shared].t;
+    hover = { i: shared, y: -1 };
+    view.end = shared + 1 + (layout().plotW / view.barW) * 0.35;
+  }
+  clampView();
+  redraw();
   updateReadout();
   startStreams();
   setInterval(pollRecent, 5_000);

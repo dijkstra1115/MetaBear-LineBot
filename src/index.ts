@@ -1,4 +1,5 @@
 import { admin } from "./admin";
+import { orderflowAlert } from "./orderflow-alert";
 import { siteRedirect } from "./site-routing";
 import { isLessonAudio, serveLessonAudio } from "./lesson-audio";
 import { siteSecurityHeaders } from "./site-security";
@@ -139,6 +140,9 @@ export default {
         return await signalMedia(request, env);
       if (url.pathname.startsWith("/api/desk"))
         return await deskApi(request, env);
+      // Alerts from the order-flow Worker; authorised by a shared secret, not a staff session.
+      if (url.pathname === "/api/internal/orderflow-alert")
+        return await orderflowAlert(request, env);
       if (url.pathname.startsWith("/api/")) return await admin(request, env);
       if (!["GET", "HEAD"].includes(request.method))
         throw new HttpError(405, "Method not allowed");
