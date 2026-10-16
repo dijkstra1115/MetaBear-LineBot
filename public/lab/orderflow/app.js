@@ -12,8 +12,15 @@ import { SIGNALS, aggregate as aggregateSignals, detect, valueArea } from "./sig
 const API = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
 const DAY = 86_400_000;
-// Days of history to load (today included); ?days=N up to 14.
-const DAYS = Math.min(14, Math.max(1, Math.floor(Number(new URLSearchParams(location.search).get("days"))) || 3));
+// A shared link (see shareUrl) opens the same view: ?tf=&mode=&at=<bar start ms>&ind=<ids>&pm=.
+const query = new URLSearchParams(location.search);
+const SHARED_AT = Number(query.get("at")) || 0;
+// Days of history to load (today included): ?days=N, enough to reach a shared bar, at most the
+// 30 days the collector keeps.
+const DAYS = Math.min(
+  30,
+  Math.max(1, Math.floor(Number(query.get("days"))) || 3, SHARED_AT ? Math.floor(Date.now() / DAY) - Math.floor(SHARED_AT / DAY) + 1 : 0),
+);
 const C = {
   bg: "#05090f",
   grid: "rgba(120,160,190,0.08)",
@@ -69,9 +76,19 @@ const prefs = (() => {
     if (saved?.show) for (const id of Object.keys(out.show)) if (typeof saved.show[id] === "boolean") out.show[id] = saved.show[id];
     if (Number(saved?.printMin) >= PRINT_MIN) out.printMin = Number(saved.printMin);
   } catch {}
+  // A shared view shows the sender's indicators without changing this browser's saved choice.
+  if (query.has("ind")) {
+    const shown = new Set(query.get("ind").split(","));
+    for (const id of Object.keys(out.show)) out.show[id] = shown.has(id);
+  }
+  if (Number(query.get("pm")) >= PRINT_MIN) out.printMin = Number(query.get("pm"));
   return out;
 })();
 const on = (id) => prefs.show[id];
+for (const [param, select] of [["tf", "tf"], ["mode", "mode"]]) {
+  const value = query.get(param);
+  if (value && [...$(select).options].some((o) => o.value === value)) $(select).value = value;
+}
 function savePrefs() {
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
@@ -1334,7 +1351,9 @@ function resetY() {
 const pointers = new Map();
 let pinch = null;
 let dragAxis = false;
-let tap = null; // a touch that has not moved yet: lifting it selects the bar under it
+let tap = null; // a press that has not moved yet: releasing it pins the bar under it
+let pinnedT = null; // start time of the pinned bar, kept across timeframe changes
+const pinnedIndex = () => (pinnedT == null ? -1 : bars.findIndex((b) => b.t <= pinnedT && pinnedT < b.end));
 const hoverAt = (clientX, clientY) => {
   const rect = canvas.getBoundingClientRect();
   const L = layout();
@@ -1343,7 +1362,7 @@ const hoverAt = (clientX, clientY) => {
 canvas.addEventListener("pointerdown", (e) => {
   canvas.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  tap = e.pointerType === "touch" && pointers.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
+  tap = pointers.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
   const L = layout();
   const rect = canvas.getBoundingClientRect();
   const y = e.clientY - rect.top;
@@ -1386,6 +1405,7 @@ canvas.addEventListener("pointermove", (e) => {
 const release = (e) => {
   if (e.type === "pointerup" && tap?.id === e.pointerId) {
     hoverAt(e.clientX, e.clientY);
+    pinnedT = bars[hover.i]?.t ?? null;
     redraw();
   }
   tap = null;
@@ -1396,7 +1416,9 @@ canvas.addEventListener("pointerup", release);
 canvas.addEventListener("pointercancel", release);
 canvas.addEventListener("pointerleave", (e) => {
   if (e.pointerType !== "touch" && !pointers.size) {
-    hover = null;
+    // Leaving the chart falls back to the pinned bar, so the share menu can still link to it.
+    const i = pinnedIndex();
+    hover = i >= 0 ? { i, y: -1 } : null;
     redraw();
   }
 });
@@ -1404,6 +1426,8 @@ canvas.addEventListener("pointerleave", (e) => {
 $("zoom-in").addEventListener("click", () => zoomAt(1.4, layout().plotW));
 $("zoom-out").addEventListener("click", () => zoomAt(1 / 1.4, layout().plotW));
 $("latest").addEventListener("click", () => {
+  pinnedT = null;
+  hover = null;
   view.end = bars.length + 2;
   resetY();
 });
@@ -1426,6 +1450,9 @@ function rebuild() {
     const idx = bars.findIndex((b) => b.t >= anchorT);
     view.end = (idx < 0 ? bars.length : idx) + 1;
   }
+  // Bar indices change with the timeframe; keep the pinned time selected.
+  const pin = pinnedIndex();
+  hover = pin >= 0 ? { i: pin, y: -1 } : null;
   clampView();
   redraw();
 }
@@ -1676,6 +1703,48 @@ function buildIndicatorPanel() {
 }
 buildIndicatorPanel();
 
+// ---------- sharing ----------
+
+// The link reproduces timeframe, chart mode, indicators, print size and the selected bar; with no
+// bar selected it opens live.
+function shareUrl() {
+  const url = new URL("/lab/orderflow/", location.origin);
+  url.searchParams.set("tf", ui.tf.value);
+  if (ui.mode.value !== "candles") url.searchParams.set("mode", ui.mode.value);
+  const b = hover ? bars[hover.i] : null;
+  if (b && b.end <= Date.now()) url.searchParams.set("at", String(b.t));
+  url.searchParams.set("ind", INDICATORS.map(([id]) => id).filter(on).join(","));
+  url.searchParams.set("pm", String(prefs.printMin));
+  return url.href;
+}
+
+function shareText() {
+  const b = hover ? bars[hover.i] : null;
+  return b && b.end <= Date.now() ? `BTC 訂單流 ${fmtTime(b.t)}（MetaBear）` : "BTC 即時訂單流（MetaBear）";
+}
+
+const sharePanel = document.querySelector(".share");
+sharePanel.addEventListener("toggle", () => {
+  if (!sharePanel.open) return;
+  $("share-url").value = shareUrl();
+  $("share-line").href = `https://line.me/R/share?text=${encodeURIComponent(`${shareText()}\n${shareUrl()}`)}`;
+  $("share-note").textContent = hover && bars[hover.i]?.end <= Date.now() ? `連結會打開 ${fmtTime(bars[hover.i].t)} 這根 K 棒。` : "沒有選 K 棒，連結會打開即時畫面。";
+});
+document.addEventListener("pointerdown", (e) => {
+  if (sharePanel.open && !sharePanel.contains(e.target)) sharePanel.open = false;
+});
+$("share-copy").addEventListener("click", async () => {
+  const input = $("share-url");
+  try {
+    await navigator.clipboard.writeText(input.value);
+  } catch {
+    input.select();
+    document.execCommand("copy");
+  }
+  $("share-copy").textContent = "已複製";
+  setTimeout(() => ($("share-copy").textContent = "複製連結"), 1600);
+});
+
 // ---------- boot ----------
 
 try {
@@ -1688,9 +1757,17 @@ try {
   build();
   view.end = bars.length + 2;
   view.barW = NARROW ? 9 : 14;
-  clampView();
   ui.status.hidden = true;
   resize();
+  // A shared bar is selected and placed about two thirds across the chart.
+  const shared = SHARED_AT ? bars.findIndex((b) => b.t <= SHARED_AT && SHARED_AT < b.end) : -1;
+  if (shared >= 0) {
+    pinnedT = bars[shared].t;
+    hover = { i: shared, y: -1 };
+    view.end = shared + 1 + (layout().plotW / view.barW) * 0.35;
+  }
+  clampView();
+  redraw();
   updateReadout();
   startStreams();
   setInterval(pollRecent, 5_000);
