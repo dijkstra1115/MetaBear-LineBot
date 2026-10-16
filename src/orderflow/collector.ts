@@ -5,7 +5,7 @@
 // keep an object alive for at most 15 minutes.
 import { DurableObject } from "cloudflare:workers";
 import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
-import { ALERT_DEFAULTS, IcebergWatch, LiqWatch, OiWatch, WallWatch, describe, watchPrint } from "../../public/lab/orderflow/watch.js";
+import { ALERT_DEFAULTS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, watchPrint } from "../../public/lab/orderflow/watch.js";
 import {
   ArchiveDay,
   BOOK_CHUNK_MS,
@@ -107,6 +107,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private oiWatch = new OiWatch(this.alertConfig);
   private wallWatch = new WallWatch(this.alertConfig);
   private iceWatch = new IcebergWatch(this.alertConfig);
+  private spoofWatch = new SpoofWatch(this.alertConfig);
   private archive: ArchiveJob | null = null;
   private status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[], archive: null as Record<string, unknown> | null };
 
@@ -126,6 +127,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
       CREATE TABLE IF NOT EXISTS funding (t INTEGER PRIMARY KEY, rate REAL);
       CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
     `);
+    // Added later: live prints (grouped by Bybit's seq, exact) are kept over the archive's
+    // timestamp-grouped estimates; rows from before this column are archive prints.
+    if (!this.rows("PRAGMA table_info(prints)").some((c) => c.name === "src")) this.sql.exec("ALTER TABLE prints ADD COLUMN src TEXT NOT NULL DEFAULT 'archive'");
     // Added after the first deploy: the funding rate held at each OI reading.
     if (!this.rows("PRAGMA table_info(oi)").some((c) => c.name === "funding")) this.sql.exec("ALTER TABLE oi ADD COLUMN funding REAL");
     // The current minute is persisted every alarm; pick it back up so a restart only loses
@@ -237,9 +241,23 @@ export class Collector extends DurableObject<OrderflowEnv> {
 
   private onBybit(m: any) {
     if (m.topic === TRADE_TOPIC) this.addTrades(parseTrades(m));
-    else if (m.topic === BOOK_TOPIC) this.book.apply(m);
+    else if (m.topic === BOOK_TOPIC) this.onBook(m);
     else if (m.topic === TICKER_TOPIC) this.onTicker(m);
     else if (m.topic === LIQ_TOPIC) this.saveLiqs(BYBIT_LIQ.parse(m));
+  }
+
+  // Book updates feed the spoofing watcher as they arrive; a vanished wall it reports is not
+  // reported again as pulled by the 10 s wall checks.
+  private onBook(m: any) {
+    const changes = this.book.apply(m);
+    if (changes === "snapshot") return this.spoofWatch.reset(Number(m.ts) || Date.now(), this.book.bids, this.book.asks);
+    if (!changes?.length) return;
+    const top = this.book.best();
+    if (!top) return;
+    for (const e of this.spoofWatch.update(Number(m.ts) || Date.now(), changes, top)) {
+      this.alert(e);
+      this.wallWatch.forget(e.side as string, e.price as number);
+    }
   }
 
   private addTrades(trades: Trade[]) {
@@ -252,6 +270,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       if (tr.t > this.lastTradeT) (this.lastTradeT = tr.t), (this.lastPrice = tr.price);
       fresh.push(tr);
       this.wallWatch.trade(tr.price);
+      this.spoofWatch.trade(tr.t, tr.price, tr.qty);
       // The book has not seen this fill yet, so it shows the size the trade met.
       this.iceWatch.trade(tr.t, tr.price, tr.qty, tr.sell, (tr.sell ? this.book.bids : this.book.asks).get(tr.price) ?? 0);
     }
@@ -259,7 +278,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     for (const print of groupPrints(fresh)) {
       const [t, side, price, qty] = print;
       if (qty < PRINT_MIN) continue;
-      this.sql.exec("INSERT OR IGNORE INTO prints VALUES (?, ?, ?, ?)", t, side, price, qty);
+      this.sql.exec("INSERT OR IGNORE INTO prints (t, side, price, qty, src) VALUES (?, ?, ?, ?, 'live')", t, side, price, qty);
       if (t > now - ALERT_FRESH_MS) this.alert(watchPrint(print, this.alertConfig));
     }
   }
@@ -498,8 +517,12 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private writeArchive(rows: unknown[][], prints?: { from: number; to: number; list: [number, string, number, number][] }) {
     for (const row of rows) this.sql.exec("INSERT INTO bars (t, src, row) VALUES (?, 'archive', ?) ON CONFLICT(t) DO UPDATE SET src = 'archive', row = excluded.row", row[0] as number, JSON.stringify(row));
     if (!prints) return;
-    this.sql.exec("DELETE FROM prints WHERE t >= ? AND t < ?", prints.from, prints.to);
-    for (const [t, side, price, qty] of prints.list) if (t >= prints.from && t < prints.to) this.sql.exec("INSERT OR IGNORE INTO prints VALUES (?, ?, ?, ?)", t, side, price, qty);
+    // Archive prints replace earlier archive prints, but only fill minutes without live ones.
+    this.sql.exec("DELETE FROM prints WHERE t >= ? AND t < ? AND src = 'archive'", prints.from, prints.to);
+    const live = new Set(this.rows("SELECT DISTINCT (t / 60000) * 60000 AS m FROM prints WHERE t >= ? AND t < ? AND src = 'live'", prints.from, prints.to).map((r) => Number(r.m)));
+    for (const [t, side, price, qty] of prints.list)
+      if (t >= prints.from && t < prints.to && !live.has(Math.floor(t / MINUTE) * MINUTE))
+        this.sql.exec("INSERT OR IGNORE INTO prints (t, side, price, qty, src) VALUES (?, ?, ?, ?, 'archive')", t, side, price, qty);
   }
 
   // The day to import next: the one after the last imported, at most ARCHIVE_CATCHUP days back,

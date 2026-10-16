@@ -28,30 +28,33 @@ const round = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
 /** publicTrade message → [{ id, t, price, qty, sell }], where sell means the taker sold. */
 export function parseTrades(m) {
   if (m.topic !== TRADE_TOPIC) return [];
-  return m.data.map((d) => ({ id: d.i, t: d.T, price: Number(d.p), qty: Number(d.v), sell: d.S === "Sell" }));
+  return m.data.map((d) => ({ id: d.i, t: d.T, price: Number(d.p), qty: Number(d.v), sell: d.S === "Sell", seq: d.seq }));
 }
 
 /** /v5/market/recent-trade list → the same trade objects. */
 export function parseRestTrades(list) {
-  return list.map((d) => ({ id: d.execId, t: Number(d.time), price: Number(d.price), qty: Number(d.size), sell: d.side === "Sell" }));
+  return list.map((d) => ({ id: d.execId, t: Number(d.time), price: Number(d.price), qty: Number(d.size), sell: d.side === "Sell", seq: Number(d.seq) }));
 }
 
-// Large prints: fills of one taker order share a timestamp and side, so consecutive trades with
-// both equal are summed into one print [t, "buy" | "sell", VWAP price, BTC]. Different orders in
-// the same millisecond merge too, as they do on other order-flow tools.
+// Large prints: the fills of one taker order. Bybit's live trades carry `seq`, the matching
+// engine's sequence number, which all fills of one match share, so live prints are exact. The
+// daily archive has no seq: there, consecutive fills with the same timestamp and side are summed,
+// which merges different orders that happened in the same millisecond (a live sample of 30 s had
+// 110 such groups out of 314). Print: [t, "buy" | "sell", VWAP price, BTC].
 export const PRINT_MIN = 2; // BTC; smaller prints are not stored
 
 export function groupPrints(trades) {
   const out = [];
   let cur = null;
-  for (const { t, price, qty, sell } of trades) {
-    if (cur && cur.t === t && cur.sell === sell) {
+  for (const { t, price, qty, sell, seq } of trades) {
+    const key = seq != null && Number.isFinite(Number(seq)) ? `s${seq}` : `${t}|${sell}`;
+    if (cur && cur.key === key) {
       cur.qty += qty;
       cur.pq += price * qty;
       continue;
     }
     if (cur) out.push(cur);
-    cur = { t, sell, qty, pq: price * qty };
+    cur = { key, t, sell, qty, pq: price * qty };
   }
   if (cur) out.push(cur);
   return out.map((p) => [p.t, p.sell ? "sell" : "buy", round(p.pq / p.qty, 1), round(p.qty, 3)]);
@@ -177,17 +180,30 @@ export class OrderBook {
     this.ready = false;
   }
 
+  /**
+   * Applies a book message. Returns "snapshot" when the book was replaced, otherwise the changed
+   * levels as [side, price, size before, size after], or null when ignored.
+   */
   apply(m) {
-    if (m.topic !== BOOK_TOPIC) return;
+    if (m.topic !== BOOK_TOPIC) return null;
     const d = m.data;
     // A snapshot, or u = 1 after a Bybit service restart, replaces the whole book.
-    if (m.type === "snapshot" || d.u === 1) {
+    const snapshot = m.type === "snapshot" || d.u === 1;
+    if (snapshot) {
       this.bids.clear();
       this.asks.clear();
       this.ready = true;
-    } else if (!this.ready) return;
-    for (const [p, q] of d.b) Number(q) === 0 ? this.bids.delete(Number(p)) : this.bids.set(Number(p), Number(q));
-    for (const [p, q] of d.a) Number(q) === 0 ? this.asks.delete(Number(p)) : this.asks.set(Number(p), Number(q));
+    } else if (!this.ready) return null;
+    const changes = [];
+    for (const [side, book, list] of [["bid", this.bids, d.b], ["ask", this.asks, d.a]])
+      for (const [ps, qs] of list) {
+        const p = Number(ps);
+        const q = Number(qs);
+        const before = book.get(p) ?? 0;
+        q === 0 ? book.delete(p) : book.set(p, q);
+        if (!snapshot) changes.push([side, p, before, q]);
+      }
+    return snapshot ? "snapshot" : changes;
   }
 
   /** Best bid and ask, or null before the first snapshot. */

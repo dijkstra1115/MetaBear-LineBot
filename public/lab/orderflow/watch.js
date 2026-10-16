@@ -1,5 +1,5 @@
-// Order-flow watchers: large taker orders, liquidation cascades, OI surges, order-book walls and
-// icebergs. The collector (src/orderflow/collector.ts) feeds them live Bybit data and sends what
+// Order-flow watchers: large taker orders, liquidation cascades, OI surges, order-book walls,
+// spoofing and icebergs. The collector (src/orderflow/collector.ts) feeds them live Bybit data and sends what
 // they report to the admin's LINE; they describe what happened, never what to trade.
 //
 // Every watcher is plain state plus methods that take timestamps, so tests drive them with
@@ -17,6 +17,12 @@ export const ALERT_DEFAULTS = {
   wallBin: 10,
   icebergBtc: 25, // filled at one price
   icebergRatio: 3, // and this many times the most ever shown there
+  spoofBtc: 50, // size gone from one $10 band
+  spoofRatio: 3, // the band held at least this many times the book's median band
+  spoofWindowMs: 1_000, // within this long
+  spoofHoldMs: 3_000, // after standing at least this long
+  spoofNearPct: 0.1, // while price was this close to the band
+  spoofTradeRatio: 0.2, // and trades in the band made up less than this share of it
   cooldownMs: 10 * 60_000, // per kind and side or price
 };
 
@@ -111,6 +117,11 @@ export class WallWatch {
     if (price > this.high) this.high = price;
   }
 
+  /** Stops following a band (reported elsewhere, e.g. as spoofing). */
+  forget(side, band) {
+    this.walls.delete(`${side}|${band}`);
+  }
+
   /** bids and asks: Map(price → BTC); returns events. */
   check(t, bids, asks) {
     const { wallBin: bin, wallBtc, wallRatio, wallHoldMs, cooldownMs } = this.cfg;
@@ -156,6 +167,99 @@ export class WallWatch {
     }
     this.low = Infinity;
     this.high = -Infinity;
+    return events;
+  }
+}
+
+/**
+ * Spoofing: a large band that had stood for a while vanishes within a second as price closes in
+ * on it, and trades in the band account for little of what vanished — the size was cancelled,
+ * not filled. Fed every book update (Bybit pushes about five a second), not the 10 s checks.
+ * The band holding the best bid or ask is left out: quotes at the touch are cancelled and
+ * re-posted all the time as price moves, which is market making, not a wall being pulled.
+ */
+export class SpoofWatch {
+  constructor(cfg = ALERT_DEFAULTS) {
+    this.cfg = cfg;
+    this.bands = { bid: new Map(), ask: new Map() }; // band → BTC
+    this.big = new Map(); // "bid|band" → { since, hist: [[t, size]] } while at least spoofBtc
+    this.trades = []; // [t, price, qty], last few seconds
+    this.typical = 0; // median band, refreshed every couple of seconds
+    this.typicalAt = -Infinity;
+    this.cool = new Cooldown();
+  }
+
+  // A band is "big" when it clears both the absolute floor and spoofRatio × the median band.
+  bigLine(t) {
+    if (t - this.typicalAt > 2_000) {
+      this.typical = median([...this.bands.bid.values(), ...this.bands.ask.values()].filter((q) => q > 0));
+      this.typicalAt = t;
+    }
+    return Math.max(this.cfg.spoofBtc, this.cfg.spoofRatio * this.typical);
+  }
+
+  /** The whole book was replaced (snapshot or reconnect) at time t; large bands are followed from then. */
+  reset(t, bids, asks) {
+    const bin = this.cfg.wallBin;
+    this.big.clear();
+    for (const [side, book] of [["bid", bids], ["ask", asks]]) {
+      const m = (this.bands[side] = new Map());
+      for (const [p, q] of book) {
+        const band = Math.floor(p / bin) * bin;
+        m.set(band, (m.get(band) ?? 0) + q);
+      }
+    }
+    this.typicalAt = -Infinity;
+    const line = this.bigLine(t);
+    for (const side of ["bid", "ask"]) for (const [band, size] of this.bands[side]) if (size >= line) this.big.set(`${side}|${band}`, { since: t, hist: [[t, size]] });
+  }
+
+  trade(t, price, qty) {
+    this.trades.push([t, price, qty]);
+    while (this.trades.length && this.trades[0][0] < t - 5 * this.cfg.spoofWindowMs) this.trades.shift();
+  }
+
+  /** changes: [side, price, size before, size after] from OrderBook.apply; top: OrderBook.best(). */
+  update(t, changes, top) {
+    const { mid } = top;
+    const { wallBin: bin, spoofBtc, spoofWindowMs, spoofHoldMs, spoofNearPct, spoofTradeRatio, cooldownMs } = this.cfg;
+    const touched = new Set();
+    for (const [side, p, before, after] of changes) {
+      const band = Math.floor(p / bin) * bin;
+      const m = this.bands[side];
+      m.set(band, (m.get(band) ?? 0) + after - before);
+      touched.add(`${side}|${band}`);
+    }
+    const events = [];
+    const line = this.bigLine(t);
+    for (const key of touched) {
+      const [side, b] = key.split("|");
+      const band = Number(b);
+      const size = this.bands[side].get(band) ?? 0;
+      let big = this.big.get(key);
+      if (size >= line) {
+        if (!big) this.big.set(key, (big = { since: t, hist: [] }));
+        big.hist.push([t, size]);
+        while (big.hist.length > 1 && big.hist[1][0] <= t - spoofWindowMs) big.hist.shift();
+        continue;
+      }
+      if (!big) continue;
+      this.big.delete(key);
+      // Its size one window ago (the last sample at or before then), or anything larger since.
+      let start = 0;
+      for (const [ht, hs] of big.hist) start = ht <= t - spoofWindowMs ? hs : Math.max(start, hs);
+      const gone = start - size;
+      if (t - big.since < spoofHoldMs || gone < spoofBtc) continue;
+      const touchBand = Math.floor((side === "bid" ? top.bid : top.ask) / bin) * bin;
+      if (side === "bid" ? band >= touchBand : band <= touchBand) continue;
+      const dist = side === "bid" ? (mid - (band + bin)) / mid : (band - mid) / mid;
+      if (dist * 100 > spoofNearPct) continue;
+      let traded = 0;
+      for (const [tt, price, qty] of this.trades) if (tt >= t - spoofWindowMs && price >= band && price < band + bin) traded += qty;
+      if (traded > spoofTradeRatio * gone) continue;
+      if (!this.cool.ready(key, t, cooldownMs)) continue;
+      events.push({ kind: "spoof", t, side, price: band, size: gone, traded, distPct: Math.max(0, dist * 100), heldMs: t - big.since });
+    }
     return events;
   }
 }
@@ -222,6 +326,8 @@ export function describe(e) {
       return `🧱 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)} 被吃掉（原本 ${e.size.toFixed(0)} BTC）（${at}）`;
     case "wall_pulled":
       return `🧱 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)} 撤單，價格沒碰到（原本 ${e.size.toFixed(0)} BTC）（${at}）`;
+    case "spoof":
+      return `🎭 疑似誘單 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)}–${priceText(e.price + 10)}：價格距離 ${e.distPct.toFixed(2)}% 時，1 秒內撤掉 ${e.size.toFixed(0)} BTC，期間只成交 ${e.traded.toFixed(1)} BTC（掛了 ${Math.round(e.heldMs / 1000)} 秒）（${at}）`;
     case "iceberg":
       return `🧊 冰山 ${e.side === "bid" ? "買方" : "賣方"} ${priceText(e.price)} 已成交 ${e.filled.toFixed(1)} BTC，最多只顯示 ${e.shown.toFixed(1)} BTC（${at}）`;
     case "test":
