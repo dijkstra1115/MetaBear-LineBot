@@ -226,19 +226,70 @@ input {
 .note p {
   margin: 4px 0;
 }
+.help summary {
+  color: var(--text);
+  cursor: pointer;
+}
 @media (max-width: 720px) {
+  .bar {
+    gap: 6px 12px;
+    padding: 8px 12px;
+  }
+  .brand span,
+  .bar h1 em {
+    display: none;
+  }
+  .bar h1 {
+    font-size: 15px;
+  }
+  /* One row of controls that scrolls sideways instead of wrapping over the chart. */
   .controls {
+    order: 3;
+    flex-wrap: nowrap;
+    width: 100%;
     margin-left: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .controls::-webkit-scrollbar {
+    display: none;
+  }
+  .controls > * {
+    flex: none;
+    white-space: nowrap;
+  }
+  .controls select,
+  .zoom button,
+  .ind summary {
+    min-height: 36px;
   }
   .ind-panel {
     position: fixed;
-    left: 16px;
-    right: 16px;
+    top: 92px;
+    left: 12px;
+    right: 12px;
     flex-direction: column;
-    max-height: 70vh;
+    gap: 12px;
+    max-height: calc(100vh - 108px);
+    max-height: calc(100dvh - 108px);
     overflow-y: auto;
   }
+  .ind-list label {
+    min-height: 32px;
+  }
+  .readout {
+    max-height: 4.8em;
+    padding: 6px 12px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.55;
+    white-space: normal;
+  }
   .stage {
-    height: max(520px, calc(100vh - 240px));
+    height: max(420px, calc(100vh - 170px));
+    height: max(420px, calc(100dvh - 170px));
+  }
+  .note {
+    padding: 8px 12px 24px;
   }
 }

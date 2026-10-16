@@ -59,8 +59,11 @@ const INDICATORS = [
   ["imb", "pane", "掛單簿失衡", false],
 ];
 const PREFS_KEY = "metabear-orderflow-indicators";
+// Phones (most visitors arrive from LINE) start with fewer panes so the price chart keeps room.
+const NARROW = matchMedia("(max-width: 720px)").matches;
+const NARROW_OFF = new Set(["stats", "ratio", "levels"]);
 const prefs = (() => {
-  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def])), printMin: 10 };
+  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: 10 };
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     if (saved?.show) for (const id of Object.keys(out.show)) if (typeof saved.show[id] === "boolean") out.show[id] = saved.show[id];
@@ -372,7 +375,7 @@ const STATS = [
 ];
 
 function layout() {
-  const axisW = 74;
+  const axisW = size.w < 560 ? 58 : 74;
   const timeH = 24;
   const plotW = size.w - axisW;
   const avail = size.h - timeH;
@@ -1329,9 +1332,16 @@ function resetY() {
 const pointers = new Map();
 let pinch = null;
 let dragAxis = false;
+let tap = null; // a touch that has not moved yet: lifting it selects the bar under it
+const hoverAt = (clientX, clientY) => {
+  const rect = canvas.getBoundingClientRect();
+  const L = layout();
+  hover = { i: Math.floor(view.end - (L.plotW - (clientX - rect.left)) / view.barW), y: clientY - rect.top };
+};
 canvas.addEventListener("pointerdown", (e) => {
   canvas.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  tap = e.pointerType === "touch" && pointers.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
   const L = layout();
   const rect = canvas.getBoundingClientRect();
   const y = e.clientY - rect.top;
@@ -1347,8 +1357,7 @@ canvas.addEventListener("dblclick", (e) => {
 });
 canvas.addEventListener("pointermove", (e) => {
   const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const L = layout();
+  if (tap?.id === e.pointerId && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap = null;
   if (pointers.has(e.pointerId)) {
     const last = pointers.get(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1368,17 +1377,23 @@ canvas.addEventListener("pointermove", (e) => {
     if (view.yScale !== 1 || view.yShift !== 0) view.yShift += (e.clientY - last.y) * lastPricePerPx;
     clampView();
   }
-  hover = { i: Math.floor(view.end - (L.plotW - x) / view.barW), y: e.clientY - rect.top };
+  // A finger dragging the chart pans it; the crosshair stays where it was tapped.
+  if (e.pointerType !== "touch") hoverAt(e.clientX, e.clientY);
   redraw();
 });
 const release = (e) => {
+  if (e.type === "pointerup" && tap?.id === e.pointerId) {
+    hoverAt(e.clientX, e.clientY);
+    redraw();
+  }
+  tap = null;
   pointers.delete(e.pointerId);
   if (pointers.size < 2) pinch = null;
 };
 canvas.addEventListener("pointerup", release);
 canvas.addEventListener("pointercancel", release);
-canvas.addEventListener("pointerleave", () => {
-  if (!pointers.size) {
+canvas.addEventListener("pointerleave", (e) => {
+  if (e.pointerType !== "touch" && !pointers.size) {
     hover = null;
     redraw();
   }
@@ -1460,13 +1475,17 @@ function scheduleRefresh() {
   }, 300);
 }
 
+// Returns resume(), which recycles the socket if it went quiet, e.g. while a phone kept the
+// page in the background.
 function connectWs(url, { onOpen, onMessage, ping: pingText }) {
   let delay = 1000;
+  let ws;
+  let lastMessage = Date.now();
   const open = () => {
-    const ws = new WebSocket(url);
+    ws = new WebSocket(url);
     let ping;
     // Recycle sockets that hang or go silent after a network drop.
-    let lastMessage = Date.now();
+    lastMessage = Date.now();
     const watchdog = setInterval(() => {
       if (Date.now() - lastMessage > 45_000) {
         ws.close();
@@ -1494,6 +1513,12 @@ function connectWs(url, { onOpen, onMessage, ping: pingText }) {
     };
   };
   open();
+  return () => {
+    if (Date.now() - lastMessage < 5_000 || ws.readyState !== WebSocket.OPEN) return;
+    delay = 1000;
+    ws.close();
+    ws.onclose?.();
+  };
 }
 
 function onTrade(tr) {
@@ -1512,7 +1537,7 @@ function snapshotBook() {
 }
 
 function startStreams() {
-  connectWs(WS_URL, {
+  const resumeBybit = connectWs(WS_URL, {
     ping: PING,
     onOpen: (ws) => {
       stream.gaps.reconnect();
@@ -1538,6 +1563,12 @@ function startStreams() {
     });
   }
   setInterval(snapshotBook, 1_000);
+  // Phones suspend background pages: on return, catch up from the collector and reconnect.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    resumeBybit();
+    pollRecent();
+  });
 }
 
 // ---------- live ----------
@@ -1629,6 +1660,11 @@ function buildIndicatorPanel() {
     row.append(box, label);
     $(`ind-${where}`).append(row);
   }
+  // Tapping anywhere else closes the menu, which covers most of a phone screen.
+  const menu = document.querySelector(".ind");
+  document.addEventListener("pointerdown", (e) => {
+    if (menu.open && !menu.contains(e.target)) menu.open = false;
+  });
   ui.printMin.value = String(prefs.printMin);
   ui.printMin.addEventListener("change", () => {
     prefs.printMin = Number(ui.printMin.value);
@@ -1649,7 +1685,7 @@ try {
     "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
   build();
   view.end = bars.length + 2;
-  view.barW = 14;
+  view.barW = NARROW ? 9 : 14;
   clampView();
   ui.status.hidden = true;
   resize();
