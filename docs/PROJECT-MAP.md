@@ -8,7 +8,7 @@
 
 | 狀態 | 範圍 | 程式位置 |
 | --- | --- | --- |
-| 持續維護 | 網站、圖文教學、19 堂動態課程 | public/、web/ |
+| 持續維護 | 網站、圖文教學、23 堂動態課程 | public/、web/ |
 | 持續維護 | LINE Bot、CRM、自動核實、VIP 邀請、行銷與分析師報單 | src/、migrations/ |
 | **核心方向** | 訂單流平台：研究內容、交易軟體、警報訂閱、電影級覆盤（2026-10-12 確認） | [VISION.md](VISION.md)；網頁 public/lab/orderflow/，資料 Worker src/orderflow/（[架構](ORDERFLOW-PLATFORM.md)） |
 | 繼續開發，同等優先 | FLOW ARENA 單人沙盤（半回合制、策略族群 NPC）；2–3 人 PvP 等沙盤穩定後再開發 | main 的 public/arena/；[說明](FLOW-ARENA.md) |
@@ -20,7 +20,7 @@
 | 封存 | Python/FastAPI/Zeabur LINE Bot | archive/2026-09-29/main/app/、alembic/ |
 | 封存、退出公開網站 | 全部舊版學院、SVG 課程及被移除的故事 | archive/2026-09-29/main/public/orderflow/ |
 
-使用者沒有選擇保留任何舊版公開體驗。現行 19 課維持，不復活舊版長篇、重返價位、舊 CVD、標記價格、六段旅程及舊實戰／即時工作台。
+使用者沒有選擇保留任何舊版公開體驗。現行 23 課維持（2026-09-29 整理時為 19 課，之後新增 4 課），不復活舊版長篇、重返價位、舊 CVD、標記價格、六段旅程及舊實戰／即時工作台。
 
 2026-10-12：新的訂單流平台（`public/lab/orderflow/`）是依 [VISION.md](VISION.md) 重新設計的產品，不是復活舊版即時工作台。
 
@@ -32,7 +32,8 @@
 | --- | --- | --- |
 | legacy/flow-arena-v7-2026-10-03（固定標籤） | 5b968b6 | 舊版完整歷史；31 個相關檔案另存 legacy，SHA-256 可驗證。PvP 重做時可參考 lockstep 架構，勿重新部署舊設定。 |
 | flow-arena-sandbox（已整合） | b332ff5 | 新版沙盤、頁面、教學、排行榜、測試與平衡實驗已合併至 main。 |
-| origin/claude/kind-wozniak-8m71aw | 8ad5e19 | 46 秒 promo，16:9／9:16；以此提交接續，避免覆蓋新版 Logo 與封存決策。 |
+| claude/kind-wozniak-8m71aw（已整合、遠端已刪除） | 8ad5e19 | 46 秒 promo，16:9／9:16；已併入 main。 |
+| feat/orderflow-lab、feat/orderflow-platform（已整合、遠端已刪除） | — | 訂單流實驗室與 Bybit 收集器，2026-10-14～10-16 已併入 main；2026-10-20 刪除遠端分支。 |
 
 整合提交保留 main、flow-arena 與 flow-arena-sandbox 的完整父提交歷史。工作檔案採用新版 main 與 sandbox 的實作，舊對戰、現貨沙盒與暫停實驗不回到公開網站。既有 archive 快照保持原樣。
 

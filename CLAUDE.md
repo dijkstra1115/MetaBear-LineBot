@@ -200,7 +200,7 @@ Not committed: `pages/dist/`, `dist/backend/`, `motion/out/`, `.wrangler/`,
 
 - `public/orderflow/academy-catalog.js` is the single source of truth for lesson
   IDs, numbers, titles, prerequisites, kind and status (currently 23 motion
-  lessons; some docs still say 19).
+  lessons; the 2026-09-29 records and the promo video still show 19).
 - A lesson is `public/orderflow/motion/lessons/<id>.js` exporting `lesson` with
   `draw(ctx, t)`. `draw` must be a **pure function of `t`**: no retained state,
   no `Math.random()`/`Date.now()` (use `hash`, `rnd`, `noise1` from `core.js`).

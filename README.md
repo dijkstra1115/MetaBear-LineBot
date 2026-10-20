@@ -9,7 +9,7 @@
 | 系統 | 入口／程式 |
 | --- | --- |
 | 品牌網站與圖文教學 | /、/learn；public/、web/ |
-| 19 堂動態課程 | /orderflow/；public/orderflow/motion/ |
+| 23 堂動態課程 | /orderflow/；public/orderflow/motion/ |
 | LINE Bot、CRM、BingX 核實 | src/、migrations/；/admin |
 | 分析師報單與登入 | /desk、/login；src/signals.ts、src/native-auth.ts |
 | 單課影片與 86 秒 Showreel | motion/；[製作說明](docs/ACADEMY-MOTION.md) |
