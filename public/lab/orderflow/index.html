@@ -110,6 +110,22 @@
       <button id="latest" type="button" aria-label="回到最新並恢復自動價格範圍">最新 →|</button>
     </div>
     <p id="status" class="status">載入資料中…</p>
+    <!-- Replay mode (?case=<id>): playback controls and the script's captions. -->
+    <div id="replay" class="replay" role="group" aria-label="回放控制" hidden>
+      <button id="rp-play" type="button" aria-label="播放">▶</button>
+      <button id="rp-restart" type="button" aria-label="從頭播放">↺</button>
+      <select id="rp-speed" aria-label="播放速度">
+        <option value="1">1×</option>
+        <option value="2">2×</option>
+        <option value="5">5×</option>
+        <option value="10">10×</option>
+        <option value="30">30×</option>
+        <option value="60">60×</option>
+      </select>
+      <input id="rp-seek" type="range" min="0" max="1000" value="0" step="1" aria-label="回放進度" />
+      <span id="rp-clock" class="rp-clock"></span>
+    </div>
+    <p id="caption" class="caption" aria-live="polite" hidden></p>
   </main>
   <div id="readout" class="sr-only" aria-live="polite"></div>
 

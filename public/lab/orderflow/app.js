@@ -7,6 +7,7 @@ import { BOOK_CHUNK_MS, BOOK_STEP_MS, BOOK_TICK, BOOK_TOPIC, OrderBook, PING, PR
 import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
 import { readingsAt } from "./metrics.js";
+import { Player, drawOverlay, prepare } from "./replay.js";
 import { SIGNALS, aggregate as aggregateSignals, detect, valueArea } from "./signals.js";
 
 const API = "/api/orderflow/btcusdt";
@@ -15,6 +16,9 @@ const DAY = 86_400_000;
 // A shared link (see shareUrl) opens the same view: ?tf=&mode=&at=<bar start ms>&ind=<ids>&pm=.
 const query = new URLSearchParams(location.search);
 const SHARED_AT = Number(query.get("at")) || 0;
+// ?case=<id> replays a recorded case from cases/ instead of loading live data; ?rec=1 hides the
+// controls and plays it through for screen recording.
+const CASE = /^[\w-]{1,40}$/.test(query.get("case") ?? "") ? query.get("case") : null;
 // Days of history to load (today included): ?days=N, enough to reach a shared bar, at most the
 // 30 days the collector keeps.
 const DAYS = Math.min(
@@ -120,6 +124,7 @@ let events = []; // order-flow events on closed 5-minute bars
 let eventsKey = "";
 let bars = [];
 let tick = 25;
+let replay = null; // replay mode: { player, prepared, raw, sec, printsN, readingsN, playing, last, viewKey }
 // end: bar index at the right edge; follow: keep the newest bar in view as it forms (off once the
 // user pans, back on at the right edge or with the latest button); yRange: a price scale the user
 // dragged or zoomed, null for automatic.
@@ -578,6 +583,17 @@ function drawPrice(L, from, to) {
     lo = Math.min(lo, bars[i].l);
     hi = Math.max(hi, bars[i].h + tick);
   }
+  // A replay keeps its open position and the levels it talks about (within 2 %) on screen.
+  if (replay) {
+    const { position, lines } = replay.player.state;
+    const near = [...lines.values()].map((l) => l.price).filter((p) => Math.abs(p / bars[to].c - 1) < 0.02);
+    // Footprint cells need the room; the target joins the scale once the script leaves them.
+    if (position) near.push(position.stop, ...(ui.mode.value === "footprint" ? [] : [position.target]));
+    for (const p of near) {
+      lo = Math.min(lo, p - tick);
+      hi = Math.max(hi, p + tick);
+    }
+  }
   const pad = (hi - lo) * 0.06 || tick;
   lo -= pad;
   hi += pad;
@@ -704,6 +720,7 @@ function drawPrice(L, from, to) {
     ctx.font = `11px ${MONO}`;
     ctx.fillText(fmtPrice(last.c), L.plotW + 8, ly);
   }
+  if (replay) drawReplay(L, P, yOf, last.c);
   ctx.strokeStyle = C.line;
   ctx.beginPath();
   ctx.moveTo(0, P.y + P.h + 0.5);
@@ -1463,7 +1480,7 @@ function drawLegend(L) {
   const narrow = L.plotW < 600;
   const gap = narrow ? " " : "  ";
   const parts = [
-    ...(narrow ? [] : [["BTCUSDT", C.text], [` · Bybit · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.dim]]),
+    ...(narrow ? [] : [["BTCUSDT", C.text], [` · ${replay ? "Binance" : "Bybit"} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.dim]]),
     ["O ", C.dim],
     [fmtPrice(b.o), C.muted],
     [`${gap}H `, C.dim],
@@ -2123,34 +2140,197 @@ $("share-copy").addEventListener("click", async () => {
   setTimeout(() => ($("share-copy").textContent = "複製連結"), 1600);
 });
 
-// ---------- boot ----------
+// ---------- replay ----------
 
-try {
-  await loadDays();
-  if (!store.bars.size) throw new Error("no data");
-  $("source").textContent =
-    "資料：Bybit BTCUSDT 永續合約（USDT 本位，僅單一交易所）。歷史足跡由 Bybit 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄；" +
-    "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是 Bybit 全體帳戶多空比。資料保留 30 天。" +
-    "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
+// Screen x of a moment, within its bar; null outside the loaded bars.
+function xAtTime(t, L) {
+  const tfMs = Number(ui.tf.value) * MINUTE;
+  const i = barIndex.get(Math.floor(t / tfMs) * tfMs);
+  if (i == null) return t >= (bars.at(-1)?.end ?? Infinity) ? L.plotW : null;
+  return xOf(i, L) + ((t - bars[i].t) / tfMs) * view.barW;
+}
+
+function drawReplay(L, P, yOf, lastPrice) {
+  drawOverlay(replay.player, { ctx, plotW: L.plotW, axisW: L.axisW, top: P.y, bottom: P.y + P.h, xAt: (t) => xAtTime(t, L), barW: view.barW, yOf, font: MONO, fmtPrice, last: lastPrice });
+  ctx.font = `11px ${MONO}`;
+  ctx.textBaseline = "bottom";
+  ctx.fillStyle = C.dim;
+  ctx.fillText(`歷史資料回放 · ${replay.raw.source} · 非投資建議`, 10, P.y + P.h - 8);
+  const cap = $("caption");
+  // Under the replay controls (or the top edge when recording), clear of the newest bars' prices.
+  cap.style.top = `${Math.round(P.y + (document.body.classList.contains("rec") ? 14 : 56))}px`;
+}
+
+// Puts what a live viewer would have had at the replay clock into the chart's stores.
+function replayFeed() {
+  const { player, prepared, raw } = replay;
+  const sec = Math.floor(player.t / 1000);
+  if (sec === replay.sec) return false;
+  if (sec < replay.sec) {
+    prints.clear();
+    printsDirty = true;
+    store.metrics.clear();
+    replay.printsN = 0;
+    replay.readingsN = 0;
+  }
+  replay.sec = sec;
+  store.bars = new Map(prepared.rowsUntil(player.t).map((r) => [r[0], r]));
+  const pn = prepared.printsUntil(player.t);
+  for (; replay.printsN < pn; replay.printsN++) addPrint(raw.prints[replay.printsN]);
+  const rn = prepared.readingsUntil(player.t);
+  for (; replay.readingsN < rn; replay.readingsN++) store.metrics.set(raw.metrics[replay.readingsN][0], raw.metrics[replay.readingsN]);
+  return true;
+}
+
+// The script's view steps: timeframe, chart type, bar width and indicators.
+function replayView() {
+  const v = replay.player.state.view;
+  const key = JSON.stringify(v);
+  if (key === replay.viewKey) return;
+  replay.viewKey = key;
+  if (v.ind) for (const [id, shown] of Object.entries(v.ind)) if (id in prefs.show) prefs.show[id] = !!shown;
+  if (v.printMin) prefs.printMin = v.printMin;
+  if (v.mode && ui.mode.value !== v.mode) document.querySelector(`[data-mode="${v.mode}"]`)?.click();
+  if (v.tf && ui.tf.value !== String(v.tf)) document.querySelector(`[data-tf="${v.tf}"]`)?.click();
+  if (v.barW) {
+    // Scripts are written for a desktop-wide chart; narrower screens scale bars down, keeping
+    // footprint bars wide enough for their numbers.
+    const scaled = v.barW * Math.min(1, layout().plotW / 1100);
+    view.barW = ui.mode.value === "footprint" ? Math.max(64, scaled) : scaled;
+    view.follow = true;
+    view.end = bars.length + RIGHT_PAD;
+    clampView();
+  }
+}
+
+const taipeiClock = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+let seeking = false;
+
+function replaySync() {
+  const { player } = replay;
+  const fed = replayFeed();
+  if (fed) refresh(true);
+  replayView();
+  const s = player.state;
+  const cap = $("caption");
+  if (cap.textContent !== s.caption) cap.textContent = s.caption;
+  cap.hidden = !s.caption;
+  const speed = $("rp-speed");
+  if (speed.value !== String(s.speed)) {
+    if (![...speed.options].some((o) => o.value === String(s.speed))) speed.add(new Option(`${s.speed}×`, String(s.speed)));
+    speed.value = String(s.speed);
+  }
+  $("rp-clock").textContent = taipeiClock.format(player.t).replace(/\s+/, " ");
+  if (!seeking) $("rp-seek").value = String(Math.round(((player.t - player.data.start) / (player.data.end - player.data.start)) * 1000));
+  ui.live.textContent = s.ended ? "回放結束" : replay.playing ? "歷史回放中" : "歷史回放 · 已暫停";
+  if (!fed) redraw();
+}
+
+function setPlaying(playing) {
+  if (playing && replay.player.state.ended) replay.player.restart();
+  replay.playing = playing;
+  $("rp-play").textContent = playing ? "❚❚" : "▶";
+  $("rp-play").setAttribute("aria-label", playing ? "暫停" : "播放");
+}
+
+function replayLoop(now) {
+  const dt = Math.min(250, now - replay.last);
+  replay.last = now;
+  if (replay.playing) {
+    replay.player.advance(dt);
+    if (replay.player.state.ended) setPlaying(false);
+  }
+  replaySync();
+  requestAnimationFrame(replayLoop);
+}
+
+async function startReplay() {
+  const load = (file) => fetch(`./cases/${file}`).then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))));
+  const script = await load(`${CASE}.json`);
+  const raw = await load(script.data ?? `${CASE}.data.json`);
+  const prepared = prepare(raw);
+  const player = new Player(script, prepared);
+  replay = { player, prepared, raw, sec: -1, printsN: 0, readingsN: 0, playing: false, last: performance.now(), viewKey: "" };
+  // Book heat and liquidation markers were not recorded for replays.
+  prefs.show.heat = false;
+  prefs.show.liqmark = false;
+  prefs.show.liq = false;
+  document.title = `${script.title ?? CASE} · MetaBear 回放`;
+  ui.live.dataset.state = "replay";
+  document.querySelector(".symbol small").textContent = "永續 · Binance";
+  $("source").textContent = `資料：${raw.source} BTCUSDT 歷史逐筆成交，依原本的時間逐秒重播；足跡格距 $${raw.tick}。OI 為交易所每 5 分鐘的公開數據。這是過去行情的回放，不是即時資料，也不是投資建議。`;
+  $("replay").hidden = false;
+  replayFeed();
   build();
-  view.end = bars.length + RIGHT_PAD;
-  view.barW = NARROW ? 9 : 14;
   ui.status.hidden = true;
   resize();
-  // A shared bar is selected and placed about two thirds across the chart.
-  const shared = SHARED_AT ? bars.findIndex((b) => b.t <= SHARED_AT && SHARED_AT < b.end) : -1;
-  if (shared >= 0) {
-    pinnedT = bars[shared].t;
-    view.follow = false;
-    hover = { i: shared, y: -1 };
-    view.end = shared + 1 + (layout().plotW / view.barW) * 0.35;
-  }
+  if (!player.state.view.barW) view.barW = NARROW ? 9 : 14;
+  replayView();
+  view.end = bars.length + RIGHT_PAD;
   clampView();
-  redraw();
-  updateReadout();
-  startStreams();
-  setInterval(pollRecent, 5_000);
-  setInterval(showLive, 1_000);
-} catch {
-  ui.status.textContent = "找不到資料。本機請先執行 npm run orderflow:dev，再用 npm run lab:orderflow:bybit 匯入歷史。";
+  $("rp-play").addEventListener("click", () => setPlaying(!replay.playing));
+  $("rp-restart").addEventListener("click", () => {
+    player.restart();
+    replay.viewKey = "";
+    view.yRange = null;
+  });
+  $("rp-speed").addEventListener("change", (e) => (player.state.speed = Number(e.target.value)));
+  const seek = $("rp-seek");
+  seek.addEventListener("input", () => {
+    seeking = true;
+    player.seek(player.data.start + (Number(seek.value) / 1000) * (player.data.end - player.data.start));
+    replay.viewKey = "";
+  });
+  seek.addEventListener("change", () => (seeking = false));
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== " " || e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLButtonElement) return;
+    e.preventDefault();
+    setPlaying(!replay.playing);
+  });
+  if (query.get("rec") === "1") {
+    document.body.classList.add("rec");
+    resize();
+    setTimeout(() => setPlaying(true), 1500);
+  }
+  requestAnimationFrame(replayLoop);
+}
+
+// ---------- boot ----------
+
+if (CASE) {
+  try {
+    await startReplay();
+  } catch {
+    ui.status.textContent = `找不到回放案例「${CASE}」。`;
+  }
+} else {
+  try {
+    await loadDays();
+    if (!store.bars.size) throw new Error("no data");
+    $("source").textContent =
+      "資料：Bybit BTCUSDT 永續合約（USDT 本位，僅單一交易所）。歷史足跡由 Bybit 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄；" +
+      "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是 Bybit 全體帳戶多空比。資料保留 30 天。" +
+      "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
+    build();
+    view.end = bars.length + RIGHT_PAD;
+    view.barW = NARROW ? 9 : 14;
+    ui.status.hidden = true;
+    resize();
+    // A shared bar is selected and placed about two thirds across the chart.
+    const shared = SHARED_AT ? bars.findIndex((b) => b.t <= SHARED_AT && SHARED_AT < b.end) : -1;
+    if (shared >= 0) {
+      pinnedT = bars[shared].t;
+      view.follow = false;
+      hover = { i: shared, y: -1 };
+      view.end = shared + 1 + (layout().plotW / view.barW) * 0.35;
+    }
+    clampView();
+    redraw();
+    updateReadout();
+    startStreams();
+    setInterval(pollRecent, 5_000);
+    setInterval(showLive, 1_000);
+  } catch {
+    ui.status.textContent = "找不到資料。本機請先執行 npm run orderflow:dev，再用 npm run lab:orderflow:bybit 匯入歷史。";
+  }
 }

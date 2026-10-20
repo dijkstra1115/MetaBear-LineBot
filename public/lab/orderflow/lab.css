@@ -411,3 +411,101 @@ input {
     height: max(440px, calc(100dvh - var(--top) - 40px));
   }
 }
+
+/* ---------- replay (?case=<id>) ---------- */
+.live[data-state="replay"]::before {
+  background: var(--gold);
+}
+.replay {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(560px, calc(100% - 100px));
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(10, 16, 24, 0.92);
+  transform: translateX(-50%);
+}
+.replay[hidden] {
+  display: none;
+}
+.replay button,
+.replay select {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--raise);
+  font-family: var(--f-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.replay button:hover {
+  border-color: var(--teal);
+}
+.replay input[type="range"] {
+  flex: 1;
+  min-width: 60px;
+  accent-color: var(--gold);
+}
+.rp-clock {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 12px;
+}
+/* The script's narration, placed by app.js near the top of the price pane. */
+.caption {
+  position: absolute;
+  left: 50%;
+  max-width: min(720px, calc(100% - 110px));
+  margin: 0;
+  padding: 9px 16px;
+  border: 1px solid rgba(232, 189, 125, 0.35);
+  border-radius: 10px;
+  background: rgba(5, 9, 15, 0.88);
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.caption[hidden] {
+  display: none;
+}
+/* ?rec=1: a clean frame for screen recording. */
+.rec .tools,
+.rec .chart-tools,
+.rec .replay,
+.rec .note {
+  display: none;
+}
+.rec .stage {
+  height: calc(100vh - var(--top));
+  height: calc(100dvh - var(--top));
+}
+@media (max-width: 720px) {
+  .rec {
+    --top: 48px;
+  }
+  .rec .topbar {
+    flex-wrap: nowrap;
+  }
+  .replay {
+    width: calc(100% - 76px);
+    left: 8px;
+    transform: none;
+  }
+  .caption {
+    max-width: calc(100% - 80px);
+    left: calc(50% - 29px);
+    font-size: 15px;
+  }
+}
