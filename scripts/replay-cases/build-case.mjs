@@ -87,7 +87,7 @@ const slices = [...seconds.entries()]
 const prints = groupPrints(trades).filter((p) => p[3] >= PRINT_KEEP);
 const readings = metrics.filter((m) => m[0] >= HISTORY - DAY && m[0] <= END).sort((a, b) => a[0] - b[0]);
 
-const out = { id: ID, symbol: "BTCUSDT", source: "Binance USDⓈ-M 永續合約", tick: TICK, history: HISTORY, start: START, end: END, rows, slices, prints, metrics: readings };
+const out = { id: ID, symbol: "BTCUSDT", source: "Binance", tick: TICK, history: HISTORY, start: START, end: END, rows, slices, prints, metrics: readings };
 const dir = new URL("../../public/lab/orderflow/cases/", import.meta.url);
 await mkdir(dir, { recursive: true });
 const json = JSON.stringify(out);

@@ -235,8 +235,15 @@ export function drawOverlay(player, g) {
     ctx.setLineDash([]);
     ctx.font = `600 12px ${font}`;
     ctx.textBaseline = "bottom";
+    if (line.label) {
+      // A dark plate keeps the label readable over footprint numbers.
+      const w = ctx.measureText(line.label).width;
+      ctx.fillStyle = "rgba(5,9,15,0.85)";
+      ctx.fillRect(x0 + 4, y - 21, w + 8, 18);
+      ctx.fillStyle = `rgb(${rgb})`;
+      ctx.fillText(line.label, x0 + 8, y - 4);
+    }
     ctx.fillStyle = `rgb(${rgb})`;
-    if (line.label) ctx.fillText(line.label, x0 + 8, y - 4);
     ctx.fillRect(plotW, y - 9, axisW, 18);
     ctx.fillStyle = "#05090f";
     ctx.textBaseline = "middle";

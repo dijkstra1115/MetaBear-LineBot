@@ -11,7 +11,7 @@
       "mode": "candles",
       "barW": 12,
       "printMin": 50,
-      "ind": { "profile": true, "prints": true, "vwap": true, "levels": false, "events": false, "lmap": false, "stats": false, "volume": true, "delta": false, "cvd": true, "oi": false, "doi": false, "funding": false, "ratio": false, "imb": false },
+      "ind": { "profile": true, "prints": true, "vwap": true, "levels": false, "events": false, "lmap": false, "stats": false, "volume": false, "delta": false, "cvd": false, "oi": false, "doi": false, "funding": false, "ratio": false, "imb": false },
       "line": {
         "id": "level",
         "price": 77477,

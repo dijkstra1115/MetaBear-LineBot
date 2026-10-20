@@ -129,7 +129,7 @@ let replay = null; // replay mode: { player, prepared, raw, sec, printsN, readin
 // user pans, back on at the right edge or with the latest button); yRange: a price scale the user
 // dragged or zoomed, null for automatic.
 const view = { end: 0, barW: 14, yRange: null, follow: true };
-const RIGHT_PAD = 3; // empty bars right of the newest one
+let RIGHT_PAD = 3; // empty bars right of the newest one (one when recording a replay)
 let lastAuto = null; // the automatic price range of the last frame
 // Sub-pane heights the user dragged, per pane id, kept per browser apart from the indicator choice.
 const PANES_KEY = "metabear-orderflow-panes";
@@ -2152,13 +2152,14 @@ function xAtTime(t, L) {
 
 function drawReplay(L, P, yOf, lastPrice) {
   drawOverlay(replay.player, { ctx, plotW: L.plotW, axisW: L.axisW, top: P.y, bottom: P.y + P.h, xAt: (t) => xAtTime(t, L), barW: view.barW, yOf, font: MONO, fmtPrice, last: lastPrice });
+  // A recording keeps the frame clean (the post says it is a replay) and shows captions in a band
+  // under the chart; the page itself labels the replay and puts captions under its controls.
+  if (document.body.classList.contains("rec")) return;
   ctx.font = `11px ${MONO}`;
   ctx.textBaseline = "bottom";
   ctx.fillStyle = C.dim;
   ctx.fillText(`歷史資料回放 · ${replay.raw.source} · 非投資建議`, 10, P.y + P.h - 8);
-  const cap = $("caption");
-  // Under the replay controls (or the top edge when recording), clear of the newest bars' prices.
-  cap.style.top = `${Math.round(P.y + (document.body.classList.contains("rec") ? 14 : 56))}px`;
+  $("caption").style.top = `${Math.round(P.y + 56)}px`;
 }
 
 // Puts what a live viewer would have had at the replay clock into the chart's stores.
@@ -2258,7 +2259,7 @@ async function startReplay() {
   document.title = `${script.title ?? CASE} · MetaBear 回放`;
   ui.live.dataset.state = "replay";
   document.querySelector(".symbol small").textContent = "永續 · Binance";
-  $("source").textContent = `資料：${raw.source} BTCUSDT 歷史逐筆成交，依原本的時間逐秒重播；足跡格距 $${raw.tick}。OI 為交易所每 5 分鐘的公開數據。這是過去行情的回放，不是即時資料，也不是投資建議。`;
+  $("source").textContent = `資料：${raw.source} BTCUSDT 永續合約歷史逐筆成交，依原本的時間逐秒重播；足跡格距 $${raw.tick}。OI 為交易所每 5 分鐘的公開數據。這是過去行情的回放，不是即時資料，也不是投資建議。`;
   $("replay").hidden = false;
   replayFeed();
   build();
@@ -2289,6 +2290,8 @@ async function startReplay() {
   });
   if (query.get("rec") === "1") {
     document.body.classList.add("rec");
+    RIGHT_PAD = 1;
+    $("caption").style.top = ""; // the band's CSS places it
     resize();
     setTimeout(() => setPlaying(true), 1500);
   }

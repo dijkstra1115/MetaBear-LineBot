@@ -480,16 +480,41 @@ input {
 .caption[hidden] {
   display: none;
 }
-/* ?rec=1: a clean frame for screen recording. */
+/* ?rec=1: a clean frame for screen recording, with the captions in a band under the chart. */
+.rec {
+  --band: 22vh;
+}
 .rec .tools,
 .rec .chart-tools,
 .rec .replay,
+.rec .live,
 .rec .note {
   display: none;
 }
 .rec .stage {
-  height: calc(100vh - var(--top));
-  height: calc(100dvh - var(--top));
+  height: calc(100vh - var(--top) - var(--band));
+  height: calc(100dvh - var(--top) - var(--band));
+}
+.rec .caption {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  height: var(--band);
+  padding: 0 28px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--panel);
+  font-size: 24px;
+  transform: none;
+}
+.rec .caption[hidden] {
+  display: none;
 }
 @media (max-width: 720px) {
   .rec {
@@ -507,5 +532,10 @@ input {
     max-width: calc(100% - 80px);
     left: calc(50% - 29px);
     font-size: 15px;
+  }
+  .rec .caption {
+    left: 0;
+    max-width: none;
+    font-size: 20px;
   }
 }
