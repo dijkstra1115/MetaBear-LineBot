@@ -23,8 +23,11 @@ const FIELDS = [
   ["icebergBtc", "冰山成交量（BTC）"],
   ["icebergRatio", "冰山倍數（× 顯示量）"],
   ["cooldownMs", "同一事件冷卻（秒）"],
+  ["levelTolPct", "關鍵位距離（%）"],
+  ["levelCooldownMs", "同一關鍵位冷卻（秒）"],
+  ["dailyCap", "每天最多推送（則）"],
 ];
-const STATES = { pending: "待送", sent: "已送", muted: "已關閉", capped: "超過上限", logged: "只記錄", undelivered: "未送達" };
+const STATES = { pending: "待送", sent: "已送", muted: "已關閉", capped: "超過上限", logged: "只記錄", undelivered: "未送達", offlevel: "不在關鍵位", repeat: "同一關鍵位冷卻中" };
 const seconds = (key) => key.endsWith("Ms");
 const taipei = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 
@@ -50,6 +53,10 @@ function render(d) {
   $("summary").textContent = `模式：${d.mode === "live" ? "推送到 LINE" : "只記錄"}。今天已推送 ${d.sentToday} 則，上限 ${d.dailyCap} 則（上限只限制市場通知）。`;
   $("marketOn").checked = d.config.marketOn === 1;
   $("healthOn").checked = d.config.healthOn === 1;
+  $("levelOn").checked = d.config.levelOn === 1;
+  $("levels").textContent = d.levels?.length
+    ? `目前的關鍵位（台灣日）：${d.levels.map((L) => `${L.label} ${L.price.toLocaleString("en-US")}`).join("、")}`
+    : "目前沒有關鍵位：收集器還沒有前一個台灣日的資料。";
   const form = $("config");
   form.replaceChildren(
     ...FIELDS.filter(([k]) => k in d.config).map(([k, label]) => {
@@ -126,7 +133,7 @@ $("logout").addEventListener("click", () => {
 });
 
 $("save").addEventListener("click", () => {
-  const config = { marketOn: $("marketOn").checked ? 1 : 0, healthOn: $("healthOn").checked ? 1 : 0 };
+  const config = { marketOn: $("marketOn").checked ? 1 : 0, healthOn: $("healthOn").checked ? 1 : 0, levelOn: $("levelOn").checked ? 1 : 0 };
   for (const input of $("config").querySelectorAll("input")) {
     const v = Number(input.value);
     if (!Number.isFinite(v) || v <= 0) continue;

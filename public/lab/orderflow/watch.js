@@ -28,6 +28,12 @@ export const ALERT_DEFAULTS = {
   spoofNearPct: 0.1, // while price was this close to the band
   spoofTradeRatio: 0.2, // and trades in the band made up less than this share of it
   cooldownMs: 10 * 60_000, // per kind and side or price
+  // Location filter (keylevels.js): market events away from every key level are recorded, not sent.
+  levelOn: 1,
+  levelTolPct: 0.1, // within this many percent of a level
+  levelCooldownMs: 60 * 60_000, // one event per kind, level and side
+  // LINE's free plan has 200 pushes a month for everything, so market alerts stay few.
+  dailyCap: 3, // LINE messages of market alerts per Taipei day; health alerts are not capped
 };
 
 const median = (list) => {
@@ -310,10 +316,11 @@ export class IcebergWatch {
   }
 }
 
-/** Whether a tuning value is acceptable: switches are 0 or 1, everything else positive. */
+/** Whether a tuning value is acceptable: switches are 0 or 1, the daily cap a whole number, everything else positive. */
 export function validSetting(key, value) {
   if (!(key in ALERT_DEFAULTS) || !Number.isFinite(value)) return false;
-  return key.endsWith("On") ? value === 0 || value === 1 : value > 0;
+  if (key.endsWith("On")) return value === 0 || value === 1;
+  return key === "dailyCap" ? Number.isInteger(value) && value >= 1 : value > 0;
 }
 
 /** Health events are about the collector itself, not the market. */

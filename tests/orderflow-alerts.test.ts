@@ -97,7 +97,8 @@ test("alert thresholds are tuned over the admin API and a test alert reaches the
   const initial = (await (await alerts()).json()) as any;
   assert.equal(initial.mode, "live");
   assert.equal(initial.config.printBtc, 50);
-  assert.equal(initial.dailyCap, 30);
+  assert.equal(initial.dailyCap, 3, "LINE's free plan: few market pushes a day");
+  assert.equal(initial.config.levelOn, 1);
 
   const tuned = (await (await alerts({ method: "POST", body: JSON.stringify({ config: { printBtc: 80, wallBtc: -1, unknown: 5 } }) })).json()) as any;
   assert.equal(tuned.config.printBtc, 80);
@@ -119,4 +120,33 @@ test("alert thresholds are tuned over the admin API and a test alert reaches the
   const reset = (await (await alerts({ method: "POST", body: JSON.stringify({ config: null }) })).json()) as any;
   assert.equal(reset.config.printBtc, 50);
   assert.equal(reset.config.marketOn, 1);
+});
+
+test("key levels come from the previous Taipei day and are rebuilt after an import", async () => {
+  const day = 86_400_000;
+  // The previous Taipei day starts at 16:00 UTC two calendar boundaries back.
+  const session = Math.floor((Date.now() + 8 * 3_600_000) / day);
+  const prior = session * day - 8 * 3_600_000 - day;
+  const rows = [
+    [prior + 60_000, 80_000, 80_500, 79_990, 80_400, [[8000, 5, 5], [8040, 30, 20]]],
+    [prior + 120_000, 80_400, 80_420, 79_100, 79_200, [[7920, 2, 2]]],
+  ];
+  const before = (await (await alerts()).json()) as any;
+  assert.equal(before.levels.some((L: any) => L.name === "pdh"), false);
+  const imported = await mf.dispatchFetch("https://metabear.io/api/orderflow/btcusdt/import", {
+    method: "POST",
+    headers: { authorization: `Bearer ${adminToken}`, "content-type": "application/json" },
+    body: JSON.stringify({ rows }),
+  });
+  assert.equal(imported.status, 200);
+  const view = (await (await alerts()).json()) as any;
+  const levels = Object.fromEntries(view.levels.map((L: any) => [L.name, L]));
+  assert.equal(levels.pdh.price, 80_500);
+  assert.equal(levels.pdl.price, 79_100);
+  assert.equal(levels.poc.price, 80_405);
+  assert.equal(levels.pdh.label, "前日高");
+  const tuned = (await (await alerts({ method: "POST", body: JSON.stringify({ config: { dailyCap: 2.5, levelTolPct: 0.05 } }) })).json()) as any;
+  assert.equal(tuned.config.dailyCap, 3, "the cap is a whole number");
+  assert.equal(tuned.config.levelTolPct, 0.05);
+  await alerts({ method: "POST", body: JSON.stringify({ config: null }) });
 });

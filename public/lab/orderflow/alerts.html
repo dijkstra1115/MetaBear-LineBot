@@ -35,8 +35,10 @@
         <div class="switches">
           <label class="check"><input id="marketOn" type="checkbox" />市場通知（大單、爆倉、OI、牆、誘單、冰山）</label>
           <label class="check"><input id="healthOn" type="checkbox" />收集器健康通知（斷線、封存檔、錯誤）</label>
+          <label class="check"><input id="levelOn" type="checkbox" />市場通知只推關鍵位附近的事件（前日高低、POC、VAH、VAL、VWAP、堆疊區）</label>
         </div>
         <p class="hint">關掉時事件仍會記錄在下面的列表，只是不推到 LINE。</p>
+        <p id="levels" class="hint"></p>
         <div class="actions">
           <button id="test" type="button">送測試通知</button>
           <button id="logout" type="button" class="ghost">登出</button>

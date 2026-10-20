@@ -4,6 +4,7 @@
 // docs/ORDERFLOW-CF-PROBE.md, which also explains the 10 s alarm: open outbound sockets alone
 // keep an object alive for at most 15 minutes.
 import { DurableObject } from "cloudflare:workers";
+import { LEVEL_LABELS, LevelBook, eventPrice, levelText, sessionOf, sessionStart } from "../../public/lab/orderflow/keylevels.js";
 import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
 import { ALERT_DEFAULTS, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
 import {
@@ -43,9 +44,8 @@ export interface OrderflowEnv {
 }
 
 // Alert delivery: queued events are merged into one LINE message at most once a minute, at most
-// ALERT_DAILY_CAP messages per Taipei day, so a busy market cannot use up the account's quota.
+// the configured dailyCap messages per Taipei day, so a busy market cannot use up the account's quota.
 const ALERT_EVERY_MS = 60_000;
-const ALERT_DAILY_CAP = 30;
 const ALERT_LINES = 8;
 const ALERT_FRESH_MS = 120_000; // trades and liquidations replayed after a reconnect are not news
 // Collector health: a feed silent this long is reported once, and again when it recovers.
@@ -112,6 +112,12 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private wallWatch = new WallWatch(this.alertConfig);
   private iceWatch = new IcebergWatch(this.alertConfig);
   private spoofWatch = new SpoofWatch(this.alertConfig);
+  // Key levels of the previous and current Taipei day, from closed persisted minutes; rebuilt
+  // from storage after a restart or an archive import (which can correct the previous day).
+  private levelBook = new LevelBook(TICK);
+  private levelsStale = true;
+  private levelsUntil = 0; // minutes before this have been fed to the book
+  private levelSent = new Map<string, number>(); // kind|level|side → time last let through
   private archive: ArchiveJob | null = null;
   private status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[], archive: null as Record<string, unknown> | null };
 
@@ -136,6 +142,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (!this.rows("PRAGMA table_info(prints)").some((c) => c.name === "src")) this.sql.exec("ALTER TABLE prints ADD COLUMN src TEXT NOT NULL DEFAULT 'archive'");
     // Added after the first deploy: the funding rate held at each OI reading.
     if (!this.rows("PRAGMA table_info(oi)").some((c) => c.name === "funding")) this.sql.exec("ALTER TABLE oi ADD COLUMN funding REAL");
+    // Added with the key-level filter: the nearest level when the event happened.
+    if (!this.rows("PRAGMA table_info(alerts)").some((c) => c.name === "level")) this.sql.exec("ALTER TABLE alerts ADD COLUMN level TEXT; ALTER TABLE alerts ADD COLUMN dist REAL");
     // The current minute is persisted every alarm; pick it back up so a restart only loses
     // the seconds since then, which the REST backfill on reconnect fills in.
     this.lastTradeT = Number(this.meta("lastTradeT") ?? 0);
@@ -347,10 +355,49 @@ export class Collector extends DurableObject<OrderflowEnv> {
   }
 
   // Every event is recorded; one whose kind is switched off is kept as "muted" instead of sent.
+  // Market events also carry the nearest key level. With levelOn, one away from every level is
+  // kept as "offlevel", and a repeat at the same level within levelCooldownMs as "repeat".
   private alert(e: AlertEvent | null) {
     if (!e) return;
+    const market = !HEALTH_KINDS.has(e.kind) && e.kind !== "test";
     const on = HEALTH_KINDS.has(e.kind) ? this.alertConfig.healthOn : e.kind === "test" ? 1 : this.alertConfig.marketOn;
-    this.sql.exec("INSERT INTO alerts (t, kind, text, state) VALUES (?, ?, ?, ?)", e.t, e.kind, describe(e), on ? "pending" : "muted");
+    let state = on ? "pending" : "muted";
+    let text = describe(e);
+    let level: { name: string; price: number; dist: number } | null = null;
+    if (market) {
+      this.updateLevels();
+      const price = eventPrice(e, this.lastPrice || null, this.alertConfig.wallBin);
+      level = price ? this.levelBook.nearest(e.t, price) : null;
+      if (level) text += `｜${levelText(level)}`;
+      if (this.alertConfig.levelOn && state === "pending") {
+        if (!price || !level || level.dist > (price * this.alertConfig.levelTolPct) / 100) state = "offlevel";
+        else {
+          const key = `${e.kind}|${level.name}|${e.side ?? ""}`;
+          if (e.t - (this.levelSent.get(key) ?? -Infinity) < this.alertConfig.levelCooldownMs) state = "repeat";
+          else this.levelSent.set(key, e.t);
+        }
+      }
+    }
+    this.sql.exec("INSERT INTO alerts (t, kind, text, state, level, dist) VALUES (?, ?, ?, ?, ?, ?)", e.t, e.kind, text, state, level?.name ?? null, level ? Math.round(level.dist) : null);
+  }
+
+  // Feeds closed minutes to the level book: the previous and current Taipei day after a restart or
+  // an archive import, then only the minutes closed since. Cheap when nothing new has closed.
+  private updateLevels() {
+    const current = Math.floor(Date.now() / MINUTE) * MINUTE;
+    let from = this.levelsUntil;
+    if (this.levelsStale) {
+      this.levelBook.reset();
+      this.levelsStale = false;
+      from = sessionStart(sessionOf(current) - 1);
+    } else if (from >= current) return;
+    for (const r of this.rows("SELECT row FROM bars WHERE t >= ? AND t < ? ORDER BY t", from, current)) this.levelBook.addMinute(JSON.parse(String(r.row)));
+    this.levelsUntil = current;
+  }
+
+  private levelsView(now: number) {
+    this.updateLevels();
+    return this.levelBook.levels(now).map((L) => ({ ...L, price: Math.round(L.price), label: LEVEL_LABELS[L.name as keyof typeof LEVEL_LABELS] }));
   }
 
   // ---------- collector health ----------
@@ -417,7 +464,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (now - Number(this.meta("alertSentAt") ?? 0) < ALERT_EVERY_MS) return;
     const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(now);
     const sentToday = this.meta("alertDay") === day ? Number(this.meta("alertCount") ?? 0) : 0;
-    if (sentToday >= ALERT_DAILY_CAP) {
+    const cap = this.alertConfig.dailyCap;
+    if (sentToday >= cap) {
       // The cap protects the LINE quota from a busy market; collector health still goes out.
       mark(ids(pending.filter((r) => !HEALTH_KINDS.has(String(r.kind)))), "capped");
       pending = pending.filter((r) => HEALTH_KINDS.has(String(r.kind)));
@@ -430,7 +478,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       "MetaBear 訂單流通知",
       ...lines,
       `https://metabear.io/lab/orderflow/?tf=1&at=${at}`,
-      sentToday + 1 === ALERT_DAILY_CAP ? "今天的通知已達上限，之後的事件只記錄不推送。" : "",
+      sentToday + 1 === cap ? "今天的通知已達上限，之後的事件只記錄不推送。" : "",
       "盤面事件，不是買賣建議。",
     ]
       .filter(Boolean)
@@ -466,8 +514,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
       config: this.alertConfig,
       defaults: ALERT_DEFAULTS,
       sentToday: this.meta("alertDay") === day ? Number(this.meta("alertCount") ?? 0) : 0,
-      dailyCap: ALERT_DAILY_CAP,
-      recent: this.rows("SELECT id, t, kind, text, state FROM alerts ORDER BY id DESC LIMIT 50").map((r) => ({ ...r, t: iso(Number(r.t)) })),
+      dailyCap: this.alertConfig.dailyCap,
+      levels: this.levelsView(Date.now()),
+      recent: this.rows("SELECT id, t, kind, text, state, level, dist FROM alerts ORDER BY id DESC LIMIT 50").map((r) => ({ ...r, t: iso(Number(r.t)) })),
     };
   }
 
@@ -656,6 +705,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
           this.flushArchive(job, job.from + DAY, true);
           this.archive = null;
           this.setMeta("archiveDone", job.day);
+          this.levelsStale = true; // the archive may correct the previous day's levels
           this.sql.exec("DELETE FROM meta WHERE k IN ('archiveCursor', 'archiveAttempts', 'archiveRetryAt')");
           this.status.archive = { day: job.day, state: "done", trades: job.build.trades, at: iso(Date.now()) };
           console.log(JSON.stringify({ event: "orderflow_archive_imported", day: job.day, trades: job.build.trades }));
@@ -697,6 +747,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
         await this.ensureStreams();
         this.persistBars();
         this.persistHeat();
+        this.updateLevels();
         await this.pollRest();
         await this.fillKlines();
         this.watchBook();
@@ -778,6 +829,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       bookReady: this.book.ready,
       open: [...this.sockets.keys()],
       oi: this.ticker.oi ?? null,
+      levels: this.levelsView(Date.now()),
       archive: { last: this.meta("archiveDone"), ...this.status.archive },
       counts: Object.fromEntries(["bars", "prints", "heat", "book", "oi", "oi_rest", "ratios", "funding", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
     };
@@ -834,6 +886,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       const replace = prints.length > 0 || body.from != null;
       if (replace && (!Number.isInteger(body.from) || !Number.isInteger(body.to))) return Response.json({ error: "prints need from and to" }, { status: 400 });
       this.writeArchive(rows, replace ? { from: body.from!, to: body.to!, list: prints } : undefined);
+      this.levelsStale = true;
       return Response.json({ imported: rows.length, prints: prints.length });
     }
     if (url.pathname === "/archive" && request.method === "POST") {
