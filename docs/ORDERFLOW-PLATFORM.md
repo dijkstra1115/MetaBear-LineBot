@@ -168,6 +168,6 @@ npm run preview:academy                    # http://127.0.0.1:8790/lab/orderflow
 
 ## 下一步
 
-- 依實際通知頻率調整門檻，穩定後再開放會員訂閱（ORDERFLOW-SIGNALS-PLAN 的階段 C、D）。
+- 依實際通知頻率調整門檻，穩定後再開放會員訂閱（ORDERFLOW-SIGNALS-PLAN 的階段 C、D）。關鍵位過濾與試用名單的計畫見 [ORDERFLOW-KEYLEVEL-ALERTS.md](ORDERFLOW-KEYLEVEL-ALERTS.md)。
 - 在圖上標出掛單牆與冰山（`watch.js` 可以直接在網頁重用）。
 - 帳號、手機版、警報訂閱（VISION 第 3 階段的其餘部分）。
