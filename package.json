@@ -23,6 +23,7 @@
     "lab:orderflow:collect": "node scripts/orderflow-collector.mjs",
     "lab:orderflow:backtest": "node scripts/orderflow-backtest.mjs",
     "lab:orderflow:bybit": "node scripts/orderflow-bybit-archive.mjs",
+    "lab:orderflow:keylevels": "node scripts/orderflow-keylevel-backtest.mjs",
     "orderflow:dev": "wrangler dev -c wrangler.orderflow.jsonc --local --port 8792",
     "orderflow:deploy": "wrangler deploy -c wrangler.orderflow.jsonc",
     "lab:strategy:cases": "node --max-old-space-size=6144 scripts/strategy-cases.mjs",

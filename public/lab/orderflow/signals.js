@@ -367,6 +367,11 @@ const DETECTORS = {
   },
 };
 
+/** One detector on one closed bar, without the cooldown that detect() applies. */
+export function detectAt(kind, bars, i) {
+  return DETECTORS[kind](bars, i);
+}
+
 /** Runs every detector over closed bars; returns events sorted by time. */
 export function detect(bars, kinds = DEFAULT_KINDS) {
   const events = [];
