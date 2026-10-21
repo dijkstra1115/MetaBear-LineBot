@@ -26,8 +26,9 @@ const MAX_STEPS = 1500; // snapshots kept for drawing; two weeks of 5-minute ste
  * @param oi     [[t, oiBtc], …] sorted, roughly every 5 minutes; the last may be live
  * @returns { lo, bins, steps: [{ t, long: Float32Array, short: Float32Array }] }
  *          where values are BTC at liquidation prices lo + i × BIN.
- * @param onStep optional (t, { wipedLong, wipedShort }) after each interval: BTC the model
- *               says was liquidated by price trading through it. keepSteps: false skips snapshots.
+ * @param onStep optional (t, { wipedLong, wipedShort }, { lo, long, short }) after each interval:
+ *               BTC the model says was liquidated by price trading through it, and the live map
+ *               (read it inside the callback; it changes after). keepSteps: false skips snapshots.
  */
 export function buildLiqMap(rows, tick, oi, { onStep, keepSteps = true } = {}) {
   if (rows.length < 2 || oi.length < 2) return null;
@@ -83,7 +84,7 @@ export function buildLiqMap(rows, tick, oi, { onStep, keepSteps = true } = {}) {
         short[i] = 0;
       }
     }
-    onStep?.(t, { wipedLong, wipedShort });
+    onStep?.(t, { wipedLong, wipedShort }, { lo, long, short });
     if (prev > 0 && now < prev) {
       const f = now / prev;
       for (let i = 0; i < bins; i++) {
