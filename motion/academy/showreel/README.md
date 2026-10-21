@@ -35,7 +35,7 @@ node motion/tools/render.mjs showreel --from 30 --to 48   # 只渲染一段
 node motion/tools/render.mjs showreel --fps 30 --crf 20   # 較快、較小的預覽檔
 ```
 
-學院現有 19 課使用同一套動態設計語言，見 [動態影片課程](../../../docs/ACADEMY-MOTION.md)。
+學院現有 23 課使用同一套動態設計語言，見 [動態影片課程](../../../docs/ACADEMY-MOTION.md)。
 
 ## 結構
 
