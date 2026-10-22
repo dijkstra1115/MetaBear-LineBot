@@ -14,7 +14,7 @@ import {
   marketMenu,
   reply,
 } from "./content";
-import { ensureCustomer, now } from "./db";
+import { audit, ensureCustomer, now } from "./db";
 import {
   directRoute,
   fallbackRoute,
@@ -42,6 +42,68 @@ import { activeSupportCase, requestSupport, resumeBot } from "./support";
 import { isGreeting } from "./greetings";
 import { faqMenu, knowledgeActions } from "./faq";
 import { setSignalSubscription, userSignalSubs } from "./signals";
+import { alertEligibility, getSubscription, setSubscription, type AlertSettings } from "./orderflow-subs";
+import { kindNames, parseLineKeyword } from "../public/lab/orderflow/notify.js";
+
+const ALERT_TERMS =
+  "LINE 關鍵位提醒開放給 MetaBear 會員：綁定 BingX 邀請碼 ZD0CQ0，並且 60 日內累計入金 200 USDT（不含內部轉帳）；已加入 VIP 群的會員可以直接開通。";
+function alertSettingsText(s: AlertSettings) {
+  const quiet = s.quiet ? s.quiet.replace(/^(\d{2})-(\d{2})$/, "$1:00–$2:00") : "不設定";
+  return `事件：${kindNames(s.kinds)}\n每天最多 ${s.daily} 則\n安靜時段（台灣時間）：${quiet}`;
+}
+
+// The keyword from /alerts/ subscribes a member; 警報設定 shows it and 退訂警報 removes it.
+async function alertCommand(db: D1Database, env: Env, userId: string, text: string, base: string): Promise<LineMessage[] | null> {
+  const page = `${base}/alerts/#line`;
+  const keyword = parseLineKeyword(text);
+  if (keyword && !keyword.ok)
+    return [reply(`${keyword.error}\n\n請到 ${page} 重新選擇，再按「透過 LINE 接收通知」。`, [command("警報設定"), command("選單")])];
+  if (keyword) {
+    const eligible = await alertEligibility(db, userId);
+    if (!eligible.ok) {
+      let next: string;
+      if (eligible.missing === "uid") next = "你還沒有提交 BingX UID。請先回覆「UID 你的數字」，通過後再傳一次剛才的訂閱文字。";
+      else if (eligible.missing === "rules") next = `目前還差：${eligible.reasons.join("；")}。完成後回覆「重新查詢」，通過後再傳一次剛才的訂閱文字。`;
+      else {
+        if ((await getTeam(db)).automation_enabled) await enqueueSync(env, userId);
+        next = "會員資格查詢中或需要更新，已排入重新查詢。稍後回覆「我的進度」確認，通過後再傳一次剛才的訂閱文字。";
+      }
+      return [
+        reply(`${ALERT_TERMS}\n\n${next}\n\n網頁通知不需要會員，開著網頁就收得到：${base}/alerts/`, [
+          command(eligible.missing === "uid" ? "提交 UID" : "我的進度"),
+          command("人工協助"),
+          command("選單"),
+        ]),
+      ];
+    }
+    await setSubscription(db, userId, keyword.settings);
+    await audit(db, userId, "orderflow.subscribe", keyword.settings);
+    return [
+      reply(
+        `已開通 LINE 關鍵位提醒。\n${alertSettingsText(keyword.settings)}\n\n價格到了關鍵位、又出現你選的訂單流事件時才提醒，每則都附當下的即時盤面。提醒不是買賣訊號。\n\n要修改，到 ${page} 重新選擇後再傳一次；要取消，回覆「退訂警報」。`,
+        [command("警報設定"), command("退訂警報"), command("選單")],
+      ),
+    ];
+  }
+  if (/^(退訂警報|取消警報)$/.test(text)) {
+    const had = await getSubscription(db, userId);
+    await setSubscription(db, userId, null);
+    if (had) await audit(db, userId, "orderflow.unsubscribe", {});
+    return [reply(had ? "已取消 LINE 關鍵位提醒。其他通知與報單設定不受影響。" : "你目前沒有開通 LINE 關鍵位提醒。", [command("警報設定"), command("選單")])];
+  }
+  if (/^(警報設定|我的警報)$/.test(text)) {
+    const sub = await getSubscription(db, userId);
+    return [
+      reply(
+        sub
+          ? `目前的 LINE 關鍵位提醒：\n${alertSettingsText(sub)}\n\n要修改，到 ${page} 重新選擇後再傳一次；要取消，回覆「退訂警報」。`
+          : `你還沒有開通 LINE 關鍵位提醒。到 ${page} 選擇事件，按「透過 LINE 接收通知」即可。\n\n${ALERT_TERMS}`,
+        [...(sub ? [command("退訂警報")] : []), command("選單")],
+      ),
+    ];
+  }
+  return null;
+}
 
 async function handoff(
   env: Env,
@@ -239,11 +301,12 @@ async function respondBase(
   if (text === "通知設定")
     return [
       reply(
-        "教學與活動通知、分析師報單是兩套設定，可分開選擇。\n\n行銷通知：回覆「訂閱通知」或「退訂」。\n報單：回覆「報單通知」，自選 BTC、ETH 等品項。已入群且未封鎖才會收到報單。退訂行銷不會取消報單。",
+        "教學與活動通知、分析師報單、訂單流關鍵位提醒是三套設定，可分開選擇。\n\n行銷通知：回覆「訂閱通知」或「退訂」。\n報單：回覆「報單通知」，自選 BTC、ETH 等品項。已入群且未封鎖才會收到報單。退訂行銷不會取消報單。\n關鍵位提醒：回覆「警報設定」（會員）。",
         [
           command("訂閱通知"),
           command("停止通知"),
           command("報單通知"),
+          command("警報設定"),
           command("選單"),
         ],
       ),
@@ -292,6 +355,8 @@ async function respondBase(
       ),
     ];
   }
+  const alert = await alertCommand(db, env, userId, text, base);
+  if (alert) return alert;
   if (isSupportCommand(text)) {
     return handoff(env, userId, eventId);
   }

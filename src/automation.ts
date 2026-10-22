@@ -516,7 +516,7 @@ export async function queueVip(env: Env, id: string) {
       crypto.randomUUID(),
       id,
       snapshot.uid,
-      `${team.name} 入群資格已通過！\n\n邀請關係、KYC 與入金均已確認。\nVIP 社群連結：${team.vip_url}\n\n如連結無法開啟，請回覆「人工協助」。`,
+      `${team.name} 入群資格已通過！\n\n邀請關係、KYC 與入金均已確認。\nVIP 社群連結：${team.vip_url}\n\n${env.PUBLIC_BASE_URL ? `同一份資格也可以開通 LINE 訂單流關鍵位提醒：${env.PUBLIC_BASE_URL.replace(/\/$/, "")}/alerts/#line\n\n` : ""}如連結無法開啟，請回覆「人工協助」。`,
       team.revision,
       now(),
     )

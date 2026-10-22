@@ -136,6 +136,7 @@ export function isImmediateCommand(text: string): boolean {
     /^(?:訂閱|退訂)報單\s+[A-Z0-9]+$/.test(value)
   )
     return true;
+  if (/^訂閱警報(?:[\s　]|$)/.test(value) || /^(退訂警報|取消警報|警報設定|我的警報)$/.test(value)) return true;
   if (isProgressCommand(value) || isSupportCommand(value)) return true;
   if (
     isPreviousPageCommand(value) ||

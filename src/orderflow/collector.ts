@@ -6,7 +6,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { LEVEL_LABELS, LevelBook, closedBarEvents, eventPrice, levelText, sessionOf, sessionStart } from "../../public/lab/orderflow/keylevels.js";
 import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
-import { ALERT_DEFAULTS, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
+import { ALERT_DEFAULTS, BAR_KINDS, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
 import {
   ArchiveDay,
   BOOK_CHUNK_MS,
@@ -48,6 +48,7 @@ export interface OrderflowEnv {
 const ALERT_EVERY_MS = 60_000;
 const ALERT_LINES = 8;
 const ALERT_FRESH_MS = 120_000; // trades and liquidations replayed after a reconnect are not news
+const FANOUT_FRESH_MS = 5 * 60_000; // members only get events from the last few minutes
 // Collector health: a feed silent this long is reported once, and again when it recovers.
 const HEALTH_DOWN_MS = { Bybit: 120_000, OKX: 300_000 };
 const HEALTH_ERRORS = 10; // errors within 10 minutes
@@ -155,6 +156,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
     // Added for the public events feed: where the event happened, its side and whether it was at a level.
     if (!this.rows("PRAGMA table_info(alerts)").some((c) => c.name === "near"))
       this.sql.exec("ALTER TABLE alerts ADD COLUMN price REAL; ALTER TABLE alerts ADD COLUMN side TEXT; ALTER TABLE alerts ADD COLUMN near INTEGER");
+    // Added for members' LINE alerts: repeats at the same level, and whether an event still has to
+    // be forwarded. Rows from before count as forwarded, so a deploy never sends old events.
+    if (!this.rows("PRAGMA table_info(alerts)").some((c) => c.name === "fanout"))
+      this.sql.exec("ALTER TABLE alerts ADD COLUMN repeat INTEGER NOT NULL DEFAULT 0; ALTER TABLE alerts ADD COLUMN fanout INTEGER NOT NULL DEFAULT 1");
     // The current minute is persisted every alarm; pick it back up so a restart only loses
     // the seconds since then, which the REST backfill on reconnect fills in.
     this.lastTradeT = Number(this.meta("lastTradeT") ?? 0);
@@ -378,23 +383,24 @@ export class Collector extends DurableObject<OrderflowEnv> {
     let level: { name: string; price: number; dist: number } | null = null;
     let price: number | null = null;
     let near = false;
+    let repeat = false;
     if (market) {
       this.updateLevels();
       price = eventPrice(e, this.lastPrice || null, this.alertConfig.wallBin);
       level = price ? this.levelBook.nearest(e.t, price) : null;
       near = Boolean(price && level && level.dist <= (price * this.alertConfig.levelTolPct) / 100);
       if (level) text += `｜${levelText(level)}`;
-      if (this.alertConfig.levelOn && state === "pending") {
-        if (!near || !level) state = "offlevel";
-        else {
-          const key = `${e.kind}|${level.name}|${e.side ?? ""}`;
-          if (e.t - (this.levelSent.get(key) ?? -Infinity) < this.alertConfig.levelCooldownMs) state = "repeat";
-          else this.levelSent.set(key, e.t);
-        }
+      // Repeats are judged whether or not levelOn holds back the admin's messages, since members'
+      // alerts and the public feed skip them too.
+      if (near && level) {
+        const key = `${e.kind}|${level.name}|${e.side ?? ""}`;
+        repeat = e.t - (this.levelSent.get(key) ?? -Infinity) < this.alertConfig.levelCooldownMs;
+        if (!repeat) this.levelSent.set(key, e.t);
       }
+      if (this.alertConfig.levelOn && state === "pending") state = !near ? "offlevel" : repeat ? "repeat" : state;
     }
     this.sql.exec(
-      "INSERT INTO alerts (t, kind, text, state, level, dist, price, side, near) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO alerts (t, kind, text, state, level, dist, price, side, near, repeat, fanout) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       e.t,
       e.kind,
       text,
@@ -404,6 +410,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
       price == null ? null : Math.round(price * 10) / 10,
       typeof e.side === "string" ? e.side : null,
       market ? Number(near) : null,
+      Number(repeat),
+      Number(!(market && near && !repeat)), // 0: still to forward to members (fanOut)
     );
   }
 
@@ -427,8 +435,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
   // The newest at-level market events since a time, oldest first, for the lab chart and browser
   // notifications. Delivery states stay internal; only a repeat at the same level is flagged.
   private events(since: number) {
-    const rows = this.rows("SELECT t, kind, price, side, level, dist, state, text FROM alerts WHERE t >= ? AND near = 1 ORDER BY t DESC, id DESC LIMIT ?", since, EVENTS_MAX);
-    return rows.reverse().map((r) => ({ t: r.t, kind: r.kind, price: r.price, side: r.side, level: r.level, dist: r.dist, repeat: r.state === "repeat", text: r.text }));
+    const rows = this.rows("SELECT t, kind, price, side, level, dist, state, repeat, text FROM alerts WHERE t >= ? AND near = 1 ORDER BY t DESC, id DESC LIMIT ?", since, EVENTS_MAX);
+    return rows.reverse().map((r) => ({ t: r.t, kind: r.kind, price: r.price, side: r.side, level: r.level, dist: r.dist, repeat: r.repeat === 1 || r.state === "repeat", text: r.text }));
   }
 
   // Feeds closed minutes to the level book: the previous and current UTC day after a restart or
@@ -497,7 +505,39 @@ export class Collector extends DurableObject<OrderflowEnv> {
     for (const e of this.iceWatch.check(now, this.book.bids, this.book.asks)) this.alert(e);
   }
 
+  // Members' alerts: fresh at-level events go to the backend, which picks the subscribers who chose
+  // each type (src/orderflow-subs.ts). Unlike the admin's merged message this is not held to the
+  // admin's dailyCap; members have their own daily counts. A failed call is retried next alarm
+  // while the events are still fresh.
+  private async fanOut() {
+    const rows = this.rows("SELECT id, t, kind, text FROM alerts WHERE fanout = 0 ORDER BY id LIMIT 50");
+    if (!rows.length) return;
+    const done = () => {
+      for (const r of rows) this.sql.exec("UPDATE alerts SET fanout = 1 WHERE id = ?", r.id);
+    };
+    const fresh = rows.filter((r) => Number(r.t) > Date.now() - FANOUT_FRESH_MS);
+    if (!fresh.length || (this.env.ORDERFLOW_ALERTS ?? "log") !== "live" || !this.env.BACKEND || !this.env.ORDERFLOW_ALERT_TOKEN) return done();
+    const events = fresh.map((r) => {
+      const t = Number(r.t);
+      // Bar events carry the close of their bar; the link opens the bar's last minute.
+      const at = Math.floor((BAR_KINDS.includes(String(r.kind)) ? t - 1 : t) / MINUTE) * MINUTE;
+      return { key: `of-${r.id}-${t}`, t, kind: r.kind, text: r.text, at };
+    });
+    try {
+      const res = await this.env.BACKEND.fetch("https://backend/api/internal/orderflow-alert", {
+        method: "POST",
+        headers: { authorization: `Bearer ${this.env.ORDERFLOW_ALERT_TOKEN}`, "content-type": "application/json" },
+        body: JSON.stringify({ events }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 120)}`);
+      done();
+    } catch (err) {
+      this.note("errors", `alert delivery: members ${err}`);
+    }
+  }
+
   private async flushAlerts() {
+    await this.fanOut();
     const mode = this.env.ORDERFLOW_ALERTS ?? "log";
     let pending = this.rows("SELECT id, t, kind, text FROM alerts WHERE state = 'pending' ORDER BY id");
     if (!pending.length) return;

@@ -30,6 +30,7 @@ export async function reservedLineMessages(env: Env): Promise<number> {
     `SELECT
       (SELECT count(*) FROM campaign_deliveries d JOIN campaign_runs r ON r.id=d.run_id WHERE r.status='queued' AND d.status IN ('pending','sending'))
       + (SELECT count(*) FROM signal_deliveries d JOIN signals s ON s.id=d.signal_id WHERE s.status='queued' AND d.status IN ('pending','sending'))
+      + (SELECT count(*) FROM orderflow_alert_deliveries WHERE status IN ('pending','sending'))
       AS n`,
   ).first<{ n: number }>();
   return row?.n ?? 0;

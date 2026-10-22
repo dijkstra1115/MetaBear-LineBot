@@ -40,11 +40,13 @@ import {
   signalMedia,
   type SignalMessage,
 } from "./signals";
+import { dispatchOrderflowAlerts, processOrderflowDelivery, type OrderflowAlertMessage } from "./orderflow-subs";
 
 export default {
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
     await dispatchCampaigns(env);
     await dispatchSignals(env);
+    await dispatchOrderflowAlerts(env);
     await dispatchCrm(env);
     await dispatchSupportNotifications(env);
     await cleanupAuth(env);
@@ -59,6 +61,7 @@ export default {
       | CrmMessage
       | MenuInstallMessage
       | SupportNotificationMessage
+      | OrderflowAlertMessage
     >,
     env: Env,
   ): Promise<void> {
@@ -85,6 +88,8 @@ export default {
           message.body.kind === "support-notification"
         )
           await processSupportNotification(message.body, env);
+        else if ("kind" in message.body && message.body.kind === "orderflow-alert-delivery")
+          await processOrderflowDelivery(message.body, env);
         else await processLineEvent(message.body as LineEvent, env);
         message.ack();
       } catch (error) {

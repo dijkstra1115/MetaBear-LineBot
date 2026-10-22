@@ -9,6 +9,7 @@ export type Team = {
   deposit_min_usdt: number;
   automation_enabled: number;
   signals_enabled: number;
+  orderflow_alerts_enabled: number;
   vip_url: string;
   support_url: string;
   revision: number;

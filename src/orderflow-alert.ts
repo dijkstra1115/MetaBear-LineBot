@@ -1,8 +1,10 @@
-// Order-flow alerts from the metabear-orderflow Worker (service binding BACKEND), pushed to the
-// admin's LINE. The CRM backend holds the LINE token and the admin channel, so the collector only
-// needs a shared secret: POST /api/internal/orderflow-alert, Authorization: Bearer
-// ORDERFLOW_ALERT_TOKEN, body { text, key }.
+// Order-flow alerts from the metabear-orderflow Worker (service binding BACKEND). The CRM backend
+// holds the LINE token, the admin channel and the subscriptions, so the collector only needs a
+// shared secret: POST /api/internal/orderflow-alert, Authorization: Bearer ORDERFLOW_ALERT_TOKEN,
+// with { text, key } for the admin's merged message or { events } for members' alerts
+// (orderflow-subs.ts).
 import { HttpError, json, readJson } from "./http";
+import { enqueueOrderflowEvents } from "./orderflow-subs";
 
 type AlertEnv = Env & { ORDERFLOW_ALERT_TOKEN?: string };
 
@@ -17,7 +19,8 @@ export async function orderflowAlert(request: Request, env: AlertEnv): Promise<R
   if (request.method !== "POST") throw new HttpError(405, "只接受 POST");
   const token = env.ORDERFLOW_ALERT_TOKEN;
   if (!token || !sameSecret(request.headers.get("authorization") ?? "", `Bearer ${token}`)) throw new HttpError(401, "未授權");
-  const body = await readJson(request, 8_000);
+  const body = await readJson(request, 64_000);
+  if (body.events !== undefined) return json(await enqueueOrderflowEvents(env, body.events));
   const text = typeof body.text === "string" ? body.text.trim().slice(0, 4_000) : "";
   const key = typeof body.key === "string" && /^[\w-]{1,64}$/.test(body.key) ? body.key : "";
   if (!text || !key) throw new HttpError(400, "缺少通知內容");

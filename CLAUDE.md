@@ -69,7 +69,7 @@ src/                 Worker backend (TypeScript)
   http.ts            HttpError, json(), readJson(), signatureValid(), authorized(), textField(), choice()
   db.ts              ensureCustomer(), audit(), customerSelect
   types.ts           Shared domain types (Customer, LineEvent, LineMessage…)
-migrations/          D1 SQL migrations, numbered 0001_… → 0014_signals.sql
+migrations/          D1 SQL migrations, numbered 0001_… → 0017_orderflow_alerts.sql
 public/              Static site source (and committed build outputs, see below)
   orderflow/         Academy: catalog, generated lesson pages, motion engine
   orderflow/motion/  core.js, kit.js, compositor.js, player.js, boot.js, lessons/<id>.js, audio/<id>.m4a
@@ -174,10 +174,11 @@ Not committed: `pages/dist/`, `dist/backend/`, `motion/out/`, `.wrangler/`,
   input into SQL. Record admin-visible changes with `audit()`. Timestamps are ISO
   strings (`now()`); "month" logic uses `Asia/Taipei` (`currentMonth()`).
 - **Schema changes**: add a new numbered file in `migrations/` (next is
-  `0015_…`). Never edit an applied migration.
+  `0018_…`). Never edit an applied migration.
 - **Async work** goes through Queues. Message bodies carry a `kind`
   discriminator (`crm-sync`, `vip-delivery`, `campaign-delivery`,
-  `signal-delivery`, `support-notification`, `line-menu-install`); bare LINE
+  `signal-delivery`, `support-notification`, `line-menu-install`,
+  `orderflow-alert-delivery`); bare LINE
   events have none. Adding a kind means updating the union types and the
   dispatcher in `index.ts`. The 5-minute cron runs dispatchers and cleanups in
   `scheduled()`.
