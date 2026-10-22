@@ -32,7 +32,7 @@ const academy = analytics.replace("connect-src 'self'", "connect-src 'self' wss:
 const rules = [
   "/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  X-MetaBear-Hosting: pages",
 ];
-const documents = ["/", "/index.html", "/learn", "/learn/", "/guide", "/guide.html", "/orderflow/", "/orderflow/index.html"];
+const documents = ["/", "/index.html", "/learn", "/learn/", "/guide", "/guide.html", "/orderflow/", "/orderflow/index.html", "/alerts", "/alerts/", "/alerts/index.html"];
 for (const entry of await readdir(new URL("orderflow/", output))) {
   if (entry.endsWith(".html") && entry !== "index.html")
     documents.push("/orderflow/" + entry, "/orderflow/" + entry.slice(0, -5));
