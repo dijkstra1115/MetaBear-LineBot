@@ -72,7 +72,7 @@
         <div class="sidebar-bottom">
           <div class="referral-card">
             <small>專屬邀請碼</small><strong>ZD0CQ0</strong
-            ><span>已入金即可 · 允許內部轉帳</span>
+            ><span>60 日內入金 200 USDT · 不含內部轉帳</span>
           </div>
           <button class="quiet" id="logout">登出工作台 ↗</button>
         </div>
@@ -373,6 +373,15 @@
               <label
                 >客服連結<input name="support_url" type="url" maxlength="1000"
               /></label>
+              <label
+                >入金門檻（60 日內累計 USDT／USDC，0 表示有入金即可）<input
+                  name="deposit_min_usdt"
+                  type="number"
+                  min="0"
+                  max="1000000"
+                  step="1"
+                  required
+              /></label>
               <label class="checkbox"
                 ><input
                   name="allow_internal_transfer"
@@ -392,8 +401,8 @@
                 />啟用資料同步、資格審核與 VIP 自動發送</label
               >
               <p class="muted">
-                通過条件：邀請歸屬符合、KYC 完成、已入金。不設最低金額，也不要求
-                LINE 帳號持有證明。同一 UID 不重複發送。
+                通過条件：邀請歸屬符合、KYC 完成、60 日內累計入金達門檻（只計 USDT
+                與 USDC，其他幣種請人工核對）。不要求 LINE 帳號持有證明。同一 UID 不重複發送。
               </p>
               <button class="primary" type="submit">儲存設定</button>
               <p id="team-error" role="alert"></p>

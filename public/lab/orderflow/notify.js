@@ -93,9 +93,9 @@ const TOASTS_MAX = 3;
 const SW_URL = "/lab/orderflow/notify-sw.js";
 const SW_SCOPE = "/lab/orderflow/";
 
-// LINE: the bot reads the keyword (docs/ORDERFLOW-ALERT-SUBSCRIPTION.md, 關鍵字格式方案 A). Until it
-// can, the LINE block only states the requirements.
-export const LINE_READY = false;
+// LINE: the bot reads the keyword (docs/ORDERFLOW-ALERT-SUBSCRIPTION.md, 關鍵字格式方案 A; parsed back
+// by parseLineKeyword in src/bot.ts). LINE_READY false shows only the requirements, as a stop switch.
+export const LINE_READY = true;
 export const LINE_BASIC_ID = "@804bmpkh";
 export const LINE_DAILY_MAX = 3; // the collector's default dailyCap
 export const QUIET_CHOICES = [
@@ -142,6 +142,54 @@ export function pickFresh(events, seen, settings) {
 export function lineKeyword({ kinds, daily, quiet }) {
   const names = kinds.length === IDS.length ? "全部" : NOTIFY_KINDS.filter((k) => kinds.includes(k.id)).map((k) => k.name.replace(/\s+/g, "")).join(",");
   return ["訂閱警報", names, `每天${daily}則`, quiet ? `安靜${quiet}` : ""].filter(Boolean).join(" ");
+}
+
+/** The choice id a collector event kind belongs to, or undefined. */
+export const choiceOf = (kind) => CHOICE_OF.get(kind);
+
+/** "吸收、掃蕩收回" for a list of choice ids, or 全部. */
+export function kindNames(kinds) {
+  return kinds.length === IDS.length ? "全部" : NOTIFY_KINDS.filter((k) => kinds.includes(k.id)).map((k) => k.name).join("、");
+}
+
+/** Whether a Taiwan hour (0–23) falls in a quiet-hours choice such as "23-08". */
+export function inQuiet(quiet, hour) {
+  if (!quiet) return false;
+  const [from, to] = quiet.split("-").map(Number);
+  return from < to ? hour >= from && hour < to : hour >= from || hour < to;
+}
+
+/**
+ * Reads a subscribe keyword back: { ok: true, settings: { kinds, daily, quiet } } or { ok: false,
+ * error }. Lenient about spacing and separators people type by hand; a bare 訂閱警報 means every
+ * type at the most messages a day.
+ * @param {string} text
+ * @returns {{ ok: true, settings: { kinds: string[], daily: number, quiet: string } } | { ok: false, error: string } | null}
+ */
+export function parseLineKeyword(text) {
+  const m = /^訂閱警報(?:\s+([\s\S]*))?$/.exec(String(text).replace(/　/g, " ").trim());
+  if (!m) return null;
+  const byName = new Map(NOTIFY_KINDS.map((k) => [k.name.replace(/\s+/g, ""), k.id]));
+  let kinds = null;
+  let daily = LINE_DAILY_MAX;
+  let quiet = "";
+  for (const token of (m[1] ?? "").split(/\s+/).filter(Boolean)) {
+    const perDay = /^每天(\d{1,2})則$/.exec(token);
+    const hush = /^安靜(\d{2}-\d{2})$/.exec(token);
+    if (perDay) {
+      daily = Number(perDay[1]);
+      if (daily < 1 || daily > LINE_DAILY_MAX) return { ok: false, error: `每天最多可以選 1 到 ${LINE_DAILY_MAX} 則。` };
+    } else if (hush) {
+      if (!QUIET_CHOICES.some(([v]) => v && v === hush[1])) return { ok: false, error: `安靜時段可以選 ${QUIET_CHOICES.filter(([v]) => v).map(([v]) => v).join("、")}。` };
+      quiet = hush[1];
+    } else if (token === "全部") kinds = [...IDS];
+    else {
+      const ids = token.split(/[,，、]/).filter(Boolean).map((name) => byName.get(name));
+      if (!ids.length || ids.some((id) => !id)) return { ok: false, error: "看不懂其中的事件名稱。" };
+      kinds = IDS.filter((id) => ids.includes(id) || kinds?.includes(id));
+    }
+  }
+  return { ok: true, settings: { kinds: kinds ?? [...IDS], daily, quiet } };
 }
 
 /** Opens the official account's chat with the text typed in; LINE still needs the user to send it. */

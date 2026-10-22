@@ -90,7 +90,11 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 
 實驗室標題列的「通知」選單（`public/lab/orderflow/notify.js`）讓任何開著網頁的人勾選事件類型，收到 `/events` 裡的新事件，也就是發生在關鍵位、和 LINE 警報同一份紀錄的事件。分頁在背景時跳系統通知，在前景時顯示頁面內提示框；LINE 內建瀏覽器、沒有加入主畫面的 iPhone 和封鎖通知的瀏覽器只有提示框。`notify-sw.js` 是只為 Android Chrome 顯示通知而註冊的 service worker，不處理任何請求。細節見 [ORDERFLOW-ALERT-SUBSCRIPTION.md](ORDERFLOW-ALERT-SUBSCRIPTION.md)。
 
-## 通知（目前只推給管理員）
+## 會員的 LINE 關鍵位提醒
+
+收集器每次寫入在關鍵位、不是同一關鍵位冷卻中的市場事件時，標記成待轉送（`alerts.fanout = 0`）；每次 alarm 把 5 分鐘內的這類事件以 `{ events }` 送到後端的 `/api/internal/orderflow-alert`。後端（`src/orderflow-subs.ts`）依會員的勾選、每天則數與安靜時段建立逐人投遞，經佇列推播。這條路徑不受管理員的 `dailyCap` 限制；會員資格、額度保留與急停開關見 [ORDERFLOW-ALERT-SUBSCRIPTION.md](ORDERFLOW-ALERT-SUBSCRIPTION.md)。
+
+## 通知（管理員）
 
 收集器在 `public/lab/orderflow/watch.js` 監看即時資料，事件經 CRM 後端（`src/orderflow-alert.ts`，透過 service binding `BACKEND`）推到管理員綁定的 LINE。後端沿用既有的管理員頻道與 LINE 權杖，`LINE_DELIVERY_MODE` 不是 `live` 時不會送出。
 

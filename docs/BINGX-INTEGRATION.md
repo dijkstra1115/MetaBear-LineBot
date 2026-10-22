@@ -2,9 +2,9 @@
 
 確認日期：2026-09-14（台北）。
 
-## 2026-10-22 規則變更（尚未實作）
+## 2026-10-22 規則變更（已實作，migration 0016）
 
-使用者確認：「VIP 也改成要入 200u，內部轉帳不算」。VIP 入群和 LINE 訂單流警報通知用同一套資格：團隊推薦歸屬與 KYC 核實，**並且入金 200 USDT，內部轉帳不算**。計算方式是核實當下往回 60 日內累計入金達 200 USDT；達標後記錄下來，不因明細超過 60 日而失去資格。已經入群的 VIP 不必補足，直接保留資格並可開通 LINE 通知。符合資格的人同時取得 VIP 群與 LINE 訂單流通知兩項權益。BingX 的 deposit=true 不分內部轉帳，所以金額要改從入金明細（排除內部轉帳）加總。細節見 [ORDERFLOW-ALERT-SUBSCRIPTION.md](ORDERFLOW-ALERT-SUBSCRIPTION.md)「LINE 通知的資格」一節。程式、網站與 LINE 文案改完之前，下面的 2026-09-14 規則仍是現行程式的行為。
+使用者確認：「VIP 也改成要入 200u，內部轉帳不算」。VIP 入群和 LINE 訂單流警報通知用同一套資格：團隊推薦歸屬與 KYC 核實，**並且入金 200 USDT，內部轉帳不算**。計算方式是核實當下往回 60 日內累計入金達 200 USDT；達標後記錄下來，不因明細超過 60 日而失去資格。已經入群的 VIP 不必補足，直接保留資格並可開通 LINE 通知。符合資格的人同時取得 VIP 群與 LINE 訂單流通知兩項權益。BingX 的 deposit=true 不分內部轉帳，所以金額要改從入金明細（排除內部轉帳）加總。細節見 [ORDERFLOW-ALERT-SUBSCRIPTION.md](ORDERFLOW-ALERT-SUBSCRIPTION.md)「LINE 通知的資格」一節。已實作：`evaluateRelation()` 要求近 60 日一般充值（不含內部轉帳）的 USDT、USDC 合計達到 `team_settings.deposit_min_usdt`（預設 200）；其他幣種不自動計入，請人工核對。migration 0016 同時把 `allow_internal_transfer` 改成 0 並遞增 `revision`，所以既有的資格快照要重新查詢後才會再發 VIP 邀請；已標記入群的會員不受影響。網站、LINE 文案與兩則 FAQ（`deposit-review`、`bingx-deposit-minimum`，管理員改寫過、已不提舊規則的不覆蓋）一併更新。部署後端並執行 migration 才會生效；下面的 2026-09-14 規則是之前的紀錄。
 
 ## 2026-09-14 審核規則
 

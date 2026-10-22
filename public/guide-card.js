@@ -30,7 +30,7 @@ export const cardQuestions = [
         src: "/guides/credit-03.jpg",
         title: "輸入想買的金額",
         action: "選法幣與 USDT，輸入付款或預計收到的金額。",
-        reason: "圖中 100 USDT 為舊例；社群不設最低入金金額。",
+        reason: "圖中 100 USDT 為舊例；社群入群條件是60 日內累計入金 200 USDT（不含內部轉帳）。",
       },
       {
         src: "/guides/credit-04.jpg",
@@ -81,6 +81,6 @@ export const cardQuestions = [
         reason: "授權成功只代表付款方式驗證，不等於買幣完成。",
       },
     ],
-    check: "已入金即可，允許內部轉帳；提交 UID 後由系統查詢資格。",
+    check: "入群條件是60 日內累計入金 200 USDT（不含內部轉帳）；提交 UID 後由系統查詢資格。",
   },
 ];

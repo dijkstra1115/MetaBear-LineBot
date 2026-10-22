@@ -21,7 +21,7 @@ import {
   automationApi,
   dispatchCrm,
 } from "../src/automation";
-import { getTeam, validateTeam } from "../src/team";
+import { getTeam, teamText, validateTeam } from "../src/team";
 import { audienceQuery } from "../src/audience";
 let mf: Miniflare, db: any, env: any;
 let serial = 0,
@@ -189,7 +189,7 @@ beforeEach(async () => {
   queued = [];
   await db
     .prepare(
-      "UPDATE team_settings SET name='MetaBear',referral_code='ZD0CQ0',inviter_uid='',allow_indirect=0,allow_internal_transfer=1,automation_enabled=1,vip_url='https://example.test/vip',revision=1 WHERE id=1",
+      "UPDATE team_settings SET name='MetaBear',referral_code='ZD0CQ0',inviter_uid='',allow_indirect=0,allow_internal_transfer=1,deposit_min_usdt=200,automation_enabled=1,vip_url='https://example.test/vip',revision=1 WHERE id=1",
     )
     .run();
 });
@@ -223,21 +223,23 @@ async function delivery(c: { id: string }) {
     .bind(c.id)
     .first();
 }
+const deposit = (amount: string, assetTypeName = "deposit", currencyName = "USDT") => ({ assetTypeName, currencyName, currencyAmountVolume: amount });
 test("qualification requires exact referral, KYC and deposit, accepts boolean strings, never unknown truthiness", async () => {
   const team = await getTeam(db),
-    r = relation("12345678");
-  assert.equal(evaluateRelation(r, r.uid, team, []).qualification, "eligible");
+    r = relation("12345678"),
+    enough = [deposit("200")];
+  assert.equal(evaluateRelation(r, r.uid, team, enough).qualification, "eligible");
   assert.equal(
-    evaluateRelation({ ...r, kycResult: "false" }, r.uid, team, [])
+    evaluateRelation({ ...r, kycResult: "false" }, r.uid, team, enough)
       .qualification,
     "needs_action",
   );
   assert.equal(
-    evaluateRelation({ ...r, deposit: "false" }, r.uid, team, []).qualification,
+    evaluateRelation({ ...r, deposit: "false" }, r.uid, team, enough).qualification,
     "needs_action",
   );
   assert.equal(
-    evaluateRelation({ ...r, kycResult: undefined }, r.uid, team, [])
+    evaluateRelation({ ...r, kycResult: undefined }, r.uid, team, enough)
       .qualification,
     "pending",
   );
@@ -246,7 +248,7 @@ test("qualification requires exact referral, KYC and deposit, accepts boolean st
       { ...r, inviteCode: "BAD" },
       r.uid,
       team,
-      [],
+      enough,
     ).reasons.includes("referral"),
   );
   assert.ok(
@@ -254,7 +256,7 @@ test("qualification requires exact referral, KYC and deposit, accepts boolean st
       { ...r, directInvitation: false },
       r.uid,
       team,
-      [],
+      enough,
     ).reasons.includes("referral"),
   );
   assert.equal(
@@ -262,7 +264,7 @@ test("qualification requires exact referral, KYC and deposit, accepts boolean st
       { ...r, kycResult: "true", deposit: "true" },
       r.uid,
       team,
-      [],
+      enough,
     ).qualification,
     "eligible",
   );
@@ -270,14 +272,33 @@ test("qualification requires exact referral, KYC and deposit, accepts boolean st
     evaluateRelation(
       r,
       r.uid,
-      { ...team, allow_internal_transfer: 0 },
-      [],
+      team,
+      [deposit("199.99")],
     ).reasons.includes("deposit"),
+    "short of the minimum",
   );
+  assert.equal(evaluateRelation(r, r.uid, team, [deposit("120"), deposit("80", "充值")]).qualification, "eligible", "deposits add up over 60 days");
+  assert.equal(evaluateRelation(r, r.uid, team, [deposit("250", "Internal Transfer-transfer in")]).qualification, "eligible", "internal transfers count when allowed");
+  assert.ok(
+    evaluateRelation(r, r.uid, { ...team, allow_internal_transfer: 0 }, [deposit("250", "Internal Transfer-transfer in")]).reasons.includes("deposit"),
+    "and not when excluded",
+  );
+  assert.ok(evaluateRelation(r, r.uid, team, [deposit("1", "deposit", "BTC"), deposit("150", "deposit", "USDC")]).reasons.includes("deposit"), "other coins are not counted");
+  assert.equal(evaluateRelation(r, r.uid, team, [deposit("150", "deposit", "usdc"), deposit("50")]).data.depositTotal, "200");
+  assert.ok(evaluateRelation({ ...r, deposit: false }, r.uid, team, enough).reasons.includes("deposit"), "the deposit flag still has to be set");
+  // A minimum of 0 keeps the old rule: any deposit, and an external one when internal transfers are excluded.
+  assert.equal(evaluateRelation(r, r.uid, { ...team, deposit_min_usdt: 0 }, []).qualification, "eligible");
+  assert.ok(evaluateRelation(r, r.uid, { ...team, deposit_min_usdt: 0, allow_internal_transfer: 0 }, []).reasons.includes("deposit"));
   assert.throws(() =>
-    evaluateRelation({ ...r, uid: "other" }, r.uid, team, []),
+    evaluateRelation({ ...r, uid: "other" }, r.uid, team, enough),
   );
   assert.throws(() => validateTeam({ vip_url: "javascript:alert(1)" }, team));
+  assert.throws(() => validateTeam({ deposit_min_usdt: -1 }, team));
+  assert.throws(() => validateTeam({ deposit_min_usdt: 1.5 }, team));
+  assert.equal(validateTeam({ deposit_min_usdt: 300 }, team).deposit_min_usdt, 300);
+  // Copy states the default rule; other settings are worded for the team.
+  assert.equal(teamText("條件：60 日內累計入金 200 USDT（不含內部轉帳）", { ...team, deposit_min_usdt: 300, allow_internal_transfer: 1 }), "條件：60 日內累計入金 300 USDT（含內部轉帳）");
+  assert.equal(teamText("條件：60 日內累計入金 200 USDT（不含內部轉帳）", { ...team, deposit_min_usdt: 0, allow_internal_transfer: 1 }), "條件：已入金即可（允許內部轉帳）");
 });
 test("decimal money preserves precision", () => {
   assert.equal(sumDecimal(["0.1", "0.2"]), "0.3");

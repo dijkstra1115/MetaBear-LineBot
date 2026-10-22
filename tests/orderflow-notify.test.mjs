@@ -72,3 +72,30 @@ test("card stats count the last week per type and wait for three days of feed", 
   assert.equal(long.iceberg.avg, 0);
   assert.equal(long.iceberg.last, null);
 });
+
+test("the bot reads the keyword back, including what people type by hand", async () => {
+  const { parseLineKeyword, inQuiet, kindNames, choiceOf, lineKeyword } = await import("../public/lab/orderflow/notify.js");
+  const all = NOTIFY_KINDS.map((k) => k.id);
+  for (const settings of [
+    { kinds: all, daily: 3, quiet: "" },
+    { kinds: ["absorption", "divergence", "wall"], daily: 1, quiet: "23-08" },
+  ])
+    assert.deepEqual(parseLineKeyword(lineKeyword(settings)), { ok: true, settings });
+  assert.deepEqual(parseLineKeyword("訂閱警報"), { ok: true, settings: { kinds: all, daily: 3, quiet: "" } });
+  assert.deepEqual(parseLineKeyword("訂閱警報　吸收，冰山 每天2則").settings, { kinds: ["absorption", "iceberg"], daily: 2, quiet: "" });
+  assert.equal(parseLineKeyword("訂閱警報 每天9則").ok, false);
+  assert.equal(parseLineKeyword("訂閱警報 安靜01-02").ok, false);
+  assert.equal(parseLineKeyword("訂閱警報 火箭").ok, false);
+  assert.equal(parseLineKeyword("訂閱通知"), null);
+  assert.equal(parseLineKeyword("訂閱警報器"), null);
+  assert.equal(inQuiet("23-08", 23), true);
+  assert.equal(inQuiet("23-08", 7), true);
+  assert.equal(inQuiet("23-08", 8), false);
+  assert.equal(inQuiet("00-08", 0), true);
+  assert.equal(inQuiet("00-08", 12), false);
+  assert.equal(inQuiet("", 3), false);
+  assert.equal(kindNames(all), "全部");
+  assert.equal(kindNames(["sweep", "absorption"]), "吸收、掃蕩收回");
+  assert.equal(choiceOf("wall_eaten"), "wall");
+  assert.equal(choiceOf("test"), undefined);
+});

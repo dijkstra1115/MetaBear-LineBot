@@ -6,8 +6,10 @@ export type Team = {
   inviter_uid: string;
   allow_indirect: number;
   allow_internal_transfer: number;
+  deposit_min_usdt: number;
   automation_enabled: number;
   signals_enabled: number;
+  orderflow_alerts_enabled: number;
   vip_url: string;
   support_url: string;
   revision: number;
@@ -45,6 +47,11 @@ export function validateTeam(
       next[key] = data[key] ? 1 : 0;
     }
   }
+  if (data.deposit_min_usdt !== undefined) {
+    if (!Number.isInteger(data.deposit_min_usdt) || (data.deposit_min_usdt as number) < 0 || (data.deposit_min_usdt as number) > 1_000_000)
+      throw new HttpError(400, "入金門檻請填 0 到 1000000 的整數 USDT");
+    next.deposit_min_usdt = data.deposit_min_usdt as number;
+  }
   for (const key of ["vip_url", "support_url"] as const) {
     next[key] = textField(data[key], 1000, current[key]);
     if (next[key]) {
@@ -61,17 +68,21 @@ export function validateTeam(
     throw new HttpError(400, "啟用自動審核前，請設定 VIP 邀請連結");
   return next;
 }
+/** The deposit condition in words, e.g. "60 日內累計入金 200 USDT（不含內部轉帳）". */
+export function depositRule(team: Team): string {
+  const internal = team.allow_internal_transfer ? "含" : "不含";
+  return team.deposit_min_usdt > 0
+    ? `60 日內累計入金 ${team.deposit_min_usdt} USDT（${internal}內部轉帳）`
+    : `已入金即可（${team.allow_internal_transfer ? "允許" : "不計"}內部轉帳）`;
+}
+// Copy states the default rule with this phrase; teams with other settings get theirs.
+export const DEPOSIT_RULE_TEXT = "60 日內累計入金 200 USDT（不含內部轉帳）";
 // Request-local transformation keeps team settings out of global shared state.
 export function teamText(text: string, team: Team): string {
   return text
     .replaceAll("MetaBear", team.name)
     .replaceAll("ZD0CQ0", team.referral_code)
-    .replaceAll(
-      "允許內部轉帳",
-      team.allow_internal_transfer
-        ? "允許內部轉帳"
-        : "僅接受一般充值，不計內部轉帳",
-    )
+    .replaceAll(DEPOSIT_RULE_TEXT, depositRule(team))
     .replaceAll(
       "允許內部轉帳",
       team.allow_internal_transfer

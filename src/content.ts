@@ -20,7 +20,7 @@ export const BUSINESS = {
   exchange: "BingX",
   code: "ZD0CQ0",
   inviteUrl: "https://bingx.com/invite/ZD0CQ0",
-  depositRequirement: "已入金即可，允許內部轉帳",
+  depositRequirement: "60 日內累計入金 200 USDT（不含內部轉帳）",
   supportUrl: "https://lin.ee/cbyuRJv",
   notion: "https://app.notion.com/p/26fe08720786805185bde4952de1d9d7",
   kycVideo: "https://www.youtube.com/watch?v=NIjpeGilxBE",
@@ -57,13 +57,13 @@ export const STEPS: Record<
   deposit: {
     title: "入金多少才能入群？",
     related: ["deposit_bitopro", "deposit_card", "uid"],
-    text: `MetaBear 入群條件：邀請關係符合、KYC 完成，且 BingX 已入金即可；不設最低金額，允許內部轉帳。提交 UID 後由系統查詢資格。\n\n有兩種圖文教學可選：\n① BitoPro：綁定銀行 → 台幣入金 → 買 USDT → 轉入自己的 BingX。\n② BingX 信用卡：完成 KYC → 快捷買幣 → 信用卡／簽帳金融卡 → 查看訂單與到帳。\n\n點選「BitoPro 如何入金？」或「如何用信用卡入金？」查看對應教學。費用、支援地區與可用支付方式以你帳戶當前畫面為準。`,
+    text: `MetaBear 入群條件：邀請關係符合、KYC 完成，且 BingX 60 日內累計入金 200 USDT（不含內部轉帳）。提交 UID 後由系統查詢資格。\n\n有兩種圖文教學可選：\n① BitoPro：綁定銀行 → 台幣入金 → 買 USDT → 轉入自己的 BingX。\n② BingX 信用卡：完成 KYC → 快捷買幣 → 信用卡／簽帳金融卡 → 查看訂單與到帳。\n\n點選「BitoPro 如何入金？」或「如何用信用卡入金？」查看對應教學。費用、支援地區與可用支付方式以你帳戶當前畫面為準。`,
   },
   deposit_bitopro: {
     title: "BitoPro 如何入金？",
     parent: "deposit",
     related: ["deposit", "deposit_card", "uid"],
-    text: `1. 完成 BitoPro 身分驗證並綁定自己的銀行帳戶。在「資產 → 加值 → TWD → 銀行匯款」查看你帳戶指定的收款資訊，用已綁定銀行轉入台幣。\n2. 台幣到帳後選 USDT/TWD，確認委託價格、數量、費用與預估收到的 USDT。\n3. BingX「充值／加密貨幣充值」選 USDT，選擇兩邊均支援且開放充提的同一網路，複製你自己的充值地址。\n4. 回 BitoPro「資產 → 提領 → USDT」，選完全一致的網路，貼入自己的 BingX 地址，核對地址、Memo／Tag（如有）、最低入金額及扣費後到帳數量，再決定是否送出。\n5. 查看 BitoPro 提領紀錄與 BingX 到帳紀錄；送出不等於到帳。\n\n原圖 TRC20 為操作範例，不保證目前可用；不要抄圖中的帳號、地址或金額。MetaBear 已入金即可，允許內部轉帳；提交 UID 後查詢邀請關係、KYC 與入金狀態。`,
+    text: `1. 完成 BitoPro 身分驗證並綁定自己的銀行帳戶。在「資產 → 加值 → TWD → 銀行匯款」查看你帳戶指定的收款資訊，用已綁定銀行轉入台幣。\n2. 台幣到帳後選 USDT/TWD，確認委託價格、數量、費用與預估收到的 USDT。\n3. BingX「充值／加密貨幣充值」選 USDT，選擇兩邊均支援且開放充提的同一網路，複製你自己的充值地址。\n4. 回 BitoPro「資產 → 提領 → USDT」，選完全一致的網路，貼入自己的 BingX 地址，核對地址、Memo／Tag（如有）、最低入金額及扣費後到帳數量，再決定是否送出。\n5. 查看 BitoPro 提領紀錄與 BingX 到帳紀錄；送出不等於到帳。\n\n原圖 TRC20 為操作範例，不保證目前可用；不要抄圖中的帳號、地址或金額。MetaBear 的入金條件是60 日內累計入金 200 USDT（不含內部轉帳）；提交 UID 後查詢邀請關係、KYC 與入金狀態。`,
     images: bitoproQuestions.flatMap(({ rows }) =>
       rows.flatMap((row) =>
         "src" in row && row.src ? [{ src: row.src, caption: row.title }] : [],
@@ -74,7 +74,7 @@ export const STEPS: Record<
     title: "如何用信用卡入金？",
     parent: "deposit",
     related: ["deposit", "deposit_bitopro", "uid"],
-    text: `1. 登入 BingX，先完成帳戶要求的身分驗證；到首頁「充值 → 快捷買幣」。\n2. 選擇法幣及 USDT，輸入金額，查看實際匯率、手續費及預計收到的 USDT。\n3. 選擇帳戶可用的「信用卡／簽帳金融卡」，閱讀支付條款後自行決定是否繼續。\n4. 若畫面要求，填自己的英文帳單地址與持卡人資訊，再由銀行完成驗證。卡號與 OTP 只填在官方付款／銀行頁面，不傳給 LINE。\n5. 「授權成功」只代表付款方式驗證，不等於買幣完成；回到訂單與資產頁確認購買狀態及 USDT 到帳。\n\n圖中 100 USDT、匯率與 1 TWD 驗證均為舊畫面示例，並非本次承諾；MetaBear 已入金即可，允許內部轉帳；提交 UID 後查詢資格。可用卡別、費率與付款供應商以當前帳戶為準。`,
+    text: `1. 登入 BingX，先完成帳戶要求的身分驗證；到首頁「充值 → 快捷買幣」。\n2. 選擇法幣及 USDT，輸入金額，查看實際匯率、手續費及預計收到的 USDT。\n3. 選擇帳戶可用的「信用卡／簽帳金融卡」，閱讀支付條款後自行決定是否繼續。\n4. 若畫面要求，填自己的英文帳單地址與持卡人資訊，再由銀行完成驗證。卡號與 OTP 只填在官方付款／銀行頁面，不傳給 LINE。\n5. 「授權成功」只代表付款方式驗證，不等於買幣完成；回到訂單與資產頁確認購買狀態及 USDT 到帳。\n\n圖中 100 USDT、匯率與 1 TWD 驗證均為舊畫面示例，並非本次承諾；MetaBear 的入金條件是60 日內累計入金 200 USDT（不含內部轉帳）；提交 UID 後查詢資格。可用卡別、費率與付款供應商以當前帳戶為準。`,
     images: cardQuestions.flatMap(({ rows }) =>
       rows.flatMap((row) =>
         "src" in row && row.src ? [{ src: row.src, caption: row.title }] : [],
@@ -84,7 +84,7 @@ export const STEPS: Record<
   uid: {
     title: "如何查找及提交 UID？",
     related: ["deposit", "code"],
-    text: "在 BingX 個人資料頁複製 UID，回覆「UID 你的數字」，例如 UID 123456789。\n\n提交後，系統會把你的 LINE 使用者識別碼與 BingX UID 配對，查詢邀請關係、KYC 與入金。三項通過後自動發送 VIP 社群連結；已入金即可，允許內部轉帳。\n\n可回覆「我的進度」查看結果，或「重新查詢」更新狀態。遇到例外由小幫手協助；不要提交密碼、驗證碼或 API 金鑰。行銷通知另由你選擇訂閱或退訂。",
+    text: "在 BingX 個人資料頁複製 UID，回覆「UID 你的數字」，例如 UID 123456789。\n\n提交後，系統會把你的 LINE 使用者識別碼與 BingX UID 配對，查詢邀請關係、KYC 與入金。三項通過後自動發送 VIP 社群連結；入金條件是60 日內累計入金 200 USDT（不含內部轉帳）。\n\n可回覆「我的進度」查看結果，或「重新查詢」更新狀態。遇到例外由小幫手協助；不要提交密碼、驗證碼或 API 金鑰。行銷通知另由你選擇訂閱或退訂。",
   },
 };
 export const LESSONS: Record<string, string> = {

@@ -48,8 +48,8 @@
     document.querySelector(".referral-card strong").textContent =
       data.team.referral_code;
     document.querySelector(".referral-card span").textContent =
-      "已入金即可" +
-      (data.team.allow_internal_transfer ? " · 允許內部轉帳" : "");
+      (data.team.deposit_min_usdt > 0 ? `60 日內入金 ${data.team.deposit_min_usdt} USDT` : "已入金即可") +
+      (data.team.allow_internal_transfer ? " · 含內部轉帳" : " · 不含內部轉帳");
     const form = $("#team-form");
     ["name", "referral_code", "inviter_uid", "vip_url", "support_url"].forEach(
       (key) => (field(form, key).value = data.team[key]),
@@ -57,6 +57,7 @@
     ["allow_indirect", "allow_internal_transfer", "automation_enabled"].forEach(
       (key) => (field(form, key).checked = !!data.team[key]),
     );
+    field(form, "deposit_min_usdt").value = data.team.deposit_min_usdt;
     $("#crm-readiness").textContent =
       `BingX 憑證：${data.bingxConfigured ? "已設定" : "未設定"} · LINE：${data.lineConfigured ? "已設定" : "未設定"} · 自動化：${data.team.automation_enabled ? "已開啟" : "已關閉"} · 發送模式：${data.deliveryMode === "live" ? "正式發送" : "不發送"} · 每團隊獨立資料庫`;
     $("#crm-dispatch").disabled =
@@ -314,6 +315,7 @@
         "automation_enabled",
       ])
         data[key] = field(form, key).checked;
+      data.deposit_min_usdt = Number(data.deposit_min_usdt);
       data.revision = revision;
       await api("/api/automation/settings", {
         method: "PUT",
