@@ -146,9 +146,10 @@ input {
   background: var(--sell);
 }
 
-/* ---------- menus (indicators, sharing) ---------- */
+/* ---------- menus (indicators, sharing, notifications) ---------- */
 .ind,
-.share {
+.share,
+.notify {
   position: relative;
   flex: none;
 }
@@ -168,12 +169,14 @@ input {
   font-size: 10px;
 }
 .ind[open] summary,
-.share[open] summary {
+.share[open] summary,
+.notify[open] summary {
   background: var(--hover);
   color: var(--text);
 }
 .ind-panel,
-.share-panel {
+.share-panel,
+.notify-panel {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
@@ -268,6 +271,120 @@ input {
   background: #06c755;
   color: #fff;
   font-weight: 600;
+}
+.notify[data-on="true"] summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+.notify-panel {
+  /* The last menu in the bar: open toward the left so it stays on screen. */
+  left: auto;
+  right: 0;
+  display: grid;
+  gap: 12px;
+  width: min(380px, calc(100vw - 24px));
+}
+.notify-switch {
+  min-height: 36px;
+  border: 1px solid var(--teal);
+  border-radius: 8px;
+  background: var(--teal);
+  color: var(--bg);
+  font-weight: 600;
+  cursor: pointer;
+}
+.notify-switch[aria-pressed="true"] {
+  background: transparent;
+  color: var(--teal);
+}
+.notify-note,
+.notify-foot {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.notify-foot {
+  color: var(--dim);
+}
+.notify-panel fieldset {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.notify-panel legend {
+  margin-bottom: 6px;
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.notify-panel .check {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+.notify-panel .check small {
+  color: var(--dim);
+  font-size: 11px;
+}
+
+/* ---------- toasts (notify.js) ---------- */
+.toasts {
+  position: fixed;
+  top: calc(var(--top) + 10px);
+  right: 12px;
+  z-index: 20;
+  display: grid;
+  gap: 8px;
+  width: min(360px, calc(100vw - 24px));
+  pointer-events: none;
+}
+.toast {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--teal);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+.toast p {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.toast small {
+  color: var(--dim);
+  font-size: 11px;
+}
+.toast-actions {
+  display: flex;
+  gap: 8px;
+}
+.toast-actions button {
+  min-height: 30px;
+  padding: 3px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--raise);
+  color: var(--text);
+  cursor: pointer;
+}
+.toast-actions button:first-child {
+  border-color: var(--teal);
+  color: var(--teal);
 }
 
 /* ---------- chart ---------- */
@@ -385,7 +502,8 @@ input {
     min-height: 32px;
   }
   .ind-panel,
-  .share-panel {
+  .share-panel,
+  .notify-panel {
     position: fixed;
     top: calc(var(--top) + 6px);
     left: 12px;

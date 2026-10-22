@@ -7,6 +7,7 @@ import { BOOK_CHUNK_MS, BOOK_STEP_MS, BOOK_TICK, BOOK_TOPIC, OrderBook, PING, PR
 import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
 import { readingsAt } from "./metrics.js";
+import { Notifier } from "./notify.js";
 import { Player, drawOverlay, prepare } from "./replay.js";
 import { LEVEL_LABELS, priorDayLevels } from "./keylevels.js";
 import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
@@ -420,14 +421,19 @@ const DOWN_SIDES = new Set(["down", "sell", "ask", "long"]);
 
 // The chart shows the collector's own events, the record LINE alerts and browser notifications
 // come from, so it never shows a key-level event the alerts did not see, or the other way round.
+// Browser notifications (notify.js) read the same feed, every 15 s while they are on.
+let eventsLoadedAt = 0;
 async function loadEvents() {
-  if (replay || !on("events")) return;
+  if (replay || !(on("events") || notifier.on)) return;
+  eventsLoadedAt = Date.now();
   // From the first loaded day, so every viewer asks for the same URL and shares the edge cache.
   const since = Math.floor(Date.now() / DAY) * DAY - (DAYS - 1) * DAY;
   try {
     const res = await fetch(`${API}/events?since=${since}`);
     if (!res.ok) return;
-    liveEvents = (await res.json()).events.map(liveEvent);
+    const list = (await res.json()).events;
+    liveEvents = list.map(liveEvent);
+    notifier.ingest(list);
     redraw();
   } catch {
     // Keep what was shown; the next poll tries again.
@@ -2146,6 +2152,27 @@ function shareText() {
   return b && b.end <= Date.now() ? `BTC 訂單流 ${fmtTime(b.t)}（MetaBear）` : "BTC 即時訂單流（MetaBear）";
 }
 
+// A shared link, a notification or a toast opens the bar an event happened in, about two thirds
+// across the chart.
+function openBarAt(t) {
+  const i = bars.findIndex((b) => b.t <= t && t < b.end);
+  if (i < 0) return;
+  pinnedT = bars[i].t;
+  view.follow = false;
+  hover = { i, y: -1 };
+  view.end = i + 1 + (layout().plotW / view.barW) * 0.35;
+  clampView();
+  redraw();
+  updateReadout();
+}
+
+const notifyPanel = document.querySelector(".notify");
+const notifier = new Notifier({ toasts: $("toasts"), onOpen: openBarAt });
+notifier.mount($("notify-panel"), () => loadEvents());
+document.addEventListener("pointerdown", (e) => {
+  if (notifyPanel.open && !notifyPanel.contains(e.target)) notifyPanel.open = false;
+});
+
 const sharePanel = document.querySelector(".share");
 sharePanel.addEventListener("toggle", () => {
   if (!sharePanel.open) return;
@@ -2289,6 +2316,7 @@ async function startReplay() {
   document.querySelector(".symbol small").textContent = "永續 · Binance";
   $("source").textContent = `資料：${raw.source} BTCUSDT 永續合約歷史逐筆成交，依原本的時間逐秒重播；足跡格距 $${raw.tick}。OI 為交易所每 5 分鐘的公開數據。這是過去行情的回放，不是即時資料，也不是投資建議。`;
   $("replay").hidden = false;
+  notifyPanel.hidden = true; // a replay has no live events
   replayFeed();
   build();
   ui.status.hidden = true;
@@ -2347,20 +2375,15 @@ if (CASE) {
     view.barW = NARROW ? 9 : 14;
     ui.status.hidden = true;
     resize();
-    // A shared bar is selected and placed about two thirds across the chart.
-    const shared = SHARED_AT ? bars.findIndex((b) => b.t <= SHARED_AT && SHARED_AT < b.end) : -1;
-    if (shared >= 0) {
-      pinnedT = bars[shared].t;
-      view.follow = false;
-      hover = { i: shared, y: -1 };
-      view.end = shared + 1 + (layout().plotW / view.barW) * 0.35;
-    }
+    if (SHARED_AT) openBarAt(SHARED_AT);
     clampView();
     redraw();
     updateReadout();
     startStreams();
     loadEvents();
-    setInterval(loadEvents, 30_000);
+    setInterval(() => {
+      if (notifier.on || Date.now() - eventsLoadedAt >= 30_000) loadEvents();
+    }, 15_000);
     setInterval(pollRecent, 5_000);
     setInterval(showLive, 1_000);
   } catch {
