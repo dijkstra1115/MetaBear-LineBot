@@ -5,6 +5,8 @@
 // Every watcher is plain state plus methods that take timestamps, so tests drive them with
 // made-up streams and the collector with the live ones.
 
+import { SIGNALS } from "./signals.js";
+
 export const ALERT_DEFAULTS = {
   marketOn: 1, // 1 sends market alerts, 0 only records them
   healthOn: 1, // 1 sends collector health alerts, 0 only records them
@@ -323,6 +325,11 @@ export function validSetting(key, value) {
   return key === "dailyCap" ? Number.isInteger(value) && value >= 1 : value > 0;
 }
 
+// Closed 5-minute-bar detectors (signals.js) the collector runs; their events carry the bar's
+// close as t and a dir of "up" or "down".
+export const BAR_KINDS = ["absorption", "sweep", "divergence", "stackedRetest", "breakout"];
+const BAR_ICONS = { absorption: "🛡️", sweep: "🪝", divergence: "↔️", stackedRetest: "🧲", breakout: "🚀" };
+
 /** Health events are about the collector itself, not the market. */
 export const HEALTH_KINDS = new Set(["health_down", "health_up", "health_archive", "health_errors", "health_unreachable"]);
 
@@ -350,6 +357,12 @@ export function describe(e) {
       return `🎭 疑似誘單 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)}–${priceText(e.price + 10)}：價格距離 ${e.distPct.toFixed(2)}% 時，1 秒內撤掉 ${e.size.toFixed(0)} BTC，期間只成交 ${e.traded.toFixed(1)} BTC（掛了 ${Math.round(e.heldMs / 1000)} 秒）（${at}）`;
     case "iceberg":
       return `🧊 冰山 ${e.side === "bid" ? "買方" : "賣方"} ${priceText(e.price)} 已成交 ${e.filled.toFixed(1)} BTC，最多只顯示 ${e.shown.toFixed(1)} BTC（${at}）`;
+    case "absorption":
+    case "sweep":
+    case "divergence":
+    case "stackedRetest":
+    case "breakout":
+      return `${BAR_ICONS[e.kind]} ${SIGNALS[e.kind].name}：${e.note}（5 分 K，${timeText(e.t).slice(0, 5)} 收盤）`;
     case "test":
       return `✅ 測試通知（${at}）`;
     case "health_down":

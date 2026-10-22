@@ -8,7 +8,9 @@ import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
 import { readingsAt } from "./metrics.js";
 import { Player, drawOverlay, prepare } from "./replay.js";
-import { SIGNALS, aggregate as aggregateSignals, detect, valueArea } from "./signals.js";
+import { LEVEL_LABELS, priorDayLevels } from "./keylevels.js";
+import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
+import { BAR_KINDS } from "./watch.js";
 
 const API = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
@@ -120,8 +122,9 @@ let mergedRows = []; // 1-minute rows after merging archive, collector and strea
 let mergedOi = []; // [t, OI in BTC]
 let liqMap = null;
 let liqMapAt = 0;
-let events = []; // order-flow events on closed 5-minute bars
+let events = []; // replay: order-flow events detected here on closed 5-minute bars
 let eventsKey = "";
+let liveEvents = []; // live: the collector's events at a key level, sorted by time (loadEvents)
 let bars = [];
 let tick = 25;
 let replay = null; // replay mode: { player, prepared, raw, sec, printsN, readingsN, playing, last, viewKey }
@@ -278,7 +281,7 @@ function build() {
     bars[i].imb = bookImbalance(bars[i]);
   }
   attachVwap(mergedRows, bars);
-  dayLevels = priorDayLevels(mergedRows);
+  dayLevels = dayLevelsOf(mergedRows);
   applyLive(bars.at(-1), bars.at(-2));
   attachLiquidations(tfMs);
   mergedOi = metricsSorted.filter((m) => m[1] != null).map((m) => [m[0], m[1]]);
@@ -371,28 +374,11 @@ function vwapTail(bar, prev, rows) {
   setVwap(bar, sums);
 }
 
-// Previous UTC day's high, low and value area for each day, from 1-minute rows.
-function priorDayLevels(rows) {
-  const days = new Map();
-  for (const [t, , h, l, , levels] of rows) {
-    const d = Math.floor(t / DAY);
-    let day = days.get(d);
-    if (!day) days.set(d, (day = { high: -Infinity, low: Infinity, volume: new Map() }));
-    day.high = Math.max(day.high, h);
-    day.low = Math.min(day.low, l);
-    for (const [bin, buy, sell] of levels) day.volume.set(bin, (day.volume.get(bin) ?? 0) + buy + sell);
-  }
+// Previous UTC day's high, low and value area for each day, computed as for alerts (keylevels.js).
+function dayLevelsOf(rows) {
+  const colors = { pdh: C.muted, pdl: C.muted, poc: C.gold, vah: C.dim, val: C.dim };
   const out = new Map();
-  for (const [d, day] of days) {
-    const va = valueArea(day.volume);
-    const mid = (bin) => bin * TICK + TICK / 2;
-    const list = [
-      { name: "前日高", price: day.high, color: C.muted },
-      { name: "前日低", price: day.low, color: C.muted },
-    ];
-    if (va) list.push({ name: "前日 POC", price: mid(va.poc), color: C.gold }, { name: "前日 VAH", price: mid(va.vah), color: C.dim }, { name: "前日 VAL", price: mid(va.val), color: C.dim });
-    out.set(d + 1, list);
-  }
+  for (const [d, list] of priorDayLevels(rows, TICK)) out.set(d, list.map((L) => ({ name: LEVEL_LABELS[L.name], price: L.price, color: colors[L.name] })));
   return out;
 }
 
@@ -416,19 +402,60 @@ function bookImbalance(b) {
   return null;
 }
 
+// Replays have no collector record, so their events are detected here.
 function updateEvents() {
-  if (!on("events")) return;
+  if (!replay || !on("events")) return;
   // Detection runs on its own closed 5-minute bars, whatever the chart shows; only
   // redo it when a new 5-minute bar has closed.
   const now = Date.now();
   const key = `${mergedRows.length}:${Math.floor(now / 300_000)}`;
   if (key === eventsKey) return;
   eventsKey = key;
-  events = detect(aggregateSignals(mergedRows, TICK, mergedOi, now));
+  events = detect(aggregateSignals(mergedRows, TICK, mergedOi, now)).map((e) => ({ ...e, name: SIGNALS[e.kind].name, line: `${SIGNALS[e.kind].name} ${e.note}` }));
+}
+
+const EVENT_NAMES = { print: "大單", liq: "連環爆倉", oi: "OI 異動", wall: "掛單牆", wall_eaten: "牆被吃", wall_pulled: "牆撤單", spoof: "誘單", iceberg: "冰山" };
+const UP_SIDES = new Set(["up", "buy", "bid", "short"]);
+const DOWN_SIDES = new Set(["down", "sell", "ask", "long"]);
+
+// The chart shows the collector's own events, the record LINE alerts and browser notifications
+// come from, so it never shows a key-level event the alerts did not see, or the other way round.
+async function loadEvents() {
+  if (replay || !on("events")) return;
+  // From the first loaded day, so every viewer asks for the same URL and shares the edge cache.
+  const since = Math.floor(Date.now() / DAY) * DAY - (DAYS - 1) * DAY;
+  try {
+    const res = await fetch(`${API}/events?since=${since}`);
+    if (!res.ok) return;
+    liveEvents = (await res.json()).events.map(liveEvent);
+    redraw();
+  } catch {
+    // Keep what was shown; the next poll tries again.
+  }
+}
+
+// Buyers' side (bids, buy prints, shorts liquidated, "up") below the bar, sellers' above; events
+// with no side of their own, like OI changes or vanished walls, above in gold.
+function liveEvent(e) {
+  const sided = !["oi", "spoof", "wall_eaten", "wall_pulled"].includes(e.kind);
+  const dir = sided && UP_SIDES.has(e.side) ? "up" : sided && DOWN_SIDES.has(e.side) ? "down" : null;
+  // Bar detectors stamp the close of their 5-minute bar; draw them on that bar.
+  const t = BAR_KINDS.includes(e.kind) ? e.t - 1 : e.t;
+  return { t, kind: e.kind, dir, price: e.price, name: SIGNALS[e.kind]?.name ?? EVENT_NAMES[e.kind] ?? e.kind, line: e.text };
 }
 
 function eventsIn(b) {
-  return events.filter((e) => e.t > b.t && e.t <= b.end);
+  if (replay) return events.filter((e) => e.t > b.t && e.t <= b.end);
+  let lo = 0;
+  let hi = liveEvents.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (liveEvents[mid].t < b.t) lo = mid + 1;
+    else hi = mid;
+  }
+  const out = [];
+  for (let k = lo; k < liveEvents.length && liveEvents[k].t < b.end; k++) out.push(liveEvents[k]);
+  return out;
 }
 
 function updateLiqMap(force) {
@@ -1067,7 +1094,7 @@ function drawEvents(L, from, to, yOf) {
         ctx.lineTo(cx + 4, y - 3);
       }
       ctx.fill();
-      if (view.barW >= 28) ctx.fillText(SIGNALS[e.kind].name, cx, up ? y + 12 : y - 11);
+      if (view.barW >= 28) ctx.fillText(e.name, cx, up ? y + 12 : y - 11);
     }
   }
   ctx.textAlign = "left";
@@ -1509,7 +1536,7 @@ function drawLegend(L) {
     hover ? fmtTime(b.t) : "",
     b.partial ? "部分分鐘無足跡" : "",
     on("prints") ? printsText(b) : "",
-    ...(on("events") ? eventsIn(b).map((e) => `${SIGNALS[e.kind].name} ${e.note}`) : []),
+    ...(on("events") ? eventsIn(b).map((e) => e.line) : []),
     liqText(),
   ].filter(Boolean);
   if (!notes.length) return;
@@ -2060,6 +2087,7 @@ function buildIndicatorPanel() {
       if (id === "events") {
         eventsKey = "";
         updateEvents();
+        loadEvents();
       }
       redraw();
     });
@@ -2331,6 +2359,8 @@ if (CASE) {
     redraw();
     updateReadout();
     startStreams();
+    loadEvents();
+    setInterval(loadEvents, 30_000);
     setInterval(pollRecent, 5_000);
     setInterval(showLive, 1_000);
   } catch {

@@ -122,11 +122,9 @@ test("alert thresholds are tuned over the admin API and a test alert reaches the
   assert.equal(reset.config.marketOn, 1);
 });
 
-test("key levels come from the previous Taipei day and are rebuilt after an import", async () => {
+test("key levels come from the previous UTC day and are rebuilt after an import", async () => {
   const day = 86_400_000;
-  // The previous Taipei day starts at 16:00 UTC two calendar boundaries back.
-  const session = Math.floor((Date.now() + 8 * 3_600_000) / day);
-  const prior = session * day - 8 * 3_600_000 - day;
+  const prior = Math.floor(Date.now() / day) * day - day;
   const rows = [
     [prior + 60_000, 80_000, 80_500, 79_990, 80_400, [[8000, 5, 5], [8040, 30, 20]]],
     [prior + 120_000, 80_400, 80_420, 79_100, 79_200, [[7920, 2, 2]]],
@@ -149,4 +147,18 @@ test("key levels come from the previous Taipei day and are rebuilt after an impo
   assert.equal(tuned.config.dailyCap, 3, "the cap is a whole number");
   assert.equal(tuned.config.levelTolPct, 0.05);
   await alerts({ method: "POST", body: JSON.stringify({ config: null }) });
+});
+
+test("the public events feed lists only market events at a key level", async () => {
+  const minute = Math.floor(Date.now() / 60_000) * 60_000;
+  const feed = (since: number) => mf.dispatchFetch(`https://metabear.io/api/orderflow/btcusdt/events?since=${since}`);
+  for (const bad of [minute + 1, minute + 60_000, minute - 31 * 86_400_000]) assert.equal((await feed(bad)).status, 400);
+  const res = await feed(minute - 86_400_000);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("cache-control") ?? "", /max-age=10/);
+  const body = (await res.json()) as any;
+  assert.ok(Array.isArray(body.events));
+  // The test alerts sent earlier are not market events, and delivery states stay private.
+  assert.equal(body.events.some((e: any) => e.kind === "test"), false);
+  for (const e of body.events) assert.equal("state" in e, false);
 });

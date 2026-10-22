@@ -5,6 +5,7 @@
 //   GET  /api/orderflow/btcusdt/recent?since=ms    everything since a minute in the last 2 days
 //   GET  /api/orderflow/btcusdt/book?from=ms       fine order-book columns, one 30-minute chunk
 //   GET  /api/orderflow/btcusdt/status             collector health
+//   GET  /api/orderflow/btcusdt/events?since=ms    market events at a key level since a minute in the last 30 days
 //   POST /api/orderflow/btcusdt/import             archive footprint rows (Bearer ORDERFLOW_ADMIN_TOKEN)
 //   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token)
 //   GET  /api/orderflow/btcusdt/alerts             alert thresholds and the latest alerts (same token)
@@ -100,6 +101,13 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
     const since = Number(url.searchParams.get("since"));
     if (!Number.isInteger(since) || since % MINUTE !== 0 || since < now - 2 * DAY || since > now) return json({ error: "since 需為最近兩天內的整分鐘毫秒時間" }, 400);
     return cached(request, ctx, 3, () => stub.fetch(`https://collector/recent?since=${since}`));
+  }
+
+  if (route === "/events") {
+    // The lab asks from the hour its data starts, so viewers share cache entries.
+    const since = Number(url.searchParams.get("since"));
+    if (!Number.isInteger(since) || since % MINUTE !== 0 || since < now - HISTORY_DAYS * DAY || since > now) return json({ error: "since 需為 30 天內的整分鐘毫秒時間" }, 400);
+    return cached(request, ctx, 10, () => stub.fetch(`https://collector/events?since=${since}`));
   }
 
   return json({ error: "找不到這個路徑" }, 404);

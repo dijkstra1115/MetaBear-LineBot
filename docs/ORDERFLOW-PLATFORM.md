@@ -66,9 +66,10 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | 主圖 | 掛單熱力圖 | Bybit 1000 檔，現價上下約 0.25% |
 | 主圖 | 大單泡泡 | 圓形，面積代表數量，綠色主動買、橘色主動賣；門檻可選 2／5／10／25／50 BTC |
 | 主圖 | VWAP ±1σ、±2σ | 每個 UTC 日重新計算，用足跡的價位中點加權 |
-| 主圖 | 前日高低點與價值區 | 前一個 UTC 日的高、低、POC、VAH、VAL |
+| 主圖 | 前日高低點與價值區 | 前一個 UTC 日的高、低、POC、VAH、VAL，和警報用同一套算法（`keylevels.js`） |
 | 主圖 | 爆倉標記 | 三角形：▼ 多單被強平、▲ 空單被強平，依金額分三種大小 |
-| 主圖 | 事件、爆倉地圖（估算） | 原有功能 |
+| 主圖 | 事件 | 即時模式顯示收集器記下、發生在關鍵位的事件（`/events`），和 LINE 警報是同一份紀錄，每 30 秒更新；回放模式沒有收集器紀錄，仍在網頁上用 `signals.js` 偵測 |
+| 主圖 | 爆倉地圖（估算） | 原有功能 |
 | 副圖 | 成交量 | 依主動買賣方向分色堆疊 |
 | 副圖 | Delta、CVD | 每根 K 棒的主動買減賣，以及累積值 |
 | 副圖 | 爆倉 | 上方空單、下方多單 |
@@ -97,10 +98,11 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | 🧱 掛單牆 | 某個 $10 價位帶掛單 ≥ 60 BTC，且 ≥ 全簿中位數的 4 倍，持續 60 秒；之後消失時，依價格有沒有碰到該價位，回報「被吃掉」或「撤單」 |
 | 🎭 疑似誘單（Spoofing） | 某個 $10 價位帶原本掛 ≥ 100 BTC 且 ≥ 全簿中位數的 4 倍、已經掛了至少 10 秒，不是最佳買價或賣價所在的價位帶（那裡的報價本來就會隨價格一直撤掉重掛），在價格距離它不到 0.1% 時，1 秒內少了 ≥ 100 BTC，而且這 1 秒在該價位帶的成交量不到消失量的 2 成。每次掛單簿更新（約每 0.2 秒）都檢查；同一道牆不會再被回報成「撤單」 |
 | 🧊 冰山 | 同一價格成交 ≥ 25 BTC，且 ≥ 該價位顯示過的最大量的 3 倍，價位還在（持續補單） |
+| 🛡️🪝↔️🧲🚀 K 棒事件 | 每根 5 分 K 收盤後 15 秒，對剛收盤的那根跑 `signals.js` 的吸收、掃蕩收回（掃過關鍵位後收回，關鍵位來自 `LevelBook`，包含 VWAP 與堆疊區）、CVD 背離、不平衡區回測、放量突破；同一種事件、同一方向 30 分鐘內只記一次。收集器重啟後只檢查最新一根 |
 
 - 同一種事件、同一方向或同一價格，10 分鐘內只通知一次。重連後補回的舊成交和爆倉不會觸發通知。
 - 每分鐘最多推一則，多個事件合併在一起，最多列 8 行，附上那一分鐘的分享連結。每天（台灣時間）最多 `dailyCap` 則（預設 3；LINE 目前是免費方案，每月 200 則要和其他推播共用），超過就只記錄不推送。
-- **關鍵位過濾（影子模式）**：市場事件會標上最近的關鍵位（前一個台灣日的高、低、POC、VAH、VAL，當天 VWAP，未回測的堆疊區；`public/lab/orderflow/keylevels.js`）。`levelOn=1`（預設）時，離所有關鍵位超過 `levelTolPct`（0.1%）的事件記成「不在關鍵位」，同一種事件在同一個關鍵位 `levelCooldownMs`（60 分鐘）內重複的記成「同一關鍵位冷卻中」，兩者都不推送。關鍵位以台灣日（Asia/Taipei 午夜）換日，網頁目前畫的是 UTC 日，兩者會不同。細節與回測見 [ORDERFLOW-KEYLEVEL-ALERTS.md](ORDERFLOW-KEYLEVEL-ALERTS.md)。
+- **關鍵位過濾（影子模式）**：市場事件會標上最近的關鍵位（前一個 UTC 日的高、低、POC、VAH、VAL，當天 VWAP，未回測的堆疊區；`public/lab/orderflow/keylevels.js`）。`levelOn=1`（預設）時，離所有關鍵位超過 `levelTolPct`（0.1%）的事件記成「不在關鍵位」，同一種事件在同一個關鍵位 `levelCooldownMs`（60 分鐘）內重複的記成「同一關鍵位冷卻中」，兩者都不推送。關鍵位以 UTC 日（台灣早上 8 點）換日，和網頁畫的前日關鍵位一致（2026-10-22 起，理由見 [ORDERFLOW-ALERT-SUBSCRIPTION.md](ORDERFLOW-ALERT-SUBSCRIPTION.md)）。每個市場事件都記下價位、方向，以及是否在關鍵位 0.1% 以內（`near`），不受 `levelOn` 影響。細節與回測見 [ORDERFLOW-KEYLEVEL-ALERTS.md](ORDERFLOW-KEYLEVEL-ALERTS.md)。
 - 門檻可以不用重新部署就調整：`POST /api/orderflow/btcusdt/alerts`，body 帶 `{ "config": { "printBtc": 80 } }`；帶 `{ "config": null }` 恢復預設，帶 `{ "test": true }` 會送一則測試通知。`GET` 同一路徑可以看目前門檻和最近 50 則事件。這兩個都要帶管理權杖。
 - 牆、誘單與冰山只看得到 Bybit 1000 檔的範圍（現價上下約 0.25%）。牆和冰山每 10 秒檢查一次，誘單則是每次掛單簿更新就檢查。
 - 誘單只代表「大量掛單在價格接近時被撤掉」，不一定是惡意操縱；做市商調整報價也會出現同樣的樣子。2026-10-17 本機試跑時，用 50 BTC、3 倍、3 秒的門檻大約每分鐘就會標一次，多半是最佳報價第二、三檔被移動，所以預設改得和掛單牆一樣嚴格。
@@ -132,6 +134,7 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | POST | `/api/orderflow/btcusdt/import` | 封存檔匯入：`{ rows }` 是足跡；`{ prints, from, to }` 會換掉這段時間內的大單。需要 `Authorization: Bearer <ORDERFLOW_ADMIN_TOKEN>` |
 | POST | `/api/orderflow/btcusdt/archive` | 馬上嘗試待匯入的每日封存檔（略過重試等待）。權杖同上 |
 | GET | `/api/orderflow/btcusdt/book?from=<對齊 30 分鐘的毫秒>` | 30 分鐘的細掛單簿（每 10 秒一欄、$1 格距），網頁在 1、5 分 K 時使用 |
+| GET | `/api/orderflow/btcusdt/events?since=<整分鐘毫秒>` | 30 天內某分鐘之後、發生在關鍵位的市場事件（最多最新 2,000 則，舊到新）：`t`、`kind`、`price`、`side`、`level`、`dist`、`repeat`（同一關鍵位冷卻中）、`text`。不含推送狀態，不需要權杖；邊緣快取 10 秒 |
 | GET/POST | `/api/orderflow/btcusdt/alerts` | 通知門檻與最近的事件；POST 可調整門檻或送測試通知。權杖同上 |
 
 `metrics` 每一列的欄位：`[讀取時間, OI (BTC), OI (USDT), 大戶持倉比, 大戶帳戶比, 全體多空比, 主動買賣比, 資金費率]`。Bybit 沒有的欄位是 `null`。
