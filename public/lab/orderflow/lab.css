@@ -337,6 +337,30 @@ input {
   font-size: 11px;
 }
 
+.notify-line {
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.notify-line h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.notify-line p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.notify-line-link {
+  justify-self: start;
+  color: #06c755;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 /* ---------- toasts (notify.js) ---------- */
 .toasts {
   position: fixed;

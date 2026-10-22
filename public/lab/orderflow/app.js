@@ -2168,7 +2168,7 @@ function openBarAt(t) {
 
 const notifyPanel = document.querySelector(".notify");
 const notifier = new Notifier({ toasts: $("toasts"), onOpen: openBarAt });
-notifier.mount($("notify-panel"), () => loadEvents());
+notifier.mount($("notify-panel"), { onChange: () => loadEvents(), line: "link" });
 document.addEventListener("pointerdown", (e) => {
   if (notifyPanel.open && !notifyPanel.contains(e.target)) notifyPanel.open = false;
 });

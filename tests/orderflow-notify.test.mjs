@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { NOTIFY_KINDS, defaultSettings, notifySupport, pickFresh } from "../public/lab/orderflow/notify.js";
+import { LINE_DAILY_MAX, NOTIFY_KINDS, defaultSettings, kindStats, lineKeyword, lineUrl, notifySupport, pickFresh, readSettings } from "../public/lab/orderflow/notify.js";
 import { BAR_KINDS } from "../public/lab/orderflow/watch.js";
 
 const ev = (t, kind, extra = {}) => ({ t, kind, price: 80_000, side: "buy", level: "pdh", dist: 20, repeat: false, text: kind, ...extra });
@@ -25,7 +25,8 @@ test("only new events of the chosen types reach the viewer, and history is never
 test("every event kind the collector records can be chosen, and all are chosen by default", () => {
   const covered = new Set(NOTIFY_KINDS.flatMap((k) => k.kinds ?? [k.id]));
   for (const kind of [...BAR_KINDS, "print", "liq", "oi", "wall", "wall_eaten", "wall_pulled", "spoof", "iceberg"]) assert.ok(covered.has(kind), kind);
-  assert.deepEqual(defaultSettings(), { on: false, kinds: NOTIFY_KINDS.map((k) => k.id) });
+  assert.deepEqual(defaultSettings(), { on: false, kinds: NOTIFY_KINDS.map((k) => k.id), daily: LINE_DAILY_MAX, quiet: "" });
+  for (const k of NOTIFY_KINDS) assert.match(k.lesson, /^[a-z-]+$/, `${k.id} links a lesson`);
 });
 
 test("browsers without system notifications are told why", () => {
@@ -36,4 +37,38 @@ test("browsers without system notifications are told why", () => {
   assert.equal(notifySupport(nav("Mozilla/5.0 (X11) Firefox"), win()), "none");
   assert.equal(notifySupport(nav("Mozilla/5.0 Chrome"), win("denied")), "denied");
   assert.equal(notifySupport(nav("Mozilla/5.0 Chrome"), win("granted")), "system");
+});
+
+test("stored settings keep only valid values", () => {
+  assert.deepEqual(readSettings(null), defaultSettings());
+  assert.deepEqual(readSettings({ on: true, kinds: ["sweep", "gone", "absorption"], daily: 9, quiet: "01-02" }), {
+    on: true,
+    kinds: ["absorption", "sweep"],
+    daily: LINE_DAILY_MAX,
+    quiet: "",
+  });
+  assert.deepEqual(readSettings({ on: "yes", daily: 2, quiet: "23-08" }), { ...defaultSettings(), daily: 2, quiet: "23-08" });
+});
+
+test("the LINE keyword follows format A and opens the official account with it typed in", () => {
+  const all = NOTIFY_KINDS.map((k) => k.id);
+  assert.equal(lineKeyword({ kinds: all, daily: 3, quiet: "" }), "訂閱警報 全部 每天3則");
+  assert.equal(lineKeyword({ kinds: ["divergence", "absorption", "wall"], daily: 2, quiet: "00-08" }), "訂閱警報 吸收,CVD背離,掛單牆 每天2則 安靜00-08");
+  const url = new URL(lineUrl("訂閱警報 全部 每天3則"));
+  assert.equal(url.origin + url.pathname, "https://line.me/R/oaMessage/%40804bmpkh/");
+  assert.equal(decodeURIComponent(url.search.slice(1)), "訂閱警報 全部 每天3則");
+});
+
+test("card stats count the last week per type and wait for three days of feed", () => {
+  const now = Date.parse("2026-11-01T00:00:00Z");
+  const day = 86_400_000;
+  const short = kindStats([ev(now - day, "sweep"), ev(now - 2 * 3_600_000, "wall_eaten")], now);
+  assert.equal(short.sweep.count, 1);
+  assert.equal(short.sweep.avg, null, "one day of feed is too short for a rate");
+  assert.equal(short.wall.last.kind, "wall_eaten");
+  const long = kindStats([ev(now - 20 * day, "sweep"), ev(now - 6 * day, "sweep"), ev(now - day, "sweep"), ev(now - day, "print")], now);
+  assert.equal(long.sweep.count, 2, "only the last 7 days count");
+  assert.equal(long.sweep.avg, 2 / 7);
+  assert.equal(long.iceberg.avg, 0);
+  assert.equal(long.iceberg.last, null);
 });

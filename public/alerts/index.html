@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#05090f" />
+    <meta
+      name="description"
+      content="MetaBear 關鍵位訂單流提醒：價格到了前日高低、價值區、VWAP 或堆疊區，又出現吸收、掃蕩、大單、冰山等訂單流事件時才提醒你。網頁通知免費，會員可用 LINE 接收。非投資建議。"
+    />
+    <title>關鍵位訂單流提醒｜MetaBear</title>
+    <link rel="canonical" href="https://metabear.io/alerts/" />
+    <meta property="og:title" content="關鍵位訂單流提醒｜MetaBear" />
+    <meta property="og:description" content="只在價格到了關鍵位、訂單流又出現異常時提醒你。網頁通知免費，會員可用 LINE 接收。非投資建議。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://metabear.io/alerts/" />
+    <meta property="og:image" content="https://metabear.io/lab/orderflow/og.png" />
+    <link rel="icon" href="/metabear-logo-transparent-64.png" type="image/png" sizes="64x64" />
+    <link rel="stylesheet" href="/orderflow/motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
+    <link rel="stylesheet" href="/alerts/alerts.css" />
+    <script src="/mb-boot.js"></script>
+    <script src="/alerts/page.js" type="module"></script>
+    <script src="/mb-init.js" type="module"></script>
+  </head>
+  <body class="alerts-page mb-grain">
+    <header class="mb-header" data-header>
+      <a class="mb-brand" href="/" aria-label="MetaBear 首頁"
+        ><img src="/metabear-logo-transparent-64.png" alt="" width="34" height="34" /><span
+          >MetaBear<small>KEY-LEVEL ALERTS</small></span
+        ></a
+      >
+      <button class="mb-menu" type="button" aria-expanded="false" aria-controls="alerts-nav" aria-label="開啟選單">
+        <span></span>
+      </button>
+      <nav class="mb-nav" id="alerts-nav" aria-label="主要導覽">
+        <a href="/lab/orderflow/">即時訂單流</a><a href="/orderflow/">互動學院</a><a href="/">回到首頁</a
+        ><a class="mb-btn small" href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer"
+          >問 LINE 小幫手 <span class="arrow" aria-hidden="true">↗</span></a
+        >
+      </nav>
+    </header>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <main>
+      <section class="alerts-hero">
+        <div class="mb-aurora" aria-hidden="true"></div>
+        <div class="mb-wrap alerts-hero-inner">
+          <p class="mb-eyebrow" data-reveal>KEY-LEVEL <b>ALERTS</b></p>
+          <h1 class="mb-h2" data-reveal>價格到了關鍵位，<br /><span class="t-grad">訂單流有異常</span>才提醒你。</h1>
+          <p class="mb-lead" data-reveal>
+            前日高低、價值區邊界、VWAP 與堆疊區附近，出現吸收、掃蕩收回、大單、冰山這類事件時，我們會通知你發生了什麼。要不要進場，請打開即時訂單流，看接下來的成交再判斷。
+          </p>
+          <div class="alerts-chips" data-reveal>
+            <span class="mb-chip"><span class="dot"></span>只在關鍵位 0.1% 以內</span>
+            <span class="mb-chip">同一關鍵位一小時一次</span>
+            <span class="mb-chip">提醒不是買賣訊號</span>
+          </div>
+          <div class="alerts-cta" data-reveal>
+            <a class="mb-btn" href="#subscribe">選擇要收的提醒 <span class="arrow" aria-hidden="true">↓</span></a>
+            <a class="mb-btn ghost" href="/lab/orderflow/">看即時訂單流 <span class="arrow" aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-wrap alerts-steps" aria-label="怎麼運作">
+        <ol>
+          <li data-reveal><span class="mb-num">01</span><b>選事件</b><p>勾選你想知道的訂單流事件，預設全選。</p></li>
+          <li data-reveal><span class="mb-num">02</span><b>開通知</b><p>網頁通知免費，開著網頁就收得到；會員可以改用 LINE，關掉網頁也收得到。</p></li>
+          <li data-reveal><span class="mb-num">03</span><b>看盤面</b><p>每則提醒都能打開事發那一刻的即時訂單流，自己看後續怎麼走。</p></li>
+        </ol>
+      </section>
+
+      <section id="subscribe" class="mb-wrap alerts-subscribe">
+        <div class="alerts-head">
+          <p class="mb-eyebrow">SUBSCRIBE</p>
+          <h2 class="mb-h3">網頁通知與 LINE 通知用同一份勾選</h2>
+        </div>
+        <div id="notify-panel" class="mb-panel alerts-panel"></div>
+      </section>
+
+      <section class="mb-wrap alerts-kinds" aria-labelledby="kinds-title">
+        <div class="alerts-head">
+          <p class="mb-eyebrow">EVENTS</p>
+          <h2 id="kinds-title" class="mb-h3">每一種提醒在說什麼</h2>
+          <p class="mb-small">次數來自收集器最近 7 天在關鍵位記下的事件；「最近一次」會打開當時的即時訂單流。次數只是頻率，不代表準確度。</p>
+        </div>
+        <div id="kind-cards" class="alerts-cards"></div>
+      </section>
+
+      <section class="mb-wrap alerts-notes" aria-label="說明">
+        <div class="mb-panel alerts-note">
+          <h2 class="mb-h3">什麼是關鍵位</h2>
+          <ul>
+            <li><b>前日高、前日低</b>：前一天的最高價與最低價。</li>
+            <li><b>前日 POC、VAH、VAL</b>：前一天成交最多的價位，以及包含七成成交量的價值區上下緣。</li>
+            <li><b>VWAP</b>：當天的成交量加權均價；換日後第一個小時不算。</li>
+            <li><b>堆疊區</b>：剛出現、還沒被回測的連續失衡價區，最多保留兩小時。</li>
+          </ul>
+          <p class="mb-small">「一天」以 UTC 計算，也就是台灣早上 8 點換日，和交易所的日 K 相同。<a class="mb-link" href="/orderflow/volume-profile">價值區課程 →</a></p>
+        </div>
+        <div class="mb-panel alerts-note">
+          <h2 class="mb-h3">收不到通知時</h2>
+          <ul>
+            <li>網頁通知要開著網頁才收得到；分頁在背景時，瀏覽器可能延遲約一分鐘。</li>
+            <li>LINE 內建瀏覽器不支援系統通知，請改用 Safari 或 Chrome 開啟。</li>
+            <li>iPhone 要先在 Safari 按「分享 → 加入主畫面」，從主畫面打開才收得到。</li>
+            <li>想關掉網頁也收得到，請使用 LINE 通知。</li>
+          </ul>
+          <p class="mb-small">資料來自 Bybit BTCUSDT 永續合約。提醒描述盤面發生了什麼，不是買賣建議，也不保證後續走勢。</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="alerts-footer mb-wrap">
+      MetaBear 可能因你的推薦註冊與交易獲得佣金。內容不構成投資建議，合約與槓桿交易可能造成重大損失。<a href="/">回到 MetaBear ↗</a>
+    </footer>
+  </body>
+</html>
