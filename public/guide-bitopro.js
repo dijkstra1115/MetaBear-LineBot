@@ -126,6 +126,6 @@ export const bitoproQuestions = [
         reason: "客服可依交易紀錄協助追查。",
       },
     ],
-    check: "已入金即可，允許內部轉帳；提交 UID 後由系統查詢資格。",
+    check: "入群條件是60 日內累計入金 200 USDT（不含內部轉帳）；提交 UID 後由系統查詢資格。",
   },
 ];

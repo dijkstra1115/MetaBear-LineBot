@@ -407,7 +407,7 @@ async function respondBase(
     if (automated) await enqueueSync(env, userId, "full");
     return [
       reply(
-        `已登記 BingX UID：${uid}\n\n${automated ? "正在查詢邀請關係、KYC 與入金狀態。通過後會自動傳送 VIP 社群連結。" : "推薦關係、KYC 與入金待小幫手核實。"}\n入金不設最低金額，允許內部轉帳。可回覆「我的進度」查看結果。`,
+        `已登記 BingX UID：${uid}\n\n${automated ? "正在查詢邀請關係、KYC 與入金狀態。通過後會自動傳送 VIP 社群連結。" : "推薦關係、KYC 與入金待小幫手核實。"}\n入金條件：60 日內累計入金 200 USDT（不含內部轉帳）。可回覆「我的進度」查看結果。`,
         [command("我的進度"), command("通知設定"), command("人工協助")],
       ),
     ];
@@ -455,7 +455,7 @@ async function respondBase(
             : snapshot.reasons.join("；");
       return [
         reply(
-          `${detail}${pending ? "\n已排入查詢，稍後可再查看。" : ""}\nVIP 邀請：${vip?.status === "accepted" ? "LINE 已接受發送（不代表已入群）" : customer.stage === "joined" ? "已確認入群" : "通過後自動安排"}\n\n已入金即可，允許內部轉帳。`,
+          `${detail}${pending ? "\n已排入查詢，稍後可再查看。" : ""}\nVIP 邀請：${vip?.status === "accepted" ? "LINE 已接受發送（不代表已入群）" : customer.stage === "joined" ? "已確認入群" : "通過後自動安排"}\n\n入金條件：60 日內累計入金 200 USDT（不含內部轉帳）。`,
           [command("重新查詢"), command("人工協助"), command("選單")],
         ),
       ];

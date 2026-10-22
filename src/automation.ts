@@ -11,7 +11,7 @@ import {
   DAY,
   type Row,
 } from "./bingx";
-import { getTeam, validateTeam, type Team } from "./team";
+import { depositRule, getTeam, validateTeam, type Team } from "./team";
 import { audit, now } from "./db";
 import { HttpError, json, readJson, textField } from "./http";
 
@@ -58,7 +58,7 @@ type Metric = {
 export const reasons: Record<string, string> = {
   referral: "邀請關係或邀請碼不符合團隊設定",
   kyc: "尚未完成 KYC",
-  deposit: "尚未確認符合規則的入金",
+  deposit: "60 日內符合規則的入金尚未達到門檻",
   unknown: "交易所資料不完整，等待重新確認",
   stale: "資料已過期，等待更新",
   sync_error: "交易所查詢失敗，等待重試",
@@ -81,6 +81,24 @@ function timestamp(value: unknown): string | null {
     value < 8640000000000000
     ? new Date(value).toISOString()
     : null;
+}
+// Deposits that count toward the minimum: stablecoins at face value, from the 60 days the sync
+// fetches. Other coins would need a price at the time of deposit, so staff verify those by hand.
+export const COUNTED_CURRENCIES = new Set(["USDT", "USDC"]);
+const isExternalDeposit = (row: Row) => /^(deposit|充值)$/i.test(String(row.assetTypeName));
+/** The 60-day deposit total that counts for the team's rule, as a decimal string. */
+export function countedDeposits(deposits: Row[], team: Team): string {
+  return sumDecimal(
+    deposits
+      .filter(
+        (row) =>
+          (team.allow_internal_transfer || isExternalDeposit(row)) &&
+          COUNTED_CURRENCIES.has(String(row.currencyName).toUpperCase()) &&
+          typeof row.currencyAmountVolume === "string" &&
+          Number(row.currencyAmountVolume) > 0,
+      )
+      .map((row) => decimal(row.currencyAmountVolume)),
+  );
 }
 export function evaluateRelation(
   raw: Row,
@@ -122,20 +140,20 @@ export function evaluateRelation(
   )
     missing.push("referral");
   if (data.kyc !== true) missing.push("kyc");
-  // With internal transfers allowed, the authoritative deposit flag suffices.
-  // If they are excluded, additionally require a recognizable external deposit record.
+  // The deposit flag must be set either way. With a minimum, the counted deposits of the last 60
+  // days must reach it; without one (0), the old rule: any deposit, and with internal transfers
+  // excluded, a recognizable external deposit record.
+  const depositTotal = countedDeposits(deposits, team);
   const externalDeposit = deposits.some(
-    (row) =>
-      /^(deposit|充值)$/i.test(String(row.assetTypeName)) &&
-      Number(row.currencyAmountVolume) > 0,
+    (row) => isExternalDeposit(row) && Number(row.currencyAmountVolume) > 0,
   );
-  if (
-    data.deposited !== true ||
-    (!team.allow_internal_transfer && !externalDeposit)
-  )
-    missing.push("deposit");
+  const enough =
+    team.deposit_min_usdt > 0
+      ? Number(depositTotal) >= team.deposit_min_usdt
+      : team.allow_internal_transfer || externalDeposit;
+  if (data.deposited !== true || !enough) missing.push("deposit");
   return {
-    data,
+    data: { ...data, depositTotal },
     qualification: missing.length
       ? known
         ? "needs_action"
@@ -333,7 +351,7 @@ export async function processSync(message: CrmMessage, env: Env) {
         evaluation.reasons.includes("referral") ? "pending" : "verified",
         evaluation.reasons.includes("deposit") ? "pending" : "verified",
         `BingX API ${checked}`,
-        `BingX API ${checked}；已入金判定；內部轉帳${team.allow_internal_transfer ? "允許" : "不允許"}`,
+        `BingX API ${checked}；${depositRule(team)}；60 日內計入 ${evaluation.data.depositTotal} USDT`,
         checked,
         job.line_user_id,
         job.uid,
@@ -811,7 +829,7 @@ export async function automationApi(
     if (team.automation_enabled && !configured(env))
       throw new HttpError(400, "請先設定 BingX API Key 與 Secret 環境秘密");
     const result = await env.DB.prepare(
-      "UPDATE team_settings SET name=?,referral_code=?,inviter_uid=?,allow_indirect=?,allow_internal_transfer=?,automation_enabled=?,vip_url=?,support_url=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?",
+      "UPDATE team_settings SET name=?,referral_code=?,inviter_uid=?,allow_indirect=?,allow_internal_transfer=?,deposit_min_usdt=?,automation_enabled=?,vip_url=?,support_url=?,revision=revision+1,updated_at=? WHERE id=1 AND revision=?",
     )
       .bind(
         team.name,
@@ -819,6 +837,7 @@ export async function automationApi(
         team.inviter_uid,
         team.allow_indirect,
         team.allow_internal_transfer,
+        team.deposit_min_usdt,
         team.automation_enabled,
         team.vip_url,
         team.support_url,
