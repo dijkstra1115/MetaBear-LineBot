@@ -1,33 +1,38 @@
 // Key levels for location-filtered alerts (docs/ORDERFLOW-KEYLEVEL-ALERTS.md), shared by the
 // collector and the key-level backtest so both see the same levels at the same moment.
 //
-// Sessions are Taiwan days: they start at Asia/Taipei midnight (16:00 UTC). The levels are the
-// previous session's high, low, POC, VAH and VAL, the current session's VWAP, and stacked-imbalance
-// zones that price has not come back to yet. A LevelBook only learns from closed 1-minute rows.
+// Sessions are UTC days (08:00 in Taiwan): the daily candle traders compare against on Bybit and
+// TradingView, and the days Bybit's trade archives cover (docs/ORDERFLOW-ALERT-SUBSCRIPTION.md).
+// The 2026-10-20 backtest used Taiwan days and passes TAIPEI_OFFSET_MS to reproduce them. The
+// levels are the previous session's high, low, POC, VAH and VAL, the current session's VWAP, and
+// stacked-imbalance zones that price has not come back to yet. A LevelBook only learns from closed
+// 1-minute rows.
 
 import { aggregate, detectAt, valueArea } from "./signals.js";
+import { BAR_KINDS } from "./watch.js";
 
 export const MINUTE_MS = 60_000;
 export const SESSION_MS = 86_400_000;
-const TAIPEI_OFFSET_MS = 8 * 3_600_000; // Taiwan has no daylight saving time
+export const TAIPEI_OFFSET_MS = 8 * 3_600_000; // Taiwan has no daylight saving time
 
 export const LEVEL_DEFAULTS = {
   tolPct: 0.1, // an event counts when it is this close to a level (percent of its price)
   vwapAfterMs: 60 * MINUTE_MS, // VWAP is skipped early in a session, when it is still the price itself
   stackLifeMs: 2 * 3_600_000, // a stacked-imbalance zone stays a level this long…
   stackAfterTouchMs: 5 * MINUTE_MS, // …or until this long after price first returns to it
+  sessionOffsetMs: 0, // UTC days; TAIPEI_OFFSET_MS gives Taiwan days
 };
 
 export const LEVEL_LABELS = { pdh: "前日高", pdl: "前日低", poc: "前日 POC", vah: "前日 VAH", val: "前日 VAL", vwap: "VWAP", stack: "堆疊區" };
 
-/** The Taiwan day a time falls in, as a day number. */
-export function sessionOf(t) {
-  return Math.floor((t + TAIPEI_OFFSET_MS) / SESSION_MS);
+/** The session (a UTC day unless offset) a time falls in, as a day number. */
+export function sessionOf(t, offsetMs = 0) {
+  return Math.floor((t + offsetMs) / SESSION_MS);
 }
 
 /** When a session (from sessionOf) starts, in UTC milliseconds. */
-export function sessionStart(session) {
-  return session * SESSION_MS - TAIPEI_OFFSET_MS;
+export function sessionStart(session, offsetMs = 0) {
+  return session * SESSION_MS - offsetMs;
 }
 
 /** High, low and value area of a session's volume by $-bin. */
@@ -58,7 +63,7 @@ export class LevelBook {
     const [t, , h, l, , levels = []] = row;
     if (t <= this.through) return;
     this.through = t;
-    const id = sessionOf(t);
+    const id = sessionOf(t, this.cfg.sessionOffsetMs);
     if (this.session?.id !== id) {
       // A session the book saw only part of still becomes the prior one; the collector
       // replays the whole previous session after a restart.
@@ -97,7 +102,7 @@ export class LevelBook {
   /** The levels in force at time t (after the minutes added so far): [{ name, price }]. */
   levels(t) {
     const out = [];
-    const id = sessionOf(t);
+    const id = sessionOf(t, this.cfg.sessionOffsetMs);
     let p = this.prior && this.prior.id === id - 1 ? this.prior : null;
     // No minute of the new session yet: the session in progress has just become the previous one.
     if (!p && this.session?.id === id - 1) {
@@ -109,7 +114,7 @@ export class LevelBook {
       if (p.poc != null) out.push({ name: "poc", price: p.poc }, { name: "vah", price: p.vah }, { name: "val", price: p.val });
     }
     const s = this.session;
-    if (s && s.id === id && s.v > 0 && t - sessionStart(id) >= this.cfg.vwapAfterMs) out.push({ name: "vwap", price: s.pv / s.v });
+    if (s && s.id === id && s.v > 0 && t - sessionStart(id, this.cfg.sessionOffsetMs) >= this.cfg.vwapAfterMs) out.push({ name: "vwap", price: s.pv / s.v });
     for (const z of this.zones) if (z.t <= t && this.zoneLive(z, t)) out.push({ name: "stack", price: (z.lo + z.hi) / 2 });
     return out;
   }
@@ -129,6 +134,52 @@ export class LevelBook {
     const n = this.nearest(t, price);
     return n && n.dist <= (price * tolPct) / 100 ? n : null;
   }
+}
+
+/**
+ * The bar detectors the collector runs (watch.js BAR_KINDS) on the 5-minute bar closing at `end`,
+ * as alert events. `levels` are a LevelBook's at that moment, so a sweep is of the same levels
+ * every other alert is placed against; whether an event counts as at a level is still the gate's
+ * call. `rows` are 1-minute rows before `end`, enough of them for the detectors' history.
+ */
+export function closedBarEvents(rows, tick, levels, end) {
+  const bars = aggregate(rows, tick, [], end);
+  const i = bars.length - 1;
+  if (i < 0 || bars[i].end !== end) return [];
+  bars[i].keyLevels = levels.map((L) => ({ name: LEVEL_LABELS[L.name] ?? L.name, price: L.price }));
+  const out = [];
+  for (const kind of BAR_KINDS) {
+    const e = detectAt(kind === "sweep" ? "sweepLevel" : kind, bars, i);
+    if (e?.dir) out.push({ kind, t: end, price: e.price, side: e.dir, note: e.note });
+  }
+  return out;
+}
+
+/**
+ * Each UTC day's previous-day high, low, POC, VAH and VAL from 1-minute rows, for the lab chart:
+ * Map(session → [{ name, price }]), the values a LevelBook holds during that session.
+ */
+export function priorDayLevels(rows, tick) {
+  const days = new Map();
+  for (const [t, , h, l, , levels = []] of rows) {
+    const d = sessionOf(t);
+    let s = days.get(d);
+    if (!s) days.set(d, (s = { high: -Infinity, low: Infinity, volume: new Map() }));
+    if (h > s.high) s.high = h;
+    if (l < s.low) s.low = l;
+    for (const [bin, buy, sell] of levels) s.volume.set(bin, (s.volume.get(bin) ?? 0) + buy + sell);
+  }
+  const out = new Map();
+  for (const [d, s] of days) {
+    const p = profileOf(s, tick);
+    const list = [
+      { name: "pdh", price: p.high },
+      { name: "pdl", price: p.low },
+    ];
+    if (p.poc != null) list.push({ name: "poc", price: p.poc }, { name: "vah", price: p.vah }, { name: "val", price: p.val });
+    out.set(d + 1, list);
+  }
+  return out;
 }
 
 /**

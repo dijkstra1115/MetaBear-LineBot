@@ -14,7 +14,9 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { createGunzip } from "node:zlib";
 import { ArchiveDay, REST_URL, SYMBOL, TICK, archiveUrl } from "../public/lab/orderflow/bybit.js";
-import { LevelBook, MINUTE_MS, SESSION_MS, sessionOf, sessionStart } from "../public/lab/orderflow/keylevels.js";
+// Pre-registered on Taiwan days (docs/ORDERFLOW-KEYLEVEL-ALERTS.md §5a), so it keeps them although alerts
+// now use UTC days.
+import { LEVEL_DEFAULTS, LevelBook, MINUTE_MS, SESSION_MS, TAIPEI_OFFSET_MS, sessionOf, sessionStart } from "../public/lab/orderflow/keylevels.js";
 import { aggregate, detect } from "../public/lab/orderflow/signals.js";
 import { ALERT_DEFAULTS, OiWatch } from "../public/lab/orderflow/watch.js";
 
@@ -105,9 +107,9 @@ const rowAt = (t) => rows[idx.get(t)];
 const minuteOf = (t) => Math.floor(t / MINUTE_MS) * MINUTE_MS;
 const closeBefore = (t) => rowAt(minuteOf(t) - MINUTE_MS)?.[4] ?? null; // close of the minute ending at or before t
 
-const evalStart = sessionStart(sessionOf(Date.parse(`${EVAL}T12:00:00+08:00`)));
-const splitAt = sessionStart(sessionOf(Date.parse(`${SPLIT}T12:00:00+08:00`)));
-const evalEnd = sessionStart(sessionOf(Date.parse(`${TO}T12:00:00+08:00`)) + 1); // end of the last Taiwan day…
+const evalStart = sessionStart(sessionOf(Date.parse(`${EVAL}T12:00:00+08:00`), TAIPEI_OFFSET_MS), TAIPEI_OFFSET_MS);
+const splitAt = sessionStart(sessionOf(Date.parse(`${SPLIT}T12:00:00+08:00`), TAIPEI_OFFSET_MS), TAIPEI_OFFSET_MS);
+const evalEnd = sessionStart(sessionOf(Date.parse(`${TO}T12:00:00+08:00`), TAIPEI_OFFSET_MS) + 1, TAIPEI_OFFSET_MS); // end of the last Taiwan day…
 const lastEval = Math.min(evalEnd, last - (HORIZON_MIN + 2) * MINUTE_MS); // …that still has a full horizon of data
 const halves = { train: [evalStart, splitAt], validation: [splitAt, lastEval] };
 const halfDays = Object.fromEntries(Object.entries(halves).map(([k, [a, b]]) => [k, (b - a) / SESSION_MS]));
@@ -167,7 +169,7 @@ function race(entryMinute, dir, move) {
   return 0.5; // undecided
 }
 
-const book = new LevelBook(TICK);
+const book = new LevelBook(TICK, { ...LEVEL_DEFAULTS, sessionOffsetMs: TAIPEI_OFFSET_MS });
 const kept = []; // { kind, t, level, dir, r, r2 }
 const lastKey = new Map();
 const keep = (kind, t, level, dir, entryMinute) => {

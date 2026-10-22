@@ -20,7 +20,7 @@ export const P = {
   oiZ: 2.5,
   oiWindow: 288, // 5-minute OI changes over the previous 24 h
   cooldownBars: 6, // one event of a kind and direction per 30 min
-  levelTolPct: 0.0015, // "at a key level" means within 0.15 % of it
+  levelTolPct: 0.001, // "at a key level" means within 0.1 % of it, as for alerts (watch.js levelTolPct)
   stackedMinShare: 1.5, // a stacked level must also trade 1.5× the bar's median level volume
   retestBars: 24, // a stacked-imbalance zone stays live for 2 h
   liqSweepZ: 2, // model-liquidated volume vs the previous day's non-zero sweeps (log scale)

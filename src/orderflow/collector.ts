@@ -4,7 +4,7 @@
 // docs/ORDERFLOW-CF-PROBE.md, which also explains the 10 s alarm: open outbound sockets alone
 // keep an object alive for at most 15 minutes.
 import { DurableObject } from "cloudflare:workers";
-import { LEVEL_LABELS, LevelBook, eventPrice, levelText, sessionOf, sessionStart } from "../../public/lab/orderflow/keylevels.js";
+import { LEVEL_LABELS, LevelBook, closedBarEvents, eventPrice, levelText, sessionOf, sessionStart } from "../../public/lab/orderflow/keylevels.js";
 import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
 import { ALERT_DEFAULTS, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
 import {
@@ -52,6 +52,13 @@ const ALERT_FRESH_MS = 120_000; // trades and liquidations replayed after a reco
 const HEALTH_DOWN_MS = { Bybit: 120_000, OKX: 300_000 };
 const HEALTH_ERRORS = 10; // errors within 10 minutes
 const HEALTH_REPEAT_MS = 3_600_000;
+// Bar detectors run once a 5-minute bar has settled (late trades in), over enough history for their
+// z-scores and swing levels, at most once per kind and direction in half an hour like detect().
+const BAR_SETTLE_MS = 15_000;
+const BAR_HISTORY_MS = 6 * 3_600_000;
+const BAR_COOLDOWN_MS = 30 * 60_000;
+// Public events (GET /events): the newest at-level market events, at most this many per request.
+const EVENTS_MAX = 2_000;
 type AlertConfig = typeof ALERT_DEFAULTS;
 type AlertEvent = { kind: string; t: number; [k: string]: unknown };
 
@@ -112,12 +119,13 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private wallWatch = new WallWatch(this.alertConfig);
   private iceWatch = new IcebergWatch(this.alertConfig);
   private spoofWatch = new SpoofWatch(this.alertConfig);
-  // Key levels of the previous and current Taipei day, from closed persisted minutes; rebuilt
+  // Key levels of the previous and current UTC day, from closed persisted minutes; rebuilt
   // from storage after a restart or an archive import (which can correct the previous day).
   private levelBook = new LevelBook(TICK);
   private levelsStale = true;
   private levelsUntil = 0; // minutes before this have been fed to the book
   private levelSent = new Map<string, number>(); // kind|level|side → time last let through
+  private barSent = new Map<string, number>(); // bar kind:dir → close of the bar last reported
   private archive: ArchiveJob | null = null;
   private status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[], archive: null as Record<string, unknown> | null };
 
@@ -144,6 +152,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (!this.rows("PRAGMA table_info(oi)").some((c) => c.name === "funding")) this.sql.exec("ALTER TABLE oi ADD COLUMN funding REAL");
     // Added with the key-level filter: the nearest level when the event happened.
     if (!this.rows("PRAGMA table_info(alerts)").some((c) => c.name === "level")) this.sql.exec("ALTER TABLE alerts ADD COLUMN level TEXT; ALTER TABLE alerts ADD COLUMN dist REAL");
+    // Added for the public events feed: where the event happened, its side and whether it was at a level.
+    if (!this.rows("PRAGMA table_info(alerts)").some((c) => c.name === "near"))
+      this.sql.exec("ALTER TABLE alerts ADD COLUMN price REAL; ALTER TABLE alerts ADD COLUMN side TEXT; ALTER TABLE alerts ADD COLUMN near INTEGER");
     // The current minute is persisted every alarm; pick it back up so a restart only loses
     // the seconds since then, which the REST backfill on reconnect fills in.
     this.lastTradeT = Number(this.meta("lastTradeT") ?? 0);
@@ -355,8 +366,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
   }
 
   // Every event is recorded; one whose kind is switched off is kept as "muted" instead of sent.
-  // Market events also carry the nearest key level. With levelOn, one away from every level is
-  // kept as "offlevel", and a repeat at the same level within levelCooldownMs as "repeat".
+  // Market events also carry the nearest key level and whether they were within levelTolPct of it
+  // (near, what the public feed shows). With levelOn, one away from every level is kept as
+  // "offlevel", and a repeat at the same level within levelCooldownMs as "repeat".
   private alert(e: AlertEvent | null) {
     if (!e) return;
     const market = !HEALTH_KINDS.has(e.kind) && e.kind !== "test";
@@ -364,13 +376,16 @@ export class Collector extends DurableObject<OrderflowEnv> {
     let state = on ? "pending" : "muted";
     let text = describe(e);
     let level: { name: string; price: number; dist: number } | null = null;
+    let price: number | null = null;
+    let near = false;
     if (market) {
       this.updateLevels();
-      const price = eventPrice(e, this.lastPrice || null, this.alertConfig.wallBin);
+      price = eventPrice(e, this.lastPrice || null, this.alertConfig.wallBin);
       level = price ? this.levelBook.nearest(e.t, price) : null;
+      near = Boolean(price && level && level.dist <= (price * this.alertConfig.levelTolPct) / 100);
       if (level) text += `｜${levelText(level)}`;
       if (this.alertConfig.levelOn && state === "pending") {
-        if (!price || !level || level.dist > (price * this.alertConfig.levelTolPct) / 100) state = "offlevel";
+        if (!near || !level) state = "offlevel";
         else {
           const key = `${e.kind}|${level.name}|${e.side ?? ""}`;
           if (e.t - (this.levelSent.get(key) ?? -Infinity) < this.alertConfig.levelCooldownMs) state = "repeat";
@@ -378,10 +393,45 @@ export class Collector extends DurableObject<OrderflowEnv> {
         }
       }
     }
-    this.sql.exec("INSERT INTO alerts (t, kind, text, state, level, dist) VALUES (?, ?, ?, ?, ?, ?)", e.t, e.kind, text, state, level?.name ?? null, level ? Math.round(level.dist) : null);
+    this.sql.exec(
+      "INSERT INTO alerts (t, kind, text, state, level, dist, price, side, near) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      e.t,
+      e.kind,
+      text,
+      state,
+      level?.name ?? null,
+      level ? Math.round(level.dist) : null,
+      price == null ? null : Math.round(price * 10) / 10,
+      typeof e.side === "string" ? e.side : null,
+      market ? Number(near) : null,
+    );
   }
 
-  // Feeds closed minutes to the level book: the previous and current Taipei day after a restart or
+  // Closed 5-minute-bar detectors (signals.js) on the bar that just closed. Location is decided like
+  // every other event, by the level book: the bar's key levels are the book's, so a sweep can also
+  // be of VWAP or a stacked zone. After a restart or an outage only the latest bar is checked.
+  private detectBars() {
+    const end = Math.floor((Date.now() - BAR_SETTLE_MS) / FIVE_MIN) * FIVE_MIN;
+    if (end <= Number(this.meta("barsDetected") ?? 0)) return;
+    this.setMeta("barsDetected", end);
+    const rows = this.rows("SELECT row FROM bars WHERE t >= ? AND t < ? ORDER BY t", end - BAR_HISTORY_MS, end).map((r) => JSON.parse(String(r.row)));
+    this.updateLevels();
+    for (const e of closedBarEvents(rows, TICK, this.levelBook.levels(end), end)) {
+      const key = `${e.kind}:${e.side}`;
+      if (end - (this.barSent.get(key) ?? -Infinity) < BAR_COOLDOWN_MS) continue;
+      this.barSent.set(key, end);
+      this.alert(e);
+    }
+  }
+
+  // The newest at-level market events since a time, oldest first, for the lab chart and browser
+  // notifications. Delivery states stay internal; only a repeat at the same level is flagged.
+  private events(since: number) {
+    const rows = this.rows("SELECT t, kind, price, side, level, dist, state, text FROM alerts WHERE t >= ? AND near = 1 ORDER BY t DESC, id DESC LIMIT ?", since, EVENTS_MAX);
+    return rows.reverse().map((r) => ({ t: r.t, kind: r.kind, price: r.price, side: r.side, level: r.level, dist: r.dist, repeat: r.state === "repeat", text: r.text }));
+  }
+
+  // Feeds closed minutes to the level book: the previous and current UTC day after a restart or
   // an archive import, then only the minutes closed since. Cheap when nothing new has closed.
   private updateLevels() {
     const current = Math.floor(Date.now() / MINUTE) * MINUTE;
@@ -748,6 +798,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
         this.persistBars();
         this.persistHeat();
         this.updateLevels();
+        this.detectBars();
         await this.pollRest();
         await this.fillKlines();
         this.watchBook();
@@ -848,6 +899,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (url.pathname === "/recent") {
       const since = Number(url.searchParams.get("since"));
       return this.respond(this.series(since, now + MINUTE), { since, updated: now, status: { bybit: this.status.bybit, lastTrade: this.lastTradeT } });
+    }
+    if (url.pathname === "/events") {
+      const since = Number(url.searchParams.get("since"));
+      return Response.json({ since, updated: now, events: this.events(since) });
     }
     if (url.pathname === "/alerts") {
       if (request.method === "POST") {

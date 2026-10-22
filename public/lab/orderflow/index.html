@@ -84,9 +84,14 @@
           </div>
         </div>
       </details>
+      <details class="notify">
+        <summary>通知</summary>
+        <div id="notify-panel" class="notify-panel"></div>
+      </details>
     </div>
     <span id="live" class="live" data-state="off">僅歷史資料</span>
   </header>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
   <!-- The buttons above drive these; the chart code reads their values. -->
   <div hidden>
     <select id="tf" aria-hidden="true">
