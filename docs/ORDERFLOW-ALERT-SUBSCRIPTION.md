@@ -231,8 +231,8 @@
 
 ### 接手時的待辦
 
-- **實測會員推播**：上線時還沒有任何訂閱者，會員推播（收集器轉送 → 後端逐人投遞 → LINE）還沒在正式環境跑過。用已入群的 LINE 帳號在 `/alerts/` 按一次按鈕，確認收到「已開通」，再等關鍵位事件推播過來，並查 `orderflow_alert_deliveries` 的狀態。
+- ~~**實測會員推播**~~：2026-10-23 完成。使用者用已入群的 LINE 帳號在 `/alerts/` 開通，手機收到推播；正式 D1 的 `orderflow_alert_deliveries` 有 2 則 `sweep`（台灣時間 17:35、17:50），狀態都是 `accepted`，沒有略過或失敗。當時訂閱者 1 人。
 - **VIP 資格重新查詢**：設定版本升級後，之前查詢通過但還沒入群的人，要用新門檻重新查詢後才會收到 VIP 邀請。
-- **急停開關沒有管理頁**：要停止提醒，直接執行 `UPDATE team_settings SET orderflow_alerts_enabled=0 WHERE id=1`。可以考慮在管理頁加開關。
+- ~~**急停開關沒有管理頁**~~：2026-10-23 起在 `/admin` 的「報單」頁，「關鍵位提醒」區塊有暫停／恢復按鈕（`GET /api/orderflow-alerts`、`POST /api/orderflow-alerts/settings`），並顯示訂閱人數與近 24 小時的送達、略過、失敗數。開關是 `team_settings.orderflow_alerts_enabled`，不動設定版本，所以不會讓 VIP 資格重新查詢；暫停時新事件不排入、佇列裡的略過，會員訂閱保留。每次切換記一筆稽核（`orderflow.alerts.stopped`／`orderflow.alerts.resumed`）。
 - **第 5 步：網站做 LINE Login**，讓會員在網站上直接查看與修改訂閱（見「訂閱管理」一節）。
 - 本機開發：`.claude/launch.json` 沒有進 Git，裡面有 `academy-preview`（`scripts/orderflow-preview.mjs`，:8790）與 `orderflow-dev`（`npm run orderflow:dev`，:8792）兩個設定，新環境要自己建。

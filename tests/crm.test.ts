@@ -1776,3 +1776,18 @@ test("unsends remove received text and suppress late-arriving original content",
     false,
   );
 });
+
+test("admins can stop and resume LINE key-level alerts without touching VIP checks", async () => {
+  const revision = (await db.prepare("SELECT revision FROM team_settings WHERE id=1").first<{ revision: number }>())!.revision;
+  assert.equal((await call("/api/orderflow-alerts", "GET", undefined, false)).status, 401);
+  const before = (await (await call("/api/orderflow-alerts")).json()) as any;
+  assert.equal(before.enabled, true);
+  assert.equal(typeof before.subscribers, "number");
+  assert.equal((await call("/api/orderflow-alerts/settings", "POST", { enabled: "no" })).status, 400);
+  assert.deepEqual(await (await call("/api/orderflow-alerts/settings", "POST", { enabled: false })).json(), { enabled: false });
+  assert.equal(((await (await call("/api/orderflow-alerts")).json()) as any).enabled, false);
+  assert.ok(await db.prepare("SELECT 1 FROM audit_log WHERE action='orderflow.alerts.stopped'").first());
+  await call("/api/orderflow-alerts/settings", "POST", { enabled: true });
+  assert.equal(((await (await call("/api/orderflow-alerts")).json()) as any).enabled, true);
+  assert.equal((await db.prepare("SELECT revision FROM team_settings WHERE id=1").first<{ revision: number }>())!.revision, revision);
+});

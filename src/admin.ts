@@ -16,6 +16,7 @@ import { CUSTOMER_TAGS, parseTags } from "./tags";
 import { volumeMonthReport } from "./analytics";
 import { staffApi } from "./staff";
 import { adminSignalsApi } from "./signals";
+import { adminOrderflowAlertsApi } from "./orderflow-subs";
 
 const stages = [
   "new",
@@ -61,6 +62,8 @@ export async function admin(request: Request, env: Env): Promise<Response> {
   if (staffResponse) return staffResponse;
   const signalsResponse = await adminSignalsApi(request, env);
   if (signalsResponse) return signalsResponse;
+  const alertsResponse = await adminOrderflowAlertsApi(request, env, identity.email);
+  if (alertsResponse) return alertsResponse;
   if (request.method === "GET" && path === "/api/config")
     return json({
       business: personalize(BUSINESS, await getTeam(env.DB)),
