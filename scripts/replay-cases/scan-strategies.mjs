@@ -42,7 +42,8 @@ trades.push(...findB(ctx, profiles), ...findC(ctx), ...findD(ctx), ...findE(ctx)
 for (const t of trades) {
   if (t.fillMinute) {
     const r = rows[ctx.rowIndex.get(t.entryT)];
-    Object.assign(t, r[2] >= t.stop ? { result: "stop", exitT: t.entryT + MIN } : simulate(ctx, t.entryT + MIN, t.dir, t.stop, t.tp, t.entryT));
+    const stopped = t.dir === "short" ? r[2] >= t.stop : r[3] <= t.stop;
+    Object.assign(t, stopped ? { result: "stop", exitT: t.entryT + MIN } : simulate(ctx, t.entryT + MIN, t.dir, t.stop, t.tp, t.entryT));
   } else Object.assign(t, simulate(ctx, t.entryT, t.dir, t.stop, t.tp));
 }
 // One position per strategy at a time.
