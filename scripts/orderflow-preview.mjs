@@ -17,15 +17,25 @@ const types = {
   ".txt": "text/plain",
   ".json": "application/json",
 };
+// `--api https://metabear.io` reads the live order-flow API instead of a local Worker, for checking
+// the page against real data; only reads are forwarded there.
+const apiArg = process.argv.indexOf("--api");
+const UPSTREAM = apiArg > 0 ? process.argv[apiArg + 1].replace(/\/$/, "") : "http://127.0.0.1:8792";
+const REMOTE = !UPSTREAM.startsWith("http://127.0.0.1");
 createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://127.0.0.1:8790");
     // The order-flow API is its own Worker; forward to `npm run orderflow:dev` (GET and the admin POSTs).
     if (url.pathname.startsWith("/api/orderflow/")) {
+      if (REMOTE && !["GET", "HEAD"].includes(req.method)) {
+        res.writeHead(405, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ error: "read-only against a remote API" }));
+        return;
+      }
       try {
         const chunks = [];
         for await (const chunk of req) chunks.push(chunk);
-        const upstream = await fetch(`http://127.0.0.1:8792${url.pathname}${url.search}`, {
+        const upstream = await fetch(`${UPSTREAM}${url.pathname}${url.search}`, {
           method: req.method,
           headers: { authorization: req.headers.authorization ?? "", "content-type": req.headers["content-type"] ?? "application/json" },
           body: ["GET", "HEAD"].includes(req.method) ? undefined : Buffer.concat(chunks),

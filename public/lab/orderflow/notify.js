@@ -363,6 +363,7 @@ export class Notifier {
     switchBtn.type = "button";
     const note = el("p", "notify-note");
     const lineParts = { keyword: null, button: null };
+    const kindBoxes = new Map();
     const refresh = () => {
       switchBtn.setAttribute("aria-pressed", String(this.on));
       switchBtn.textContent = this.on ? "關閉網頁通知" : "開啟網頁通知";
@@ -395,6 +396,7 @@ export class Notifier {
         const box = el("input");
         box.type = "checkbox";
         box.checked = this.settings.kinds.includes(k.id);
+        kindBoxes.set(k.id, box);
         box.addEventListener("change", () => {
           this.setKind(k.id, box.checked);
           refresh();
@@ -452,5 +454,10 @@ export class Notifier {
     }
     root.append(box);
     refresh();
+    // Another control on the page (the lab's narration rail) changed the settings.
+    this.syncPanel = () => {
+      for (const [id, input] of kindBoxes) input.checked = this.settings.kinds.includes(id);
+      refresh();
+    };
   }
 }

@@ -117,6 +117,15 @@ input {
   background: var(--hover);
   color: var(--teal);
 }
+.seg.layout button {
+  font-family: var(--f-tc);
+  font-size: 13px;
+}
+.seg.layout button[aria-pressed="true"] {
+  background: var(--gold);
+  color: #1d1405;
+  font-weight: 700;
+}
 .check input {
   accent-color: var(--teal);
 }
@@ -535,6 +544,389 @@ input {
   .guide {
     left: 12px;
     bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- 盤面旁白 (narrate.js): a rail beside the chart, a bottom sheet on phones ---------- */
+.workspace {
+  display: flex;
+}
+.workspace .stage {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.narration {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 380px;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+}
+.narration[hidden],
+.nar-open[hidden] {
+  display: none;
+}
+.nar-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 10px;
+}
+.nar-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+.nar-count {
+  color: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 11px;
+}
+.nar-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.nar-close:hover {
+  color: var(--text);
+}
+.nar-handle {
+  display: none;
+}
+.nar-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 0 14px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.nar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.nar-filters button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(120, 160, 190, 0.24);
+  border-radius: 999px;
+  background: transparent;
+  color: #c4d0d6;
+  font-size: 12px;
+  cursor: pointer;
+}
+.nar-filters button[aria-pressed="true"] {
+  border-color: var(--teal);
+  background: rgba(120, 225, 213, 0.12);
+  color: var(--teal);
+}
+.nar-now {
+  padding: 13px 15px;
+  border: 1px solid rgba(232, 189, 125, 0.35);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #13202c, #0e1822);
+}
+.nar-now:empty {
+  display: none;
+}
+.nar-now-meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--gold);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.nar-now-head {
+  margin: 7px 0 0;
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+.nar-now-sub {
+  margin: 5px 0 0;
+  color: #c4d0d6;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.nar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.nar-empty {
+  margin: 6px 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.nar-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  transition: border-color 0.2s;
+}
+.nar-card.is-open {
+  border-color: rgba(120, 225, 213, 0.45);
+  background: var(--raise);
+}
+.nar-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  padding: 12px 15px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.nar-toggle:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+.nar-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-family: var(--f-mono);
+  font-size: 11px;
+}
+.nar-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(120, 225, 213, 0.14);
+  color: var(--teal);
+  font-family: var(--f-tc);
+}
+.nar-card[data-choice="divergence"] .nar-badge,
+.nar-card[data-choice="oi"] .nar-badge {
+  background: rgba(185, 166, 255, 0.14);
+  color: #c9baff;
+}
+.nar-card[data-choice="wall"] .nar-badge,
+.nar-card[data-choice="spoof"] .nar-badge,
+.nar-card[data-choice="iceberg"] .nar-badge {
+  background: rgba(240, 154, 90, 0.14);
+  color: #f5b585;
+}
+.nar-card[data-choice="print"] .nar-badge,
+.nar-card[data-choice="liq"] .nar-badge {
+  background: rgba(232, 189, 125, 0.14);
+  color: var(--gold);
+}
+.nar-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.nar-detail {
+  color: #c4d0d6;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.nar-more {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 15px 14px;
+}
+.nar-lines {
+  margin: 0 0 0 4px;
+  padding: 0 0 0 14px;
+  border-left: 1px solid rgba(120, 160, 190, 0.24);
+  list-style: none;
+  color: #c4d0d6;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.nar-lines b {
+  margin-right: 8px;
+  color: var(--text);
+  font-family: var(--f-mono);
+  font-weight: 600;
+}
+.nar-plain {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--panel);
+  color: #c4d0d6;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.nar-lesson {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.nar-lesson[hidden] {
+  display: none;
+}
+.nar-lesson-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+.nar-lesson-cap {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.nar-lesson-cap a {
+  color: var(--teal);
+  white-space: nowrap;
+}
+.nar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.nar-actions button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(120, 160, 190, 0.28);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.nar-actions button:hover {
+  border-color: var(--teal);
+}
+.nar-actions .nar-primary {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #062521;
+  font-weight: 700;
+}
+.nar-foot {
+  margin: 4px 2px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.nar-open {
+  position: absolute;
+  top: 10px;
+  right: 72px;
+  z-index: 5;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid rgba(232, 189, 125, 0.5);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--gold);
+  font-size: 13px;
+  cursor: pointer;
+}
+.toast a {
+  color: var(--teal);
+  font-size: 13px;
+}
+.rec .narration,
+.rec .nar-open,
+.rec .seg.layout {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .narration {
+    width: 320px;
+  }
+  /* Tablets: the one-row tool bar needs the room the brand name and exchange label take. */
+  .brand span,
+  .symbol small {
+    display: none;
+  }
+}
+@media (max-width: 720px) {
+  .narration {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 25;
+    width: auto;
+    max-height: 196px;
+    border: 0;
+    border-top: 1px solid rgba(232, 189, 125, 0.35);
+    border-radius: 16px 16px 0 0;
+    background: #0e1822;
+    box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.55);
+    transition: max-height 0.25s ease;
+  }
+  .sheet-open .narration {
+    max-height: 80dvh;
+  }
+  .nar-handle {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    display: block;
+    width: 96px;
+    height: 22px;
+    margin-left: -48px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .nar-handle::before {
+    content: "";
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 2px;
+    background: rgba(140, 159, 176, 0.6);
+  }
+  .nar-head {
+    padding-top: 20px;
+  }
+  .nar-close {
+    display: none;
+  }
+  /* Peeking: the summary and the newest story only. */
+  body:not(.sheet-open) .nar-filters,
+  body:not(.sheet-open) .nar-foot,
+  body:not(.sheet-open) .nar-list > :not(:first-child),
+  body:not(.sheet-open) .nar-more,
+  body:not(.sheet-open) .nar-now-sub {
+    display: none;
+  }
+  body:not(.sheet-open) .nar-body {
+    overflow: hidden;
+  }
+  .has-rail .stage {
+    height: max(360px, calc(100dvh - var(--top) - 200px));
+  }
+  .has-rail {
+    padding-bottom: 200px;
+  }
+  .nar-open {
+    top: 8px;
+    right: 64px;
+  }
+  .has-rail .guide {
+    bottom: calc(208px + env(safe-area-inset-bottom));
   }
 }
 

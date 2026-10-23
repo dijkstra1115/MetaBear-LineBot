@@ -14,8 +14,9 @@ test("every guide step points at an element on the lab page and ends at the acad
   const html = await readFile("public/lab/orderflow/index.html", "utf8");
   const present = {
     ".stage": /<main class="stage"/,
+    "#narration": /<aside id="narration"/,
     '.seg[aria-label="圖表"]': /class="seg" role="group" aria-label="圖表"/,
-    "details.ind": /<details class="ind"/,
+    '.seg[aria-label="版面"]': /class="seg layout" role="group" aria-label="版面"/,
     ".site-links": /<nav class="site-links"/,
   };
   for (const step of GUIDE_STEPS) assert.match(html, present[step.target] ?? /^$/, step.target);
