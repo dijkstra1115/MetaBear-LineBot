@@ -128,6 +128,16 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 
 2026-10-17 在 iPhone 尺寸、CPU 降速 4 倍下量測 60 秒，主執行緒忙碌比例：1 分 K 從 31% 降到 15%（JavaScript 23% → 9.7%），15 分 K 從 21% 降到 12.6%；記憶體從 23 MB 降到 18 MB。
 
+## 盤面旁白與版面（2026-10-23）
+
+設計稿：Claude 畫布「盤面旁白與新手版面」。
+
+- **版面**（`layouts.js`）：工具列的「新手／進階／專業」各是一組指標、大單門檻和旁白開關。新手：大單 ≥ 10 BTC（手機 25）、VWAP、前日高低與價值區、事件、CVD，旁白展開；進階加上成交量分布、熱力圖、爆倉標記、成交量與 OI，大單 ≥ 5（手機 10）；專業是原本的預設指標，旁白收起。第一次來是新手；之前存過指標的人維持原設定（不按任何鈕，算「自訂」）；手動改任何指標或門檻也會變成自訂。分享連結照舊帶自己的指標。設定存在 `metabear-orderflow-layout`，旁白開關存在 `metabear-orderflow-rail`。
+- **盤面旁白**（`narrate.js`）：把近 24 小時收集器記下的關鍵位事件分成「故事」：同一種事件、同一個關鍵位、價格差 0.2% 以內、前後間隔 90 分鐘內的合成一張卡（例如「VWAP 81,612：反覆掃過又收回」，×4）。卡片文字全部由固定句型和事件原文的數字組成，不用模型生成；關鍵位的價格取自事件原文「｜」後的關鍵位註記。最上方的「現在」寫出價格與 VWAP、最近一個前日關鍵位的距離，以及最近一小時的故事。
+- **卡片動作**：「在圖上看」把圖捲到事件那根 K 棒並固定顯示；「動畫解說」在卡片裡無聲播放對應課程（`/orderflow/motion/preview.js`，減少動態時只顯示一張靜止畫面）；「設成提醒」把這種事件加進網頁通知並打開通知，LINE 接收連到 `/alerts/#line`。
+- **手機**：旁白是從下方露出約 200 px 的面板，只顯示「現在」和最新一張卡；點上緣的把手拉起成完整列表。
+- 首次使用導覽多了「盤面旁白」和「版面」兩步。
+
 ## 分享
 
 網頁的「分享」選單會產生目前畫面的連結（`?tf=&mode=&at=&ind=&pm=`），可以複製或分享到 LINE。先點一根 K 棒，對方打開時會直接選在那一根。指標設定只套用在這次瀏覽，不會覆蓋對方自己存的設定。`og.png` 是 LINE 預覽卡用的 1200×630 圖，用正式網站的圖表截圖合成，畫面改版時要重新產生。
@@ -161,6 +171,7 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 npm run orderflow:dev                      # Worker + 收集器，http://127.0.0.1:8792（會真的連 Bybit）
 npm run lab:orderflow:bybit -- --days 3    # 補匯入最近 3 天的封存檔（權杖讀 .dev.vars 的 ORDERFLOW_ADMIN_TOKEN）；收集器本身也會自動匯入前一天
 npm run preview:academy                    # http://127.0.0.1:8790/lab/orderflow/，/api/orderflow/* 會轉到 8792
+node scripts/orderflow-preview.mjs --api https://metabear.io   # 不跑本機 Worker，直接讀正式 API（只轉送 GET）
 ```
 
 `?days=N`（1～30，預設 3）可以調整頁面載入幾天的歷史；分享連結會自動載入到那根 K 棒所在的日子。

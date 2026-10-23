@@ -13,6 +13,8 @@ import { LEVEL_LABELS, priorDayLevels } from "./keylevels.js";
 import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
 import { BAR_KINDS } from "./watch.js";
 import { maybeStartGuide, startGuide } from "./guide.js";
+import { LAYOUTS, layoutPrefs, startLayout } from "./layouts.js";
+import { FILTERS, cardOf, filterGroups, groupEvents, nowOf } from "./narrate.js";
 
 const API = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
@@ -77,11 +79,13 @@ const PREFS_KEY = "metabear-orderflow-indicators";
 // Phones (most visitors arrive from LINE) start with fewer panes so the price chart keeps room.
 const NARROW = matchMedia("(max-width: 720px)").matches;
 const NARROW_OFF = new Set(["stats", "ratio", "levels"]);
+let hadSavedPrefs = false;
 const prefs = (() => {
   // Phones show fewer, larger prints by default so 15-minute bars do not drown in bubbles.
   const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: NARROW ? 25 : 10 };
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
+    hadSavedPrefs = !!saved?.show;
     if (saved?.show) for (const id of Object.keys(out.show)) if (typeof saved.show[id] === "boolean") out.show[id] = saved.show[id];
     if (Number(saved?.printMin) >= PRINT_MIN) out.printMin = Number(saved.printMin);
   } catch {}
@@ -103,6 +107,30 @@ function savePrefs() {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
   } catch {}
 }
+
+// 新手／進階／專業 (layouts.js) and whether the narration rail is open.
+const LAYOUT_KEY = "metabear-orderflow-layout";
+const RAIL_KEY = "metabear-orderflow-rail";
+const readKey = (key) => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const writeKey = (key, value) => {
+  try {
+    if (value == null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {}
+};
+let layoutId = startLayout({ saved: readKey(LAYOUT_KEY), hasSavedIndicators: hadSavedPrefs, shared: query.has("ind") });
+if (layoutId !== "custom" && !query.has("ind")) Object.assign(prefs, layoutPrefs(layoutId, INDICATORS, { narrow: NARROW }) ?? {}, layoutId === "pro" ? { printMin: prefs.printMin } : {});
+let railOpen = (() => {
+  const saved = readKey(RAIL_KEY);
+  if (saved === "open" || saved === "closed") return saved === "open";
+  return LAYOUTS[layoutId]?.rail ?? true;
+})();
 
 // Server rows by time: footprint bars (archive and collector) and reading-time metrics.
 const store = { bars: new Map(), metrics: new Map() };
@@ -425,7 +453,7 @@ const DOWN_SIDES = new Set(["down", "sell", "ask", "long"]);
 // Browser notifications (notify.js) read the same feed, every 15 s while they are on.
 let eventsLoadedAt = 0;
 async function loadEvents() {
-  if (replay || !(on("events") || notifier.on)) return;
+  if (replay || !(on("events") || notifier.on || railOpen)) return;
   eventsLoadedAt = Date.now();
   // From the first loaded day, so every viewer asks for the same URL and shares the edge cache.
   const since = Math.floor(Date.now() / DAY) * DAY - (DAYS - 1) * DAY;
@@ -434,7 +462,9 @@ async function loadEvents() {
     if (!res.ok) return;
     const list = (await res.json()).events;
     liveEvents = list.map(liveEvent);
+    rawEvents = list;
     notifier.ingest(list);
+    renderNarration();
     redraw();
   } catch {
     // Keep what was shown; the next poll tries again.
@@ -2080,22 +2110,29 @@ async function pollRecent() {
     // Collector unreachable: the page keeps what it has and its own Bybit stream.
   }
   showLive();
+  renderNarration();
 }
 
+const indicatorBoxes = new Map();
+function indicatorChanged(id) {
+  if (id === "lmap") updateLiqMap(true);
+  if (id === "events") {
+    eventsKey = "";
+    updateEvents();
+    loadEvents();
+  }
+}
 function buildIndicatorPanel() {
   for (const [id, where, label] of INDICATORS) {
     const box = document.createElement("input");
     box.type = "checkbox";
     box.checked = on(id);
+    indicatorBoxes.set(id, box);
     box.addEventListener("change", () => {
       prefs.show[id] = box.checked;
       savePrefs();
-      if (id === "lmap") updateLiqMap(true);
-      if (id === "events") {
-        eventsKey = "";
-        updateEvents();
-        loadEvents();
-      }
+      setLayout("custom");
+      indicatorChanged(id);
       redraw();
     });
     const row = document.createElement("label");
@@ -2112,10 +2149,38 @@ function buildIndicatorPanel() {
   ui.printMin.addEventListener("change", () => {
     prefs.printMin = Number(ui.printMin.value);
     savePrefs();
+    setLayout("custom");
     redraw();
   });
 }
 buildIndicatorPanel();
+
+const layoutButtons = [...document.querySelectorAll("[data-layout]")];
+// "custom" only marks the buttons; a named layout also sets the indicators and the rail.
+function setLayout(id) {
+  if (id !== "custom") {
+    const next = layoutPrefs(id, INDICATORS, { narrow: NARROW });
+    for (const [key, shown] of Object.entries(next.show)) {
+      if (prefs.show[key] === shown) continue;
+      prefs.show[key] = shown;
+      indicatorBoxes.get(key).checked = shown;
+      indicatorChanged(key);
+    }
+    if (next.printMin != null) {
+      prefs.printMin = next.printMin;
+      ui.printMin.value = String(next.printMin);
+    }
+    savePrefs();
+    writeKey(RAIL_KEY, null);
+    setRail(LAYOUTS[id].rail, { remember: false });
+    redraw();
+  }
+  layoutId = id;
+  if (!query.has("ind")) writeKey(LAYOUT_KEY, id);
+  for (const b of layoutButtons) b.setAttribute("aria-pressed", String(b.dataset.layout === id));
+}
+for (const b of layoutButtons) b.addEventListener("click", () => setLayout(b.dataset.layout));
+for (const b of layoutButtons) b.setAttribute("aria-pressed", String(b.dataset.layout === layoutId));
 
 // Timeframe and chart-type buttons set the hidden selects the chart reads.
 function bindSegment(selector, select, attr) {
@@ -2173,6 +2238,199 @@ notifier.mount($("notify-panel"), { onChange: () => loadEvents(), line: "link" }
 document.addEventListener("pointerdown", (e) => {
   if (notifyPanel.open && !notifyPanel.contains(e.target)) notifyPanel.open = false;
 });
+
+// ---------- 盤面旁白 (narrate.js) ----------
+
+const nar = { root: $("narration"), list: $("nar-list"), now: $("nar-now"), count: $("nar-count"), filters: $("nar-filters"), open: $("nar-open"), handle: $("nar-handle") };
+const NARRATE_MS = 24 * 60 * MINUTE;
+let rawEvents = null; // the collector's events as the API sends them (loadEvents)
+let narFilter = "all";
+let narKey = "";
+let narExpanded = null; // the open card's key; null opens the newest
+let narPreview = null;
+const node = (tag, className, text) => {
+  const n = document.createElement(tag);
+  if (className) n.className = className;
+  if (text != null) n.textContent = text;
+  return n;
+};
+const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+function setRail(open, { remember = true } = {}) {
+  railOpen = open;
+  if (remember) writeKey(RAIL_KEY, open ? "open" : "closed");
+  nar.root.hidden = !open || !!CASE;
+  nar.open.hidden = open || !!CASE;
+  document.body.classList.toggle("has-rail", open && !CASE);
+  if (!open) stopPreview();
+  if (open) {
+    narKey = "";
+    renderNarration();
+    loadEvents();
+  }
+}
+
+// Phones: the rail is a bottom sheet that peeks with the summary and the newest story.
+function setSheet(expanded) {
+  document.body.classList.toggle("sheet-open", expanded);
+  nar.handle.setAttribute("aria-expanded", String(expanded));
+  nar.handle.setAttribute("aria-label", expanded ? "收合盤面旁白" : "展開盤面旁白");
+}
+
+function stopPreview() {
+  narPreview?.stop();
+  narPreview = null;
+}
+
+for (const f of FILTERS) {
+  const b = node("button", "", f.label);
+  b.type = "button";
+  b.dataset.filter = f.id;
+  b.setAttribute("aria-pressed", String(f.id === narFilter));
+  b.addEventListener("click", () => {
+    narFilter = f.id;
+    for (const x of nar.filters.children) x.setAttribute("aria-pressed", String(x.dataset.filter === f.id));
+    renderNarration(true);
+  });
+  nar.filters.append(b);
+}
+$("nar-close").addEventListener("click", () => setRail(false));
+nar.open.addEventListener("click", () => setRail(true));
+nar.handle.addEventListener("click", () => setSheet(!document.body.classList.contains("sheet-open")));
+
+function renderNow(groups) {
+  const last = bars.at(-1);
+  const levels = (dayLevels.get(Math.floor(Date.now() / DAY)) ?? []).map((L) => ({ name: L.name, price: L.price }));
+  const now = nowOf({ price: last?.c, vwap: last?.vwap ?? undefined, levels, groups, t: Date.now() });
+  if (!now) return;
+  const meta = node("div", "nar-now-meta");
+  meta.append(node("span", "", "現在"), node("span", "", now.time));
+  nar.now.replaceChildren(meta, node("p", "nar-now-head", now.head), node("p", "nar-now-sub", now.sub));
+}
+
+function renderNarration(force = false) {
+  if (!railOpen || CASE || !nar.root) return;
+  const t = Date.now();
+  const recent = (rawEvents ?? []).filter((e) => t - e.t <= NARRATE_MS);
+  const groups = groupEvents(recent);
+  renderNow(groups);
+  const key = `${narFilter}|${recent.length}|${recent.at(-1)?.t ?? 0}|${narExpanded}`;
+  if (!force && key === narKey) return;
+  narKey = key;
+  if (!rawEvents) return;
+  stopPreview();
+  nar.count.textContent = `近 24 小時 · ${recent.length} 件`;
+  const shown = filterGroups(groups, narFilter);
+  if (!shown.length) {
+    nar.list.replaceChildren(node("p", "nar-empty", recent.length ? "近 24 小時，這一類事件沒有出現在關鍵位。" : "近 24 小時，關鍵位附近還沒有事件。"));
+    return;
+  }
+  const openKey = narExpanded ?? `${shown[0].choice}|${shown[0].first}`;
+  nar.list.replaceChildren(...shown.map((g) => narCard(g, `${g.choice}|${g.first}` === openKey)));
+}
+
+function narCard(g, expanded) {
+  const c = cardOf(g);
+  const key = `${g.choice}|${g.first}`;
+  const card = node("article", "nar-card");
+  card.dataset.choice = c.choice;
+  card.classList.toggle("is-open", expanded);
+  const toggle = node("button", "nar-toggle");
+  toggle.type = "button";
+  toggle.setAttribute("aria-expanded", String(expanded));
+  const meta = node("span", "nar-meta");
+  meta.append(node("span", "nar-badge", c.badge), node("span", "nar-time", c.time));
+  toggle.append(meta, node("span", "nar-title", c.title), node("span", "nar-detail", c.lines[0].text));
+  toggle.addEventListener("click", () => {
+    narExpanded = expanded ? "" : key;
+    renderNarration(true);
+  });
+  card.append(toggle);
+  if (!expanded) return card;
+
+  const more = node("div", "nar-more");
+  if (c.lines.length > 1) {
+    const ol = node("ol", "nar-lines");
+    for (const line of c.lines) {
+      const li = node("li");
+      li.append(node("b", "", line.time), document.createTextNode(line.text));
+      ol.append(li);
+    }
+    more.append(ol);
+  }
+  more.append(node("p", "nar-plain", c.plain));
+  const lessonBox = node("div", "nar-lesson");
+  lessonBox.hidden = true;
+  more.append(lessonBox);
+  const actions = node("div", "nar-actions");
+  const look = node("button", "nar-primary", "在圖上看");
+  look.type = "button";
+  look.addEventListener("click", () => {
+    const last = g.items.at(-1);
+    // Bar detectors stamp their bar's close; look inside the bar.
+    openBarAt(BAR_KINDS.includes(last.kind) ? last.t - 1 : last.t);
+    if (NARROW) setSheet(false);
+  });
+  actions.append(look);
+  if (c.lesson) {
+    const play = node("button", "", `▶ 動畫解說 ${mmss(c.lesson.duration)}`);
+    play.type = "button";
+    play.addEventListener("click", () => playLesson(lessonBox, c.lesson));
+    actions.append(play);
+  }
+  const remind = node("button", "", "設成提醒");
+  remind.type = "button";
+  remind.addEventListener("click", () => remindMe(c.choice, c.badge.replace(/ ×\d+$/, "")));
+  actions.append(remind);
+  more.append(actions);
+  card.append(more);
+  return card;
+}
+
+async function playLesson(box, lesson) {
+  stopPreview();
+  const canvas = node("canvas", "nar-lesson-canvas");
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", `${lesson.title} 動畫預覽`);
+  const caption = node("p", "nar-lesson-cap");
+  const link = node("a", "", "看完整課程（有旁白）↗");
+  link.href = lesson.href;
+  caption.append(node("span", "", lesson.title), link);
+  box.replaceChildren(canvas, caption);
+  box.hidden = false;
+  try {
+    const { createPreview, stampPoster } = await import("/orderflow/motion/preview.js");
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      await stampPoster(canvas, lesson.id);
+      return;
+    }
+    const preview = createPreview(canvas, { width: 640 });
+    narPreview = preview;
+    await preview.play(lesson.id, 0, lesson.duration);
+  } catch {
+    box.replaceChildren(caption);
+  }
+}
+
+async function remindMe(choice, name) {
+  notifier.setKind(choice, true);
+  if (!notifier.on) await notifier.setOn(true);
+  notifier.syncPanel?.();
+  loadEvents();
+  const item = node("div", "toast");
+  item.setAttribute("role", "status");
+  const link = node("a", "", "用 LINE 接收 ↗");
+  link.href = "/alerts/#line";
+  const note = node("small", "", notifier.note());
+  const close = node("button", "", "關閉");
+  close.type = "button";
+  close.addEventListener("click", () => item.remove());
+  const actions = node("div", "toast-actions");
+  actions.append(close);
+  item.append(node("p", "", `「${name}」已加入網頁通知：開著這個頁面，關鍵位再出現時會提醒你。`), note, link, actions);
+  $("toasts").prepend(item);
+  setTimeout(() => item.remove(), 12_000);
+}
 
 const sharePanel = document.querySelector(".share");
 sharePanel.addEventListener("toggle", () => {
@@ -2387,6 +2645,7 @@ if (CASE) {
     }, 15_000);
     setInterval(pollRecent, 5_000);
     setInterval(showLive, 1_000);
+    setRail(railOpen, { remember: false });
     $("guide-open").addEventListener("click", startGuide);
     maybeStartGuide({ rec: query.get("rec") === "1" });
   } catch {
