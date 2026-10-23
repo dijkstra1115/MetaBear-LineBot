@@ -4,8 +4,8 @@
 // is queued, within their daily count and outside their quiet hours, and pushed by the queue
 // consumer. Eligibility is the VIP rule: joined, an accepted VIP invitation, or a current eligible
 // BingX check (referral, KYC and the 60-day deposit minimum).
-import { HttpError } from "./http";
-import { now } from "./db";
+import { HttpError, json, readJson } from "./http";
+import { audit, now } from "./db";
 import { lineQuota, reservedLineMessages } from "./campaigns";
 import { recordOutgoing, setOutgoingStatus } from "./conversations";
 import { reasons } from "./automation";
@@ -226,4 +226,31 @@ export async function dispatchOrderflowAlerts(env: Env) {
     .all<{ id: string }>();
   for (let i = 0; i < rows.results.length; i += 100)
     await env.CAMPAIGN_EVENTS.sendBatch(rows.results.slice(i, i + 100).map((r) => ({ body: { kind: "orderflow-alert-delivery" as const, id: r.id } })));
+}
+
+// Admin view and emergency stop. The switch is its own column outside the versioned team settings,
+// so stopping alerts does not invalidate anyone's VIP check. Stopping skips queued deliveries too.
+export async function adminOrderflowAlertsApi(request: Request, env: Env, actor: string): Promise<Response | null> {
+  const path = new URL(request.url).pathname;
+  if (path === "/api/orderflow-alerts" && request.method === "GET") {
+    const since = new Date(Date.now() - 86_400_000).toISOString();
+    const [team, subs, recent] = await Promise.all([
+      getTeam(env.DB),
+      env.DB.prepare("SELECT count(*) AS n FROM orderflow_alert_subs").first<{ n: number }>(),
+      env.DB.prepare("SELECT status,count(*) AS n FROM orderflow_alert_deliveries WHERE created_at>=? GROUP BY status").bind(since).all<{ status: string; n: number }>(),
+    ]);
+    return json({
+      enabled: team.orderflow_alerts_enabled !== 0,
+      subscribers: subs?.n ?? 0,
+      last24h: Object.fromEntries(recent.results.map((r) => [r.status, r.n])),
+    });
+  }
+  if (path === "/api/orderflow-alerts/settings" && request.method === "POST") {
+    const data = await readJson(request);
+    if (typeof data.enabled !== "boolean") throw new HttpError(400, "請指定是否開放關鍵位提醒");
+    await env.DB.prepare("UPDATE team_settings SET orderflow_alerts_enabled=? WHERE id=1").bind(data.enabled ? 1 : 0).run();
+    await audit(env.DB, null, data.enabled ? "orderflow.alerts.resumed" : "orderflow.alerts.stopped", { actor });
+    return json({ enabled: data.enabled });
+  }
+  return null;
 }
