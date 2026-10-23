@@ -518,13 +518,28 @@ input {
   color: #062521;
   font-weight: 600;
 }
-.guide-target {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
-  border-radius: 8px;
+/* The step's target stays lit inside this frame; its shadow dims everything else. */
+.guide-spot {
+  position: fixed;
+  z-index: 29;
+  box-sizing: border-box;
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  box-shadow: 0 0 0 200vmax rgba(5, 9, 15, 0.68);
+  pointer-events: none;
+  transition:
+    top 0.25s ease,
+    left 0.25s ease,
+    width 0.25s ease,
+    height 0.25s ease;
 }
-.stage.guide-target {
-  outline-offset: -3px;
+.guide-spot.is-empty {
+  border: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-spot {
+    transition: none;
+  }
 }
 .guide-open {
   margin-left: 10px;
@@ -560,6 +575,9 @@ input {
   flex: none;
   flex-direction: column;
   width: 380px;
+  /* As tall as the chart beside it; the list scrolls inside instead of stretching the page. */
+  height: max(520px, calc(100vh - var(--top) - 34px));
+  height: max(520px, calc(100dvh - var(--top) - 34px));
   min-height: 0;
   border-left: 1px solid var(--line);
   background: var(--panel);

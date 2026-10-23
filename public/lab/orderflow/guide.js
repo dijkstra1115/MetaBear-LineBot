@@ -1,6 +1,6 @@
 // First-visit guide for the lab: five short steps that point at the chart, the narration rail,
-// the chart switch, the layouts and the links to the academy and alerts. It never blocks the chart, shows
-// once per browser, and can be reopened from the footer.
+// the chart switch, the layouts and the links to the academy and alerts. Each step lights its
+// target and dims the rest; it shows once per browser and can be reopened from the footer.
 
 const SEEN_KEY = "mb-lab-guide-v1";
 
@@ -80,18 +80,47 @@ export function startGuide() {
       <button type="button" data-guide="prev">上一步</button>
       <button type="button" data-guide="next">下一步</button>
     </div>`;
-  document.body.append(card);
+  // A frame around the step's target whose shadow dims the rest of the page.
+  const spot = document.createElement("div");
+  spot.className = "guide-spot";
+  spot.setAttribute("aria-hidden", "true");
+  document.body.append(spot, card);
   let at = 0;
   let target = null;
+
+  const place = () => {
+    const r = target && !target.closest("[hidden]") ? target.getBoundingClientRect() : null;
+    if (!r || !r.width || !r.height) {
+      // Nothing to point at (a hidden rail): dim everything.
+      for (const [k, v] of [["top", "50%"], ["left", "50%"], ["width", "0px"], ["height", "0px"]]) spot.style.setProperty(k, v);
+      spot.classList.add("is-empty");
+      return;
+    }
+    spot.classList.remove("is-empty");
+    // Kept on screen: a tall rail's frame stops at the viewport edges.
+    const top = Math.max(2, r.top - 4);
+    const left = Math.max(2, r.left - 4);
+    const bottom = Math.min(innerHeight - 2, r.bottom + 4);
+    const right = Math.min(innerWidth - 2, r.right + 4);
+    spot.style.setProperty("top", `${top}px`);
+    spot.style.setProperty("left", `${left}px`);
+    spot.style.setProperty("width", `${Math.max(0, right - left)}px`);
+    spot.style.setProperty("height", `${Math.max(0, bottom - top)}px`);
+  };
 
   const show = (i) => {
     at = i;
     const step = GUIDE_STEPS[i];
-    target?.classList.remove("guide-target");
     target = document.querySelector(step.target);
-    target?.classList.add("guide-target");
-    // The tool row scrolls sideways on phones; bring the step's control into view.
-    target?.scrollIntoView?.({ block: "nearest", inline: "center" });
+    // The tool row scrolls sideways on phones: center the step's control in it, without moving
+    // the page (scrollIntoView used to push the whole page down and cut off the rail's top).
+    const row = target?.closest(".tools");
+    if (row && target) {
+      const t = target.getBoundingClientRect();
+      const box = row.getBoundingClientRect();
+      row.scrollLeft += t.left + t.width / 2 - (box.left + box.width / 2);
+    }
+    place();
     card.querySelector(".guide-count").textContent = `${i + 1} / ${GUIDE_STEPS.length}`;
     card.querySelector("h2").textContent = step.title;
     card.querySelector(".guide-body").textContent = step.body;
@@ -113,8 +142,10 @@ export function startGuide() {
   };
 
   const close = () => {
-    target?.classList.remove("guide-target");
     card.remove();
+    spot.remove();
+    window.removeEventListener("resize", place);
+    window.removeEventListener("scroll", place, true);
     document.removeEventListener("keydown", onKey);
     markSeen();
     open = null;
@@ -130,6 +161,8 @@ export function startGuide() {
     else if (action === "next") at === GUIDE_STEPS.length - 1 ? close() : show(at + 1);
   });
   document.addEventListener("keydown", onKey);
+  window.addEventListener("resize", place);
+  window.addEventListener("scroll", place, true);
   open = { close };
   show(0);
 }
