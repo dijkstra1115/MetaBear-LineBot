@@ -14,7 +14,8 @@ import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
 import { BAR_KINDS } from "./watch.js";
 import { maybeStartGuide, startGuide } from "./guide.js";
 import { LAYOUTS, layoutPrefs, startLayout } from "./layouts.js";
-import { FILTERS, cardOf, filterGroups, groupEvents, levelPriceOf, nowOf, timeOf } from "./narrate.js";
+import { bubbleRadius, countdown, eventMark, mergePrints } from "./marks.js";
+import { FILTERS, cardOf, detailOf, filterGroups, groupEvents, levelPriceOf, nowOf, timeOf } from "./narrate.js";
 import { START_MS, barsPerSecond, beatAt, beatsOf, findStory, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
 
 const API = "/api/orderflow/btcusdt";
@@ -734,6 +735,9 @@ function drawPrice(L, from, to) {
   ctx.beginPath();
   ctx.rect(0, P.y, L.plotW, P.h);
   ctx.clip();
+  // On candles, prints merge per bar and sit behind the candles; footprint keeps each print in time.
+  const mergedPrints = on("prints") && !showCells;
+  if (mergedPrints) drawPrints(L, from, to, yOf, true);
   for (let i = from; i <= to; i++) {
     const b = bars[i];
     const x0 = xOf(i, L);
@@ -787,7 +791,7 @@ function drawPrice(L, from, to) {
   }
   if (on("levels")) drawLevels(L, from, to, yOf);
   if (on("vwap")) drawVwap(L, from, to, yOf);
-  if (on("prints")) drawPrints(L, from, to, yOf);
+  if (on("prints") && !mergedPrints) drawPrints(L, from, to, yOf);
   if (on("liqmark")) drawLiquidations(L, from, to, yOf);
   if (on("events")) drawEvents(L, from, to, yOf);
   ctx.restore();
@@ -796,11 +800,17 @@ function drawPrice(L, from, to) {
   const last = bars[bars.length - 1];
   const ly = yOf(last.c);
   if (ly > P.y && ly < P.y + P.h) {
+    // A forming live bar also shows how long it has left.
+    const left = !replay && !evReplay && last.end > Date.now() ? last.end - Date.now() : 0;
     ctx.fillStyle = last.c >= last.o ? C.buy : C.sell;
-    ctx.fillRect(L.plotW, ly - 9, L.axisW, 18);
+    ctx.fillRect(L.plotW, ly - (left ? 14 : 9), L.axisW, left ? 28 : 18);
     ctx.fillStyle = C.bg;
-    ctx.font = `11px ${MONO}`;
-    ctx.fillText(fmtPrice(last.c), L.plotW + 8, ly);
+    ctx.font = `600 11px ${MONO}`;
+    ctx.fillText(fmtPrice(last.c), L.plotW + 8, left ? ly - 5 : ly);
+    if (left) {
+      ctx.font = `10px ${MONO}`;
+      ctx.fillText(countdown(left), L.plotW + 8, ly + 7);
+    }
   }
   if (replay) drawReplay(L, P, yOf, last.c);
   if (evReplay) drawEventReplay(L, P, yOf);
@@ -966,7 +976,7 @@ function drawLiquidations(L, from, to, yOf) {
 
 // Large prints: one bubble per aggregated taker order of at least the chosen size, placed at its
 // time within the bar and its average price; area grows with size.
-function drawPrints(L, from, to, yOf) {
+function drawPrints(L, from, to, yOf, merged = false) {
   if (printsDirty) {
     printList = [...prints.values()].sort((a, b) => a[0] - b[0]);
     printsDirty = false;
@@ -983,6 +993,32 @@ function drawPrints(L, from, to, yOf) {
   }
   const shown = [];
   for (let k = lo; k < printList.length && printList[k][0] < t1; k++) if (printList[k][3] >= prefs.printMin) shown.push(printList[k]);
+  if (merged) {
+    const groups = mergePrints(shown, (t) => barIndex.get(Math.floor(t / tfMs) * tfMs) ?? null).sort((a, b) => a.qty - b.qty);
+    ctx.font = `600 10px ${MONO}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 1.5;
+    for (const g of groups) {
+      const x = xOf(g.i, L) + view.barW / 2;
+      const y = yOf(g.price);
+      const r = bubbleRadius(g.qty);
+      const rgb = g.side === "buy" ? BUY_RGB : SELL_RGB;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${rgb},0.12)`;
+      ctx.strokeStyle = `rgba(${rgb},0.8)`;
+      ctx.fill();
+      ctx.stroke();
+      if (g.count >= 3 && r >= 9) {
+        ctx.fillStyle = `rgb(${rgb})`;
+        ctx.fillText(String(g.count), x, y + 0.5);
+      }
+    }
+    ctx.lineWidth = 1;
+    ctx.textAlign = "left";
+    return;
+  }
   shown.sort((a, b) => a[3] - b[3]); // largest on top
   for (const [t, side, price, qty] of shown) {
     const i = barIndex.get(Math.floor(t / tfMs) * tfMs);
@@ -1124,34 +1160,27 @@ function rampColor(v) {
   return c0.map((c, i) => Math.round(c + (c1[i] - c) * f));
 }
 
+// One capsule per bar: its event's short name, or how many; bullish below the bar, the rest above.
 function drawEvents(L, from, to, yOf) {
-  ctx.font = `10px ${MONO}`;
+  ctx.font = `600 10px ${MONO}`;
   ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
   for (let i = from; i <= to; i++) {
     const b = bars[i];
-    const list = eventsIn(b);
-    if (!list.length) continue;
+    const mark = eventMark(eventsIn(b));
+    if (!mark) continue;
     const cx = xOf(i, L) + view.barW / 2;
-    let above = 0;
-    let below = 0;
-    for (const e of list) {
-      // Bearish context above the bar, bullish below, OI (no direction) above in gold.
-      const up = e.dir === "up";
-      const y = up ? yOf(b.l) + 10 + below++ * 12 : yOf(b.h) - 10 - above++ * 12;
-      ctx.fillStyle = e.dir === "up" ? C.buy : e.dir === "down" ? C.sell : C.gold;
-      ctx.beginPath();
-      if (up) {
-        ctx.moveTo(cx, y - 4);
-        ctx.lineTo(cx - 4, y + 3);
-        ctx.lineTo(cx + 4, y + 3);
-      } else {
-        ctx.moveTo(cx, y + 4);
-        ctx.lineTo(cx - 4, y - 3);
-        ctx.lineTo(cx + 4, y - 3);
-      }
-      ctx.fill();
-      if (view.barW >= 28) ctx.fillText(e.name, cx, up ? y + 12 : y - 11);
-    }
+    const color = mark.dir === "up" ? C.buy : mark.dir === "down" ? C.sell : C.gold;
+    const w = Math.max(18, ctx.measureText(mark.label).width + 10);
+    const y = mark.dir === "up" ? yOf(b.l) + 15 : yOf(b.h) - 15;
+    ctx.beginPath();
+    ctx.roundRect(cx - w / 2, y - 8, w, 16, 8);
+    ctx.fillStyle = "#101924";
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillText(mark.label, cx, y + 0.5);
   }
   ctx.textAlign = "left";
 }
@@ -1563,14 +1592,14 @@ function drawLegend(L) {
   const narrow = L.plotW < 600;
   const gap = narrow ? " " : "  ";
   const parts = [
-    ...(narrow ? [] : [["BTCUSDT", C.text], [` · ${replay ? "Binance" : "Bybit"} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.dim]]),
-    ["O ", C.dim],
-    [fmtPrice(b.o), C.muted],
-    [`${gap}H `, C.dim],
-    [fmtPrice(b.h), C.muted],
-    [`${gap}L `, C.dim],
-    [fmtPrice(b.l), C.muted],
-    [`${gap}C `, C.dim],
+    ...(narrow ? [] : [["BTCUSDT", C.text], [` · ${replay ? "Binance" : "Bybit"} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.muted]]),
+    ["O ", C.muted],
+    [fmtPrice(b.o), C.text],
+    [`${gap}H `, C.muted],
+    [fmtPrice(b.h), C.text],
+    [`${gap}L `, C.muted],
+    [fmtPrice(b.l), C.text],
+    [`${gap}C `, C.muted],
     [fmtPrice(b.c), up ? C.buy : C.sell],
     [`${gap}${change >= 0 ? "+" : ""}${change.toFixed(2)}%`, up ? C.buy : C.sell],
   ];
@@ -1586,8 +1615,8 @@ function drawLegend(L) {
     ctx.fillText(text, x, P.y + 8);
     x += ctx.measureText(text).width;
   }
-  // Details only for a bar the user points at or pinned; the resting legend is just OHLC.
-  if (!hover) return;
+  // A bar the user points at or pinned gets the bar card (renderBarCard); a replay keeps the old line.
+  if (!hover || !replay) return;
   const notes = [
     hover ? fmtTime(b.t) : "",
     b.partial ? "部分分鐘無足跡" : "",
@@ -1684,6 +1713,7 @@ function redraw() {
     frame = 0;
     draw();
     updateReadout();
+    renderBarCard();
   });
 }
 
@@ -2071,21 +2101,39 @@ function refresh(full = true) {
 }
 
 function showLive() {
+  // The forming bar's countdown on the price tag ticks with this.
+  if (bars.length && !document.hidden && !evReplay) redraw();
   if (Date.now() - stream.lastTrade < 5_000) {
     ui.live.textContent = "即時 · 直連 Bybit";
     ui.live.dataset.state = "on";
-    return;
+    return showConnection("on");
   }
   const lastTrade = server?.status?.lastTrade;
   if (!lastTrade) {
     ui.live.textContent = "僅歷史資料";
     ui.live.dataset.state = "off";
-    return;
+    return showConnection("off");
   }
   const age = Math.round((Date.now() - lastTrade) / 1000);
   const stale = age > 30;
   ui.live.textContent = stale ? `即時資料中斷（${age} 秒前）` : `即時 · 收集器 ${age} 秒前`;
   ui.live.dataset.state = stale ? "stale" : "on";
+  showConnection(stale ? "stale" : "on", age);
+}
+
+// A strip at the top of the chart when live data stops; quiet for the first 15 s while it connects.
+function showConnection(state, age = 0) {
+  const box = $("conn");
+  if (!box) return;
+  const quiet = state === "on" || CASE || evReplay || performance.now() < 15_000;
+  box.hidden = !!quiet;
+  if (quiet) return;
+  box.dataset.state = state;
+  $("conn-text").textContent =
+    state === "stale"
+      ? `跟 Bybit 的即時連線斷了，正在重新連線。圖上是 ${age} 秒前的資料。`
+      : "這個網路連不到 Bybit 的即時串流（部分公司或學校網路會擋），歷史資料照常可以看。";
+  $("conn-retry").hidden = state !== "off";
 }
 
 // Returns whether anything older than the forming bar changed, which needs a full build.
@@ -2981,6 +3029,129 @@ function drawEventReplay(L, P, yOf) {
   ctx.stroke();
   ctx.restore();
 }
+
+// ---------- bar card (the bar under the pointer, or the pinned one) ----------
+
+let barCardKey = "";
+const pct = (v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}%`;
+
+function renderBarCard() {
+  const card = $("bar-card");
+  if (!card) return;
+  const pinned = pinnedT != null && hover && bars[hover.i]?.t === pinnedT;
+  const show = hover && hover.i >= 0 && hover.i < bars.length && !evReplay && !CASE && (!NARROW || pinned);
+  document.body.classList.toggle("card-open", !!(show && NARROW));
+  if (!show) {
+    card.hidden = true;
+    barCardKey = "";
+    return;
+  }
+  const b = bars[hover.i];
+  const events = on("events") ? eventsIn(b) : [];
+  const liq = liqText();
+  const key = `${b.t}|${b.c}|${b.buy}|${events.length}|${pinned}|${liq}`;
+  if (key !== barCardKey) {
+    barCardKey = key;
+    fillBarCard(b, events, pinned, liq);
+  }
+  card.hidden = false;
+  card.classList.toggle("is-pinned", !!pinned);
+  if (NARROW) return; // phones: CSS docks the card under the chart
+  const L = layout();
+  const P = L.panes.price;
+  const x = xOf(hover.i, L) + view.barW / 2;
+  const w = card.offsetWidth;
+  const h = card.offsetHeight;
+  const left = x + 18 + w < L.plotW ? x + 18 : Math.max(4, x - 18 - w);
+  const y = hover.y > 0 ? hover.y - 40 : P.y + 40;
+  const top = Math.max(P.y + 34, Math.min(y, size.h - h - 8));
+  card.style.setProperty("left", `${Math.round(left)}px`);
+  card.style.setProperty("top", `${Math.round(top)}px`);
+}
+
+function fillBarCard(b, events, pinned, liq) {
+  const tfMs = Number(ui.tf.value) * MINUTE;
+  const up = b.c >= b.o;
+  $("bc-time").textContent = `${fmtTime(b.t)}–${timeOf(b.t + tfMs)}`;
+  const change = $("bc-change");
+  change.textContent = pct(b.o ? ((b.c - b.o) / b.o) * 100 : 0);
+  change.className = up ? "is-up" : "is-down";
+  $("bc-ohlc").replaceChildren(
+    ...[["開", b.o], ["高", b.h], ["低", b.l], ["收", b.c]].map(([k, v], i) => {
+      const cell = node("span");
+      cell.append(node("small", "", k), node("b", i === 3 ? (up ? "is-up" : "is-down") : "", fmtPrice(v)));
+      return cell;
+    }),
+  );
+  const rows = [];
+  const row = (label, value, cls) => {
+    const r = node("div", "bc-row");
+    r.append(node("span", "", label), node("b", cls ?? "", value));
+    rows.push(r);
+  };
+  const buy = b.buy ?? 0;
+  const sell = b.sell ?? 0;
+  if (buy + sell > 0) {
+    row("成交量", `${fmtVol(buy + sell)} ${unitLabel()}`);
+    row(`主動買 ${fmtVol(buy)} · 賣 ${fmtVol(sell)}`, `Δ ${fmtSigned(buy - sell)}`, buy >= sell ? "is-up" : "is-down");
+    const ratio = node("div", "bc-ratio");
+    const part = node("i");
+    part.style.setProperty("width", `${Math.round((buy / (buy + sell)) * 100)}%`);
+    ratio.append(part);
+    rows.push(ratio);
+  }
+  if (on("prints")) {
+    let nb = 0, qb = 0, ns = 0, qs = 0;
+    for (const [t, side, , qty] of printList) {
+      if (t < b.t || t >= b.end || qty < prefs.printMin) continue;
+      if (side === "buy") (nb++, (qb += qty));
+      else (ns++, (qs += qty));
+    }
+    if (nb || ns) row("大單", [nb ? `買 ${nb} 筆 ${fmtVol(qb)}` : "", ns ? `賣 ${ns} 筆 ${fmtVol(qs)}` : ""].filter(Boolean).join(" · "));
+  }
+  if (b.partial) row("足跡", "部分分鐘沒有資料");
+  if (liq) rows.push(node("p", "bc-note", liq));
+  $("bc-rows").replaceChildren(...rows);
+  const list = $("bc-events");
+  list.replaceChildren(
+    ...events.slice(0, 3).map((e) => {
+      const item = node("div", "bc-event");
+      item.append(node("span", "bc-chip", `${e.name} · ${timeOf(e.t + (BAR_KINDS.includes(e.kind) ? 1 : 0))}`), node("span", "", detailOf({ text: e.line })));
+      return item;
+    }),
+    ...(events.length > 3 ? [node("small", "", `另外 ${events.length - 3} 件`)] : []),
+  );
+  list.hidden = !events.length;
+  $("bc-replay").hidden = !events.length;
+  $("bc-hint").hidden = pinned || NARROW;
+  $("bc-actions").hidden = !pinned;
+  $("bc-close").hidden = !pinned;
+}
+
+function unpinBar() {
+  pinnedT = null;
+  hover = null;
+  redraw();
+}
+
+// The story behind the first event on the pinned bar, from the collector's own lines.
+function replayPinnedBar() {
+  const b = bars[hover?.i];
+  if (!b || !rawEvents) return;
+  const raw = rawEvents.find((e) => {
+    const t = BAR_KINDS.includes(e.kind) ? e.t - 1 : e.t;
+    return t >= b.t && t < b.end;
+  });
+  if (!raw) return;
+  const story = findStory(groupEvents(rawEvents), { t: raw.t, kind: raw.kind });
+  unpinBar();
+  startEventReplay(story ?? groupEvents([raw])[0]);
+}
+
+$("bc-close").addEventListener("click", unpinBar);
+$("conn-retry").addEventListener("click", () => location.reload());
+$("bc-unpin").addEventListener("click", unpinBar);
+$("bc-replay").addEventListener("click", replayPinnedBar);
 
 // ---------- boot ----------
 
