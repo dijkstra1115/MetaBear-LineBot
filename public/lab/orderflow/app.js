@@ -12,6 +12,7 @@ import { Player, drawOverlay, prepare } from "./replay.js";
 import { LEVEL_LABELS, priorDayLevels } from "./keylevels.js";
 import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
 import { BAR_KINDS } from "./watch.js";
+import { maybeStartGuide, startGuide } from "./guide.js";
 
 const API = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
@@ -2386,6 +2387,8 @@ if (CASE) {
     }, 15_000);
     setInterval(pollRecent, 5_000);
     setInterval(showLive, 1_000);
+    $("guide-open").addEventListener("click", startGuide);
+    maybeStartGuide({ rec: query.get("rec") === "1" });
   } catch {
     ui.status.textContent = "找不到資料。本機請先執行 npm run orderflow:dev，再用 npm run lab:orderflow:bybit 匯入歷史。";
   }
