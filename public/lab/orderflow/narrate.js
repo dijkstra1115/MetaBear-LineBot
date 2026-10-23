@@ -36,6 +36,8 @@ export const FILTERS = [
 
 const hm = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hour12: false });
 export const timeOf = (t) => hm.format(t);
+// "17:35–18:05", or one time when both fall in the same minute.
+const rangeOf = (a, b, sep) => (timeOf(a) === timeOf(b) ? timeOf(b) : `${timeOf(a)}${sep}${timeOf(b)}`);
 export const fmt = (p) => Math.round(p).toLocaleString("en-US");
 /** One space between Chinese and Latin letters, as the rest of the site writes "在 VWAP 附近 CVD 背離". */
 export const spaced = (s) => s.replace(/(\p{Script=Han})([A-Za-z])/gu, "$1 $2").replace(/([A-Za-z0-9])(\p{Script=Han})/gu, "$1 $2");
@@ -78,6 +80,8 @@ export function detailOf(e) {
   s = s.replace(/^\S+\s+/, "");
   s = s.replace(/（[^（）]*）\s*$/, "");
   s = s.replace(/^[^：]{1,8}：/, "");
+  // Live events name their kind without a colon ("大單 主動買 …"); the card's badge already does.
+  s = s.replace(/^(大單|連環爆倉|疑似誘單|冰山)\s+/, "");
   s = s.replace(/(\d{5,})(\.\d+)?/g, (m) => fmt(Number(m)));
   s = spaced(s);
   return s.trim();
@@ -93,7 +97,7 @@ export function cardOf(g) {
   return {
     choice: g.choice,
     badge: n > 1 ? `${k.name} ×${n}` : k.name,
-    time: n > 1 ? `${timeOf(g.first)}–${timeOf(g.last)}` : timeOf(g.last),
+    time: rangeOf(g.first, g.last, "–"),
     title: g.level ? `${where}：${phrase}` : `${phrase} · ${where}`,
     lines: g.items
       .slice(-4)
@@ -124,7 +128,7 @@ export function nowOf({ price, vwap, levels = [], groups = [], t }) {
     const k = KIND.get(recent.choice);
     const where = whereOf(recent);
     const n = recent.items.length;
-    sub = spaced(n > 1 ? `${timeOf(recent.first)} 到 ${timeOf(recent.last)}，在${where}附近${k.name} ${n} 次。` : `${timeOf(recent.last)}，${where}附近出現${k.name}。`);
+    sub = spaced(n > 1 ? `${rangeOf(recent.first, recent.last, " 到 ")}，在${where}附近${k.name} ${n} 次。` : `${timeOf(recent.last)}，${where}附近出現${k.name}。`);
   }
   return { time: timeOf(t), head, sub };
 }

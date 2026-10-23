@@ -41,6 +41,13 @@ test("cards describe what happened with numbers from the event lines", () => {
   assert.ok(c.plain.length > 10);
 
   assert.equal(detailOf(wall), "賣單牆 81,780 撤單，價格沒碰到（原本 153 BTC）");
+  // Prints in one minute: one time, and the badge alone names the kind.
+  const print = (s, price) => ({ t: at("23:35") + s * 1000, kind: "print", price, side: "buy", level: "stack", text: `🐋 大單 主動買 50.0 BTC @ ${price.toLocaleString("en-US", { maximumFractionDigits: 1 })}（23:35:${String(s).padStart(2, "0")}）｜堆疊區 81,610（差 $20）` });
+  const prints = groupEvents([print(5, 81590), print(40, 81637.5)]);
+  const p = cardOf(prints[0]);
+  assert.equal(p.time, "23:35");
+  assert.equal(p.lines[0].text, "主動買 50.0 BTC @ 81,637.5");
+  assert.equal(nowOf({ price: 81549, groups: prints, t: at("23:40") }).sub, "23:35，在堆疊區 81,610 附近大單 2 次。");
   assert.equal(levelPriceOf(wall), 81815);
   const w = cardOf(groupEvents([wall])[0]);
   assert.equal(w.title, "前日 POC 81,815：掛單牆有變化");
