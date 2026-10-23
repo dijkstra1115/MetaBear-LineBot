@@ -2314,6 +2314,8 @@ const nar = { root: $("narration"), list: $("nar-list"), now: $("nar-now"), coun
 const NARRATE_MS = 24 * 60 * MINUTE;
 let rawEvents = null; // the collector's events as the API sends them (loadEvents)
 let narFilter = "all";
+// The rail shows as many stories as fit, in pages, so it never needs a scrollbar.
+let narPages = [0]; // the first story of each page visited; the last is the current page
 let narKey = "";
 let narExpanded = null; // the open card's key; null opens the newest
 let narPreview = null;
@@ -2358,6 +2360,7 @@ for (const f of FILTERS) {
   b.setAttribute("aria-pressed", String(f.id === narFilter));
   b.addEventListener("click", () => {
     narFilter = f.id;
+    narPages = [0];
     for (const x of nar.filters.children) x.setAttribute("aria-pressed", String(x.dataset.filter === f.id));
     renderNarration(true);
   });
@@ -2366,6 +2369,9 @@ for (const f of FILTERS) {
 $("nar-close").addEventListener("click", () => setRail(false));
 nar.open.addEventListener("click", () => setRail(true));
 nar.handle.addEventListener("click", () => setSheet(!document.body.classList.contains("sheet-open")));
+// Pages fit the rail's height: lay them out again when it changes (a resize, the phone sheet opening).
+nar.root.addEventListener("transitionend", (e) => e.target === nar.root && renderNarration(true));
+window.addEventListener("resize", () => renderNarration(true));
 
 function renderNow(groups) {
   const last = bars.at(-1);
@@ -2383,7 +2389,7 @@ function renderNarration(force = false) {
   const recent = (rawEvents ?? []).filter((e) => t - e.t <= NARRATE_MS);
   const groups = groupEvents(recent);
   renderNow(groups);
-  const key = `${narFilter}|${recent.length}|${recent.at(-1)?.t ?? 0}|${narExpanded}`;
+  const key = `${narFilter}|${recent.length}|${recent.at(-1)?.t ?? 0}|${narExpanded}|${narPages.join(",")}`;
   if (!force && key === narKey) return;
   narKey = key;
   if (!rawEvents) return;
@@ -2395,7 +2401,32 @@ function renderNarration(force = false) {
     return;
   }
   const openKey = narExpanded ?? `${shown[0].choice}|${shown[0].first}`;
-  nar.list.replaceChildren(...shown.map((g) => narCard(g, `${g.choice}|${g.first}` === openKey)));
+  const from = Math.min(narPages.at(-1), Math.max(0, shown.length - 1));
+  const nav = node("div", "nar-pager");
+  const newer = node("button", "", "← 較新的");
+  newer.type = "button";
+  newer.hidden = narPages.length < 2;
+  newer.addEventListener("click", () => {
+    narPages.pop();
+    renderNarration(true);
+  });
+  const older = node("button", "");
+  older.type = "button";
+  nav.append(newer, older);
+  // Up to 8 stories, then drop from the end until the rail no longer overflows.
+  const cards = shown.slice(from, from + 8).map((g) => narCard(g, `${g.choice}|${g.first}` === openKey));
+  nar.list.replaceChildren(...cards, nav);
+  const body = nar.list.closest(".nar-body");
+  while (cards.length > 1 && body.scrollHeight > body.clientHeight + 1) cards.pop().remove();
+  const next = from + cards.length;
+  older.hidden = next >= shown.length;
+  older.textContent = `較早的 ${shown.length - next} 則 →`;
+  older.addEventListener("click", () => {
+    narPages.push(next);
+    renderNarration(true);
+  });
+  nav.hidden = newer.hidden && older.hidden;
+
 }
 
 function narCard(g, expanded) {

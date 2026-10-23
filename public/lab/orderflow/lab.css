@@ -631,6 +631,33 @@ input {
   padding: 0 14px 14px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Older stories come from a button; an opened card that runs long still scrolls, without a bar. */
+  scrollbar-width: none;
+}
+.nar-body::-webkit-scrollbar {
+  display: none;
+}
+.nar-pager {
+  display: flex;
+  gap: 8px;
+}
+.nar-pager[hidden],
+.nar-pager [hidden] {
+  display: none;
+}
+.nar-pager button {
+  flex: 1;
+  min-height: 38px;
+  border: 1px dashed rgba(120, 160, 190, 0.3);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.nar-pager button:hover {
+  border-color: var(--teal);
+  color: var(--teal);
 }
 .nar-filters {
   display: flex;
@@ -933,11 +960,9 @@ input {
   body:not(.sheet-open) .nar-body {
     overflow: hidden;
   }
+  /* Chart, then the footer note, then the sheet: the page fits the screen without scrolling. */
   .has-rail .stage {
-    height: max(360px, calc(100dvh - var(--top) - 200px));
-  }
-  .has-rail {
-    padding-bottom: 200px;
+    height: max(320px, calc(100dvh - var(--top) - 196px - 58px));
   }
   .nar-open {
     top: 8px;
