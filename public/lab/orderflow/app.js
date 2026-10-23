@@ -1786,6 +1786,7 @@ function borderAt(L, x, y) {
 }
 let tap = null; // a press that has not moved yet: releasing it pins the bar under it
 let pinnedT = null; // start time of the pinned bar, kept across timeframe changes
+let pinnedY = -1; // where on the chart it was clicked, so its card stays put
 const pinnedIndex = () => (pinnedT == null ? -1 : bars.findIndex((b) => b.t <= pinnedT && pinnedT < b.end));
 const hoverAt = (clientX, clientY) => {
   const rect = canvas.getBoundingClientRect();
@@ -1872,6 +1873,7 @@ const release = (e) => {
   if (e.type === "pointerup" && tap?.id === e.pointerId) {
     hoverAt(e.clientX, e.clientY);
     pinnedT = bars[hover.i]?.t ?? null;
+    pinnedY = hover.y;
     redraw();
   }
   tap = null;
@@ -2302,6 +2304,7 @@ function openBarAt(t) {
   const i = bars.findIndex((b) => b.t <= t && t < b.end);
   if (i < 0) return;
   pinnedT = bars[i].t;
+  pinnedY = -1;
   view.follow = false;
   hover = { i, y: -1 };
   view.end = i + 1 + (layout().plotW / view.barW) * 0.35;
@@ -3122,15 +3125,19 @@ const pct = (v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}%`;
 function renderBarCard() {
   const card = $("bar-card");
   if (!card) return;
-  const pinned = pinnedT != null && hover && bars[hover.i]?.t === pinnedT;
-  const show = hover && hover.i >= 0 && hover.i < bars.length && !evReplay && !CASE && (!NARROW || pinned);
+  // A pinned bar keeps its card in place while the mouse moves on (towards its buttons, say);
+  // other bars only move the crosshair until one is clicked.
+  const pi = pinnedIndex();
+  const pinned = pi >= 0;
+  const at = pinned ? { i: pi, y: pinnedY } : hover;
+  const show = at && at.i >= 0 && at.i < bars.length && !evReplay && !CASE && (!NARROW || pinned);
   document.body.classList.toggle("card-open", !!(show && NARROW));
   if (!show) {
     card.hidden = true;
     barCardKey = "";
     return;
   }
-  const b = bars[hover.i];
+  const b = bars[at.i];
   const events = on("events") ? eventsIn(b) : [];
   const liq = liqText();
   const key = `${b.t}|${b.c}|${b.buy}|${events.length}|${pinned}|${liq}`;
@@ -3143,11 +3150,11 @@ function renderBarCard() {
   if (NARROW) return; // phones: CSS docks the card under the chart
   const L = layout();
   const P = L.panes.price;
-  const x = xOf(hover.i, L) + view.barW / 2;
+  const x = xOf(at.i, L) + view.barW / 2;
   const w = card.offsetWidth;
   const h = card.offsetHeight;
   const left = x + 18 + w < L.plotW ? x + 18 : Math.max(4, x - 18 - w);
-  const y = hover.y > 0 ? hover.y - 40 : P.y + 40;
+  const y = at.y > 0 ? at.y - 40 : P.y + 40;
   const top = Math.max(P.y + 34, Math.min(y, size.h - h - 8));
   card.style.setProperty("left", `${Math.round(left)}px`);
   card.style.setProperty("top", `${Math.round(top)}px`);
@@ -3208,6 +3215,8 @@ function fillBarCard(b, events, pinned, liq) {
   list.hidden = !events.length;
   $("bc-replay").hidden = !events.length;
   $("bc-hint").hidden = pinned || NARROW;
+  // Replays start from an event, so bars without one only pin.
+  $("bc-hint").textContent = events.length ? "點一下固定這根，可以覆盤這段" : "點一下固定這根";
   $("bc-actions").hidden = !pinned;
   $("bc-close").hidden = !pinned;
 }
@@ -3220,7 +3229,7 @@ function unpinBar() {
 
 // The story behind the first event on the pinned bar, from the collector's own lines.
 function replayPinnedBar() {
-  const b = bars[hover?.i];
+  const b = bars[pinnedIndex()];
   if (!b || !rawEvents) return;
   const raw = rawEvents.find((e) => {
     const t = BAR_KINDS.includes(e.kind) ? e.t - 1 : e.t;
