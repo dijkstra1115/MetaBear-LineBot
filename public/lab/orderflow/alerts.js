@@ -29,7 +29,7 @@ const FIELDS = [
 ];
 const STATES = { pending: "待送", sent: "已送", muted: "已關閉", capped: "超過上限", logged: "只記錄", undelivered: "未送達", offlevel: "不在關鍵位", repeat: "同一關鍵位冷卻中" };
 const seconds = (key) => key.endsWith("Ms");
-const taipei = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+const taipei = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
 
 let token = "";
 let current = null;

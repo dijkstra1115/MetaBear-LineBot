@@ -16,7 +16,8 @@ import { maybeStartGuide, startGuide } from "./guide.js";
 import { LAYOUTS, layoutPrefs, startLayout } from "./layouts.js";
 import { bubbleRadius, countdown, eventMark, mergePrints } from "./marks.js";
 import { FILTERS, cardOf, detailOf, filterGroups, groupEvents, levelPriceOf, nowOf, timeOf } from "./narrate.js";
-import { START_MS, barsPerSecond, beatAt, beatsOf, findStory, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
+import { chapterCard, chapterStory, chaptersOf, findChapter } from "./chapters.js";
+import { START_MS, barsPerSecond, beatAt, beatsOf, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
 
 const API = "/api/orderflow/btcusdt";
 // Cloudflare stretches the API's short max-age to hours in browsers; revalidate every request
@@ -204,7 +205,7 @@ const taipei = new Intl.DateTimeFormat("zh-TW", {
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
-  hour12: false,
+  hourCycle: "h23",
 });
 const fmtTime = (t) => taipei.format(t).replace(/\s+/, " ");
 const fmtVol = (v) =>
@@ -2322,10 +2323,11 @@ const nar = { root: $("narration"), list: $("nar-list"), now: $("nar-now"), coun
 const NARRATE_MS = 24 * 60 * MINUTE;
 let rawEvents = null; // the collector's events as the API sends them (loadEvents)
 let narFilter = "all";
-// The rail shows as many stories as fit, in pages, so it never needs a scrollbar.
-let narPages = [0]; // the first story of each page visited; the last is the current page
+// The rail shows as many chapters as fit, in pages, so it never needs a scrollbar.
+let narPages = [0]; // the first chapter of each page visited; the last is the current page
 let narKey = "";
-let narExpanded = null; // the open card's key; null opens the newest
+// Chapters start closed so several fit; the newest is outlined.
+let narExpanded = ""; // the open card's key
 let narPreview = null;
 const node = (tag, className, text) => {
   const n = document.createElement(tag);
@@ -2403,12 +2405,11 @@ function renderNarration(force = false) {
   if (!rawEvents) return;
   stopPreview();
   nar.count.textContent = `近 24 小時 · ${recent.length} 件`;
-  const shown = filterGroups(groups, narFilter);
+  const shown = chaptersOf(filterGroups(groups, narFilter));
   if (!shown.length) {
     nar.list.replaceChildren(node("p", "nar-empty", recent.length ? "近 24 小時，這一類事件沒有出現在關鍵位。" : "近 24 小時，關鍵位附近還沒有事件。"));
     return;
   }
-  const openKey = narExpanded ?? `${shown[0].choice}|${shown[0].first}`;
   const from = Math.min(narPages.at(-1), Math.max(0, shown.length - 1));
   const nav = node("div", "nar-pager");
   const newer = node("button", "", "← 較新的");
@@ -2421,14 +2422,21 @@ function renderNarration(force = false) {
   const older = node("button", "");
   older.type = "button";
   nav.append(newer, older);
-  // Up to 8 stories, then drop from the end until the rail no longer overflows.
-  const cards = shown.slice(from, from + 8).map((g) => narCard(g, `${g.choice}|${g.first}` === openKey));
+  // Up to 8 chapters, then drop from the end until the rail no longer overflows.
+  const cards = shown.slice(from, from + 8).map((ch, i) => narCard(ch, narExpanded, from + i === 0));
   nar.list.replaceChildren(...cards, nav);
   const body = nar.list.closest(".nar-body");
-  while (cards.length > 1 && body.scrollHeight > body.clientHeight + 1) cards.pop().remove();
+  // Never drop the card the user just opened; if it still runs long, bring it into view.
+  const openAt = cards.findIndex((c) => c.classList.contains("is-open"));
+  while (cards.length > Math.max(1, openAt + 1) && body.scrollHeight > body.clientHeight + 1) cards.pop().remove();
+  body.scrollTop = 0;
+  const open = cards[openAt];
+  if (open && open.getBoundingClientRect().bottom > body.getBoundingClientRect().bottom) {
+    body.scrollTop = open.getBoundingClientRect().top - body.getBoundingClientRect().top - 10;
+  }
   const next = from + cards.length;
   older.hidden = next >= shown.length;
-  older.textContent = `較早的 ${shown.length - next} 則 →`;
+  older.textContent = `較早的 ${shown.length - next} 段 →`;
   older.addEventListener("click", () => {
     narPages.push(next);
     renderNarration(true);
@@ -2437,20 +2445,31 @@ function renderNarration(force = false) {
 
 }
 
-function narCard(g, expanded) {
-  const c = cardOf(g);
-  const key = `${g.choice}|${g.first}`;
+// The newest lines of a long chapter; the rest come from a button.
+const NAR_LINES = 6;
+let narAllLines = "";
+
+function narCard(ch, openKey, latest) {
+  const c = chapterCard(ch);
+  const expanded = c.key === openKey;
   const card = node("article", "nar-card");
-  card.dataset.choice = c.choice;
   card.classList.toggle("is-open", expanded);
+  card.classList.toggle("is-latest", latest);
   const toggle = node("button", "nar-toggle");
   toggle.type = "button";
   toggle.setAttribute("aria-expanded", String(expanded));
   const meta = node("span", "nar-meta");
-  meta.append(node("span", "nar-badge", c.badge), node("span", "nar-time", c.time));
-  toggle.append(meta, node("span", "nar-title", c.title), node("span", "nar-detail", c.lines[0].text));
+  meta.append(node("span", "nar-time", c.time), node("span", "nar-n", `${c.count} 件`));
+  const kinds = node("span", "nar-kinds");
+  for (const k of c.kinds) {
+    const chip = node("span", "nar-kind", k.label);
+    chip.dataset.choice = k.choice;
+    kinds.append(chip);
+  }
+  toggle.append(meta, node("span", "nar-title", c.title), node("span", "nar-detail", c.text));
+  if (c.kinds.length > 1 || c.count > 1) toggle.append(kinds);
   toggle.addEventListener("click", () => {
-    narExpanded = expanded ? "" : key;
+    narExpanded = expanded ? "" : c.key;
     renderNarration(true);
   });
   card.append(toggle);
@@ -2458,27 +2477,49 @@ function narCard(g, expanded) {
 
   const more = node("div", "nar-more");
   if (c.lines.length > 1) {
+    const all = narAllLines === c.key || c.lines.length <= NAR_LINES + 1;
     const ol = node("ol", "nar-lines");
-    for (const line of c.lines) {
+    if (!all) {
+      const earlier = node("button", "nar-earlier", `列出較早的 ${c.lines.length - NAR_LINES} 件`);
+      earlier.type = "button";
+      earlier.addEventListener("click", () => {
+        narAllLines = c.key;
+        renderNarration(true);
+      });
+      ol.append(earlier);
+    }
+    for (const line of all ? c.lines : c.lines.slice(-NAR_LINES)) {
       const li = node("li");
-      li.append(node("b", "", line.time), document.createTextNode(line.text));
+      const kn = node("span", "nar-kn", line.name);
+      kn.dataset.choice = line.choice;
+      const text = node("span");
+      text.append(kn, document.createTextNode(`　${line.text}`));
+      li.append(node("b", "", line.time), text);
       ol.append(li);
     }
     more.append(ol);
   }
-  more.append(node("p", "nar-plain", c.plain));
+  const plain = node("div", "nar-plain");
+  for (const a of c.abouts) {
+    const kn = node("b", "nar-kn", a.name);
+    kn.dataset.choice = a.choice;
+    const p = node("span");
+    p.append(kn, document.createTextNode(`：${a.about}`));
+    plain.append(p);
+  }
+  more.append(plain);
   const lessonBox = node("div", "nar-lesson");
   lessonBox.hidden = true;
   more.append(lessonBox);
   const actions = node("div", "nar-actions");
   const replayBtn = node("button", "nar-replay", "▶ 覆盤這段");
   replayBtn.type = "button";
-  replayBtn.addEventListener("click", () => startEventReplay(g));
+  replayBtn.addEventListener("click", () => startEventReplay(chapterStory(ch)));
   actions.append(replayBtn);
   const look = node("button", "", "在圖上看");
   look.type = "button";
   look.addEventListener("click", () => {
-    const last = g.items.at(-1);
+    const last = ch.items.at(-1);
     // Bar detectors stamp their bar's close; look inside the bar.
     openBarAt(BAR_KINDS.includes(last.kind) ? last.t - 1 : last.t);
     if (NARROW) setSheet(false);
@@ -2492,7 +2533,7 @@ function narCard(g, expanded) {
   }
   const remind = node("button", "", "設成提醒");
   remind.type = "button";
-  remind.addEventListener("click", () => remindMe(c.choice, c.badge.replace(/ ×\d+$/, "")));
+  remind.addEventListener("click", () => remindMe(c.choices, c.abouts.map((a) => a.name).join("、")));
   actions.append(remind);
   more.append(actions);
   card.append(more);
@@ -2524,8 +2565,8 @@ async function playLesson(box, lesson) {
   }
 }
 
-async function remindMe(choice, name) {
-  notifier.setKind(choice, true);
+async function remindMe(choices, name) {
+  for (const choice of choices) notifier.setKind(choice, true);
   if (!notifier.on) await notifier.setOn(true);
   notifier.syncPanel?.();
   loadEvents();
@@ -2630,7 +2671,7 @@ function replayView() {
   }
 }
 
-const taipeiClock = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+const taipeiClock = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
 let seeking = false;
 
 function replaySync() {
@@ -2763,7 +2804,7 @@ function startEventReplay(story, { autoplay = true } = {}) {
   stopPreview();
   pinnedT = null;
   hover = null;
-  const card = cardOf(story);
+  const card = story.card ?? cardOf(story);
   evReplay = {
     group,
     card,
@@ -2967,11 +3008,16 @@ async function shareReplay() {
   setTimeout(() => item.remove(), 8_000);
 }
 
-// From a notification: the story that event belongs to, or the event alone.
+// The chapter an event belongs to, as a replay story (chapters.js).
+function chapterStoryAt(events, { t, kind }) {
+  const ch = findChapter(chaptersOf(groupEvents(events)), { t, kind });
+  return ch ? chapterStory(ch) : null;
+}
+
+// From a notification: the chapter that event belongs to, or the event alone.
 function replayEvent(e) {
   const t = Date.now();
-  const groups = groupEvents((rawEvents ?? []).filter((x) => t - x.t <= NARRATE_MS));
-  startEventReplay(findStory(groups, { t: e.t, kind: e.kind }) ?? groupEvents([e])[0]);
+  startEventReplay(chapterStoryAt((rawEvents ?? []).filter((x) => t - x.t <= NARRATE_MS), e) ?? groupEvents([e])[0]);
 }
 
 // A shared link (?replay=): wait for the events, then show the story under a play button.
@@ -2979,8 +3025,7 @@ function maybeOpenSharedReplay() {
   if (sharedReplayDone || !REPLAY_AT || !rawEvents || CASE) return;
   sharedReplayDone = true;
   const kind = query.get("k");
-  const groups = groupEvents(rawEvents);
-  const g = findStory(groups, { t: REPLAY_AT, kind });
+  const g = chapterStoryAt(rawEvents, { t: REPLAY_AT, kind });
   if (g) startEventReplay(g, { autoplay: false });
 }
 
@@ -3182,7 +3227,7 @@ function replayPinnedBar() {
     return t >= b.t && t < b.end;
   });
   if (!raw) return;
-  const story = findStory(groupEvents(rawEvents), { t: raw.t, kind: raw.kind });
+  const story = chapterStoryAt(rawEvents, raw);
   unpinBar();
   startEventReplay(story ?? groupEvents([raw])[0]);
 }
