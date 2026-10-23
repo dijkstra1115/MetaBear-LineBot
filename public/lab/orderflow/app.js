@@ -169,7 +169,13 @@ let replay = null; // replay mode: { player, prepared, raw, sec, printsN, readin
 // end: bar index at the right edge; follow: keep the newest bar in view as it forms (off once the
 // user pans, back on at the right edge or with the latest button); yRange: a price scale the user
 // dragged or zoomed, null for automatic.
-const view = { end: 0, barW: 14, yRange: null, follow: true };
+// pad: empty bars right of the newest one while following, kept where the user panned it.
+const view = { end: 0, barW: 14, yRange: null, follow: true, pad: 3 };
+// After a pan: following resumes once the newest bar is in view, at the spot the user left it.
+function syncFollow() {
+  view.follow = view.end >= bars.length;
+  if (view.follow) view.pad = view.end - bars.length;
+}
 let RIGHT_PAD = 3; // empty bars right of the newest one (one when recording a replay)
 let lastAuto = null; // the automatic price range of the last frame
 // Sub-pane heights the user dragged, per pane id, kept per browser apart from the indicator choice.
@@ -1719,13 +1725,14 @@ function redraw() {
 
 function zoomAt(factor, px) {
   const L = layout();
-  // While following the newest bar, zoom around the right edge so it stays in view.
-  if (view.follow) px = L.plotW;
+  // While following, zoom around the newest bar so it stays where it is on screen.
+  if (view.follow) px = Math.min(L.plotW, xOf(bars.length, L));
   const anchor = view.end - (L.plotW - px) / view.barW;
   view.barW *= factor;
   clampView();
   view.end = anchor + (L.plotW - px) / view.barW;
   clampView();
+  if (view.follow) view.pad = view.end - bars.length;
   redraw();
 }
 
@@ -1738,7 +1745,7 @@ canvas.addEventListener(
       zoomY(e.deltaY < 0 ? 1.15 : 1 / 1.15);
     } else if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
       view.end += (e.deltaX || e.deltaY) / view.barW;
-      view.follow = view.end >= bars.length;
+      syncFollow();
       clampView();
       redraw();
     } else zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, Math.min(e.clientX - rect.left, layout().plotW));
@@ -1858,8 +1865,8 @@ const release = (e) => {
     paneDrag = null;
     savePanes();
   }
-  // Panning back to the newest bar resumes following it.
-  if (drag && view.end >= bars.length) view.follow = true;
+  // Panning the newest bar back into view resumes following it, where the user put it.
+  if (drag) syncFollow();
   drag = null;
   if (e.type === "pointerup" && tap?.id === e.pointerId) {
     hoverAt(e.clientX, e.clientY);
@@ -1887,6 +1894,7 @@ $("latest").addEventListener("click", () => {
   pinnedT = null;
   hover = null;
   view.follow = true;
+  view.pad = RIGHT_PAD;
   view.end = bars.length + RIGHT_PAD;
   resetY();
 });
@@ -1894,7 +1902,7 @@ window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
   if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
     view.end += (e.key === "ArrowLeft" ? -10 : 10) * (14 / view.barW);
-    view.follow = view.end >= bars.length;
+    syncFollow();
     clampView();
     redraw();
   } else if (e.key === "+" || e.key === "=") zoomAt(1.25, layout().plotW);
@@ -1906,7 +1914,7 @@ function rebuild() {
   // A new timeframe changes every index; keep the same moment at the right edge.
   const anchorT = bars[Math.min(bars.length - 1, Math.floor(view.end))]?.t;
   build();
-  if (view.follow) view.end = bars.length + RIGHT_PAD;
+  if (view.follow) view.end = bars.length + view.pad;
   else if (anchorT != null) {
     const idx = bars.findIndex((b) => b.t >= anchorT);
     view.end = (idx < 0 ? bars.length : idx) + 1;
@@ -2091,7 +2099,7 @@ function refresh(full = true) {
   const offset = view.end - anchorI;
   if (full) build();
   else buildTail();
-  if (following) view.end = bars.length + RIGHT_PAD;
+  if (following) view.end = bars.length + view.pad;
   else if (anchorT != null) {
     const idx = bars.findIndex((b) => b.t >= anchorT);
     if (idx >= 0) view.end = idx + offset;
