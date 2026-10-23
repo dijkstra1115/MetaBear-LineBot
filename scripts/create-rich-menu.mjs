@@ -1,35 +1,35 @@
 import fs from "node:fs";
 // Editable vector UI: exact typography and six deterministic tap regions.
 const icons = [
+  '<path d="M6 5v55h62M16 46l14-16 12 7 22-25M53 12h11v11"/>',
+  '<path d="M35 6Q16 6 15 27v13L7 50h56l-8-10V27Q54 6 35 6z"/><path d="M27 56q8 8 16 0M35 2v4"/>',
+  '<path d="M35 14Q14 2 4 9v47q17-8 31 3 14-11 31-3V9q-10-7-31 5v45M14 23l12 4M14 34l12 4M45 27l12-4M45 38l12-4"/>',
   '<rect x="4" y="8" width="64" height="48" rx="9"/><circle cx="23" cy="29" r="7"/><path d="M13 46q10-13 20 0M42 24h15M42 36h15"/>',
   '<circle cx="35" cy="33" r="28"/><path d="m20 33 10 10 23-23"/>',
-  '<path d="M35 14Q14 2 4 9v47q17-8 31 3 14-11 31-3V9q-10-7-31 5v45M14 23l12 4M14 34l12 4M45 27l12-4M45 38l12-4"/>',
-  '<path d="M6 12q0-7 7-7h30q7 0 7 7v18q0 7-7 7H24l-11 9v-9q-7 0-7-7z"/><path d="M50 21h9q7 0 7 7v16q0 7-7 7v8l-10-8H35q-7 0-7-7v-7"/>',
-  '<path d="M6 5v55h62M16 46l14-16 12 7 22-25M53 12h11v11"/>',
   '<path d="M9 37v-9a26 26 0 0 1 52 0v9M9 29H5v19h10V29H9m52 0h5v19H56V29h5M60 49q-1 12-23 12"/><rect x="29" y="56" width="12" height="8" rx="4"/>',
 ];
 const labels = [
-  "登記 UID",
-  "審核進度",
-  "新手教學",
-  "聊天社群",
-  "交易學習",
+  "看盤平台",
+  "關鍵位提醒",
+  "學院課程",
+  "新手註冊",
+  "我的進度",
   "人工協助",
 ];
 const notes = [
-  "提交帳號・開始核對",
-  "查看結果・重新查詢",
+  "即時訂單流・手機可看",
+  "關鍵位事件・LINE 推播",
+  "動畫課程・看懂指標",
   "註冊・KYC 一步一步",
-  "加入 LINE 社群交流",
-  "看懂市場・掌握風險",
+  "會員資格・登記 UID",
   "遇到問題，找小幫手",
 ];
 const colors = [
   "#78e1d5",
   "#78e1d5",
-  "#e8bd7d",
-  "#e8bd7d",
   "#78e1d5",
+  "#e8bd7d",
+  "#e8bd7d",
   "#e8bd7d",
 ];
 let body = "";

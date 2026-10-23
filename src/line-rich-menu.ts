@@ -2,36 +2,23 @@ import { audit } from "./db";
 
 export type MenuInstallMessage = { kind: "line-menu-install"; id: string };
 // Bump the name whenever the menu or its image changes; the cron installs it once.
-export const menuName = "MetaBear service menu 2026-10-05-v4";
+export const menuName = "MetaBear service menu 2026-10-23-v5";
 export const communityUrl =
   "https://line.me/ti/g2/c962LJ6bbEZ8X63UX9UhWWdw3bwmHJUv9mVM5g?utm_source=invitation&utm_medium=link_copy&utm_campaign=default";
+// Top row: what MetaBear offers. Bottom row: membership and help. Every tile replies in the chat
+// first (the platform tiles with a short intro and the link), so nobody leaves LINE without context.
 export function richMenuDefinition(_base: string) {
+  const postback = (text: string, displayText = text) => ({
+    type: "postback",
+    data: "text=" + encodeURIComponent(text),
+    displayText,
+  });
   const actions = [
-    {
-      type: "postback",
-      data: "text=" + encodeURIComponent("提交 UID"),
-      displayText: "我要登記 UID",
-    },
-    {
-      type: "postback",
-      data: "text=" + encodeURIComponent("我的進度"),
-      displayText: "查詢我的審核進度",
-    },
-    {
-      type: "postback",
-      data: "text=" + encodeURIComponent("開始註冊"),
-      displayText: "新手教學",
-    },
-    {
-      type: "uri",
-      label: "加入聊天社群",
-      uri: communityUrl,
-    },
-    {
-      type: "postback",
-      data: "text=" + encodeURIComponent("合約基礎"),
-      displayText: "合約學習",
-    },
+    postback("看盤平台"),
+    postback("關鍵位提醒"),
+    postback("學院課程"),
+    postback("開始註冊", "新手註冊"),
+    postback("我的進度", "查詢我的會員進度"),
     {
       type: "message",
       text: "人工協助",
@@ -41,7 +28,7 @@ export function richMenuDefinition(_base: string) {
     size: { width: 2500, height: 1686 },
     selected: true,
     name: menuName,
-    chatBarText: "教學・審核・客服",
+    chatBarText: "看盤・提醒・學院・客服",
     areas: actions.map((action, i) => ({
       bounds: {
         x: [0, 833, 1667][i % 3],

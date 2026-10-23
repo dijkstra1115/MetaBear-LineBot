@@ -36,6 +36,7 @@ import {
 import type { Account, LineMessage } from "./types";
 import { enqueueSync, customerAutomation } from "./automation";
 import { getTeam, personalize } from "./team";
+import { communityUrl } from "./line-rich-menu";
 import { knowledgeCandidates } from "./knowledge";
 import { recentConversation } from "./conversations";
 import { activeSupportCase, requestSupport, resumeBot } from "./support";
@@ -260,6 +261,33 @@ async function respondBase(
   if (text === "更多教學") return [moreMenu()];
   if (text === "合約教學") return [futuresMenu()];
   if (text === "看盤教學") return [marketMenu()];
+  if (text === "看盤平台")
+    return [
+      reply(
+        `MetaBear 訂單流平台：BTC 永續的即時足跡、CVD、OI、爆倉與關鍵位事件，手機也能看。\n${base}/lab/orderflow/\n\n看不懂圖上的指標，可以先從學院課程開始。盤面事件只描述發生了什麼，不是買賣訊號。`,
+        [command("學院課程"), command("關鍵位提醒"), command("選單")],
+      ),
+    ];
+  if (text === "關鍵位提醒")
+    return [
+      reply(
+        `價格到了關鍵位、又出現你選的訂單流事件時提醒你，每則都附當下的盤面。\n到 ${base}/alerts/ 選擇事件：開著網頁就能收網頁通知，不需要會員；要在 LINE 收到，按頁面上的「透過 LINE 接收通知」。\n\n${ALERT_TERMS}`,
+        [command("警報設定"), command("開始註冊"), command("選單")],
+      ),
+    ];
+  if (text === "學院課程")
+    return [
+      reply(
+        `MetaBear 學院：用動畫看懂足跡、CVD、吸收、掃蕩這些訂單流概念，每堂幾分鐘，手機也能看。\n${base}/orderflow/\n\n看完可以到看盤平台對照即時盤面。`,
+        [command("看盤平台"), command("合約教學"), command("選單")],
+      ),
+    ];
+  if (text === "聊天社群")
+    return [
+      reply(`加入 MetaBear 的 LINE 聊天社群：\n${communityUrl}`, [
+        command("選單"),
+      ]),
+    ];
   if (text === "後台")
     return [reply(`管理員後台（需登入）：\n${base}/admin`, [command("選單")])];
   if (text === "繼續使用小幫手") {

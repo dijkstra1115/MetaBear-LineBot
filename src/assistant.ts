@@ -128,6 +128,7 @@ export function isImmediateCommand(text: string): boolean {
   if (!value) return false;
   if (isMenuCommand(value) || value === "更多教學") return true;
   if (value === "合約教學" || value === "看盤教學") return true;
+  if (/^(看盤平台|關鍵位提醒|學院課程|聊天社群)$/.test(value)) return true;
   if (value === "通知設定") return true;
   if (/^(停止通知|退訂|取消訂閱|訂閱通知)$/.test(value)) return true;
   if (

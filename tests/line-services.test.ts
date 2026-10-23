@@ -233,39 +233,23 @@ test("rich menu covers exactly six tiles and has no AI toggles or public VIP lin
   assert.ok(
     !JSON.stringify(menu).match(/TOGGLE_LLM|reurl|免費加入|開啟 AI|關閉 AI/),
   );
-  const [community] = menu.areas.splice(3, 1);
-  assert.deepEqual(community.action, {
-    type: "uri",
-    label: "加入聊天社群",
-    uri: communityUrl,
-  });
   assert.ok(communityUrl.startsWith("https://line.me/ti/g2/"));
-  assert.ok(menu.areas.slice(0, 4).every((area) => area.action.type === "postback"));
+  // Every tile replies in the chat; none opens a page directly.
+  assert.ok(menu.areas.slice(0, 5).every((area) => area.action.type === "postback"));
   const text = (i: number) =>
     new URLSearchParams((menu.areas[i].action as { data: string }).data).get(
       "text",
     );
-  assert.equal(
-    text(0),
-    "提交 UID",
+  assert.deepEqual(
+    [0, 1, 2, 3, 4].map(text),
+    ["看盤平台", "關鍵位提醒", "學院課程", "開始註冊", "我的進度"],
   );
-  assert.equal(
-    text(1),
-    "我的進度",
-  );
-  assert.equal(
-    text(2),
-    "開始註冊",
-  );
-  assert.equal(
-    text(3),
-    "合約基礎",
-  );
-  assert.deepEqual(menu.areas[4].action, {
+  assert.deepEqual(menu.areas[5].action, {
     type: "message",
     text: "人工協助",
   });
-  for (const command of ["提交 UID", "開始註冊", "合約基礎", "人工協助"])
+  assert.ok(menu.chatBarText.length <= 14);
+  for (const command of ["看盤平台", "關鍵位提醒", "學院課程", "開始註冊", "我的進度", "人工協助", "聊天社群"])
     assert.equal(isImmediateCommand(command), true);
 });
 
