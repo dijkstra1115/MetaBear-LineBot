@@ -207,7 +207,7 @@
 
 **第 3 步已合併到 `main` 並 push（2026-10-22，`f48202b`）。**
 
-**第 4 步（2026-10-22，分支 `feat/alert-line-subscribe`，尚未部署）**：
+**第 4 步（2026-10-22，已上線，見下方「上線紀錄」）**：
 
 - **4a 入金門檻**（migration 0016）：VIP 與 LINE 提醒共用同一套資格，近 60 日一般充值（不含內部轉帳）的 USDT、USDC 合計要達到 `team_settings.deposit_min_usdt`（預設 200）。其他幣種不自動計入，請人工核對。migration 會把 `allow_internal_transfer` 改成 0 並遞增設定版本，所以既有的資格快照要重新查詢；已標記入群的會員不受影響。網站、LINE 文案與兩則 FAQ 一併更新；管理頁可以調整門檻。
 - **4b LINE 訂閱與推播**（migration 0017）：
@@ -220,3 +220,19 @@
   - VIP 邀請訊息多一句：同一份資格也可以開通 LINE 關鍵位提醒。
   - `notify.js` 的 `LINE_READY` 改成 `true`，`/alerts/` 的 LINE 按鈕正式開放。
 - **上線順序**：這一步同時動到後端（`metabear-backend`）、收集器（`metabear-orderflow`）和網頁（Pages），而且要在正式 D1 執行 migration 0016、0017。建議順序：先執行 migration，再部署後端，然後部署收集器，最後把網頁合併到 `main`（`/alerts/` 的 LINE 按鈕會在這時打開）。網頁先上線的話，按鈕送出的關鍵字後端還看不懂。
+
+### 上線紀錄（2026-10-22）
+
+依序完成：
+1. 正式 D1 `metabear-crm-staging` 執行 migration 0016、0017。執行前 `allow_internal_transfer=1`、設定版本 3；執行後 `allow_internal_transfer=0`、`deposit_min_usdt=200`、版本 4，兩則 FAQ 已改寫。
+2. 後端 `metabear-backend` 部署，版本 `53b21944`。
+3. 收集器 `metabear-orderflow` 部署，版本 `966b7a69`；Durable Object 在 10:07 UTC 重啟換上新程式。
+4. 網頁合併到 `main`（`6fb8a2f`），Pages 已發布：`/alerts/` 的 LINE 按鈕開放，教學頁與首頁顯示新入金條件。
+
+### 接手時的待辦
+
+- **實測會員推播**：上線時還沒有任何訂閱者，會員推播（收集器轉送 → 後端逐人投遞 → LINE）還沒在正式環境跑過。用已入群的 LINE 帳號在 `/alerts/` 按一次按鈕，確認收到「已開通」，再等關鍵位事件推播過來，並查 `orderflow_alert_deliveries` 的狀態。
+- **VIP 資格重新查詢**：設定版本升級後，之前查詢通過但還沒入群的人，要用新門檻重新查詢後才會收到 VIP 邀請。
+- **急停開關沒有管理頁**：要停止提醒，直接執行 `UPDATE team_settings SET orderflow_alerts_enabled=0 WHERE id=1`。可以考慮在管理頁加開關。
+- **第 5 步：網站做 LINE Login**，讓會員在網站上直接查看與修改訂閱（見「訂閱管理」一節）。
+- 本機開發：`.claude/launch.json` 沒有進 Git，裡面有 `academy-preview`（`scripts/orderflow-preview.mjs`，:8790）與 `orderflow-dev`（`npm run orderflow:dev`，:8792）兩個設定，新環境要自己建。
