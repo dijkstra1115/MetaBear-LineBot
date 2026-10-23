@@ -18,6 +18,9 @@ import { FILTERS, cardOf, filterGroups, groupEvents, levelPriceOf, nowOf, timeOf
 import { START_MS, barsPerSecond, beatAt, beatsOf, findStory, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
 
 const API = "/api/orderflow/btcusdt";
+// Cloudflare stretches the API's short max-age to hours in browsers; revalidate every request
+// (the edge cache still answers most of them).
+const FRESH = { cache: "no-cache" };
 const MINUTE = 60_000;
 const DAY = 86_400_000;
 // A shared link (see shareUrl) opens the same view: ?tf=&mode=&at=<bar start ms>&ind=<ids>&pm=.
@@ -466,7 +469,7 @@ async function loadEvents() {
   // From the first loaded day, so every viewer asks for the same URL and shares the edge cache.
   const since = Math.floor(Date.now() / DAY) * DAY - (DAYS - 1) * DAY;
   try {
-    const res = await fetch(`${API}/events?since=${since}`);
+    const res = await fetch(`${API}/events?since=${since}`, FRESH);
     if (!res.ok) return;
     const list = (await res.json()).events;
     liveEvents = list.map(liveEvent);
@@ -831,7 +834,7 @@ function loadFine(t0, t1) {
   for (let c = Math.floor(t0 / BOOK_CHUNK_MS) * BOOK_CHUNK_MS; c < t1; c += BOOK_CHUNK_MS) {
     if (fineChunks.has(c) || c + BOOK_CHUNK_MS <= Date.now() - 30 * DAY || c > Date.now()) continue;
     fineChunks.set(c, "loading");
-    fetch(`${API}/book?from=${c}`)
+    fetch(`${API}/book?from=${c}`, FRESH)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((d) => {
         for (const col of d.columns) if (!fineCols.has(col[0])) fineCols.set(col[0], col);
@@ -2107,7 +2110,7 @@ async function loadDays() {
   const today = Math.floor(Date.now() / DAY) * DAY;
   const days = [];
   for (let k = DAYS - 1; k >= 1; k--) days.push(utcDay(today - k * DAY));
-  const results = await Promise.all(days.map((d) => fetch(`${API}/day?d=${d}`).then((res) => (res.ok ? res.json() : null), () => null)));
+  const results = await Promise.all(days.map((d) => fetch(`${API}/day?d=${d}`, FRESH).then((res) => (res.ok ? res.json() : null), () => null)));
   for (const d of results) if (d) ingest(d);
   recentSince = today;
   await pollRecent();
@@ -2115,7 +2118,7 @@ async function loadDays() {
 
 async function pollRecent() {
   try {
-    const res = await fetch(`${API}/recent?since=${recentSince}`);
+    const res = await fetch(`${API}/recent?since=${recentSince}`, FRESH);
     if (!res.ok) throw new Error(String(res.status));
     const d = await res.json();
     const older = ingest(d);

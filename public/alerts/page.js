@@ -56,7 +56,8 @@ async function load() {
   // Today and the 29 days before it, the most the feed keeps: one shared URL per day.
   const since = Math.floor(Date.now() / DAY) * DAY - 29 * DAY;
   try {
-    const res = await fetch(`${API}/events?since=${since}`);
+    // Revalidate: Cloudflare stretches the API's short max-age to hours in browsers.
+    const res = await fetch(`${API}/events?since=${since}`, { cache: "no-cache" });
     if (!res.ok) throw new Error(String(res.status));
     const { events } = await res.json();
     notifier.ingest(events);
