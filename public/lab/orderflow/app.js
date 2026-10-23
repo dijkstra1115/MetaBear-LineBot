@@ -14,7 +14,8 @@ import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
 import { BAR_KINDS } from "./watch.js";
 import { maybeStartGuide, startGuide } from "./guide.js";
 import { LAYOUTS, layoutPrefs, startLayout } from "./layouts.js";
-import { FILTERS, cardOf, filterGroups, groupEvents, nowOf } from "./narrate.js";
+import { FILTERS, cardOf, filterGroups, groupEvents, levelPriceOf, nowOf, timeOf } from "./narrate.js";
+import { START_MS, barsPerSecond, beatAt, beatsOf, findStory, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
 
 const API = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
@@ -22,6 +23,8 @@ const DAY = 86_400_000;
 // A shared link (see shareUrl) opens the same view: ?tf=&mode=&at=<bar start ms>&ind=<ids>&pm=.
 const query = new URLSearchParams(location.search);
 const SHARED_AT = Number(query.get("at")) || 0;
+// ?replay=<event ms>&k=<kind>&lv=<level> opens a story's 一鍵覆盤 (event-replay.js).
+const REPLAY_AT = Number(query.get("replay")) || 0;
 // ?case=<id> replays a recorded case from cases/ instead of loading live data; ?rec=1 hides the
 // controls and plays it through for screen recording.
 const CASE = /^[\w-]{1,40}$/.test(query.get("case") ?? "") ? query.get("case") : null;
@@ -29,7 +32,7 @@ const CASE = /^[\w-]{1,40}$/.test(query.get("case") ?? "") ? query.get("case") :
 // 30 days the collector keeps.
 const DAYS = Math.min(
   30,
-  Math.max(1, Math.floor(Number(query.get("days"))) || 3, SHARED_AT ? Math.floor(Date.now() / DAY) - Math.floor(SHARED_AT / DAY) + 1 : 0),
+  Math.max(1, Math.floor(Number(query.get("days"))) || 3, SHARED_AT || REPLAY_AT ? Math.floor(Date.now() / DAY) - Math.floor((SHARED_AT || REPLAY_AT) / DAY) + 1 : 0),
 );
 const C = {
   bg: "#05090f",
@@ -157,6 +160,7 @@ let eventsKey = "";
 let liveEvents = []; // live: the collector's events at a key level, sorted by time (loadEvents)
 let bars = [];
 let tick = 25;
+let evReplay = null; // 一鍵覆盤 of a narration story: { group, win, beats, cut, ... } (event-replay.js)
 let replay = null; // replay mode: { player, prepared, raw, sec, printsN, readingsN, playing, last, viewKey }
 // end: bar index at the right edge; follow: keep the newest bar in view as it forms (off once the
 // user pans, back on at the right edge or with the latest button); yRange: a price scale the user
@@ -298,8 +302,10 @@ function build() {
   const tfMin = Number(ui.tf.value);
   const tfMs = tfMin * 60_000;
   tick = ui.tick.value === "auto" ? AUTO_TICK[tfMin] : Number(ui.tick.value);
-  const minutes = new Set([...store.bars.keys(), ...stream.bars.keys()]);
-  mergedRows = [...minutes].sort((x, y) => x - y).map(mergedRow).filter(Boolean);
+  let minutes = [...new Set([...store.bars.keys(), ...stream.bars.keys()])];
+  // A story replay shows only the minutes before its clock.
+  if (evReplay) minutes = minutes.filter((t) => t < evReplay.cut);
+  mergedRows = minutes.sort((x, y) => x - y).map(mergedRow).filter(Boolean);
   // The API stamps every metrics row at its reading time (metrics.js).
   metricsSorted = [...store.metrics.values()].sort((a, b) => a[0] - b[0]);
   bars = finishBars(groupBars(mergedRows, tfMs), tfMs, readingsAt(metricsSorted));
@@ -312,7 +318,8 @@ function build() {
   }
   attachVwap(mergedRows, bars);
   dayLevels = dayLevelsOf(mergedRows);
-  applyLive(bars.at(-1), bars.at(-2));
+  if (evReplay) evReplay.startIndex = bars.findIndex((b) => b.t >= evReplay.win.from);
+  else applyLive(bars.at(-1), bars.at(-2));
   attachLiquidations(tfMs);
   mergedOi = metricsSorted.filter((m) => m[1] != null).map((m) => [m[0], m[1]]);
   if (stream.oi && mergedOi.length && Date.now() > mergedOi.at(-1)[0] + 30_000) mergedOi.push([Date.now(), stream.oi]);
@@ -323,6 +330,7 @@ function build() {
 // New trades only change the forming bar, so redo just that one (about every 0.3 s while trading)
 // instead of every minute of history; a full build runs when a new bar opens or older data lands.
 function buildTail() {
+  if (evReplay) return;
   const tfMs = Number(ui.tf.value) * MINUTE;
   const last = bars.at(-1);
   if (!last || Math.floor(Date.now() / tfMs) * tfMs !== last.t) return build();
@@ -453,7 +461,7 @@ const DOWN_SIDES = new Set(["down", "sell", "ask", "long"]);
 // Browser notifications (notify.js) read the same feed, every 15 s while they are on.
 let eventsLoadedAt = 0;
 async function loadEvents() {
-  if (replay || !(on("events") || notifier.on || railOpen)) return;
+  if (replay || !(on("events") || notifier.on || railOpen || REPLAY_AT)) return;
   eventsLoadedAt = Date.now();
   // From the first loaded day, so every viewer asks for the same URL and shares the edge cache.
   const since = Math.floor(Date.now() / DAY) * DAY - (DAYS - 1) * DAY;
@@ -465,6 +473,7 @@ async function loadEvents() {
     rawEvents = list;
     notifier.ingest(list);
     renderNarration();
+    maybeOpenSharedReplay();
     redraw();
   } catch {
     // Keep what was shown; the next poll tries again.
@@ -599,12 +608,18 @@ const xOf = (i, L) => L.plotW - (view.end - i) * view.barW;
 function visibleRange(L) {
   const from = Math.max(0, Math.floor(view.end - L.plotW / view.barW) - 1);
   const to = Math.min(bars.length - 1, Math.ceil(view.end));
-  return [from, to];
+  return [Math.min(from, to), to];
 }
 function clampView() {
   const minW = 2;
   const maxW = 260;
   view.barW = Math.min(maxW, Math.max(minW, view.barW));
+  // A story replay keeps its whole window in view, the bars still to come included.
+  if (evReplay && evReplay.startIndex >= 0) {
+    view.barW = Math.max(2, (Math.max(100, size.w - 74) - 8) / (evReplay.bars + 1));
+    view.end = evReplay.startIndex + evReplay.bars + 1;
+    return;
+  }
   // Up to half a screen of empty space past the newest bar, as on other charting tools.
   const plotW = Math.max(100, size.w - 74);
   view.end = Math.min(bars.length + Math.max(8, (plotW / view.barW) * 0.5), Math.max(5, view.end));
@@ -785,6 +800,7 @@ function drawPrice(L, from, to) {
     ctx.fillText(fmtPrice(last.c), L.plotW + 8, ly);
   }
   if (replay) drawReplay(L, P, yOf, last.c);
+  if (evReplay) drawEventReplay(L, P, yOf);
   ctx.strokeStyle = C.line;
   ctx.beginPath();
   ctx.moveTo(0, P.y + P.h + 0.5);
@@ -2027,6 +2043,8 @@ function startStreams() {
 
 let staleWhileHidden = false;
 function refresh(full = true) {
+  // New data waits while a story replays; ending the replay rebuilds.
+  if (evReplay) return;
   // A phone keeps background pages running for a while; do the work once it is visible again.
   if (document.hidden) {
     staleWhileHidden = true;
@@ -2233,7 +2251,7 @@ function openBarAt(t) {
 }
 
 const notifyPanel = document.querySelector(".notify");
-const notifier = new Notifier({ toasts: $("toasts"), onOpen: openBarAt });
+const notifier = new Notifier({ toasts: $("toasts"), onOpen: openBarAt, onReplay: (e) => replayEvent(e) });
 notifier.mount($("notify-panel"), { onChange: () => loadEvents(), line: "link" });
 document.addEventListener("pointerdown", (e) => {
   if (notifyPanel.open && !notifyPanel.contains(e.target)) notifyPanel.open = false;
@@ -2363,7 +2381,11 @@ function narCard(g, expanded) {
   lessonBox.hidden = true;
   more.append(lessonBox);
   const actions = node("div", "nar-actions");
-  const look = node("button", "nar-primary", "在圖上看");
+  const replayBtn = node("button", "nar-replay", "▶ 覆盤這段");
+  replayBtn.type = "button";
+  replayBtn.addEventListener("click", () => startEventReplay(g));
+  actions.append(replayBtn);
+  const look = node("button", "", "在圖上看");
   look.type = "button";
   look.addEventListener("click", () => {
     const last = g.items.at(-1);
@@ -2613,6 +2635,350 @@ async function startReplay() {
   requestAnimationFrame(replayLoop);
 }
 
+// ---------- 一鍵覆盤 (event-replay.js) ----------
+
+const er = Object.fromEntries(
+  ["bar", "title", "range", "share", "exit", "caption", "kicker", "head", "sub", "controls", "play", "seek", "ticks", "clock", "outro", "outro-kicker", "outro-title", "facts", "line", "lesson", "again", "back", "cover", "start", "cover-title", "cover-range"].map((id) => [id, $(`er-${id}`)]),
+);
+const ER_HOLD_MS = 1600; // a pause on each event bar so its caption can be read
+const ER_SHOW = new Set(["prints", "vwap", "levels", "events", "cvd"]);
+const CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];
+const dateOf = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric" });
+let sharedReplayDone = false;
+
+function syncSegments() {
+  for (const b of document.querySelectorAll("[data-tf]")) b.setAttribute("aria-pressed", String(b.dataset.tf === ui.tf.value));
+  for (const b of document.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === ui.mode.value));
+}
+
+function startEventReplay(story, { autoplay = true } = {}) {
+  if (CASE || !story) return;
+  if (evReplay) stopEventReplay({ rebuild: false });
+  const group = focusOf(story);
+  const win = windowOf(group, Date.now());
+  if (win.to - win.from < 10 * MINUTE) return;
+  const rows = [];
+  for (let t = win.from; t < win.to; t += MINUTE) {
+    const row = mergedRow(t);
+    if (row) rows.push(row);
+  }
+  if (!rows.length) return;
+  const saved = { tf: ui.tf.value, mode: ui.mode.value, show: { ...prefs.show }, printMin: prefs.printMin, rail: railOpen, barW: view.barW, pinnedT };
+  ui.tf.value = "1";
+  ui.mode.value = "candles";
+  syncSegments();
+  prefs.show = Object.fromEntries(Object.keys(prefs.show).map((id) => [id, ER_SHOW.has(id)]));
+  prefs.printMin = Math.max(prefs.printMin, 10);
+  if (railOpen) setRail(false, { remember: false });
+  stopPreview();
+  pinnedT = null;
+  hover = null;
+  const card = cardOf(story);
+  evReplay = {
+    group,
+    card,
+    win,
+    rows,
+    saved,
+    beats: beatsOf(group, win, rows),
+    outro: outroOf(group, win, rows),
+    cut: win.from + START_MS,
+    bars: Math.round((win.to - win.from) / MINUTE),
+    bps: barsPerSecond(win),
+    speed: 1,
+    playing: false,
+    acc: 0,
+    hold: 0,
+    last: 0,
+    startIndex: -1,
+  };
+  const hi = Math.max(...rows.map((r) => r[2]));
+  const lo = Math.min(...rows.map((r) => r[3]));
+  const pad = Math.max(10, (hi - lo) * 0.1);
+  view.yRange = { lo: lo - pad, hi: hi + pad };
+  view.follow = false;
+  view.barW = Math.max(4, (Math.max(100, size.w - 74) - 8) / (evReplay.bars + 1));
+  document.body.classList.add("er-on");
+  er.title.textContent = card.title;
+  er.range.textContent = `${dateOf.format(win.from)} ${timeOf(win.from)}–${timeOf(win.to)} · 1 分 K · Bybit BTCUSDT 永續`;
+  er.ticks.replaceChildren(
+    ...win.spans
+      .filter((s) => s.end <= win.to)
+      .map((s) => {
+        const d = node("i");
+        d.style.setProperty("left", `${((s.end - win.from) / (win.to - win.from)) * 100}%`);
+        return d;
+      }),
+  );
+  er.bar.hidden = er.caption.hidden = er.controls.hidden = false;
+  er.outro.hidden = true;
+  for (const b of document.querySelectorAll("[data-speed]")) b.setAttribute("aria-pressed", String(b.dataset.speed === "1"));
+  renderReplay();
+  if (autoplay) setReplayPlaying(true);
+  else {
+    er["cover-title"].textContent = card.title;
+    er["cover-range"].textContent = `${dateOf.format(win.from)} ${timeOf(win.from)}–${timeOf(win.to)} · 約 ${Math.max(1, Math.round(evReplay.bars / evReplay.bps / 60))} 分鐘`;
+    er.cover.hidden = false;
+  }
+  requestAnimationFrame(replayFrame);
+}
+
+function stopEventReplay({ rebuild = true } = {}) {
+  const r = evReplay;
+  if (!r) return;
+  evReplay = null;
+  ui.tf.value = r.saved.tf;
+  ui.mode.value = r.saved.mode;
+  syncSegments();
+  prefs.show = r.saved.show;
+  prefs.printMin = r.saved.printMin;
+  pinnedT = r.saved.pinnedT;
+  view.barW = r.saved.barW;
+  view.yRange = null;
+  view.follow = true;
+  document.body.classList.remove("er-on");
+  er.bar.hidden = er.caption.hidden = er.controls.hidden = er.outro.hidden = er.cover.hidden = true;
+  if (query.has("replay")) history.replaceState(null, "", location.pathname);
+  if (rebuild) {
+    build();
+    view.end = bars.length + RIGHT_PAD;
+    clampView();
+    redraw();
+    updateReadout();
+    if (r.saved.rail) setRail(true, { remember: false });
+  }
+}
+
+function setReplayPlaying(on) {
+  const r = evReplay;
+  if (!r) return;
+  if (on && r.cut >= r.win.to) seekReplay(r.win.from + START_MS);
+  r.playing = on;
+  r.last = 0;
+  er.cover.hidden = true;
+  er.play.classList.toggle("is-playing", on);
+  er.play.setAttribute("aria-label", on ? "暫停" : "播放");
+  if (on) er.outro.hidden = true;
+}
+
+function seekReplay(cut) {
+  const r = evReplay;
+  r.cut = Math.max(r.win.from + MINUTE, Math.min(r.win.to, Math.round(cut / MINUTE) * MINUTE));
+  r.acc = 0;
+  r.hold = 0;
+  renderReplay();
+  if (r.cut >= r.win.to) {
+    setReplayPlaying(false);
+    showReplayOutro();
+  } else er.outro.hidden = true;
+}
+
+function renderReplay() {
+  const r = evReplay;
+  build();
+  clampView();
+  redraw();
+  updateReadout();
+  const beat = beatAt(r.beats, r.cut);
+  er.caption.hidden = !beat;
+  if (beat) {
+    er.kicker.textContent = beat.kicker;
+    er.head.textContent = beat.head;
+    er.sub.textContent = beat.sub;
+    er.caption.classList.toggle("is-event", beat.event != null);
+  }
+  er.seek.value = String(Math.round(((r.cut - r.win.from) / (r.win.to - r.win.from)) * 1000));
+  er.clock.textContent = `${timeOf(r.cut)} / ${timeOf(r.win.to)}`;
+}
+
+function replayFrame(now) {
+  const r = evReplay;
+  if (!r) return;
+  if (r.playing && !document.hidden) {
+    // Capped so a tab coming back from the background does not jump ahead.
+    const dt = r.last ? Math.min(1000, now - r.last) : 0;
+    r.last = now;
+    if (r.hold > 0) r.hold -= dt;
+    else {
+      r.acc += dt * r.bps * r.speed;
+      const steps = Math.floor(r.acc / 1000);
+      if (steps > 0) {
+        r.acc -= steps * 1000;
+        const before = r.cut;
+        r.cut = Math.min(r.win.to, r.cut + steps * MINUTE);
+        if (r.beats.some((b) => b.event != null && b.t > before && b.t <= r.cut)) r.hold = ER_HOLD_MS / r.speed;
+        renderReplay();
+        if (r.cut >= r.win.to) {
+          setReplayPlaying(false);
+          showReplayOutro();
+        }
+      }
+    }
+  } else r.last = 0;
+  requestAnimationFrame(replayFrame);
+}
+
+function replayShareUrl(r) {
+  return `${location.origin}/lab/orderflow/?${new URLSearchParams(replayParams(r.group))}`;
+}
+const replayLineUrl = (r) => `https://line.me/R/share?text=${encodeURIComponent(`${r.card.title}｜MetaBear 一鍵覆盤\n${replayShareUrl(r)}`)}`;
+
+function showReplayOutro() {
+  const r = evReplay;
+  const o = r.outro;
+  er["outro-kicker"].textContent = o.kicker;
+  er["outro-title"].textContent = r.card.title;
+  const fact = (label, value, note, cls) => {
+    const box = node("div", "er-fact");
+    box.append(node("span", "", label), node("b", cls ?? "", value));
+    if (note) box.append(node("small", "", note));
+    return box;
+  };
+  er.facts.replaceChildren(
+    fact(o.count.label, o.count.value, o.count.times, "is-gold"),
+    ...(o.after ? [fact(o.after.label, `高 ${o.after.high}`, `低 ${o.after.low}`)] : []),
+    ...(o.close ? [fact(o.close.label, o.close.value, o.close.vs, "is-teal")] : []),
+  );
+  er.line.href = replayLineUrl(r);
+  er.lesson.hidden = !r.card.lesson;
+  if (r.card.lesson) {
+    er.lesson.href = r.card.lesson.href;
+    er.lesson.textContent = `動畫解說：${r.card.lesson.title}`;
+  }
+  er.caption.hidden = true;
+  er.outro.hidden = false;
+}
+
+async function shareReplay() {
+  const r = evReplay;
+  if (!r) return;
+  const url = replayShareUrl(r);
+  if (navigator.share && NARROW) {
+    try {
+      await navigator.share({ title: r.card.title, text: `${r.card.title}｜MetaBear 一鍵覆盤`, url });
+      return;
+    } catch {
+      // Cancelled: fall through to the copy below.
+    }
+  }
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(url);
+    copied = true;
+  } catch {}
+  const item = node("div", "toast");
+  item.setAttribute("role", "status");
+  const line = node("a", "", "分享到 LINE ↗");
+  line.href = replayLineUrl(r);
+  line.target = "_blank";
+  line.rel = "noopener noreferrer";
+  item.append(node("p", "", copied ? "已複製這段覆盤的連結。" : url), line);
+  $("toasts").prepend(item);
+  setTimeout(() => item.remove(), 8_000);
+}
+
+// From a notification: the story that event belongs to, or the event alone.
+function replayEvent(e) {
+  const t = Date.now();
+  const groups = groupEvents((rawEvents ?? []).filter((x) => t - x.t <= NARRATE_MS));
+  startEventReplay(findStory(groups, { t: e.t, kind: e.kind }) ?? groupEvents([e])[0]);
+}
+
+// A shared link (?replay=): wait for the events, then show the story under a play button.
+function maybeOpenSharedReplay() {
+  if (sharedReplayDone || !REPLAY_AT || !rawEvents || CASE) return;
+  sharedReplayDone = true;
+  const kind = query.get("k");
+  const groups = groupEvents(rawEvents);
+  const g = findStory(groups, { t: REPLAY_AT, kind });
+  if (g) startEventReplay(g, { autoplay: false });
+}
+
+er.play.addEventListener("click", () => setReplayPlaying(!evReplay?.playing));
+er.start.addEventListener("click", () => setReplayPlaying(true));
+er.exit.addEventListener("click", () => stopEventReplay());
+er.back.addEventListener("click", () => stopEventReplay());
+er.again.addEventListener("click", () => setReplayPlaying(true));
+er.share.addEventListener("click", shareReplay);
+er.seek.addEventListener("input", () => {
+  const r = evReplay;
+  if (!r) return;
+  seekReplay(r.win.from + (Number(er.seek.value) / 1000) * (r.win.to - r.win.from));
+});
+for (const b of document.querySelectorAll("[data-speed]"))
+  b.addEventListener("click", () => {
+    if (!evReplay) return;
+    evReplay.speed = Number(b.dataset.speed);
+    for (const x of document.querySelectorAll("[data-speed]")) x.setAttribute("aria-pressed", String(x === b));
+  });
+window.addEventListener("keydown", (e) => {
+  if (!evReplay || e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+  if (e.key === "Escape") stopEventReplay();
+  else if (e.key === " " && !(e.target instanceof HTMLButtonElement)) {
+    e.preventDefault();
+    setReplayPlaying(!evReplay.playing);
+  }
+});
+
+// Gold bands on the event bars reached so far, the level they happened at, and the bars to come.
+function drawEventReplay(L, P, yOf) {
+  const r = evReplay;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, P.y, L.plotW, P.h);
+  ctx.clip();
+  const futureFrom = xOf(bars.length, L);
+  const futureTo = Math.min(L.plotW, xOf(r.startIndex + r.bars, L));
+  ctx.fillStyle = "rgba(120,160,190,0.06)";
+  for (let x = futureFrom; x < futureTo; x += Math.max(6, view.barW)) ctx.fillRect(Math.round(x), P.y, 1, P.h);
+  const reached = r.win.spans.map((s, i) => [s, i]).filter(([s]) => s.end <= r.cut);
+  const active = reached.at(-1)?.[1];
+  if (r.group.level && reached.length) {
+    const y = Math.round(yOf(levelPriceOf(r.group.items[active]))) + 0.5;
+    ctx.strokeStyle = "rgba(232,189,125,0.18)";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(L.plotW, y);
+    ctx.stroke();
+  }
+  ctx.lineWidth = 1;
+  ctx.font = `600 11px ${MONO}`;
+  ctx.textBaseline = "middle";
+  for (const [s, i] of reached) {
+    const xa = xAtTime(s.start, L);
+    const xb = xAtTime(s.end - MINUTE, L);
+    if (xa == null || xb == null) continue;
+    const on = i === active;
+    const w = xb + view.barW - xa;
+    ctx.fillStyle = on ? "rgba(232,189,125,0.13)" : "rgba(232,189,125,0.05)";
+    ctx.fillRect(xa, P.y, w, P.h);
+    ctx.strokeStyle = on ? "rgba(232,189,125,0.55)" : "rgba(232,189,125,0.2)";
+    ctx.strokeRect(Math.round(xa) + 0.5, P.y + 0.5, Math.round(w), P.h - 1);
+    // Narrow screens: the earlier events keep only their number so the pins do not overlap.
+    const num = r.group.items.length > 1 ? String(CIRCLED[i] ?? i + 1) : "";
+    const label = NARROW && !on && num ? num : `${num ? num + " " : ""}${timeOf(r.group.items[i].t)}`;
+    const tw = ctx.measureText(label).width + 14;
+    const lx = Math.min(L.plotW - tw - 4, Math.max(4, xa + w / 2 - tw / 2));
+    ctx.fillStyle = on ? C.gold : "#101924";
+    // Below the OHLC readout at the top of the chart.
+    const ty = P.y + 30;
+    ctx.fillRect(lx, ty, tw, 20);
+    ctx.strokeStyle = C.gold;
+    ctx.strokeRect(lx + 0.5, ty + 0.5, tw - 1, 19);
+    ctx.fillStyle = on ? "#1d1405" : C.gold;
+    ctx.fillText(label, lx + 7, ty + 10);
+  }
+  const px = xOf(bars.length, L);
+  ctx.strokeStyle = "rgba(232,238,233,0.45)";
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(Math.round(px) + 0.5, P.y);
+  ctx.lineTo(Math.round(px) + 0.5, P.y + P.h);
+  ctx.stroke();
+  ctx.restore();
+}
+
 // ---------- boot ----------
 
 if (CASE) {
@@ -2647,7 +3013,7 @@ if (CASE) {
     setInterval(showLive, 1_000);
     setRail(railOpen, { remember: false });
     $("guide-open").addEventListener("click", startGuide);
-    maybeStartGuide({ rec: query.get("rec") === "1" });
+    maybeStartGuide({ rec: query.get("rec") === "1", replay: !!REPLAY_AT });
   } catch {
     ui.status.textContent = "找不到資料。本機請先執行 npm run orderflow:dev，再用 npm run lab:orderflow:bybit 匯入歷史。";
   }

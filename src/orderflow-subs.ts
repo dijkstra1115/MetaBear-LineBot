@@ -93,6 +93,8 @@ function alertBody(env: Env, e: IncomingEvent) {
     "MetaBear 關鍵位提醒",
     e.text,
     `看當下盤面：${base}/lab/orderflow/?tf=1&at=${e.at}`,
+    // The lab's 一鍵覆盤 of the story this event belongs to (public/lab/orderflow/event-replay.js).
+    `看這段覆盤：${base}/lab/orderflow/?replay=${e.t}&k=${encodeURIComponent(e.kind)}`,
     ...(lesson ? [`對應課程：${base}/orderflow/${lesson}`] : []),
     "提醒不是買賣訊號，要不要進場請看接下來的訂單流。非投資建議。",
     "回覆「警報設定」可以修改或取消。",
