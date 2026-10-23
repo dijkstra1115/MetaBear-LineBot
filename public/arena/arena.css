@@ -101,7 +101,8 @@ body.ranked .mode-pill { border-color: rgba(var(--gold-rgb), 0.55); background: 
 #sound-toggle[aria-pressed="false"] .mute { display: block; }
 #sound-toggle[aria-pressed="false"] { color: var(--ink-4); }
 .fx-switch { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 9px; color: var(--ink-2); font: 700 10px var(--font-mono); letter-spacing: 0.12em; cursor: pointer; }
-.back-link { margin-left: 6px; color: var(--ink-3); font-size: 12px; }
+.back-links { display: flex; gap: 10px; margin-left: 8px; }
+.back-link { color: var(--ink-3); font-size: 12px; }
 .back-link:hover { color: var(--long); }
 
 /* Switches (FX, reduce-only) */
@@ -702,7 +703,7 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 2px s
   .hud-ignite { display: none !important; }
   .hud { grid-template-columns: auto 132px minmax(150px, 1fr) auto; }
   .run-button { min-width: 140px; }
-  .back-link { display: none; }
+  .back-links { display: none; }
 }
 @media (max-height: 780px) {
   body { overflow: auto; }
@@ -711,6 +712,7 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 2px s
 @media (max-width: 900px) {
   body { overflow: auto; }
   .mobile-notice { display: block; position: sticky; left: 0; grid-column: 1 / -1; max-width: calc(100vw - 24px); margin: 0; padding: 10px 14px; border: 1px solid rgba(var(--gold-rgb), 0.5); border-radius: 10px; background: rgba(60, 44, 10, 0.9); color: #f7e2b0; }
+  .mobile-notice a { color: #fff; text-decoration: underline; }
   .arena { grid-template-areas: "note note note" "rail hud hud" "rail stage ticket"; grid-template-rows: auto auto 700px; height: auto; }
   .mobile-notice { grid-area: note; }
 }

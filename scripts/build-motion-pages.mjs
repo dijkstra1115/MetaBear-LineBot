@@ -88,6 +88,11 @@ export function motionPage(course, lesson) {
         ${pagerLink(order[at - 1], "prev")}
         ${pagerLink(order[at + 1], "next")}
       </nav>
+      <section class="lesson-live" aria-labelledby="lesson-live-title">
+        <h3 id="lesson-live-title">上完課，對照真實盤面</h3>
+        <a href="/lab/orderflow/"><small>LIVE · 即時訂單流</small><strong>看 BTC 現在的成交</strong><span>把剛學的概念，對照真實的足跡、CVD 與大單</span></a>
+        <a href="/alerts/"><small>ALERTS · 關鍵位提醒</small><strong>等它在關鍵位發生</strong><span>出現吸收、掃蕩這類事件時通知你；提醒不是買賣訊號</span></a>
+      </section>
     </main>
     <footer class="lesson-foot">
       <span>空白鍵播放／暫停，←→ 快轉回看，F 全螢幕，M 聲音。</span
