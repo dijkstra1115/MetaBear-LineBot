@@ -35,13 +35,13 @@ export const C = {
   stopBufferPct: 0.0005,
   targetR: 1,
 };
-// D (docs/STRATEGY-LIQ-WICK-FADE.md): M5 only, short side only, ±1 % of price.
+// D (docs/STRATEGY-LIQ-WICK-FADE.md): M5 only, both sides (confirmed 2026-10-21), ±1 % of price.
 export const D = {
-  buyZ: 2.5, // "大額買單": the bar's aggressive buying vs the 48 bars before it
+  sizeZ: 2.5, // "大額買單／賣單": the bar's aggressive buying (selling) vs the 48 bars before it
   window: 48,
-  clusters: 20, // the model's 20 largest short-liquidation bins count as levels
-  wickShare: 0.5, // upper wick at least half the bar's range
-  movePct: 0.01,
+  clusters: 20, // the model's 20 largest liquidation bins on that side count as levels
+  wickShare: 0.5, // the wick against the push at least half the bar's range
+  movePct: 0.01, // confirmed: price, not account P&L
 };
 // E (docs/STRATEGY-OPENING-RANGE-VA.md): long only.
 export const E = {
@@ -58,8 +58,8 @@ export const E = {
   targetR: 1.25,
 };
 export const DEFAULTS_NOTE = [
-  "D：只用 M5、只做空；「大額買單」= 主動買量高於前 48 根平均 2.5 個標準差；爆倉位 = 模型估算空單爆倉量最大的 20 個價格格；上影線 ≥ 整根 K 棒的一半；下一根沒回到價位就放棄；停損停利 = 價格 ±1%。",
-  "E：價值區 70%；停損 VAL 下方 0.1%；突破要在開盤後 4 小時內，回測算到美股收盤；M1 收在 POC 下方就放棄；大單 = 同一分鐘同一個 $10 價格格的主動賣合計 ≥ 30 BTC（文件裡的備用條件，門檻取文件實測單筆 p99.9 的上緣；歷史資料沒有逐筆成交）；大單後 5 根 M1 內要收回；目標 1.25R。",
+  "D（已確認多空都做、停損停利 = 價格 ±1%）：只用 M5；「大額買單／賣單」= 主動買（賣）量高於前 48 根平均 2.5 個標準差；爆倉位 = 模型估算該方向爆倉量最大的 20 個價格格；反向影線 ≥ 整根 K 棒的一半；下一根沒回到價位就放棄。",
+  "E（已確認大單門檻 30 BTC）：價值區 70%；停損 VAL 下方 0.1%；突破要在開盤後 4 小時內，回測算到美股收盤；M1 收在 POC 下方就放棄；大單 = 同一分鐘同一個 $10 價格格的主動賣合計 ≥ 30 BTC（歷史資料沒有逐筆成交，用文件裡的備用條件）；大單後 5 根 M1 內要收回；目標 1.25R。",
 ];
 
 /** 1-minute rows → 5-minute bars with merged price levels, delta, volume and the OI at each close. */
@@ -283,50 +283,67 @@ export function findC(ctx) {
 
 // D: a bar with outsized aggressive buying runs through one of the model's largest short-
 // liquidation levels and closes with an upper wick; the next bar comes back up to the price where
-// that bar's aggressive selling was heaviest, and a limit short fills there. Stop and target ±1 %.
+// that bar's aggressive selling was heaviest, and a limit short fills there. The long side is the
+// mirror: outsized selling through a long-liquidation level, a lower wick, a limit long at the
+// heaviest aggressive buying. Stop and target ±1 % of price.
 export function findD(ctx) {
   const { bars, rows, tick, readings } = ctx;
-  // The model's largest short-liquidation bins at each 5-minute step, before that interval trades.
+  // The model's largest liquidation bins on each side at each 5-minute step, before it trades.
   const clusters = new Map();
+  const largest = (arr, lo) => {
+    const top = [];
+    for (let i = 0; i < arr.length; i++) if (arr[i] > 0) top.push([arr[i], i]);
+    top.sort((a, b) => b[0] - a[0]);
+    return top.slice(0, D.clusters).map(([q, i]) => ({ price: lo + i * 25 + 12.5, qty: q }));
+  };
   buildLiqMap(rows, tick, readings.map((r) => [r[0], r[1]]), {
     keepSteps: false,
-    onStep: (t, _w, { lo, short }) => {
-      const top = [];
-      for (let i = 0; i < short.length; i++) if (short[i] > 0) top.push([short[i], i]);
-      top.sort((a, b) => b[0] - a[0]);
-      clusters.set(t, top.slice(0, D.clusters).map(([q, i]) => ({ price: lo + i * 25 + 12.5, qty: q })));
-    },
+    onStep: (t, _w, { lo, long, short }) => clusters.set(t, { long: largest(long, lo), short: largest(short, lo) }),
   });
+  const zscore = (i, key) => {
+    let mean = 0, sq = 0;
+    for (let j = i - D.window; j < i; j++) mean += bars[j][key];
+    mean /= D.window;
+    for (let j = i - D.window; j < i; j++) sq += (bars[j][key] - mean) ** 2;
+    const sd = Math.sqrt(sq / D.window);
+    return sd ? (bars[i][key] - mean) / sd : 0;
+  };
   const trades = [];
   for (let i = D.window; i < bars.length - 1; i++) {
     const a = bars[i];
-    let mean = 0, sq = 0;
-    for (let j = i - D.window; j < i; j++) mean += bars[j].buy;
-    mean /= D.window;
-    for (let j = i - D.window; j < i; j++) sq += (bars[j].buy - mean) ** 2;
-    const sd = Math.sqrt(sq / D.window);
-    if (!sd || (a.buy - mean) / sd < D.buyZ || a.delta <= 0) continue;
-    const levels = clusters.get(a.t) ?? [];
-    const broke = levels.filter((c) => c.price > bars[i - 1].h && c.price <= a.h);
-    if (!broke.length) continue;
+    const prev = bars[i - 1];
     const range = a.h - a.l;
-    if (!range || a.h - Math.max(a.o, a.c) < D.wickShare * range) continue;
-    let maxBin = null, maxSell = -1;
-    for (const [bin, [, sell]] of a.levels) if (sell > maxSell) (maxSell = sell), (maxBin = bin);
-    const level = maxBin * tick + tick / 2;
-    const b = bars[i + 1];
-    if (b.o >= level || b.h < level) continue; // must come back up to it within the next bar
-    let minute = null;
-    for (let t = b.t; t < b.t + TF; t += MIN) {
-      const r = rows[ctx.rowIndex.get(t)];
-      if (r && r[2] >= level) { minute = t; break; }
+    if (!range) continue;
+    for (const short of [true, false]) {
+      // Short: buying pushed up through short liquidations. Long: selling pushed down through longs.
+      if (zscore(i, short ? "buy" : "sell") < D.sizeZ || (short ? a.delta <= 0 : a.delta >= 0)) continue;
+      const levels = clusters.get(a.t)?.[short ? "short" : "long"] ?? [];
+      const broke = levels.filter((c) => (short ? c.price > prev.h && c.price <= a.h : c.price < prev.l && c.price >= a.l));
+      if (!broke.length) continue;
+      const wick = short ? a.h - Math.max(a.o, a.c) : Math.min(a.o, a.c) - a.l;
+      if (wick < D.wickShare * range) continue;
+      // The heaviest aggressive trading against the push inside the bar.
+      let maxBin = null, maxQty = -1;
+      for (const [bin, [buy, sell]] of a.levels) {
+        const q = short ? sell : buy;
+        if (q > maxQty) (maxQty = q), (maxBin = bin);
+      }
+      const level = maxBin * tick + tick / 2;
+      const b = bars[i + 1];
+      // The next bar must come back to it from the other side.
+      if (short ? b.o >= level || b.h < level : b.o <= level || b.l > level) continue;
+      let minute = null;
+      for (let t = b.t; t < b.t + TF; t += MIN) {
+        const r = rows[ctx.rowIndex.get(t)];
+        if (r && (short ? r[2] >= level : r[3] <= level)) { minute = t; break; }
+      }
+      if (minute == null) continue;
+      const entry = level;
+      const stop = entry * (short ? 1 + D.movePct : 1 - D.movePct);
+      const tp = entry * (short ? 1 - D.movePct : 1 + D.movePct);
+      const cluster = broke.sort((x, y) => y.qty - x.qty)[0];
+      trades.push({ strat: "D", dir: short ? "short" : "long", signalT: a.t, entryT: minute, entry, stop, tp, cluster: cluster.price, fadeLevel: level, wickBar: a.t, fillMinute: true });
     }
-    if (minute == null) continue;
-    const entry = level;
-    const stop = entry * (1 + D.movePct);
-    const tp = entry * (1 - D.movePct);
-    const cluster = broke.sort((x, y) => y.qty - x.qty)[0];
-    trades.push({ strat: "D", dir: "short", signalT: a.t, entryT: minute, entry, stop, tp, cluster: cluster.price, sellLevel: level, wickBar: a.t, fillMinute: true });
   }
   return trades;
 }
