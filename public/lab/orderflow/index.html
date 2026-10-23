@@ -137,6 +137,46 @@
     </div>
     <p id="caption" class="caption" aria-live="polite" hidden></p>
     <button id="nar-open" class="nar-open" type="button" hidden>盤面旁白</button>
+    <!-- 一鍵覆盤 (event-replay.js): a narration story replayed bar by bar. -->
+    <div id="er-bar" class="er-bar" hidden>
+      <span class="er-badge">覆盤</span>
+      <div class="er-heading"><b id="er-title"></b><span id="er-range"></span></div>
+      <button id="er-share" class="er-ghost" type="button">分享這段覆盤</button>
+      <button id="er-exit" class="er-ghost" type="button">結束覆盤 ✕</button>
+    </div>
+    <div id="er-caption" class="er-caption" aria-live="polite" hidden>
+      <span id="er-kicker" class="er-kicker"></span>
+      <p id="er-head" class="er-head"></p>
+      <p id="er-sub" class="er-sub"></p>
+    </div>
+    <div id="er-controls" class="er-controls" hidden>
+      <button id="er-play" class="er-play" type="button" aria-label="暫停"></button>
+      <div class="er-speed" role="group" aria-label="速度">
+        <button type="button" data-speed="0.5">0.5×</button><button type="button" data-speed="1">1×</button><button type="button" data-speed="2">2×</button>
+      </div>
+      <div class="er-track">
+        <input id="er-seek" type="range" min="0" max="1000" value="0" step="1" aria-label="覆盤進度" />
+        <div id="er-ticks" class="er-ticks" aria-hidden="true"></div>
+      </div>
+      <span id="er-clock" class="er-clock"></span>
+    </div>
+    <section id="er-outro" class="er-outro" aria-labelledby="er-outro-title" hidden>
+      <span id="er-outro-kicker" class="er-kicker"></span>
+      <h2 id="er-outro-title"></h2>
+      <div id="er-facts" class="er-facts"></div>
+      <p class="er-note">這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自 Bybit BTCUSDT 永續的 1 分 K。</p>
+      <div class="er-actions">
+        <a id="er-line" class="er-primary" target="_blank" rel="noopener noreferrer">分享到 LINE</a>
+        <a id="er-lesson" class="er-ghost"></a>
+        <button id="er-again" class="er-ghost" type="button">再看一次</button>
+        <button id="er-back" class="er-text" type="button">回到即時盤面</button>
+      </div>
+    </section>
+    <div id="er-cover" class="er-cover" hidden>
+      <button id="er-start" class="er-start" type="button" aria-label="播放覆盤"></button>
+      <b id="er-cover-title"></b>
+      <span id="er-cover-range"></span>
+    </div>
   </main>
   <!-- 盤面旁白 (narrate.js): a rail beside the chart, a bottom sheet on phones. -->
   <aside id="narration" class="narration" aria-labelledby="nar-title" hidden>

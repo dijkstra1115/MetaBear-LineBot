@@ -240,10 +240,11 @@ const el = (tag, className, text) => {
 };
 
 export class Notifier {
-  /** @param {{ toasts: HTMLElement, onOpen: (t: number) => void }} opts */
-  constructor({ toasts, onOpen }) {
+  /** @param {{ toasts: HTMLElement, onOpen: (t: number) => void, onReplay?: (e: object) => void }} opts */
+  constructor({ toasts, onOpen, onReplay = null }) {
     this.toasts = toasts;
     this.onOpen = onOpen;
+    this.onReplay = onReplay;
     this.seen = new Set();
     this.primed = false;
     this.settings = defaultSettings();
@@ -337,6 +338,16 @@ export class Notifier {
       const item = el("div", "toast");
       item.setAttribute("role", "status");
       const actions = el("div", "toast-actions");
+      // The lab replays the story this event belongs to (event-replay.js).
+      if (this.onReplay) {
+        const replay = el("button", "toast-replay", "▶ 覆盤");
+        replay.type = "button";
+        replay.addEventListener("click", () => {
+          this.onReplay(e);
+          item.remove();
+        });
+        actions.append(replay);
+      }
       const look = el("button", "", "看圖");
       look.type = "button";
       look.addEventListener("click", () => {

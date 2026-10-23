@@ -178,6 +178,7 @@ test("events reach the subscribers who chose them, within their daily count and 
   const text = to(alice)[0].messages[0].text as string;
   assert.match(text, /^MetaBear 關鍵位提醒\nsweep 測試事件/);
   assert.match(text, /看當下盤面：https:\/\/crm\.test\/lab\/orderflow\/\?tf=1&at=\d+/);
+  assert.match(text, /看這段覆盤：https:\/\/crm\.test\/lab\/orderflow\/\?replay=\d+&k=sweep/);
   assert.match(text, /對應課程：https:\/\/crm\.test\/orderflow\/failed-auction/);
   assert.match(text, /非投資建議/);
   const ids = (await db.prepare("SELECT id FROM orderflow_alert_deliveries WHERE line_user_id=? ORDER BY created_at").bind(alice).all<{ id: string }>()).results.map((r) => r.id);
