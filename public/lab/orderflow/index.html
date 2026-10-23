@@ -119,7 +119,8 @@
       <button id="zoom-in" type="button" aria-label="放大">+</button>
       <button id="latest" type="button" aria-label="回到最新並恢復自動價格範圍">最新 →|</button>
     </div>
-    <p id="status" class="status">載入資料中…</p>
+    <div id="status" class="status" role="status"><span class="sk-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>讀取最近幾天的足跡與大單…</div>
+    <div id="conn" class="conn" role="status" hidden><span id="conn-text"></span><button id="conn-retry" type="button" hidden>再試一次</button></div>
     <!-- Replay mode (?case=<id>): playback controls and the script's captions. -->
     <div id="replay" class="replay" role="group" aria-label="回放控制" hidden>
       <button id="rp-play" type="button" aria-label="播放">▶</button>
@@ -137,6 +138,15 @@
     </div>
     <p id="caption" class="caption" aria-live="polite" hidden></p>
     <button id="nar-open" class="nar-open" type="button" hidden>盤面旁白</button>
+    <!-- The bar under the pointer, or the pinned one (marks.js, renderBarCard). -->
+    <section id="bar-card" class="bar-card" aria-label="這根 K 棒" hidden>
+      <div class="bc-head"><b id="bc-time"></b><span id="bc-change"></span><button id="bc-close" class="bc-close" type="button" aria-label="取消固定">✕</button></div>
+      <div id="bc-ohlc" class="bc-ohlc"></div>
+      <div id="bc-rows" class="bc-rows"></div>
+      <div id="bc-events" class="bc-events"></div>
+      <p id="bc-hint" class="bc-hint">點一下固定這根，可以覆盤</p>
+      <div id="bc-actions" class="bc-actions"><button id="bc-replay" class="bc-replay" type="button">▶ 覆盤這段</button><button id="bc-unpin" type="button">取消固定</button></div>
+    </section>
     <!-- 一鍵覆盤 (event-replay.js): a narration story replayed bar by bar. -->
     <div id="er-bar" class="er-bar" hidden>
       <span class="er-badge">覆盤</span>
@@ -205,7 +215,7 @@
       <p>操作：拖曳圖表可以左右、上下自由移動（上下拖曳後價格範圍會固定，雙擊價格軸或按「最新」恢復自動）；滾輪或雙指縮放；在右側價格軸上下拖曳可縮放價格；拖曳副圖之間的分隔線可以調整高度。點一下 K 棒會固定顯示它的數值。往回看時不會被拉回最新的 K 棒，捲回最右邊或按「最新」才會繼續跟著。</p>
       <p>「分享」會產生目前畫面的連結：週期、圖表、指標和大單門檻都會帶過去；先點選一根 K 棒，對方打開時會直接看到那根。</p>
       <p id="source"></p>
-      <p>「指標」選單可以個別開關每個指標，設定會記在這個瀏覽器。圓形泡泡是大額成交（同一張主動單的成交合計，綠色主動買、橘色主動賣，面積代表數量）；三角形是爆倉（▼ 多單被強平、▲ 空單被強平）。VWAP 每個 UTC 日重新計算。K 棒統計列依序是成交量、Delta、Delta 占成交量的比例、K 棒內累積 Delta 的最高與最低（以每分鐘收盤取樣，1 分鐘 K 棒時等於 Delta），以及 OI 變化；K 棒夠寬時才顯示數字。滾輪縮放時間、拖曳平移；在右側價格軸上下拖曳或滾輪可縮放價格，雙擊價格軸恢復自動；切到「足跡」並放大到夠寬時顯示足跡數字（左賣右買）。亮色數字為斜向 3 倍以上的不平衡。爆倉地圖是用 OI 變化與假設的槓桿分布推算的估計值，不是交易所資料。事件標記是 5 分鐘 K 棒收盤後偵測到的盤面現象（上方三角偏空、下方偏多、金色為 OI 異動），不是買賣建議。</p>
+      <p>「指標」選單可以個別開關每個指標，設定會記在這個瀏覽器。圓形泡泡是大額成交（同一張主動單的成交合計，綠色主動買、橘色主動賣）：K 線圖上同一根 K 棒、同一邊的大單合成一顆，大小看總量，數字是筆數；足跡圖上每筆一顆，畫在它成交的時間。三角形是爆倉（▼ 多單被強平、▲ 空單被強平）。VWAP 每個 UTC 日重新計算。K 棒統計列依序是成交量、Delta、Delta 占成交量的比例、K 棒內累積 Delta 的最高與最低（以每分鐘收盤取樣，1 分鐘 K 棒時等於 Delta），以及 OI 變化；K 棒夠寬時才顯示數字。滾輪縮放時間、拖曳平移；在右側價格軸上下拖曳或滾輪可縮放價格，雙擊價格軸恢復自動；切到「足跡」並放大到夠寬時顯示足跡數字（左賣右買）。亮色數字為斜向 3 倍以上的不平衡。爆倉地圖是用 OI 變化與假設的槓桿分布推算的估計值，不是交易所資料。事件標記是收集器在關鍵位偵測到的盤面現象：同一根 K 棒的事件合成一顆膠囊，一件寫事件的字（掃、吸、背、回、破、單、爆、牆、誘、冰、OI），多件寫件數；在 K 棒下方偏多、上方偏空、金色沒有方向。滑鼠停在 K 棒上會出現這根的卡片，點一下可以固定並覆盤。這些都不是買賣建議。</p>
     </details>
   </footer>
 </body>
