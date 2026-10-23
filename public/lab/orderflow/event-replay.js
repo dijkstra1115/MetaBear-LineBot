@@ -1,7 +1,7 @@
 // 一鍵覆盤: the script for replaying one narration story (narrate.js) bar by bar on 1-minute bars.
 // Pure functions of the story and the 1-minute rows [t, o, h, l, c, …]; captions and the closing
 // facts only describe what happened, from the event lines and the bars (docs/VISION.md).
-import { NOTIFY_KINDS } from "./notify.js";
+import { NOTIFY_KINDS, choiceOf } from "./notify.js";
 import { LEVEL_LABELS } from "./keylevels.js";
 import { BAR_KINDS } from "./watch.js";
 import { detailOf, fmt, levelPriceOf, spaced, timeOf } from "./narrate.js";
@@ -14,6 +14,8 @@ export const START_MS = 5 * MINUTE; // bars already drawn when playback starts
 // One bar a second, faster for long stories so a replay lasts about a minute and a half at 1×.
 export const barsPerSecond = (win) => Math.max(1, Math.round((win.to - win.from) / MINUTE / 90));
 const KIND = new Map(NOTIFY_KINDS.map((k) => [k.id, k]));
+const kindOf = (e) => KIND.get(choiceOf(e.kind));
+const kindsOf = (group) => new Set(group.items.map(kindOf));
 const CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];
 const floorMin = (t) => Math.floor(t / MINUTE) * MINUTE;
 
@@ -26,9 +28,9 @@ export function spanOf(e) {
 
 // A story can keep growing all day at one level; a replay covers its latest hour.
 export const FOCUS_MS = 60 * MINUTE;
-export const FOCUS_MAX = 5;
+export const FOCUS_MAX = 8;
 
-/** The part of a story a replay plays: its events within an hour of the newest, at most five. */
+/** The part of a story a replay plays: its events within an hour of the newest, at most eight. */
 export function focusOf(group) {
   const last = group.items.at(-1).t;
   const items = group.items.filter((e) => last - e.t <= FOCUS_MS).slice(-FOCUS_MAX);
@@ -56,8 +58,10 @@ const closeAt = (rows, t) => {
  * rows: the 1-minute rows inside the window.
  */
 export function beatsOf(group, win, rows) {
-  const k = KIND.get(group.choice);
   const n = group.items.length;
+  // A chapter (chapters.js) can mix kinds: then each beat names its own kind.
+  const mixed = kindsOf(group).size > 1;
+  const k = kindOf(group.items[0]);
   // A moving level such as VWAP: where it stood at the first event, not now.
   const ref = group.level ? levelPriceOf(group.items[0]) : null;
   const where = ref != null ? `${levelName(group)} ${fmt(ref)}` : fmt(group.price);
@@ -66,19 +70,21 @@ export function beatsOf(group, win, rows) {
   const c0 = closeAt(rows, start) ?? rows[0]?.[1] ?? null;
   let head = `${timeOf(start)}，價格 ${fmt(c0 ?? group.price)}`;
   if (ref != null && c0 != null) head += `，在 ${where} ${c0 >= ref ? "上方" : "下方"} $${fmt(Math.abs(c0 - ref))}`;
-  let intro = n > 1 ? `接下來 ${n} 次${k.name}都標在圖上。` : `接下來看${k.name}發生的那一根。`;
+  let intro = mixed ? `接下來這一段的 ${n} 件事都標在圖上。` : n > 1 ? `接下來 ${n} 次${k.name}都標在圖上。` : `接下來看${k.name}發生的那一根。`;
   const earlier = group.earlier ?? [];
-  if (earlier.length) intro = `今天稍早從 ${timeOf(earlier[0].t)} 起已經出現 ${earlier.length} 次；${intro}`;
+  if (earlier.length) intro = `今天稍早從 ${timeOf(earlier[0].t)} 起已經出現 ${earlier.length} ${mixed ? "件" : "次"}；${intro}`;
   beats.push({ t: start, kicker: "開始", head: spaced(head + "。"), sub: spaced(intro) });
   group.items.forEach((e, i) => {
     const span = win.spans[i];
-    const before = group.items.slice(0, i).map((x) => timeOf(x.t));
-    let sub = k.hint + "。";
-    if (i > 0) sub = `前面在 ${before.join("、")} 也出現過。`;
-    if (i === n - 1 && n > 1 && group.choice === "sweep") sub = `前面在 ${before.join("、")}；${n} 次都沒有在 ${levelName(group) || "這個價位"} 的另一邊站穩。`;
+    const ek = kindOf(e);
+    const same = group.items.slice(0, i).filter((x) => kindOf(x) === ek);
+    const before = same.map((x) => timeOf(x.t));
+    let sub = ek.hint + "。";
+    if (same.length) sub = `前面在 ${before.join("、")} 也出現過${mixed ? ek.name : ""}。`;
+    if (!mixed && i === n - 1 && n > 1 && ek.id === "sweep") sub = `前面在 ${before.join("、")}；${n} 次都沒有在 ${levelName(group) || "這個價位"} 的另一邊站穩。`;
     beats.push({
       t: span.end,
-      kicker: n > 1 ? `${CIRCLED[i] ?? i + 1} ${timeOf(e.t)} · 第 ${i + 1} 次` : `${timeOf(e.t)}`,
+      kicker: mixed ? `${CIRCLED[i] ?? i + 1} ${timeOf(e.t)} · ${ek.name}` : n > 1 ? `${CIRCLED[i] ?? i + 1} ${timeOf(e.t)} · 第 ${i + 1} 次` : `${timeOf(e.t)}`,
       head: detailOf(e),
       sub: spaced(sub),
       event: i,
@@ -96,14 +102,17 @@ export function beatAt(beats, cut) {
 
 /** Closing facts: how many times, the range after the last event, and where it closed. */
 export function outroOf(group, win, rows) {
-  const k = KIND.get(group.choice);
+  const mixed = kindsOf(group).size > 1;
+  const k = kindOf(group.items[0]);
   const lastEnd = win.spans.at(-1).end;
   const after = rows.filter((r) => r[0] >= lastEnd && r[0] < win.to);
   const close = closeAt(rows, win.to);
   const ref = group.level ? group.levelPrice : null;
   return {
     kicker: `覆盤結束 · ${timeOf(win.from)}–${timeOf(win.to)}`,
-    count: { label: `${levelName(group) ? `在 ${levelName(group)} ` : ""}${k.name}`, value: `${group.items.length} 次`, times: group.items.map((e) => timeOf(e.t)).join(" · ") },
+    count: mixed
+      ? { label: `${levelName(group) ? `${levelName(group)} 附近` : "這一段"}發生的事`, value: `${group.items.length} 件`, times: group.items.map((e) => timeOf(e.t)).join(" · ") }
+      : { label: `${levelName(group) ? `在 ${levelName(group)} ` : ""}${k.name}`, value: `${group.items.length} 次`, times: group.items.map((e) => timeOf(e.t)).join(" · ") },
     after: after.length
       ? { label: `${timeOf(group.items.at(-1).t)} 之後 ${Math.round((win.to - lastEnd) / MINUTE)} 分鐘`, high: fmt(Math.max(...after.map((r) => r[2]))), low: fmt(Math.min(...after.map((r) => r[3]))) }
       : null,

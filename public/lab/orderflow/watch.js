@@ -335,7 +335,7 @@ export const HEALTH_KINDS = new Set(["health_down", "health_up", "health_archive
 
 const usdText = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${Math.round(v / 1e3)}k`);
 const priceText = (p) => p.toLocaleString("en-US", { maximumFractionDigits: 1 });
-const timeText = (t) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(t);
+const timeText = (t) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(t);
 
 /** One line of zh-Hant per event, for the LINE message. */
 export function describe(e) {

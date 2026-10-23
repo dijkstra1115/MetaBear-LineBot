@@ -34,13 +34,14 @@ export const FILTERS = [
   { id: "book", label: "掛單", kinds: ["wall", "spoof", "iceberg"] },
 ];
 
-const hm = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hour12: false });
+// hourCycle h23: with hour12 false, zh-TW writes midnight as 24:45.
+const hm = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 export const timeOf = (t) => hm.format(t);
 // "17:35–18:05", or one time when both fall in the same minute.
-const rangeOf = (a, b, sep) => (timeOf(a) === timeOf(b) ? timeOf(b) : `${timeOf(a)}${sep}${timeOf(b)}`);
+export const rangeOf = (a, b, sep) => (timeOf(a) === timeOf(b) ? timeOf(b) : `${timeOf(a)}${sep}${timeOf(b)}`);
 export const fmt = (p) => Math.round(p).toLocaleString("en-US");
 /** One space between Chinese and Latin letters, as the rest of the site writes "在 VWAP 附近 CVD 背離". */
-export const spaced = (s) => s.replace(/(\p{Script=Han})([A-Za-z])/gu, "$1 $2").replace(/([A-Za-z0-9])(\p{Script=Han})/gu, "$1 $2");
+export const spaced = (s) => s.replace(/(\p{Script=Han})([A-Za-z0-9])/gu, "$1 $2").replace(/([A-Za-z0-9])(\p{Script=Han})/gu, "$1 $2");
 const levelName = (level) => (level ? (LEVEL_LABELS[level] ?? level) : "");
 // The level's own price from the stored line ("…｜前日 POC 81,815（差 $30）"); a wall or a divergence
 // sits near the level, not on it.

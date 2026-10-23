@@ -723,6 +723,9 @@ input {
   border-radius: 12px;
   transition: border-color 0.2s;
 }
+.nar-card.is-latest {
+  border-color: rgba(120, 225, 213, 0.45);
+}
 .nar-card.is-open {
   border-color: rgba(120, 225, 213, 0.45);
   background: var(--raise);
@@ -747,43 +750,71 @@ input {
 .nar-meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   color: var(--muted);
   font-family: var(--f-mono);
   font-size: 11px;
 }
-.nar-badge {
-  padding: 2px 8px;
+.nar-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 1px;
+}
+.nar-kind {
+  padding: 1px 8px;
   border-radius: 999px;
   background: rgba(120, 225, 213, 0.14);
-  color: var(--teal);
-  font-family: var(--f-tc);
+  font-size: 11px;
 }
-.nar-card[data-choice="divergence"] .nar-badge,
-.nar-card[data-choice="oi"] .nar-badge {
+/* One colour per family of event kinds: chips, timeline names and the explanations. */
+.nar-kind,
+.nar-kn {
+  color: var(--teal);
+}
+.nar-kind[data-choice="divergence"],
+.nar-kind[data-choice="oi"] {
   background: rgba(185, 166, 255, 0.14);
+}
+.nar-kn[data-choice="divergence"],
+.nar-kn[data-choice="oi"],
+.nar-kind[data-choice="divergence"],
+.nar-kind[data-choice="oi"] {
   color: #c9baff;
 }
-.nar-card[data-choice="wall"] .nar-badge,
-.nar-card[data-choice="spoof"] .nar-badge,
-.nar-card[data-choice="iceberg"] .nar-badge {
+.nar-kind[data-choice="wall"],
+.nar-kind[data-choice="spoof"],
+.nar-kind[data-choice="iceberg"] {
   background: rgba(240, 154, 90, 0.14);
+}
+.nar-kn[data-choice="wall"],
+.nar-kn[data-choice="spoof"],
+.nar-kn[data-choice="iceberg"],
+.nar-kind[data-choice="wall"],
+.nar-kind[data-choice="spoof"],
+.nar-kind[data-choice="iceberg"] {
   color: #f5b585;
 }
-.nar-card[data-choice="print"] .nar-badge,
-.nar-card[data-choice="liq"] .nar-badge {
+.nar-kind[data-choice="print"],
+.nar-kind[data-choice="liq"] {
   background: rgba(232, 189, 125, 0.14);
+}
+.nar-kn[data-choice="print"],
+.nar-kn[data-choice="liq"],
+.nar-kind[data-choice="print"],
+.nar-kind[data-choice="liq"] {
   color: var(--gold);
 }
 .nar-title {
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 700;
   line-height: 1.45;
 }
 .nar-detail {
-  color: #c4d0d6;
+  color: var(--text);
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.65;
 }
 .nar-more {
   display: flex;
@@ -792,21 +823,45 @@ input {
   padding: 0 15px 14px;
 }
 .nar-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
   margin: 0 0 0 4px;
   padding: 0 0 0 14px;
   border-left: 1px solid rgba(120, 160, 190, 0.24);
   list-style: none;
   color: #c4d0d6;
   font-size: 12.5px;
-  line-height: 1.7;
+  line-height: 1.55;
+}
+.nar-lines li {
+  display: flex;
+  gap: 10px;
 }
 .nar-lines b {
-  margin-right: 8px;
+  flex: none;
   color: var(--text);
   font-family: var(--f-mono);
   font-weight: 600;
 }
+.nar-earlier {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.nar-earlier:hover {
+  color: var(--text);
+}
 .nar-plain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0;
   padding: 10px 12px;
   border-radius: 10px;

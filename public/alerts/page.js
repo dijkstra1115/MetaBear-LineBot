@@ -7,7 +7,7 @@ const API = "/api/orderflow/btcusdt";
 const DAY = 86_400_000;
 const $ = (id) => document.getElementById(id);
 const labAt = (t) => `/lab/orderflow/?tf=1&at=${t}`;
-const when = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+const when = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
 const notifier = new Notifier({ toasts: $("toasts"), onOpen: (t) => location.assign(labAt(t)) });
 notifier.mount($("notify-panel"), { line: "full", onChange: () => load() });
