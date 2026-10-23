@@ -58,13 +58,14 @@ console.log("Pages: public site → pages/dist (only narration uses a Function; 
 // Pages lets browsers keep CSS and JS for four hours while HTML revalidates on every visit, so a
 // deploy could pair new pages with old styles and scripts. Stylesheets and scripts get a content
 // version (?v=hash) in the export. Module imports are versioned only where every importer is
-// rewritten too (the arena and the homepage bundle): the academy loads some modules both from
+// rewritten too (the arena, the homepage bundle and the order-flow lab, whose modules /alerts/
+// reaches only by absolute URL on another page): the academy loads some modules both from
 // HTML and through dynamic imports, and two URLs for one module would load it twice.
 async function versionAssets(root) {
   const versions = new Map();
   const hash = (text) => createHash("sha256").update(text).digest("hex").slice(0, 10);
   const exists = (file) => stat(file).then((info) => info.isFile(), () => false);
-  const owned = (file) => /^(arena|js)[\\/]/.test(relative(root, file));
+  const owned = (file) => /^(arena|js|lab[\\/]orderflow)[\\/]/.test(relative(root, file));
   const replaceAsync = async (text, pattern, replace) => {
     const parts = [];
     let last = 0;
