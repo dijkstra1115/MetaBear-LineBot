@@ -4,7 +4,7 @@
 import { NOTIFY_KINDS } from "./notify.js";
 import { LEVEL_LABELS } from "./keylevels.js";
 import { BAR_KINDS } from "./watch.js";
-import { detailOf, fmt, levelPriceOf, timeOf } from "./narrate.js";
+import { detailOf, fmt, levelPriceOf, spaced, timeOf } from "./narrate.js";
 
 const MINUTE = 60_000;
 const BAR_MS = 5 * MINUTE; // bar detectors work on 5-minute bars stamped at their close
@@ -69,7 +69,7 @@ export function beatsOf(group, win, rows) {
   let intro = n > 1 ? `接下來 ${n} 次${k.name}都標在圖上。` : `接下來看${k.name}發生的那一根。`;
   const earlier = group.earlier ?? [];
   if (earlier.length) intro = `今天稍早從 ${timeOf(earlier[0].t)} 起已經出現 ${earlier.length} 次；${intro}`;
-  beats.push({ t: start, kicker: "開始", head: head + "。", sub: intro });
+  beats.push({ t: start, kicker: "開始", head: spaced(head + "。"), sub: spaced(intro) });
   group.items.forEach((e, i) => {
     const span = win.spans[i];
     const before = group.items.slice(0, i).map((x) => timeOf(x.t));
@@ -80,7 +80,7 @@ export function beatsOf(group, win, rows) {
       t: span.end,
       kicker: n > 1 ? `${CIRCLED[i] ?? i + 1} ${timeOf(e.t)} · 第 ${i + 1} 次` : `${timeOf(e.t)}`,
       head: detailOf(e),
-      sub,
+      sub: spaced(sub),
       event: i,
     });
   });

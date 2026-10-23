@@ -55,6 +55,9 @@ test("the 現在 card places price against VWAP and the nearest level, then the 
   assert.equal(now.head, "價格 81,705，在 VWAP 81,612 上方 $93，離前日 POC 81,815 還差 $110。");
   assert.equal(now.sub, "17:35 到 18:05，在 VWAP 81,612 附近掃蕩收回 3 次。");
   assert.match(nowOf({ price: 81705, groups, t: at("20:00") }).sub, /沒有新事件/);
+  // A Latin kind name after Chinese gets its space; a Chinese level name does not.
+  const cvd = groupEvents([{ ...divergence, level: "poc", text: divergence.text.replace("VWAP 81,600", "前日 POC 81,815") }, { ...divergence, t: at("16:10"), level: "poc", text: divergence.text.replace("VWAP 81,600", "前日 POC 81,815") }]);
+  assert.equal(nowOf({ price: 81705, vwap: 81612, groups: cvd, t: at("16:30") }).sub, "15:45 到 16:10，在前日 POC 81,815 附近 CVD 背離 2 次。");
   assert.equal(nowOf({ price: undefined, groups, t: 0 }), null);
 });
 
