@@ -156,9 +156,12 @@ export const reply = (text: string, actions: Action[] = []): LineMessage => ({
     : {}),
 });
 export const menu = (
-  welcome = "我是 MetaBear 小幫手。你可以直接說卡在哪裡，或先選一個最接近的需求。",
+  welcome = "我是 MetaBear 小幫手。可以看即時訂單流、訂閱關鍵位提醒、上學院課程，也可以從註冊開始；有問題直接說卡在哪裡。",
 ) =>
   reply(welcome, [
+    command("看盤平台"),
+    command("關鍵位提醒"),
+    command("學院課程"),
     command("開始註冊"),
     command("入金教學"),
     command("查詢進度", "我的進度"),
@@ -179,7 +182,7 @@ export const moreMenu = () =>
     command("交易偏好"),
     command("通知設定"),
     command("報單通知"),
-    command("人工協助"),
+    command("聊天社群"),
     command("選單"),
   ]);
 export const futuresMenu = () =>

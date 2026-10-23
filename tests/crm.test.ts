@@ -907,6 +907,27 @@ test("unavailable or invalid AI output falls back to approved content without ch
   }
 });
 
+test("platform, alerts, academy and community keywords reply with their links without AI", async () => {
+  try {
+    aiMode = "unavailable";
+    const links: Record<string, string> = {
+      看盤平台: "https://crm.test/lab/orderflow/",
+      關鍵位提醒: "https://crm.test/alerts/",
+      學院課程: "https://crm.test/orderflow/",
+      聊天社群: "https://line.me/ti/g2/",
+    };
+    for (const [keyword, link] of Object.entries(links)) {
+      const user = "U" + crypto.randomUUID().replaceAll("-", "");
+      await webhook([event(keyword, user)]);
+      const [answer] = calls.at(-1)!.messages as any[];
+      assert.ok(answer.text.includes(link), keyword);
+      assert.ok(answer.quickReply.items.some((i: any) => i.action.label === "選單"));
+    }
+  } finally {
+    aiMode = "normal";
+  }
+});
+
 test("every menu question works independently without AI or prior registration", async () => {
   const entry = menu();
   assert.equal(entry.type, "text");
@@ -917,6 +938,9 @@ test("every menu question works independently without AI or prior registration",
     { type: "message", label: "遇到問題", text: "人工協助" },
   );
   assert.deepEqual(labels, [
+    "看盤平台",
+    "關鍵位提醒",
+    "學院課程",
     "開始註冊",
     "入金教學",
     "查詢進度",
