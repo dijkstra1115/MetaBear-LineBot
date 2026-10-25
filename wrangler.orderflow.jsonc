@@ -1,4 +1,4 @@
-// Order-flow data Worker: the Bybit and Binance collector Durable Objects and their read API.
+// Order-flow data Worker: the Bybit, Binance, OKX and BingX collector Durable Objects and their read API.
 // Separate from the CRM backend (wrangler.jsonc); see src/orderflow/index.ts and
 // docs/ORDERFLOW-PLATFORM.md. Deploy with `npm run orderflow:deploy` (a release step).
 {
@@ -13,11 +13,15 @@
       { "name": "COLLECTOR", "class_name": "Collector" },
       // Binance, fed by the Tokyo relay (docs/ORDERFLOW-BINANCE-RELAY.md); needs the ORDERFLOW_RELAY_TOKEN secret.
       { "name": "BINANCE", "class_name": "BinanceCollector" },
+      // OKX and BingX, reached directly (docs/ORDERFLOW-MULTI-EXCHANGE.md).
+      { "name": "OKX", "class_name": "OkxCollector" },
+      { "name": "BINGX", "class_name": "BingxCollector" },
     ],
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Collector"] },
     { "tag": "v2", "new_sqlite_classes": ["BinanceCollector"] },
+    { "tag": "v3", "new_sqlite_classes": ["OkxCollector", "BingxCollector"] },
   ],
   "triggers": { "crons": ["*/5 * * * *"] },
   // Alerts reach the admin's LINE through the CRM backend (src/orderflow-alert.ts), which holds

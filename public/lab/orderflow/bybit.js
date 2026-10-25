@@ -116,6 +116,14 @@ export class StreamGaps {
 export const ARCHIVE_URL = "https://public.bybit.com/trading";
 export const archiveUrl = (day, base = ARCHIVE_URL) => `${base}/${SYMBOL}/${SYMBOL}${day}.csv.gz`;
 
+/** Archive columns: timestamp (seconds), symbol, side (taker), size, price, …; null for the header and blank lines. */
+export function parseArchiveLine(line) {
+  const [ts, , side, size, price] = line.split(",", 5);
+  const t = Math.round(Number(ts) * 1000);
+  if (!(t > 0)) return null;
+  return { t, price: Number(price), qty: Number(size), sell: side === "Sell" };
+}
+
 /**
  * Footprint rows and large prints rebuilt from archive lines, fed in file order (by time).
  * `take(before)` hands over the finished minutes before `before`, so a day can be streamed
@@ -130,12 +138,15 @@ export class ArchiveDay {
     this.trades = 0;
   }
 
-  /** Columns: timestamp (seconds), symbol, side (taker), size, price, …; returns the trade's minute, or null for the header and blank lines. */
+  /** A Bybit archive line; returns the trade's minute, or null for the header and blank lines. */
   add(line) {
-    const [ts, , side, size, price] = line.split(",", 5);
-    const t = Math.round(Number(ts) * 1000);
-    if (!(t > 0)) return null;
-    const trade = { t, price: Number(price), qty: Number(size), sell: side === "Sell" };
+    const trade = parseArchiveLine(line);
+    return trade ? this.addTrade(trade) : null;
+  }
+
+  /** A trade from any exchange's archive, in time order; returns its minute. */
+  addTrade(trade) {
+    const { t } = trade;
     if (this.run.length && (this.run[0].t !== t || this.run[0].sell !== trade.sell)) this.closeRun();
     this.run.push(trade);
     this.trades++;

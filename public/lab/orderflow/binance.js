@@ -26,6 +26,17 @@ export function parseAggTrade(d) {
   return { id: String(d.a), a: Number(d.a), t: Number(d.T), price: Number(d.p), qty: Number(d.q), sell: d.m === true };
 }
 
+// Binance's daily aggTrades archive: one zipped CSV per UTC day, published early the next day.
+export const binanceArchiveUrl = (day) => `https://data.binance.vision/data/futures/um/daily/aggTrades/${BINANCE_SYMBOL}/${BINANCE_SYMBOL}-aggTrades-${day}.zip`;
+
+/** Archive line agg_trade_id,price,quantity,first_trade_id,last_trade_id,transact_time,is_buyer_maker → trade, or null for the header. */
+export function parseArchiveLine(line) {
+  const c = line.split(",", 7);
+  const t = Number(c[5]);
+  if (!(t > 0)) return null;
+  return { t, price: Number(c[1]), qty: Number(c[2]), sell: c[6].trim().toLowerCase() === "true" };
+}
+
 /** /fapi/v1/klines rows → [t, open, high, low, close]. */
 export function parseKlines(list) {
   return list.map(([t, o, h, l, c]) => [Number(t), Number(o), Number(h), Number(l), Number(c)]);

@@ -41,11 +41,11 @@ for (const path of documents) {
   const csp = ["/orderflow/", "/orderflow/index.html"].includes(path) ? academy : analytics;
   rules.push(`https://metabear.io${path}\n  Content-Security-Policy: ${csp}`);
 }
-// The order-flow lab streams the chosen exchange's trades and depth (Bybit, or Binance with its
-// depth snapshot and open interest over REST) and liquidations from Bybit, OKX and Binance,
+// The order-flow lab streams the chosen exchange's trades and depth (Bybit, OKX, BingX, or Binance
+// with its depth snapshot and open interest over REST; 全市場 streams all four's trades) and liquidations from Bybit, OKX and Binance,
 // straight from the exchanges; history comes from /api/orderflow/. It counts in Cloudflare Web
 // Analytics like the other public pages.
-const lab = analytics.replace("connect-src 'self'", "connect-src 'self' wss://stream.bybit.com wss://ws.okx.com:8443 wss://fstream.binance.com https://fapi.binance.com");
+const lab = analytics.replace("connect-src 'self'", "connect-src 'self' wss://stream.bybit.com wss://ws.okx.com:8443 wss://fstream.binance.com https://fapi.binance.com wss://open-api-swap.bingx.com");
 for (const path of ["/lab/orderflow/", "/lab/orderflow/index.html"])
   rules.push(`https://metabear.io${path}\n  Content-Security-Policy: ${lab}`);
 // The alert admin page only talks to /api/orderflow/ on this origin.

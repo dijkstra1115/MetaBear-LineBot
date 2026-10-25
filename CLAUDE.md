@@ -16,7 +16,7 @@ production. Everything runs on Cloudflare:
 | --- | --- | --- |
 | Public site: home `/`, picture guides `/learn`, academy `/orderflow/` | `public/`, `web/` | Pages project `metabear-site` (built to `pages/dist/`) |
 | Lesson narration Range/seek (`/orderflow/motion/audio/*`) | `pages/functions/` → `src/lesson-audio.ts` | Pages Function |
-| Order-flow data API `/api/orderflow/*` (Bybit and Binance collector Durable Objects) | `src/orderflow/`, `wrangler.orderflow.jsonc` | Worker `metabear-orderflow` (deploy: `npm run orderflow:deploy`) |
+| Order-flow data API `/api/orderflow/*` (Bybit, Binance, OKX and BingX collector Durable Objects; `?ex=all` merges them) | `src/orderflow/`, `wrangler.orderflow.jsonc` | Worker `metabear-orderflow` (deploy: `npm run orderflow:deploy`) |
 | Binance relay (Binance refuses Cloudflare) | `relay/` | Vultr Tokyo VPS, `ssh metabear-tokyo` (deploy: `npm run relay:deploy`) |
 | LINE webhook, CRM admin `/admin`, analyst desk `/desk`, login `/login`, `/api/*`, `/auth/*`, `/content.json`, `/rates/*`, `/health` | `src/`, `migrations/` | Worker `metabear-backend` (`src/backend.ts`) |
 | Lesson videos, showreel, promos | `motion/` | Local render only (outputs not in Git) |
