@@ -125,21 +125,23 @@ export class OkxCollector extends DirectCollector {
   }
 
   // Minutes the collector never saw get 1-minute candles, 100 a page going back two days, paced
-  // under OKX's rate limit.
+  // under OKX's rate limit. OKX counts requests per IP and Cloudflare's outbound IPs are shared, so
+  // a refusal waits 10 minutes instead of retrying every alarm.
   protected override async fillKlines() {
     const now = Date.now();
-    if (now - Number(this.meta("klinesFilled") ?? 0) < HOUR) return;
+    if (now - Number(this.meta("klinesFilled") ?? 0) < HOUR || now < Number(this.meta("klinesRetryAt") ?? 0)) return;
     const end = Math.floor(now / MINUTE) * MINUTE - 2 * MINUTE;
     try {
       for (let after = end + MINUTE; after > end - 2 * DAY; after -= 100 * MINUTE) {
         const list = parseOkxCandles(await this.get(`/api/v5/market/history-candles?instId=${OKX_INST}&bar=1m&after=${after}&limit=100`));
         for (const [t, o, h, l, c] of list) if (t <= end) this.sql.exec("INSERT OR IGNORE INTO bars (t, src, row) VALUES (?, 'kline', ?)", t, JSON.stringify([t, o, h, l, c, []]));
         if (list.length < 100) break;
-        await new Promise((r) => setTimeout(r, 250)); // history-candles allows 10 requests in 2 s
+        await new Promise((r) => setTimeout(r, 500)); // history-candles allows 10 requests in 2 s per IP
       }
       this.setMeta("klinesFilled", now);
     } catch (err) {
       this.note("errors", `okx kline fill: ${err}`);
+      this.setMeta("klinesRetryAt", now + 10 * MINUTE);
     }
   }
 }
