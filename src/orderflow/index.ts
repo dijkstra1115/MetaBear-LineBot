@@ -10,14 +10,17 @@
 //   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token)
 //   GET  /api/orderflow/btcusdt/alerts             alert thresholds and the latest alerts (same token)
 //   POST /api/orderflow/btcusdt/alerts             { config } tunes thresholds, { test: true } sends a test
+//   GET  /api/orderflow/relay                      WebSocket from the Binance relay (Bearer ORDERFLOW_RELAY_TOKEN)
 //
+// Every btcusdt path takes ?ex=binance for the Binance collector; without it, Bybit's answers.
 // Every viewer polls the same minute-aligned URLs, so the edge cache absorbs repeat requests
 // and the single collector object only answers each URL once per few seconds.
 import { BOOK_CHUNK_MS } from "../../public/lab/orderflow/bybit.js";
 import { describe } from "../../public/lab/orderflow/watch.js";
+import { BinanceCollector } from "./binance-collector";
 import { Collector, type OrderflowEnv } from "./collector";
 
-export { Collector };
+export { BinanceCollector, Collector };
 
 const PREFIX = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
@@ -33,6 +36,11 @@ const json = (data: unknown, status = 200) =>
 function collector(env: OrderflowEnv) {
   // Asia-Pacific: Bybit blocks US data centers (docs/ORDERFLOW-CF-PROBE.md).
   return env.COLLECTOR.get(env.COLLECTOR.idFromName("BTCUSDT"), { locationHint: "apac-se" });
+}
+
+function binanceCollector(env: OrderflowEnv) {
+  // Near the relay in Tokyo.
+  return env.BINANCE?.get(env.BINANCE.idFromName("BTCUSDT"), { locationHint: "apac" }) ?? null;
 }
 
 function timingSafeEqual(a: string, b: string) {
@@ -57,10 +65,21 @@ async function cached(request: Request, ctx: ExecutionContext, maxAge: number, l
 
 export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
+  if (url.pathname === "/api/orderflow/relay") {
+    const token = env.ORDERFLOW_RELAY_TOKEN;
+    const auth = request.headers.get("authorization") ?? "";
+    if (!token || !timingSafeEqual(auth, `Bearer ${token}`)) return json({ error: "未授權" }, 401);
+    const binance = binanceCollector(env);
+    if (!binance) return json({ error: "找不到這個路徑" }, 404);
+    if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return json({ error: "需要 WebSocket" }, 426);
+    return binance.fetch("https://collector/relay", { headers: { upgrade: "websocket" } });
+  }
   if (!url.pathname.startsWith(`${PREFIX}/`)) return json({ error: "找不到這個路徑" }, 404);
   const route = url.pathname.slice(PREFIX.length);
   const now = Date.now();
-  const stub = collector(env);
+  const ex = url.searchParams.get("ex") ?? "bybit";
+  const stub = ex === "bybit" ? collector(env) : ex === "binance" ? binanceCollector(env) : null;
+  if (!stub) return json({ error: "沒有這個交易所" }, 404);
 
   if (route === "/import" || route === "/archive" || route === "/alerts") {
     if (request.method !== "POST" && route !== "/alerts") return json({ error: "只接受 POST" }, 405);
@@ -118,6 +137,9 @@ export default {
   // The collector re-arms its own alarm; the cron only restarts the chain if it ever breaks. It
   // also covers the one failure the collector cannot report itself: not answering at all.
   async scheduled(event: ScheduledController, env: OrderflowEnv) {
+    const binance = binanceCollector(env);
+    // The Binance object only needs its alarm chain kept; its relay reports its own outages.
+    if (binance) await binance.fetch("https://collector/wake").catch((err) => console.error(JSON.stringify({ event: "orderflow_binance_unreachable", detail: String(err) })));
     try {
       const res = await Promise.race([
         collector(env).fetch("https://collector/wake"),

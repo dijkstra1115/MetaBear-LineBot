@@ -1,4 +1,4 @@
-// Order-flow data Worker: the Bybit collector Durable Object and its read API.
+// Order-flow data Worker: the Bybit and Binance collector Durable Objects and their read API.
 // Separate from the CRM backend (wrangler.jsonc); see src/orderflow/index.ts and
 // docs/ORDERFLOW-PLATFORM.md. Deploy with `npm run orderflow:deploy` (a release step).
 {
@@ -9,9 +9,16 @@
   "workers_dev": false,
   "routes": [{ "pattern": "metabear.io/api/orderflow/*", "zone_name": "metabear.io" }],
   "durable_objects": {
-    "bindings": [{ "name": "COLLECTOR", "class_name": "Collector" }],
+    "bindings": [
+      { "name": "COLLECTOR", "class_name": "Collector" },
+      // Binance, fed by the Tokyo relay (docs/ORDERFLOW-BINANCE-RELAY.md); needs the ORDERFLOW_RELAY_TOKEN secret.
+      { "name": "BINANCE", "class_name": "BinanceCollector" },
+    ],
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Collector"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Collector"] },
+    { "tag": "v2", "new_sqlite_classes": ["BinanceCollector"] },
+  ],
   "triggers": { "crons": ["*/5 * * * *"] },
   // Alerts reach the admin's LINE through the CRM backend (src/orderflow-alert.ts), which holds
   // the LINE token. Both Workers need the ORDERFLOW_ALERT_TOKEN secret.
