@@ -97,13 +97,21 @@ for (let k = DAYS; k >= 1; k--) {
     console.log(`${day}: skipped (${err.message})`);
     continue;
   }
+  // A collector busy with its own daily import can time out a request; imports are idempotent, so
+  // a failed batch is sent again.
   const post = async (body) => {
-    const res = await fetch(`${API}/import?ex=${EX}`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${auth}`, "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`${day}: import HTTP ${res.status} ${await res.text()}`);
+    for (let attempt = 1; ; attempt++) {
+      const res = await fetch(`${API}/import?ex=${EX}`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${auth}`, "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) return;
+      const detail = (await res.text()).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").slice(0, 120);
+      if (attempt >= 4 || res.status < 500) throw new Error(`${day}: import HTTP ${res.status} ${detail}`);
+      console.log(`${day}: import HTTP ${res.status}, retrying`);
+      await new Promise((r) => setTimeout(r, attempt * 5_000));
+    }
   };
   for (let i = 0; i < built.rows.length; i += BATCH) await post({ rows: built.rows.slice(i, i + BATCH) });
   const from = Date.parse(`${day}T00:00:00Z`) + source.offset;
