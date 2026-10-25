@@ -81,7 +81,9 @@ curl 'http://127.0.0.1:8792/api/orderflow/btcusdt/status?ex=binance'
 
 2026-10-25 本機實測：連上 40 秒後，掛單簿已同步，OI 已讀到；經由中繼補回 15 天的 OI、多空比、資金費率，以及 2 天的 1 分 K；中繼轉送了 510 則訊息，沒有丟失。
 
-## 上線步驟（還沒執行）
+## 上線步驟
+
+2026-10-25 12:57 UTC 已從 `feat/binance-relay` 執行第 1～4 步。權杖存在本機不進版控的 `.data/orderflow/relay-token`，主機上的存在 `/etc/metabear/relay.env`。
 
 1. 產生權杖，存到 `.data/orderflow/relay-token`，然後執行 `npx wrangler secret put ORDERFLOW_RELAY_TOKEN -c wrangler.orderflow.jsonc`。
 2. `npm run orderflow:deploy`，這次部署會套用 `v2` 遷移，建立 `BinanceCollector`。
@@ -90,7 +92,7 @@ curl 'http://127.0.0.1:8792/api/orderflow/btcusdt/status?ex=binance'
 
 ## 階段
 
-1. **中繼與收集器**（程式完成，尚未上線）：`BinanceCollector`、`binance.js`、`/relay` 端點、中繼程式與部署腳本；測試是 `tests/orderflow-binance.test.mjs` 和 `tests/orderflow-relay.test.ts`。
+1. **中繼與收集器**（2026-10-25 上線）：`BinanceCollector`、`binance.js`、`/relay` 端點、中繼程式與部署腳本；測試是 `tests/orderflow-binance.test.mjs` 和 `tests/orderflow-relay.test.ts`。
 2. **並行觀察 48 小時**：檢查 `/status` 的缺口與錯誤，並和 Bybit 對照同一分鐘的價格與成交量，確認足跡合理。
 3. **網頁**：交易所切換（Bybit／幣安），分享連結帶 `ex`。網頁的即時部分原本就能直連幣安（瀏覽器的 IP 不會被擋），合併規則和 Bybit 一樣。
 4. **封存檔與警報**：中繼主機每日匯入幣安封存檔；決定 LINE 警報的來源。
