@@ -54,7 +54,7 @@ export const NOTIFY_KINDS = [
     about: "成交量明顯放大，收盤站到近兩小時的區間之外，主動買賣差也站在同一邊。",
   },
   { id: "print", name: "大單", group: "live", lesson: "footprint", hint: "單筆主動大單", about: "一張主動單在同一瞬間吃掉大量掛單，成交量遠大於平常的單筆。" },
-  { id: "liq", name: "連環爆倉", group: "live", lesson: "liquidation", hint: "短時間內同方向大量爆倉", about: "同一方向的強制平倉在一分鐘內大量出現（Bybit 與 OKX 合計）。" },
+  { id: "liq", name: "連環爆倉", group: "live", lesson: "liquidation", hint: "短時間內同方向大量爆倉", about: "同一方向的強制平倉在一分鐘內大量出現（Bybit 頁面是 Bybit 與 OKX 合計，幣安頁面只算幣安）。" },
   {
     id: "oi",
     name: "OI 急變",
