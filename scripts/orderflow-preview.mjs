@@ -70,7 +70,7 @@ createServer(async (req, res) => {
     }
     const body = await readFile(file);
     // The order-flow lab streams straight from the exchanges (same list as scripts/build-pages.mjs).
-    const lab = url.pathname.startsWith("/lab/") ? " wss://ws.okx.com:8443 wss://fstream.binance.com" : "";
+    const lab = url.pathname.startsWith("/lab/") ? " wss://ws.okx.com:8443 wss://fstream.binance.com https://fapi.binance.com" : "";
     const headers = {
       "Content-Type": types[extname(file)] + "; charset=utf-8",
       "Cache-Control": "no-store",

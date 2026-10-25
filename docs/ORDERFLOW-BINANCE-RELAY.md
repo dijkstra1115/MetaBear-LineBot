@@ -94,7 +94,7 @@ curl 'http://127.0.0.1:8792/api/orderflow/btcusdt/status?ex=binance'
 
 1. **中繼與收集器**（2026-10-25 上線）：`BinanceCollector`、`binance.js`、`/relay` 端點、中繼程式與部署腳本；測試是 `tests/orderflow-binance.test.mjs` 和 `tests/orderflow-relay.test.ts`。
 2. **並行觀察 48 小時**：檢查 `/status` 的缺口與錯誤，並和 Bybit 對照同一分鐘的價格與成交量，確認足跡合理。
-3. **網頁**：交易所切換（Bybit／幣安），分享連結帶 `ex`。網頁的即時部分原本就能直連幣安（瀏覽器的 IP 不會被擋），合併規則和 Bybit 一樣。
+3. **網頁**（2026-10-25 完成，提前在並行觀察結束前做）：標題旁的交易所選單（預設 Bybit，選擇存在 `metabear-orderflow-ex`，分享連結帶 `ex`），切換時重新載入頁面。選幣安時，歷史資料讀 `?ex=binance`，即時部分由瀏覽器直連幣安：`aggTrade` 與 `markPrice` 一條連線，`depth@100ms` 一條連線，加上 REST 掛單簿快照，每 10 秒讀一次 OI（CSP 加了 `https://fapi.binance.com`）。幣安的網頁多一個「大戶持倉比」副圖。美國等連不到幣安的網路，畫面退回每 5 秒讀收集器。
 4. **封存檔與警報**：中繼主機每日匯入幣安封存檔；決定 LINE 警報的來源。
 5. **之後**：多交易所合併的 CVD 與成交量（「指標」一節列為還沒做），以及 Bybit 沒有的大戶持倉比。
 

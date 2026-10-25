@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#05090f" />
   <meta name="robots" content="noindex" />
-  <meta name="description" content="MetaBear 訂單流實驗室原型：Bybit BTCUSDT 永續合約的足跡圖、CVD、未平倉量、多空比、掛單熱力圖與爆倉。" />
+  <meta name="description" content="MetaBear 訂單流實驗室原型：Bybit 與幣安 BTCUSDT 永續合約的足跡圖、CVD、未平倉量、多空比、掛單熱力圖與爆倉。" />
   <title>BTC 訂單流實驗室 · MetaBear</title>
   <!-- Link preview in LINE and other apps; og.png is a 1200×630 render of the live chart. -->
   <meta property="og:title" content="BTC 即時訂單流｜MetaBear" />
-  <meta property="og:description" content="即時足跡、大單泡泡、爆倉、OI 與掛單熱力圖，手機也能看。資料來自 Bybit，僅供研究，非投資建議。" />
+  <meta property="og:description" content="即時足跡、大單泡泡、爆倉、OI 與掛單熱力圖，手機也能看。資料來自 Bybit 與幣安，僅供研究，非投資建議。" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://metabear.io/lab/orderflow/" />
   <meta property="og:image" content="https://metabear.io/lab/orderflow/og.png" />
@@ -24,7 +24,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="MetaBear 首頁"><img src="/metabear-logo-transparent-64.png" width="22" height="22" alt="" /><span>MetaBear</span></a>
-    <div class="symbol"><b>BTCUSDT</b><small>永續 · Bybit</small></div>
+    <div class="symbol"><b>BTCUSDT</b><small>永續</small><select id="ex" class="ex-pick" aria-label="交易所"><option value="bybit">Bybit</option><option value="binance">幣安</option></select></div>
     <div class="tools" role="toolbar" aria-label="圖表設定">
       <div class="seg layout" role="group" aria-label="版面">
         <button type="button" data-layout="beginner">新手</button><button type="button" data-layout="advanced">進階</button><button type="button" data-layout="pro">專業</button>
@@ -174,7 +174,7 @@
       <span id="er-outro-kicker" class="er-kicker"></span>
       <h2 id="er-outro-title"></h2>
       <div id="er-facts" class="er-facts"></div>
-      <p class="er-note">這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自 Bybit BTCUSDT 永續的 1 分 K。</p>
+      <p class="er-note" id="er-note">這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自 Bybit BTCUSDT 永續的 1 分 K。</p>
       <div class="er-actions">
         <a id="er-line" class="er-primary" target="_blank" rel="noopener noreferrer">分享到 LINE</a>
         <a id="er-lesson" class="er-ghost"></a>

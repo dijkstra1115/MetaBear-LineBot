@@ -1,9 +1,10 @@
 // BTC order-flow lab: footprint, volume profile, CVD, OI and long/short
 // ratios drawn on one canvas. History comes from the order-flow API (src/orderflow/),
-// whose collector records Bybit BTCUSDT 1-minute bars with $10 price bins; the page
-// streams the newest minutes straight from Bybit.
+// whose collectors record Bybit's and Binance's BTCUSDT 1-minute bars with $10 price bins; the
+// page streams the newest minutes straight from the chosen exchange.
 
 import { BOOK_CHUNK_MS, BOOK_STEP_MS, BOOK_TICK, BOOK_TOPIC, OrderBook, PING, PRINT_MIN, StreamGaps, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, groupPrints, parseTrades } from "./bybit.js";
+import { BINANCE_REST, BINANCE_STREAMS, BINANCE_SYMBOL, BinanceBook, parseAggTrade } from "./binance.js";
 import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
 import { readingsAt } from "./metrics.js";
@@ -25,8 +26,25 @@ const API = "/api/orderflow/btcusdt";
 const FRESH = { cache: "no-cache" };
 const MINUTE = 60_000;
 const DAY = 86_400_000;
-// A shared link (see shareUrl) opens the same view: ?tf=&mode=&at=<bar start ms>&ind=<ids>&pm=.
+// A shared link (see shareUrl) opens the same view: ?tf=&mode=&at=<bar start ms>&ind=<ids>&pm=&ex=.
 const query = new URLSearchParams(location.search);
+// The exchange: ?ex= (shared links), else the viewer's last choice, else Bybit.
+const EX_KEY = "metabear-orderflow-ex";
+const EX_NAMES = { bybit: "Bybit", binance: "幣安" };
+const EX = (() => {
+  const asked = query.get("ex");
+  if (Object.hasOwn(EX_NAMES, asked ?? "")) return asked;
+  try {
+    const saved = localStorage.getItem(EX_KEY);
+    if (Object.hasOwn(EX_NAMES, saved ?? "")) return saved;
+  } catch {}
+  return "bybit";
+})();
+const EXN = EX_NAMES[EX];
+// The name followed directly by Chinese text: Latin words keep a space before it.
+const EXW = EX === "bybit" ? `${EXN} ` : EXN;
+// Bybit's answers keep their old URLs (and edge cache entries); Binance's carry ex=binance.
+const api = (path, params) => `${API}/${path}?${params}${EX === "bybit" ? "" : `&ex=${EX}`}`;
 const SHARED_AT = Number(query.get("at")) || 0;
 // ?replay=<event ms>&k=<kind>&lv=<level> opens a story's 一鍵覆盤 (event-replay.js).
 const REPLAY_AT = Number(query.get("replay")) || 0;
@@ -81,6 +99,8 @@ const INDICATORS = [
   ["doi", "pane", "OI 變化", false],
   ["funding", "pane", "資金費率", false],
   ["ratio", "pane", "多空比", true],
+  // Binance publishes top-trader ratios; Bybit has none.
+  ...(EX === "binance" ? [["top", "pane", "大戶持倉比", false]] : []),
   ["imb", "pane", "掛單簿失衡", false],
 ];
 const PREFS_KEY = "metabear-orderflow-indicators";
@@ -477,7 +497,7 @@ async function loadEvents() {
   // From the first loaded day, so every viewer asks for the same URL and shares the edge cache.
   const since = Math.floor(Date.now() / DAY) * DAY - (DAYS - 1) * DAY;
   try {
-    const res = await fetch(`${API}/events?since=${since}`, FRESH);
+    const res = await fetch(api("events", `since=${since}`), FRESH);
     if (!res.ok) return;
     const list = (await res.json()).events;
     liveEvents = list.map(liveEvent);
@@ -574,7 +594,8 @@ const PANES = {
   oi: { label: () => `OI (${unitLabel()})`, key: "oi" },
   doi: { label: () => `OI 變化 (${unitLabel()})` },
   funding: { label: () => "資金費率（每 8 小時）", key: "funding" },
-  ratio: { label: () => "多空比（Bybit 全體帳戶）", key: "global" },
+  ratio: { label: () => `多空比（${EXW}全體帳戶）`, key: "global" },
+  top: { label: () => "大戶持倉比（幣安，多 ÷ 空）", key: "topPos" },
   imb: { label: () => "掛單簿失衡（現價 ±0.25%，買 − 賣）" },
 };
 
@@ -851,7 +872,7 @@ function loadFine(t0, t1) {
   for (let c = Math.floor(t0 / BOOK_CHUNK_MS) * BOOK_CHUNK_MS; c < t1; c += BOOK_CHUNK_MS) {
     if (fineChunks.has(c) || c + BOOK_CHUNK_MS <= Date.now() - 30 * DAY || c > Date.now()) continue;
     fineChunks.set(c, "loading");
-    fetch(`${API}/book?from=${c}`, FRESH)
+    fetch(api("book", `from=${c}`), FRESH)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((d) => {
         for (const col of d.columns) if (!fineCols.has(col[0])) fineCols.set(col[0], col);
@@ -1599,7 +1620,7 @@ function drawLegend(L) {
   const narrow = L.plotW < 600;
   const gap = narrow ? " " : "  ";
   const parts = [
-    ...(narrow ? [] : [["BTCUSDT", C.text], [` · ${replay ? "Binance" : "Bybit"} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.muted]]),
+    ...(narrow ? [] : [["BTCUSDT", C.text], [` · ${replay || EX === "binance" ? "Binance" : "Bybit"} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.muted]]),
     ["O ", C.muted],
     [fmtPrice(b.o), C.text],
     [`${gap}H `, C.muted],
@@ -2041,8 +2062,68 @@ function snapshotBook() {
   redraw();
 }
 
-function startStreams() {
-  const resumeBybit = connectWs(WS_URL, {
+// Binance: aggTrades and mark price on one socket, depth diffs on another joined to a REST snapshot
+// (binance.js), and open interest read every 10 s since Binance does not stream it. Visitors
+// whose network Binance refuses (the US) still get the collector's minutes every 5 s.
+function startBinance() {
+  const book = (stream.book = new BinanceBook());
+  // One taker order's fills share a time and side; they are summed once the next order arrives.
+  let run = [];
+  const flushRun = () => {
+    for (const p of groupPrints(run)) if (p[3] >= PRINT_MIN) addPrint(p);
+    run = [];
+  };
+  const resumeTrades = connectWs(BINANCE_STREAMS.market, {
+    onOpen: () => stream.gaps.reconnect(),
+    onMessage: (m) => {
+      if (m.data?.e === "aggTrade") {
+        const tr = parseAggTrade(m.data);
+        if (run.length && (run[0].t !== tr.t || run[0].sell !== tr.sell)) flushRun();
+        run.push(tr);
+        onTrade(tr);
+        if (!stream.firstTrade) stream.firstTrade = tr.t;
+      } else if (m.data?.e === "markPriceUpdate") stream.ticker.funding = Number(m.data.r);
+    },
+  });
+  let syncing = false;
+  const sync = async () => {
+    if (syncing) return;
+    syncing = true;
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await fetch(`${BINANCE_REST}/fapi/v1/depth?symbol=${BINANCE_SYMBOL}&limit=1000`);
+        if (res.ok && book.load(await res.json()) === "snapshot") return;
+        await new Promise((r) => setTimeout(r, 1_000));
+      }
+    } catch {
+      // Unreachable from this network; the heatmap keeps the collector's columns.
+    } finally {
+      syncing = false;
+    }
+  };
+  const resumeDepth = connectWs(BINANCE_STREAMS.depth, {
+    onOpen: () => {
+      book.reset();
+      // Diffs are buffered until the snapshot lands; give the stream a moment to start.
+      setTimeout(sync, 500);
+    },
+    onMessage: (m) => m.data?.e === "depthUpdate" && book.diff(m.data) === "resync" && sync(),
+  });
+  const readOi = () =>
+    fetch(`${BINANCE_REST}/fapi/v1/openInterest?symbol=${BINANCE_SYMBOL}`)
+      .then((res) => res.json())
+      .then((d) => (stream.oi = Number(d.openInterest) || stream.oi), () => {});
+  readOi();
+  setInterval(readOi, 10_000);
+  setInterval(() => book.recenter(), 10_000);
+  return () => {
+    resumeTrades();
+    resumeDepth();
+  };
+}
+
+function startBybit() {
+  return connectWs(WS_URL, {
     ping: PING,
     onOpen: (ws) => {
       stream.gaps.reconnect();
@@ -2060,6 +2141,10 @@ function startStreams() {
       else if (m.topic === TICKER_TOPIC) stream.oi = applyTicker(stream.ticker, m).oi ?? null;
     },
   });
+}
+
+function startStreams() {
+  const resumeLive = EX === "binance" ? startBinance() : startBybit();
   for (const feed of LIQ_FEEDS) {
     connectWs(feed.url, {
       ping: feed.ping,
@@ -2071,7 +2156,7 @@ function startStreams() {
   // Phones suspend background pages: on return, catch up from the collector and reconnect.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
-    resumeBybit();
+    resumeLive();
     if (staleWhileHidden) (staleWhileHidden = false), refresh(true);
     pollRecent();
   });
@@ -2115,7 +2200,7 @@ function showLive() {
   // The forming bar's countdown on the price tag ticks with this.
   if (bars.length && !document.hidden && !evReplay) redraw();
   if (Date.now() - stream.lastTrade < 5_000) {
-    ui.live.textContent = "即時 · 直連 Bybit";
+    ui.live.textContent = `即時 · 直連 ${EXN}`;
     ui.live.dataset.state = "on";
     return showConnection("on");
   }
@@ -2142,8 +2227,8 @@ function showConnection(state, age = 0) {
   box.dataset.state = state;
   $("conn-text").textContent =
     state === "stale"
-      ? `跟 Bybit 的即時連線斷了，正在重新連線。圖上是 ${age} 秒前的資料。`
-      : "這個網路連不到 Bybit 的即時串流（部分公司或學校網路會擋），歷史資料照常可以看。";
+      ? `跟 ${EXW}的即時連線斷了，正在重新連線。圖上是 ${age} 秒前的資料。`
+      : `這個網路連不到 ${EXW}的即時串流（部分公司或學校網路會擋），歷史資料照常可以看。`;
   $("conn-retry").hidden = state !== "off";
 }
 
@@ -2169,7 +2254,7 @@ async function loadDays() {
   const today = Math.floor(Date.now() / DAY) * DAY;
   const days = [];
   for (let k = DAYS - 1; k >= 1; k--) days.push(utcDay(today - k * DAY));
-  const results = await Promise.all(days.map((d) => fetch(`${API}/day?d=${d}`, FRESH).then((res) => (res.ok ? res.json() : null), () => null)));
+  const results = await Promise.all(days.map((d) => fetch(api("day", `d=${d}`), FRESH).then((res) => (res.ok ? res.json() : null), () => null)));
   for (const d of results) if (d) ingest(d);
   recentSince = today;
   await pollRecent();
@@ -2177,7 +2262,7 @@ async function loadDays() {
 
 async function pollRecent() {
   try {
-    const res = await fetch(`${API}/recent?since=${recentSince}`, FRESH);
+    const res = await fetch(api("recent", `since=${recentSince}`), FRESH);
     if (!res.ok) throw new Error(String(res.status));
     const d = await res.json();
     const older = ingest(d);
@@ -2187,7 +2272,7 @@ async function pollRecent() {
     if (last) recentSince = Math.max(recentSince, last - 2 * MINUTE);
     if (bars.length) refresh(older);
   } catch {
-    // Collector unreachable: the page keeps what it has and its own Bybit stream.
+    // Collector unreachable: the page keeps what it has and its own exchange stream.
   }
   showLive();
   renderNarration();
@@ -2290,6 +2375,7 @@ function shareUrl() {
   if (b && b.end <= Date.now()) url.searchParams.set("at", String(b.t));
   url.searchParams.set("ind", INDICATORS.map(([id]) => id).filter(on).join(","));
   url.searchParams.set("pm", String(prefs.printMin));
+  if (EX !== "bybit") url.searchParams.set("ex", EX);
   return url.href;
 }
 
@@ -2834,7 +2920,7 @@ function startEventReplay(story, { autoplay = true } = {}) {
   view.barW = Math.max(4, (Math.max(100, size.w - 74) - 8) / (evReplay.bars + 1));
   document.body.classList.add("er-on");
   er.title.textContent = card.title;
-  er.range.textContent = `${dateOf.format(win.from)} ${timeOf(win.from)}–${timeOf(win.to)} · 1 分 K · Bybit BTCUSDT 永續`;
+  er.range.textContent = `${dateOf.format(win.from)} ${timeOf(win.from)}–${timeOf(win.to)} · 1 分 K · ${EXN} BTCUSDT 永續`;
   er.ticks.replaceChildren(
     ...win.spans
       .filter((s) => s.end <= win.to)
@@ -3246,6 +3332,22 @@ $("conn-retry").addEventListener("click", () => location.reload());
 $("bc-unpin").addEventListener("click", unpinBar);
 $("bc-replay").addEventListener("click", replayPinnedBar);
 
+// ---------- exchange ----------
+
+// Switching reloads the page: every series, stream and cache entry belongs to one exchange.
+const exPick = $("ex");
+exPick.value = EX;
+exPick.hidden = !!CASE; // case replays are recorded Binance data
+exPick.addEventListener("change", () => {
+  try {
+    localStorage.setItem(EX_KEY, exPick.value);
+  } catch {}
+  const url = new URL(location.href);
+  url.searchParams.set("ex", exPick.value);
+  location.href = url.href;
+});
+if (EX === "binance") $("er-note").textContent = "這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自幣安 BTCUSDT 永續的 1 分 K。";
+
 // ---------- boot ----------
 
 if (CASE) {
@@ -3259,9 +3361,13 @@ if (CASE) {
     await loadDays();
     if (!store.bars.size) throw new Error("no data");
     $("source").textContent =
-      "資料：Bybit BTCUSDT 永續合約（USDT 本位，僅單一交易所）。歷史足跡由 Bybit 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄；" +
-      "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是 Bybit 全體帳戶多空比。資料保留 30 天。" +
-      "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
+      EX === "binance"
+        ? "資料：幣安 BTCUSDT 永續合約（USDT 本位，僅單一交易所），由 MetaBear 東京中繼收集器即時記錄，2026-10-25 起才有完整足跡，更早只有價格（1 分 K）。" +
+          "掛單熱力圖只取現價上下約 0.25%，和 Bybit 的範圍相同；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是幣安全體帳戶多空比，另有大戶持倉比。資料保留 30 天。" +
+          "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；這個收集器只記錄幣安。"
+        : "資料：Bybit BTCUSDT 永續合約（USDT 本位，僅單一交易所）。歷史足跡由 Bybit 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄；" +
+          "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是 Bybit 全體帳戶多空比。資料保留 30 天。" +
+          "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
     build();
     view.end = bars.length + RIGHT_PAD;
     view.barW = NARROW ? 9 : 14;

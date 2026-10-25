@@ -83,6 +83,25 @@ input {
   color: var(--muted);
   font-size: 12px;
 }
+.ex-pick {
+  align-self: center;
+  min-height: 26px;
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--raise);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ex-pick:hover,
+.ex-pick:focus-visible {
+  color: var(--text);
+}
+.ex-pick option {
+  background: var(--panel);
+  color: var(--text);
+}
 .tools {
   display: flex;
   flex: 1;
