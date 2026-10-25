@@ -4,7 +4,7 @@
 // over a WebSocket, forwards Binance's combined-stream messages untouched and answers REST requests
 // for whitelisted public paths, so every Binance call goes through it.
 import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
-import { BINANCE_SYMBOL, BinanceBook, parseAggTrade, parseKlines } from "../../public/lab/orderflow/binance.js";
+import { BINANCE_SYMBOL, BinanceBook, binanceArchiveUrl, parseAggTrade, parseArchiveLine, parseKlines } from "../../public/lab/orderflow/binance.js";
 import { BACKFILL_DAYS, Collector, DAY, FIVE_MIN, HEALTH_DOWN_MS, MINUTE, SILENT_MS, type OrderflowEnv, type Trade } from "./collector";
 
 const BINANCE_LIQ = LIQ_FEEDS.find((f) => f.ex === "binance")!;
@@ -22,6 +22,15 @@ export class BinanceCollector extends Collector {
   protected override source = "binance";
   // Runs beside Bybit while it is compared; its events are recorded and shown, not sent to LINE.
   protected override marketLive = false;
+  // Binance's daily aggTrades zip is downloadable from Cloudflare (only the live API refuses it).
+  protected override archiveName = "幣安";
+  protected override archiveLateMs = 12 * 3_600_000;
+  protected override archiveSource(day: string) {
+    return { url: binanceArchiveUrl(day), zip: true };
+  }
+  protected override archiveTrade(line: string) {
+    return parseArchiveLine(line);
+  }
   private relay: { ws: WebSocket; last: number; info: Record<string, unknown> } | null = null;
   private relayState = "idle";
   private calls = new Map<number, Pending>();
@@ -292,10 +301,6 @@ export class BinanceCollector extends Collector {
       this.note("errors", `binance kline fill: ${err}`);
     }
   }
-
-  // Binance's daily archives are zip files; the relay host imports them through POST /import
-  // instead (phase 4 of docs/ORDERFLOW-BINANCE-RELAY.md).
-  protected override async importArchive() {}
 
   protected override healthFeeds(now: number): [keyof typeof HEALTH_DOWN_MS, boolean, number][] {
     return [["Binance", this.relay != null && now - this.lastTradeT < HEALTH_DOWN_MS.Binance, this.lastTradeT]];

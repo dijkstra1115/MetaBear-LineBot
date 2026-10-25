@@ -12,15 +12,19 @@
 //   POST /api/orderflow/btcusdt/alerts             { config } tunes thresholds, { test: true } sends a test
 //   GET  /api/orderflow/relay                      WebSocket from the Binance relay (Bearer ORDERFLOW_RELAY_TOKEN)
 //
-// Every btcusdt path takes ?ex=binance for the Binance collector; without it, Bybit's answers.
+// Every btcusdt path takes ?ex=binance, okx or bingx for that exchange's collector and ?ex=all for
+// 全市場, the exchanges merged (src/orderflow/aggregate.ts); without it, Bybit's answers.
 // Every viewer polls the same minute-aligned URLs, so the edge cache absorbs repeat requests
 // and the single collector object only answers each URL once per few seconds.
 import { BOOK_CHUNK_MS } from "../../public/lab/orderflow/bybit.js";
 import { describe } from "../../public/lab/orderflow/watch.js";
+import { EXCHANGES, mergeParts, type Exchange, type Part } from "./aggregate";
 import { BinanceCollector } from "./binance-collector";
+import { BingxCollector } from "./bingx-collector";
 import { Collector, type OrderflowEnv } from "./collector";
+import { OkxCollector } from "./okx-collector";
 
-export { BinanceCollector, Collector };
+export { BinanceCollector, BingxCollector, Collector, OkxCollector };
 
 const PREFIX = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
@@ -41,6 +45,36 @@ function collector(env: OrderflowEnv) {
 function binanceCollector(env: OrderflowEnv) {
   // Near the relay in Tokyo.
   return env.BINANCE?.get(env.BINANCE.idFromName("BTCUSDT"), { locationHint: "apac" }) ?? null;
+}
+
+function stubFor(env: OrderflowEnv, ex: string) {
+  if (ex === "bybit") return collector(env);
+  if (ex === "binance") return binanceCollector(env);
+  const ns = ex === "okx" ? env.OKX : ex === "bingx" ? env.BINGX : undefined;
+  return ns?.get(ns.idFromName("BTCUSDT"), { locationHint: "apac" }) ?? null;
+}
+
+// 全市場: every exchange's answer for the same collector path, merged. An exchange that does not
+// answer is left out rather than failing the whole response.
+async function mergedAnswer(env: OrderflowEnv, path: string, from: number, extra: Record<string, unknown>) {
+  const answers = await Promise.all(
+    EXCHANGES.map(async (ex): Promise<[Exchange, (Part & { status?: { lastTrade?: number } }) | null]> => {
+      const stub = stubFor(env, ex);
+      if (!stub) return [ex, null];
+      try {
+        const res = await stub.fetch(`https://collector${path}`);
+        return [ex, res.ok ? await res.json() : null];
+      } catch {
+        return [ex, null];
+      }
+    }),
+  );
+  const parts = Object.fromEntries(answers.filter(([, part]) => part)) as Partial<Record<Exchange, Part>>;
+  const lastTrades = Object.fromEntries(answers.map(([ex, part]) => [ex, Number(part?.status?.lastTrade) || null]));
+  const lastTrade = Math.max(0, ...Object.values(lastTrades).map(Number));
+  return new Response(JSON.stringify({ symbol: "BTCUSDT", tick: 10, source: "all", ...extra, status: { lastTrade: lastTrade || null, exchanges: lastTrades }, ...mergeParts(parts, from) }), {
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
 }
 
 function timingSafeEqual(a: string, b: string) {
@@ -78,8 +112,11 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   const route = url.pathname.slice(PREFIX.length);
   const now = Date.now();
   const ex = url.searchParams.get("ex") ?? "bybit";
-  const stub = ex === "bybit" ? collector(env) : ex === "binance" ? binanceCollector(env) : null;
+  const all = ex === "all";
+  // 全市場 draws Binance's heatmap and events; only the bars, prints and readings are merged.
+  const stub = stubFor(env, all ? "binance" : ex);
   if (!stub) return json({ error: "沒有這個交易所" }, 404);
+  if (all && !["/day", "/recent", "/book", "/events", "/status"].includes(route)) return json({ error: "全市場只能讀取" }, 400);
 
   if (route === "/import" || route === "/archive" || route === "/alerts") {
     if (request.method !== "POST" && route !== "/alerts") return json({ error: "只接受 POST" }, 405);
@@ -97,7 +134,11 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   }
   if (request.method !== "GET") return json({ error: "只接受 GET" }, 405);
 
-  if (route === "/status") return json(await (await stub.fetch("https://collector/status")).json());
+  if (route === "/status") {
+    if (!all) return json(await (await stub.fetch("https://collector/status")).json());
+    const list = await Promise.all(EXCHANGES.map(async (name) => [name, await stubFor(env, name)?.fetch("https://collector/status").then((r) => r.json(), () => null)] as const));
+    return json(Object.fromEntries(list.map(([name, st]) => [name, st && { lastTrade: (st as { lastTrade?: unknown }).lastTrade, errors: ((st as { errors?: unknown[] }).errors ?? []).length }])));
+  }
 
   if (route === "/day") {
     const d = url.searchParams.get("d") ?? "";
@@ -105,7 +146,7 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
     if (!Number.isFinite(from) || from > now || from < now - HISTORY_DAYS * DAY) return json({ error: "日期格式錯誤或超出範圍" }, 400);
     // A finished day only changes when an archive import lands; today keeps growing.
     const done = from + DAY <= now - 10 * MINUTE;
-    return cached(request, ctx, done ? 600 : 5, () => stub.fetch(`https://collector/day?d=${d}`));
+    return cached(request, ctx, done ? 600 : 5, () => (all ? mergedAnswer(env, `/day?d=${d}`, from, { day: d, updated: now }) : stub.fetch(`https://collector/day?d=${d}`)));
   }
 
   if (route === "/book") {
@@ -119,7 +160,7 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   if (route === "/recent") {
     const since = Number(url.searchParams.get("since"));
     if (!Number.isInteger(since) || since % MINUTE !== 0 || since < now - 2 * DAY || since > now) return json({ error: "since 需為最近兩天內的整分鐘毫秒時間" }, 400);
-    return cached(request, ctx, 3, () => stub.fetch(`https://collector/recent?since=${since}`));
+    return cached(request, ctx, 3, () => (all ? mergedAnswer(env, `/recent?since=${since}`, since, { since, updated: now }) : stub.fetch(`https://collector/recent?since=${since}`)));
   }
 
   if (route === "/events") {
@@ -137,9 +178,11 @@ export default {
   // The collector re-arms its own alarm; the cron only restarts the chain if it ever breaks. It
   // also covers the one failure the collector cannot report itself: not answering at all.
   async scheduled(event: ScheduledController, env: OrderflowEnv) {
-    const binance = binanceCollector(env);
-    // The Binance object only needs its alarm chain kept; its relay reports its own outages.
-    if (binance) await binance.fetch("https://collector/wake").catch((err) => console.error(JSON.stringify({ event: "orderflow_binance_unreachable", detail: String(err) })));
+    // The other exchanges' objects only need their alarm chains kept; they report their own outages.
+    for (const ex of ["binance", "okx", "bingx"]) {
+      const stub = stubFor(env, ex);
+      if (stub) await stub.fetch("https://collector/wake").catch((err) => console.error(JSON.stringify({ event: "orderflow_collector_unreachable", ex, detail: String(err) })));
+    }
     try {
       const res = await Promise.race([
         collector(env).fetch("https://collector/wake"),

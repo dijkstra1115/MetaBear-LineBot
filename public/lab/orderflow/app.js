@@ -1,10 +1,13 @@
 // BTC order-flow lab: footprint, volume profile, CVD, OI and long/short
 // ratios drawn on one canvas. History comes from the order-flow API (src/orderflow/),
-// whose collectors record Bybit's and Binance's BTCUSDT 1-minute bars with $10 price bins; the
-// page streams the newest minutes straight from the chosen exchange.
+// whose collectors record Bybit's, Binance's, OKX's and BingX's BTCUSDT 1-minute bars with $10 price
+// bins; the page streams the newest minutes straight from the chosen exchange, or from all four for
+// 全市場 (prices from Binance, volume summed; docs/ORDERFLOW-MULTI-EXCHANGE.md).
 
 import { BOOK_CHUNK_MS, BOOK_STEP_MS, BOOK_TICK, BOOK_TOPIC, OrderBook, PING, PRINT_MIN, StreamGaps, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, groupPrints, parseTrades } from "./bybit.js";
 import { BINANCE_REST, BINANCE_STREAMS, BINANCE_SYMBOL, BinanceBook, parseAggTrade } from "./binance.js";
+import { BINGX_TOPICS, BINGX_WS, BingxBook, gunzipText, parseBingxTrades } from "./bingx.js";
+import { OKX_INST, OKX_WS, OkxBook, parseOkxTrades } from "./okx.js";
 import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
 import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
 import { readingsAt } from "./metrics.js";
@@ -28,9 +31,9 @@ const MINUTE = 60_000;
 const DAY = 86_400_000;
 // A shared link (see shareUrl) opens the same view: ?tf=&mode=&at=<bar start ms>&ind=<ids>&pm=&ex=.
 const query = new URLSearchParams(location.search);
-// The exchange: ?ex= (shared links), else the viewer's last choice, else Bybit.
+// The exchange: ?ex= (shared links), else the viewer's last choice, else 全市場, all four merged.
 const EX_KEY = "metabear-orderflow-ex";
-const EX_NAMES = { bybit: "Bybit", binance: "幣安" };
+const EX_NAMES = { all: "全市場", binance: "幣安", bybit: "Bybit", okx: "OKX", bingx: "BingX" };
 const EX = (() => {
   const asked = query.get("ex");
   if (Object.hasOwn(EX_NAMES, asked ?? "")) return asked;
@@ -38,11 +41,13 @@ const EX = (() => {
     const saved = localStorage.getItem(EX_KEY);
     if (Object.hasOwn(EX_NAMES, saved ?? "")) return saved;
   } catch {}
-  return "bybit";
+  return "all";
 })();
 const EXN = EX_NAMES[EX];
 // The name followed directly by Chinese text: Latin words keep a space before it.
-const EXW = EX === "bybit" ? `${EXN} ` : EXN;
+const EXW = /^[A-Za-z]/.test(EXN) ? `${EXN} ` : EXN;
+// 全市場 takes its prices, long/short ratios, funding and heatmap from Binance.
+const REF_EX = EX === "all" ? "幣安" : EXW;
 // Bybit's answers keep their old URLs (and edge cache entries); Binance's carry ex=binance.
 const api = (path, params) => `${API}/${path}?${params}${EX === "bybit" ? "" : `&ex=${EX}`}`;
 const SHARED_AT = Number(query.get("at")) || 0;
@@ -100,7 +105,7 @@ const INDICATORS = [
   ["funding", "pane", "資金費率", false],
   ["ratio", "pane", "多空比", true],
   // Binance publishes top-trader ratios; Bybit has none.
-  ...(EX === "binance" ? [["top", "pane", "大戶持倉比", false]] : []),
+  ...(EX === "binance" || EX === "all" ? [["top", "pane", "大戶持倉比", false]] : []),
   ["imb", "pane", "掛單簿失衡", false],
 ];
 const PREFS_KEY = "metabear-orderflow-indicators";
@@ -594,7 +599,7 @@ const PANES = {
   oi: { label: () => `OI (${unitLabel()})`, key: "oi" },
   doi: { label: () => `OI 變化 (${unitLabel()})` },
   funding: { label: () => "資金費率（每 8 小時）", key: "funding" },
-  ratio: { label: () => `多空比（${EXW}全體帳戶）`, key: "global" },
+  ratio: { label: () => `多空比（${REF_EX}全體帳戶）`, key: "global" },
   top: { label: () => "大戶持倉比（幣安，多 ÷ 空）", key: "topPos" },
   imb: { label: () => "掛單簿失衡（現價 ±0.25%，買 − 賣）" },
 };
@@ -1620,7 +1625,7 @@ function drawLegend(L) {
   const narrow = L.plotW < 600;
   const gap = narrow ? " " : "  ";
   const parts = [
-    ...(narrow ? [] : [["BTCUSDT", C.text], [` · ${replay || EX === "binance" ? "Binance" : "Bybit"} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.muted]]),
+    ...(narrow ? [] : [["BTCUSDT", C.text], [` · ${replay || EX === "binance" ? "Binance" : EXN} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.muted]]),
     ["O ", C.muted],
     [fmtPrice(b.o), C.text],
     [`${gap}H `, C.muted],
@@ -1999,12 +2004,13 @@ function scheduleRefresh() {
 
 // Returns resume(), which recycles the socket if it went quiet, e.g. while a phone kept the
 // page in the background.
-function connectWs(url, { onOpen, onMessage, ping: pingText }) {
+function connectWs(url, { onOpen, onMessage, ping: pingText, decode }) {
   let delay = 1000;
   let ws;
   let lastMessage = Date.now();
   const open = () => {
     ws = new WebSocket(url);
+    if (decode) ws.binaryType = "arraybuffer";
     let ping;
     // Recycle sockets that hang or go silent after a network drop.
     lastMessage = Date.now();
@@ -2019,12 +2025,25 @@ function connectWs(url, { onOpen, onMessage, ping: pingText }) {
       onOpen?.(ws);
       if (pingText) ping = setInterval(() => ws.send(pingText), 20_000);
     };
+    let inbox = Promise.resolve();
     ws.onmessage = (e) => {
       lastMessage = Date.now();
       if (e.data === "pong") return;
-      try {
-        onMessage(JSON.parse(e.data));
-      } catch {}
+      if (!decode) {
+        try {
+          onMessage(JSON.parse(e.data));
+        } catch {}
+        return;
+      }
+      // Async decoding keeps its order through the chain.
+      const socket = ws;
+      inbox = inbox
+        .then(async () => {
+          const text = await decode(e.data);
+          if (text === "Ping") return socket.send("Pong");
+          onMessage(JSON.parse(text));
+        })
+        .catch(() => {});
     };
     ws.onclose = () => {
       clearInterval(ping);
@@ -2043,11 +2062,39 @@ function connectWs(url, { onOpen, onMessage, ping: pingText }) {
   };
 }
 
-function onTrade(tr) {
+// A trade from the price exchange sets the bar's open, high, low and close; in 全市場 the others only
+// add volume. A bar another exchange opened takes the price exchange's prices once it trades.
+function onTrade(tr, priced = true) {
   stream.gaps.trade(tr.t);
-  addTrade(stream.bars, tr, TICK);
+  const minute = Math.floor(tr.t / 60_000) * 60_000;
+  const bar = stream.bars.get(minute);
+  if (priced && bar?.borrowed) Object.assign(bar, { o: tr.price, h: tr.price, l: tr.price, c: tr.price, first: tr.t, last: tr.t, borrowed: false });
+  if (priced || !bar) {
+    addTrade(stream.bars, tr, TICK);
+    if (!priced) stream.bars.get(minute).borrowed = true;
+  } else {
+    const bin = Math.floor(tr.price / TICK);
+    let lv = bar.levels.get(bin);
+    if (!lv) bar.levels.set(bin, (lv = [0, 0]));
+    lv[tr.sell ? 1 : 0] += tr.qty;
+  }
   stream.lastTrade = Date.now();
+  if (!stream.firstTrade) stream.firstTrade = tr.t;
   scheduleRefresh();
+}
+
+// Prints from one exchange's own stream: fills of one taker order share a time and side and are
+// summed once the next order arrives. In 全市場 each print carries its exchange, as the API's do.
+function printer(ex) {
+  let run = [];
+  const flush = () => {
+    for (const p of groupPrints(run)) if (p[3] >= PRINT_MIN) addPrint(EX === "all" ? [...p, ex] : p);
+    run = [];
+  };
+  return (tr) => {
+    if (run.length && (run[0].t !== tr.t || run[0].sell !== tr.sell)) flush();
+    run.push(tr);
+  };
 }
 
 function snapshotBook() {
@@ -2067,21 +2114,14 @@ function snapshotBook() {
 // whose network Binance refuses (the US) still get the collector's minutes every 5 s.
 function startBinance() {
   const book = (stream.book = new BinanceBook());
-  // One taker order's fills share a time and side; they are summed once the next order arrives.
-  let run = [];
-  const flushRun = () => {
-    for (const p of groupPrints(run)) if (p[3] >= PRINT_MIN) addPrint(p);
-    run = [];
-  };
+  const print = printer("binance");
   const resumeTrades = connectWs(BINANCE_STREAMS.market, {
     onOpen: () => stream.gaps.reconnect(),
     onMessage: (m) => {
       if (m.data?.e === "aggTrade") {
         const tr = parseAggTrade(m.data);
-        if (run.length && (run[0].t !== tr.t || run[0].sell !== tr.sell)) flushRun();
-        run.push(tr);
+        print(tr);
         onTrade(tr);
-        if (!stream.firstTrade) stream.firstTrade = tr.t;
       } else if (m.data?.e === "markPriceUpdate") stream.ticker.funding = Number(m.data.r);
     },
   });
@@ -2113,8 +2153,12 @@ function startBinance() {
     fetch(`${BINANCE_REST}/fapi/v1/openInterest?symbol=${BINANCE_SYMBOL}`)
       .then((res) => res.json())
       .then((d) => (stream.oi = Number(d.openInterest) || stream.oi), () => {});
-  readOi();
-  setInterval(readOi, 10_000);
+  // 全市場 sums every exchange's OI, which the collectors' readings carry; one exchange's live
+  // value would not match it.
+  if (EX === "binance") {
+    readOi();
+    setInterval(readOi, 10_000);
+  }
   setInterval(() => book.recenter(), 10_000);
   return () => {
     resumeTrades();
@@ -2122,20 +2166,22 @@ function startBinance() {
   };
 }
 
-function startBybit() {
+// Alone, an exchange streams trades, its book and readings; in 全市場 (priced = false) only its
+// trades, which add volume to Binance's bars.
+function startBybit(priced = true) {
   return connectWs(WS_URL, {
     ping: PING,
     onOpen: (ws) => {
       stream.gaps.reconnect();
-      stream.book.reset();
-      ws.send(JSON.stringify({ op: "subscribe", args: [TRADE_TOPIC, BOOK_TOPIC, TICKER_TOPIC] }));
+      if (priced) stream.book.reset();
+      ws.send(JSON.stringify({ op: "subscribe", args: priced ? [TRADE_TOPIC, BOOK_TOPIC, TICKER_TOPIC] : [TRADE_TOPIC] }));
     },
     onMessage: (m) => {
       if (m.topic === TRADE_TOPIC) {
+        // Bybit sends a match's fills together, with the engine's seq: its prints are exact.
         const trades = parseTrades(m);
-        for (const tr of trades) onTrade(tr);
-        if (!stream.firstTrade && trades.length) stream.firstTrade = trades[0].t;
-        for (const p of groupPrints(trades)) if (p[3] >= PRINT_MIN) addPrint(p);
+        for (const tr of trades) onTrade(tr, priced);
+        for (const p of groupPrints(trades)) if (p[3] >= PRINT_MIN) addPrint(EX === "all" ? [...p, "bybit"] : p);
       }
       else if (m.topic === BOOK_TOPIC) stream.book.apply(m);
       else if (m.topic === TICKER_TOPIC) stream.oi = applyTicker(stream.ticker, m).oi ?? null;
@@ -2143,8 +2189,53 @@ function startBybit() {
   });
 }
 
+function startOkx(priced = true) {
+  const book = priced ? (stream.book = new OkxBook()) : null;
+  const print = printer("okx");
+  const channels = priced ? ["trades", "books", "open-interest", "funding-rate"] : ["trades"];
+  return connectWs(OKX_WS, {
+    ping: "ping",
+    onOpen: (ws) => {
+      stream.gaps.reconnect();
+      book?.reset();
+      ws.send(JSON.stringify({ op: "subscribe", args: channels.map((channel) => ({ channel, instId: OKX_INST })) }));
+    },
+    onMessage: (m) => {
+      const channel = m.arg?.channel;
+      if (channel === "trades") for (const tr of parseOkxTrades(m.data)) print(tr), onTrade(tr, priced);
+      // A broken book chain leaves the heatmap to the collector until the socket reconnects.
+      else if (channel === "books") book?.applyOkx(m);
+      else if (channel === "open-interest" && m.data?.[0]) stream.oi = Number(m.data[0].oiCcy);
+      else if (channel === "funding-rate" && m.data?.[0]) stream.ticker.funding = Number(m.data[0].fundingRate);
+    },
+  });
+}
+
+function startBingx(priced = true) {
+  const book = priced ? (stream.book = new BingxBook()) : null;
+  const print = printer("bingx");
+  return connectWs(BINGX_WS, {
+    decode: gunzipText,
+    onOpen: (ws) => {
+      stream.gaps.reconnect();
+      for (const dataType of priced ? BINGX_TOPICS : BINGX_TOPICS.slice(0, 1)) ws.send(JSON.stringify({ id: dataType, reqType: "sub", dataType }));
+    },
+    onMessage: (m) => {
+      if (!m.data) return;
+      if (m.dataType === BINGX_TOPICS[0]) for (const tr of parseBingxTrades(m.data)) print(tr), onTrade(tr, priced);
+      else if (m.dataType === BINGX_TOPICS[1]) book?.load(m.data);
+    },
+  });
+}
+
+// 全市場: Binance for prices, its book and funding; the others' trades for volume and prints.
+function startAll() {
+  const resumes = [startBinance(), startBybit(false), startOkx(false), startBingx(false)];
+  return () => resumes.forEach((resume) => resume());
+}
+
 function startStreams() {
-  const resumeLive = EX === "binance" ? startBinance() : startBybit();
+  const resumeLive = { all: startAll, binance: startBinance, okx: startOkx, bingx: startBingx }[EX]?.() ?? startBybit();
   for (const feed of LIQ_FEEDS) {
     connectWs(feed.url, {
       ping: feed.ping,
@@ -2200,7 +2291,7 @@ function showLive() {
   // The forming bar's countdown on the price tag ticks with this.
   if (bars.length && !document.hidden && !evReplay) redraw();
   if (Date.now() - stream.lastTrade < 5_000) {
-    ui.live.textContent = `即時 · 直連 ${EXN}`;
+    ui.live.textContent = EX === "all" ? "即時 · 四家合計" : `即時 · 直連 ${EXN}`;
     ui.live.dataset.state = "on";
     return showConnection("on");
   }
@@ -3285,6 +3376,17 @@ function fillBarCard(b, events, pinned, liq) {
       else (ns++, (qs += qty));
     }
     if (nb || ns) row("大單", [nb ? `買 ${nb} 筆 ${fmtVol(qb)}` : "", ns ? `賣 ${ns} 筆 ${fmtVol(qs)}` : ""].filter(Boolean).join(" · "));
+    // 全市場: which exchanges the prints came from, largest first.
+    if (EX === "all" && (nb || ns)) {
+      const by = new Map();
+      for (const [t, , , qty, ex] of printList) {
+        if (t < b.t || t >= b.end || qty < prefs.printMin || !ex) continue;
+        const e = by.get(ex) ?? [0, 0];
+        by.set(ex, [e[0] + 1, e[1] + qty]);
+      }
+      const parts = [...by.entries()].sort((x, y) => y[1][1] - x[1][1]).map(([ex, [n, q]]) => `${EX_NAMES[ex] ?? ex} ${n} 筆 ${fmtVol(q)}`);
+      if (parts.length) row("來自", parts.join(" · "));
+    }
   }
   if (b.partial) row("足跡", "部分分鐘沒有資料");
   if (liq) rows.push(node("p", "bc-note", liq));
@@ -3346,7 +3448,8 @@ exPick.addEventListener("change", () => {
   url.searchParams.set("ex", exPick.value);
   location.href = url.href;
 });
-if (EX === "binance") $("er-note").textContent = "這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自幣安 BTCUSDT 永續的 1 分 K。";
+if (EX !== "bybit")
+  $("er-note").textContent = `這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自${EX === "all" ? "四家交易所合計（價格以幣安為準）的 " : EXW}BTCUSDT 永續 1 分 K。`;
 
 // ---------- boot ----------
 
@@ -3361,7 +3464,14 @@ if (CASE) {
     await loadDays();
     if (!store.bars.size) throw new Error("no data");
     $("source").textContent =
-      EX === "binance"
+      EX === "all"
+        ? "資料：全市場是幣安、Bybit、OKX、BingX 四家 BTCUSDT 永續合約合計。K 線的價格以幣安為準（各家價格差幾美元，混在一起會畫出假影線）；成交量、Delta、CVD、足跡、大單、OI 與爆倉是四家加總。" +
+          "掛單熱力圖、多空比與資金費率用幣安的。OI 只加總整段時間都有紀錄的交易所（BingX 沒有歷史 OI）。BingX 沒有公開的爆倉資料，幣安的爆倉每秒只推一筆。資料保留 30 天。"
+        : EX === "okx"
+        ? "資料：OKX BTCUSDT 永續合約（USDT 本位，僅單一交易所），歷史足跡由 OKX 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄。掛單熱力圖是 OKX 的 400 檔，範圍比幣安、Bybit 窄。多空比是 OKX 全體帳戶多空比。資料保留 30 天。"
+        : EX === "bingx"
+        ? "資料：BingX BTCUSDT 永續合約（USDT 本位，僅單一交易所），由 MetaBear 收集器即時記錄，2026-10-25 起才有足跡，更早只有價格（1 分 K）。掛單熱力圖是 BingX 的前 100 檔。BingX 沒有多空比、歷史 OI 與爆倉資料。資料保留 30 天。"
+        : EX === "binance"
         ? "資料：幣安 BTCUSDT 永續合約（USDT 本位，僅單一交易所），由 MetaBear 東京中繼收集器即時記錄，2026-10-25 起才有完整足跡，更早只有價格（1 分 K）。" +
           "掛單熱力圖只取現價上下約 0.25%，和 Bybit 的範圍相同；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是幣安全體帳戶多空比，另有大戶持倉比。資料保留 30 天。" +
           "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；這個收集器只記錄幣安。"

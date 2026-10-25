@@ -25,6 +25,7 @@ import {
   addTrade,
   applyTicker,
   archiveUrl,
+  parseArchiveLine,
   barRow,
   groupPrints,
   parseRestTrades,
@@ -36,6 +37,9 @@ export interface OrderflowEnv {
   COLLECTOR: DurableObjectNamespace<Collector>;
   // Binance's collector (src/orderflow/binance-collector.ts), fed by the Tokyo relay.
   BINANCE?: DurableObjectNamespace<Collector>;
+  // OKX and BingX, reached directly (src/orderflow/okx-collector.ts, bingx-collector.ts).
+  OKX?: DurableObjectNamespace<Collector>;
+  BINGX?: DurableObjectNamespace<Collector>;
   ORDERFLOW_RELAY_TOKEN?: string;
   ORDERFLOW_ADMIN_TOKEN?: string;
   ORDERFLOW_STREAMS?: string; // "off" keeps the object from connecting (tests)
@@ -53,7 +57,7 @@ const ALERT_LINES = 8;
 const ALERT_FRESH_MS = 120_000; // trades and liquidations replayed after a reconnect are not news
 const FANOUT_FRESH_MS = 5 * 60_000; // members only get events from the last few minutes
 // Collector health: a feed silent this long is reported once, and again when it recovers.
-export const HEALTH_DOWN_MS = { Bybit: 120_000, OKX: 300_000, Binance: 120_000 };
+export const HEALTH_DOWN_MS = { Bybit: 120_000, OKX: 300_000, Binance: 120_000, BingX: 120_000 };
 const HEALTH_ERRORS = 10; // errors within 10 minutes
 const HEALTH_REPEAT_MS = 3_600_000;
 // Bar detectors run once a 5-minute bar has settled (late trades in), over enough history for their
@@ -100,6 +104,21 @@ export type Row = Record<string, SqlStorageValue>;
 type ArchiveJob = { day: string; from: number; cursor: number; open: number; reader: ReadableStreamDefaultReader<string>; build: ArchiveDay; carry: string };
 
 const iso = (t: number) => new Date(t).toISOString();
+// The one file in a zip archive, inflated as a stream. Sizes come from the central directory, since
+// entries may carry a data descriptor with zero sizes in their local header.
+function zipEntry(buf: ArrayBuffer): ReadableStream<Uint8Array> {
+  const v = new DataView(buf);
+  let eocd = buf.byteLength - 22;
+  while (eocd >= 0 && v.getUint32(eocd, true) !== 0x06054b50) eocd--;
+  if (eocd < 0) throw new Error("not a zip archive");
+  const cd = v.getUint32(eocd + 16, true);
+  const method = v.getUint16(cd + 10, true);
+  const size = v.getUint32(cd + 20, true);
+  const local = v.getUint32(cd + 42, true);
+  const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true);
+  const data = new Blob([new Uint8Array(buf, start, size)]).stream();
+  return method === 0 ? data : data.pipeThrough(new DecompressionStream("deflate-raw"));
+}
 // A stalled archive download must not hold up the alarm that also persists the live minutes.
 const within = <T>(p: Promise<T>, ms: number, what: string) =>
   new Promise<T>((resolve, reject) => {
@@ -133,6 +152,17 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private archive: ArchiveJob | null = null;
   protected status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[], archive: null as Record<string, unknown> | null };
   protected source = "bybit";
+  // Daily trade archive: where a day's file is and how its lines read. Bybit's is a gzipped CSV per
+  // UTC day; Binance and OKX publish zips, OKX by Beijing day (archiveOffset −8 h).
+  protected archiveName = "Bybit";
+  protected archiveOffset = 0;
+  protected archiveLateMs = ARCHIVE_LATE;
+  protected archiveSource(day: string): { url: string; zip: boolean } {
+    return { url: archiveUrl(day), zip: false };
+  }
+  protected archiveTrade(line: string): { t: number; price: number; qty: number; sell: boolean } | null {
+    return parseArchiveLine(line);
+  }
   // Market events go out to LINE (the admin and members); when false they are only recorded.
   // Collector health is sent either way.
   protected marketLive = true;
@@ -288,10 +318,14 @@ export class Collector extends DurableObject<OrderflowEnv> {
   protected onBook(m: any) {
     const changes = this.book.apply(m);
     if (changes === "snapshot") return this.spoofWatch.reset(Number(m.ts) || Date.now(), this.book.bids, this.book.asks);
-    if (!changes?.length) return;
+    if (changes?.length) this.watchChanges(Number(m.ts) || Date.now(), changes);
+  }
+
+  // Changed book levels [side, price, before, after] feed the spoofing watcher.
+  protected watchChanges(t: number, changes: unknown[]) {
     const top = this.book.best();
     if (!top) return;
-    for (const e of this.spoofWatch.update(Number(m.ts) || Date.now(), changes, top)) {
+    for (const e of this.spoofWatch.update(t, changes, top)) {
       this.alert(e);
       this.wallWatch.forget(e.side as string, e.price as number);
     }
@@ -501,9 +535,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
     // A day still missing after its retries, reported once per day.
     const archive = this.status.archive as { day?: string; state?: string } | null;
     const attempts = Number(this.meta("archiveAttempts") ?? 0);
-    const late = archive?.state === "waiting" && archive.day && now > Date.parse(`${archive.day}T00:00:00Z`) + DAY + 6 * 3_600_000;
+    const late = archive?.state === "waiting" && archive.day && now > Date.parse(`${archive.day}T00:00:00Z`) + this.archiveOffset + DAY + this.archiveLateMs;
     if (archive?.day && (attempts >= 3 || late) && this.meta("healthArchiveTold") !== archive.day) {
-      const reason = attempts >= 3 ? (this.status.errors.find((e) => e.includes("archive")) ?? "重試 3 次失敗").slice(20, 160) : "Bybit 還沒發布，或下載被擋";
+      const reason = attempts >= 3 ? (this.status.errors.find((e) => e.includes("archive")) ?? "重試 3 次失敗").slice(20, 160) : `${this.archiveName} 還沒發布，或下載被擋`;
       this.alert({ kind: "health_archive", t: now, day: archive.day, reason });
       this.setMeta("healthArchiveTold", archive.day);
     }
@@ -732,9 +766,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
   // The day to import next: the one after the last imported, at most ARCHIVE_CATCHUP days back,
   // and only once its file is due.
   private archiveDue(now: number) {
-    const latest = Math.floor((now - ARCHIVE_DUE) / DAY) * DAY - DAY;
+    const offset = this.archiveOffset;
+    const latest = Math.floor((now - ARCHIVE_DUE - offset) / DAY) * DAY - DAY + offset;
     const done = this.meta("archiveDone");
-    const next = Math.max(done ? Date.parse(`${done}T00:00:00Z`) + DAY : latest, latest - (ARCHIVE_CATCHUP - 1) * DAY);
+    const next = Math.max(done ? Date.parse(`${done}T00:00:00Z`) + offset + DAY : latest, latest - (ARCHIVE_CATCHUP - 1) * DAY);
     return next <= latest ? next : null;
   }
 
@@ -754,22 +789,23 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private async startArchive(now: number) {
     const from = this.archiveDue(now);
     if (from == null || now < Number(this.meta("archiveRetryAt") ?? 0)) return null;
-    const day = iso(from).slice(0, 10);
+    const day = iso(from - this.archiveOffset).slice(0, 10);
+    const source = this.archiveSource(day);
     // After a failure or a restart, minutes already written are skipped.
     const saved = JSON.parse(this.meta("archiveCursor") ?? "null") as { day: string; t: number } | null;
     const cursor = saved?.day === day ? saved.t : from;
     let res: Response;
     try {
       // Bybit's CloudFront refuses requests without a User-Agent (403), which Workers omit.
-      res = await within(fetch(archiveUrl(day), { headers: { "user-agent": "metabear-orderflow (+https://metabear.io)" } }), 30_000, "fetch");
+      res = await within(fetch(source.url, { headers: { "user-agent": "metabear-orderflow (+https://metabear.io)" } }), 30_000, "fetch");
     } catch (err) {
       this.archiveFailed(day, `fetch: ${err}`);
       return null;
     }
-    // Bybit answers 404 until the file is published.
+    // Exchanges answer 404 until the file is published.
     if (res.status === 404) {
       await res.body?.cancel();
-      this.archiveRetry(day, ARCHIVE_WAIT, "waiting", now > from + DAY + ARCHIVE_LATE ? `still missing (HTTP ${res.status})` : undefined);
+      this.archiveRetry(day, ARCHIVE_WAIT, "waiting", now > from + DAY + this.archiveLateMs ? `still missing (HTTP ${res.status})` : undefined);
       return null;
     }
     if (!res.ok || !res.body) {
@@ -777,7 +813,14 @@ export class Collector extends DurableObject<OrderflowEnv> {
       this.archiveFailed(day, `HTTP ${res.status}`);
       return null;
     }
-    const reader = res.body.pipeThrough(new DecompressionStream("gzip")).pipeThrough(new TextDecoderStream()).getReader();
+    let body: ReadableStream<Uint8Array>;
+    try {
+      body = source.zip ? zipEntry(await within(res.arrayBuffer(), 60_000, "download")) : res.body.pipeThrough(new DecompressionStream("gzip"));
+    } catch (err) {
+      this.archiveFailed(day, `${err}`);
+      return null;
+    }
+    const reader = body.pipeThrough(new TextDecoderStream()).getReader();
     this.status.archive = { day, state: "importing", from: iso(cursor) };
     return (this.archive = { day, from, cursor, open: cursor, reader, build: new ArchiveDay(), carry: "" });
   }
@@ -791,11 +834,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
   }
 
   private archiveLine(job: ArchiveJob, line: string) {
-    // The header parses as NaN and passes through; add() skips it.
-    const t = Math.round(Number(line.slice(0, line.indexOf(","))) * 1000);
-    if (t < job.cursor || t >= job.from + DAY) return;
-    const minute = job.build.add(line);
-    if (minute != null && minute > job.open) {
+    const trade = this.archiveTrade(line); // null for the header
+    if (!trade || trade.t < job.cursor || trade.t >= job.from + DAY) return;
+    const minute = job.build.addTrade(trade);
+    if (minute > job.open) {
       this.flushArchive(job, minute);
       job.open = minute;
     }

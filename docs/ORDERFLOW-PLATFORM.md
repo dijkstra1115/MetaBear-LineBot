@@ -19,7 +19,7 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 ```
 
 - **共用模組**：`public/lab/orderflow/bybit.js` 解析 Bybit 訊息、建立足跡與掛單簿，網頁、收集器和封存檔匯入共用同一份程式。
-- **幣安**：東京 VPS 上的中繼程式把幣安串流轉給第二個收集器 `BinanceCollector`，API 加 `?ex=binance` 讀取，見 [ORDERFLOW-BINANCE-RELAY.md](ORDERFLOW-BINANCE-RELAY.md)。網頁標題旁的選單可以切換 Bybit／幣安（預設 Bybit，記住上次的選擇，分享連結帶 `ex`）；選幣安時，瀏覽器直連幣安的成交與掛單串流，另以 REST 讀掛單簿快照和 OI。
+- **四家交易所與全市場**：幣安經東京中繼（[ORDERFLOW-BINANCE-RELAY.md](ORDERFLOW-BINANCE-RELAY.md)），OKX 與 BingX 由 Cloudflare 直連，各自一個收集器；API 加 `?ex=binance|okx|bingx` 讀單一交易所，`?ex=all` 讀四家合併的「全市場」（[ORDERFLOW-MULTI-EXCHANGE.md](ORDERFLOW-MULTI-EXCHANGE.md)）。網頁標題旁的選單切換，預設全市場，記住上次的選擇，分享連結帶 `ex`。
 - **獨立部署**：Worker 設定在 `wrangler.orderflow.jsonc`，和 CRM 後端（`wrangler.jsonc`）分開。路由 `metabear.io/api/orderflow/*` 比後端的 `metabear.io/api/*` 更具體，會優先比對到這個 Worker。
 
 ## 資料來源與限制
