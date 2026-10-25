@@ -26,6 +26,8 @@
     "lab:orderflow:keylevels": "node scripts/orderflow-keylevel-backtest.mjs",
     "orderflow:dev": "wrangler dev -c wrangler.orderflow.jsonc --local --port 8792",
     "orderflow:deploy": "wrangler deploy -c wrangler.orderflow.jsonc",
+    "relay:binance": "node relay/binance-relay.mjs",
+    "relay:deploy": "sh scripts/relay-deploy.sh",
     "lab:strategy:cases": "node --max-old-space-size=6144 scripts/strategy-cases.mjs",
     "lab:flow-arena:long": "node scripts/flow-arena-longrun.mjs",
     "build": "wrangler deploy --dry-run",

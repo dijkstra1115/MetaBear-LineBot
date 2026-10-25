@@ -3,3 +3,6 @@ archive/** -text
 experiments/liquidity/** -text
 # Historical whitespace is part of the verified original bytes.
 legacy/** -text -whitespace
+# Run on Linux (the Binance relay VPS) or by sh, which choke on CRLF.
+relay/** text eol=lf
+*.sh text eol=lf

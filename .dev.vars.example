@@ -12,3 +12,5 @@ BINGX_SECRET_KEY=
 ORDERFLOW_ADMIN_TOKEN=replace-with-a-random-token-at-least-32-characters
 # Shared by the CRM backend and the order-flow Worker: the collector's alerts reach the admin's LINE.
 ORDERFLOW_ALERT_TOKEN=replace-with-a-random-token-at-least-32-characters
+# Order-flow Worker: the Binance relay on the Tokyo VPS connects with this (relay/binance-relay.mjs).
+ORDERFLOW_RELAY_TOKEN=replace-with-a-random-token-at-least-32-characters
