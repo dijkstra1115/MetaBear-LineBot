@@ -23,7 +23,7 @@ export class BinanceCollector extends Collector {
   // Runs beside Bybit while it is compared; its events are recorded and shown, not sent to LINE.
   protected override marketLive = false;
   // Binance's daily aggTrades zip is downloadable from Cloudflare (only the live API refuses it).
-  protected override archiveName = "幣安";
+  protected override archiveName = "Binance";
   protected override archiveLateMs = 12 * 3_600_000;
   protected override archiveSource(day: string) {
     return { url: binanceArchiveUrl(day), zip: true };

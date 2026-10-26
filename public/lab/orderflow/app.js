@@ -33,7 +33,7 @@ const DAY = 86_400_000;
 const query = new URLSearchParams(location.search);
 // The exchange: ?ex= (shared links), else the viewer's last choice, else 全市場, all four merged.
 const EX_KEY = "metabear-orderflow-ex";
-const EX_NAMES = { all: "全市場", binance: "幣安", bybit: "Bybit", okx: "OKX", bingx: "BingX" };
+const EX_NAMES = { all: "全市場", binance: "Binance", bybit: "Bybit", okx: "OKX", bingx: "BingX" };
 const EX = (() => {
   const asked = query.get("ex");
   if (Object.hasOwn(EX_NAMES, asked ?? "")) return asked;
@@ -47,7 +47,7 @@ const EXN = EX_NAMES[EX];
 // The name followed directly by Chinese text: Latin words keep a space before it.
 const EXW = /^[A-Za-z]/.test(EXN) ? `${EXN} ` : EXN;
 // 全市場 takes its prices, long/short ratios, funding and heatmap from Binance.
-const REF_EX = EX === "all" ? "幣安" : EXW;
+const REF_EX = EX === "all" ? "Binance " : EXW;
 // Bybit's answers keep their old URLs (and edge cache entries); Binance's carry ex=binance.
 const api = (path, params) => `${API}/${path}?${params}${EX === "bybit" ? "" : `&ex=${EX}`}`;
 const SHARED_AT = Number(query.get("at")) || 0;
@@ -115,12 +115,14 @@ const NARROW_OFF = new Set(["stats", "ratio", "levels"]);
 let hadSavedPrefs = false;
 const prefs = (() => {
   // Phones show fewer, larger prints by default so 15-minute bars do not drown in bubbles.
-  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: NARROW ? 25 : 10 };
+  // heat: the viewer's heatmap colour range in BTC per $10 of price, or null for automatic.
+  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: NARROW ? 25 : 10, heat: null };
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     hadSavedPrefs = !!saved?.show;
     if (saved?.show) for (const id of Object.keys(out.show)) if (typeof saved.show[id] === "boolean") out.show[id] = saved.show[id];
     if (Number(saved?.printMin) >= PRINT_MIN) out.printMin = Number(saved.printMin);
+    if (saved?.heat && saved.heat.lo > 0 && saved.heat.hi > saved.heat.lo) out.heat = { lo: Number(saved.heat.lo), hi: Number(saved.heat.hi) };
   } catch {}
   // A shared view shows the sender's indicators without changing this browser's saved choice.
   if (query.has("ind")) {
@@ -600,7 +602,7 @@ const PANES = {
   doi: { label: () => `OI 變化 (${unitLabel()})` },
   funding: { label: () => "資金費率（每 8 小時）", key: "funding" },
   ratio: { label: () => `多空比（${REF_EX}全體帳戶）`, key: "global" },
-  top: { label: () => "大戶持倉比（幣安，多 ÷ 空）", key: "topPos" },
+  top: { label: () => "大戶持倉比（Binance，多 ÷ 空）", key: "topPos" },
   imb: { label: () => "掛單簿失衡（現價 ±0.25%，買 − 賣）" },
 };
 
@@ -740,7 +742,9 @@ function drawPrice(L, from, to) {
     ctx.fillText(fmtPrice(p), L.plotW + 8, y);
   }
 
+  heatScale = null;
   if (on("heat") && !drawFineHeat(L, from, to, yOf) && heatCols.size) drawHeat(L, from, to, yOf);
+  syncHeatControls();
   if (on("lmap") && liqMap) drawLiqMap(L, from, to, yOf);
   if (on("lmap") && liqMap) {
     ctx.save();
@@ -827,6 +831,7 @@ function drawPrice(L, from, to) {
   if (on("prints") && !mergedPrints) drawPrints(L, from, to, yOf);
   if (on("liqmark")) drawLiquidations(L, from, to, yOf);
   if (on("events")) drawEvents(L, from, to, yOf);
+  if (heatScale) drawHeatLegend(L);
   ctx.restore();
 
   // last price tag
@@ -890,6 +895,47 @@ function loadFine(t0, t1) {
   }
 }
 
+// Heatmap colours run from the lower bound (faint blue) to the upper (gold) in BTC resting per $10 of
+// price, so the same colour means the same size at every zoom. Automatic: up to the visible book's
+// 98.5th percentile, from 5 % of it.
+let heatScale = null; // { lo, hi, auto, step } of the last drawn heatmap, for the legend and sliders
+function heatRange(perTen, step) {
+  if (prefs.heat) return (heatScale = { ...prefs.heat, auto: false, step });
+  const sorted = perTen.filter((q) => q > 0).sort((x, y) => x - y);
+  const hi = sorted[Math.floor(sorted.length * 0.985)] || 1;
+  return (heatScale = { lo: hi * 0.05, hi, auto: true, step });
+}
+function heatFill(q, { lo, hi }) {
+  if (q < lo) return null;
+  const v = Math.min(1, (q - lo) / (hi - lo || 1));
+  return v > 0.6 ? `rgba(232,189,125,${(0.25 + 0.6 * v).toFixed(3)})` : `rgba(90,140,200,${(0.08 + 0.45 * v).toFixed(3)})`;
+}
+
+// The range in use, at the bottom left of the price pane: what the faintest and the gold cells hold.
+function drawHeatLegend(L) {
+  if (!heatScale) return;
+  const x = 10;
+  const y = L.panes.price.y + L.panes.price.h - 22;
+  const w = 96;
+  const grad = ctx.createLinearGradient(x, 0, x + w, 0);
+  grad.addColorStop(0, "rgba(90,140,200,0.12)");
+  grad.addColorStop(0.6, "rgba(90,140,200,0.5)");
+  grad.addColorStop(0.61, "rgba(232,189,125,0.6)");
+  grad.addColorStop(1, "rgba(232,189,125,0.85)");
+  ctx.save();
+  ctx.fillStyle = "rgba(5,9,15,0.72)";
+  ctx.fillRect(x - 6, y - 6, w + 210, 22);
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y + 1, w, 8);
+  ctx.font = `11px ${MONO}`;
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = C.muted;
+  const step = heatScale.step > 1 ? ` · 每格 ${heatScale.step}` : "";
+  ctx.fillText(`${fmtHeat(heatScale.lo)}–${fmtHeat(heatScale.hi)}+ BTC / $10${heatScale.auto ? "（自動）" : ""}${step}`, x + w + 8, y + 5);
+  ctx.restore();
+}
+const fmtHeat = (q) => (q >= 100 ? Math.round(q).toString() : q >= 10 ? q.toFixed(1) : q >= 1 ? q.toFixed(2) : q.toPrecision(2));
+
 // Book detail for 1- and 5-minute bars: a slice per 10 s inside each bar and price rows of $1,
 // merged to $2, $5 or $10 when rows would be thinner than 2 px. Returns false to fall back to the
 // per-minute columns.
@@ -924,8 +970,9 @@ function drawFineHeat(L, from, to, yOf) {
     }
   }
   if (!cells.length) return false;
-  const all = cells.flatMap(([, rows]) => [...rows.values()]).sort((x, y) => x - y);
-  const ref = all[Math.floor(all.length * 0.985)] || 1;
+  // Rows hold $step of price; scaled to $10 so the colour range reads the same at every zoom.
+  const toTen = 10 / step;
+  const range = heatRange(cells.flatMap(([, rows]) => [...rows.values()].map((q) => q * toTen)), step);
   const w = Math.max(1, (view.barW * BOOK_STEP_MS) / tfMs + 0.5);
   ctx.save();
   ctx.beginPath();
@@ -933,11 +980,11 @@ function drawFineHeat(L, from, to, yOf) {
   ctx.clip();
   for (const [x, rows] of cells) {
     for (const [row, q] of rows) {
-      const v = Math.min(1, q / ref);
-      if (v < 0.05) continue;
+      const fill = heatFill(q * toTen, range);
+      if (!fill) continue;
       const y1 = yOf((row + 1) * step);
       const y2 = yOf(row * step);
-      ctx.fillStyle = v > 0.6 ? `rgba(232,189,125,${(0.25 + 0.6 * v).toFixed(3)})` : `rgba(90,140,200,${(0.08 + 0.45 * v).toFixed(3)})`;
+      ctx.fillStyle = fill;
       ctx.fillRect(x, y1, w, Math.max(1, y2 - y1));
     }
   }
@@ -958,8 +1005,7 @@ function drawHeat(L, from, to, yOf) {
     if (col) cols.push([i, col]);
   }
   if (!cols.length) return;
-  const all = cols.flatMap(([, c]) => c[3]).filter((q) => q > 0).sort((x, y) => x - y);
-  const ref = all[Math.floor(all.length * 0.98)] || 1;
+  const range = heatRange(cols.flatMap(([, c]) => c[3]), TICK / 10);
   const bin = TICK;
   ctx.save();
   ctx.beginPath();
@@ -970,11 +1016,11 @@ function drawHeat(L, from, to, yOf) {
     for (let k = 0; k < sizes.length; k++) {
       const q = sizes[k];
       if (!q) continue;
-      const v = Math.min(1, q / ref);
-      if (v < 0.04) continue;
+      const fill = heatFill(q, range);
+      if (!fill) continue;
       const y1 = yOf((lowBin + k + 1) * bin);
       const y2 = yOf((lowBin + k) * bin);
-      ctx.fillStyle = v > 0.6 ? `rgba(232,189,125,${(0.25 + 0.6 * v).toFixed(3)})` : `rgba(90,140,200,${(0.08 + 0.45 * v).toFixed(3)})`;
+      ctx.fillStyle = fill;
       ctx.fillRect(x, y1, view.barW + 0.5, Math.max(1, y2 - y1));
     }
   }
@@ -2408,6 +2454,39 @@ function buildIndicatorPanel() {
     setLayout("custom");
     redraw();
   });
+  // Heat colour bounds on a log scale, 0.01 to 1,000 BTC per $10.
+  const toBtc = (x) => 0.01 * 10 ** (Number(x) / 20);
+  const lo = $("heat-lo");
+  const hi = $("heat-hi");
+  const setRange = () => {
+    let a = toBtc(lo.value);
+    let b = toBtc(hi.value);
+    if (b <= a) b = a * 1.5;
+    prefs.heat = { lo: a, hi: b };
+    savePrefs();
+    redraw();
+  };
+  lo.addEventListener("input", setRange);
+  hi.addEventListener("input", setRange);
+  $("heat-auto").addEventListener("click", () => {
+    prefs.heat = null;
+    savePrefs();
+    redraw();
+  });
+}
+
+// The sliders follow the range in use; automatic moves them with the visible book.
+const toSlider = (q) => String(Math.round(Math.max(0, Math.min(100, 20 * Math.log10(q / 0.01)))));
+function syncHeatControls() {
+  const box = $("heat-range");
+  if (!box) return;
+  box.hidden = !on("heat");
+  const s = heatScale ?? (prefs.heat ? { ...prefs.heat, auto: false } : null);
+  $("heat-auto").setAttribute("aria-pressed", String(!prefs.heat));
+  $("heat-val").textContent = s ? `${fmtHeat(s.lo)}–${fmtHeat(s.hi)} BTC` : "";
+  if (!s) return;
+  if (document.activeElement !== $("heat-lo")) $("heat-lo").value = toSlider(s.lo);
+  if (document.activeElement !== $("heat-hi")) $("heat-hi").value = toSlider(s.hi);
 }
 buildIndicatorPanel();
 
@@ -3352,8 +3431,8 @@ function fillBarCard(b, events, pinned, liq) {
     }),
   );
   const rows = [];
-  const row = (label, value, cls) => {
-    const r = node("div", "bc-row");
+  const row = (label, value, cls, rowCls = "bc-row") => {
+    const r = node("div", rowCls);
     r.append(node("span", "", label), node("b", cls ?? "", value));
     rows.push(r);
   };
@@ -3384,8 +3463,8 @@ function fillBarCard(b, events, pinned, liq) {
         const e = by.get(ex) ?? [0, 0];
         by.set(ex, [e[0] + 1, e[1] + qty]);
       }
-      const parts = [...by.entries()].sort((x, y) => y[1][1] - x[1][1]).map(([ex, [n, q]]) => `${EX_NAMES[ex] ?? ex} ${n} 筆 ${fmtVol(q)}`);
-      if (parts.length) row("來自", parts.join(" · "));
+      // One line per exchange, largest first, under the total.
+      for (const [ex, [n, q]] of [...by.entries()].sort((x, y) => y[1][1] - x[1][1])) row(EX_NAMES[ex] ?? ex, `${n} 筆 ${fmtVol(q)}`, "", "bc-row bc-sub");
     }
   }
   if (b.partial) row("足跡", "部分分鐘沒有資料");
@@ -3449,7 +3528,7 @@ exPick.addEventListener("change", () => {
   location.href = url.href;
 });
 if (EX !== "bybit")
-  $("er-note").textContent = `這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自${EX === "all" ? "四家交易所合計（價格以幣安為準）的 " : EXW}BTCUSDT 永續 1 分 K。`;
+  $("er-note").textContent = `這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自${EX === "all" ? "四家交易所合計（價格以 Binance 為準）的 " : EXW}BTCUSDT 永續 1 分 K。`;
 
 // ---------- boot ----------
 
@@ -3465,19 +3544,19 @@ if (CASE) {
     if (!store.bars.size) throw new Error("no data");
     $("source").textContent =
       EX === "all"
-        ? "資料：全市場是幣安、Bybit、OKX、BingX 四家 BTCUSDT 永續合約合計。K 線的價格以幣安為準（各家價格差幾美元，混在一起會畫出假影線）；成交量、Delta、CVD、足跡、大單、OI 與爆倉是四家加總。" +
-          "掛單熱力圖、多空比與資金費率用幣安的。OI 只加總整段時間都有紀錄的交易所（BingX 沒有歷史 OI）。BingX 沒有公開的爆倉資料，幣安的爆倉每秒只推一筆。資料保留 30 天。"
+        ? "資料：全市場是 Binance、Bybit、OKX、BingX 四家 BTCUSDT 永續合約合計。K 線的價格以 Binance 為準（各家價格差幾美元，混在一起會畫出假影線）；成交量、Delta、CVD、足跡、大單、OI 與爆倉是四家加總。" +
+          "掛單熱力圖、多空比與資金費率用 Binance 的。OI 只加總整段時間都有紀錄的交易所（BingX 沒有歷史 OI）。BingX 沒有公開的爆倉資料，Binance 的爆倉每秒只推一筆。資料保留 30 天。"
         : EX === "okx"
-        ? "資料：OKX BTCUSDT 永續合約（USDT 本位，僅單一交易所），歷史足跡由 OKX 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄。掛單熱力圖是 OKX 的 400 檔，範圍比幣安、Bybit 窄。多空比是 OKX 全體帳戶多空比。資料保留 30 天。"
+        ? "資料：OKX BTCUSDT 永續合約（USDT 本位，僅單一交易所），歷史足跡由 OKX 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄。掛單熱力圖是 OKX 的 400 檔，範圍比 Binance、Bybit 窄。多空比是 OKX 全體帳戶多空比。資料保留 30 天。"
         : EX === "bingx"
         ? "資料：BingX BTCUSDT 永續合約（USDT 本位，僅單一交易所），由 MetaBear 收集器即時記錄，2026-10-25 起才有足跡，更早只有價格（1 分 K）。掛單熱力圖是 BingX 的前 100 檔。BingX 沒有多空比、歷史 OI 與爆倉資料。資料保留 30 天。"
         : EX === "binance"
-        ? "資料：幣安 BTCUSDT 永續合約（USDT 本位，僅單一交易所），由 MetaBear 東京中繼收集器即時記錄，2026-10-25 起才有完整足跡，更早只有價格（1 分 K）。" +
-          "掛單熱力圖只取現價上下約 0.25%，和 Bybit 的範圍相同；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是幣安全體帳戶多空比，另有大戶持倉比。資料保留 30 天。" +
-          "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；這個收集器只記錄幣安。"
+        ? "資料：Binance BTCUSDT 永續合約（USDT 本位，僅單一交易所），由 MetaBear 東京中繼收集器即時記錄，2026-10-25 起才有完整足跡，更早只有價格（1 分 K）。" +
+          "掛單熱力圖只取現價上下約 0.25%，和 Bybit 的範圍相同；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是 Binance 全體帳戶多空比，另有大戶持倉比。資料保留 30 天。" +
+          "爆倉合併 Bybit（完整）、OKX 與 Binance（每秒只推一筆，連環爆倉時會少算）；這個收集器只記錄 Binance。"
         : "資料：Bybit BTCUSDT 永續合約（USDT 本位，僅單一交易所）。歷史足跡由 Bybit 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄；" +
           "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是 Bybit 全體帳戶多空比。資料保留 30 天。" +
-          "爆倉合併 Bybit（完整）、OKX 與幣安（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
+          "爆倉合併 Bybit（完整）、OKX 與 Binance（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
     build();
     view.end = bars.length + RIGHT_PAD;
     view.barW = NARROW ? 9 : 14;

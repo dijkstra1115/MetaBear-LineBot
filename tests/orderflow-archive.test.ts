@@ -56,10 +56,11 @@ before(async () => {
       durableObjects: { COLLECTOR: { className: "Collector", useSQLite: true } },
       bindings: { ORDERFLOW_ADMIN_TOKEN: token, ORDERFLOW_STREAMS: "off" },
       outboundService: async (request: Request) => {
-        requests.push(request.url);
+        // The collector adds a retry query to get past CDN edges that cached a 404.
+        requests.push(request.url.split("?")[0]);
         // As Bybit's CloudFront does.
         if (!request.headers.get("user-agent")) return new Response("forbidden", { status: 403 });
-        if (request.url !== archiveUrl(day) || serve === "missing") return new Response("not found", { status: 404 });
+        if (request.url.split("?")[0] !== archiveUrl(day) || serve === "missing") return new Response("not found", { status: 404 });
         if (serve === "full") return new Response(archive);
         // Half the file, then the connection drops.
         let sent = false;
