@@ -16,12 +16,15 @@
       // OKX and BingX, reached directly (docs/ORDERFLOW-MULTI-EXCHANGE.md).
       { "name": "OKX", "class_name": "OkxCollector" },
       { "name": "BINGX", "class_name": "BingxCollector" },
+      // 全市場: reads the four and detects events on the merged market.
+      { "name": "MARKET", "class_name": "MarketCollector" },
     ],
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Collector"] },
     { "tag": "v2", "new_sqlite_classes": ["BinanceCollector"] },
     { "tag": "v3", "new_sqlite_classes": ["OkxCollector", "BingxCollector"] },
+    { "tag": "v4", "new_sqlite_classes": ["MarketCollector"] },
   ],
   "triggers": { "crons": ["*/5 * * * *"] },
   // Alerts reach the admin's LINE through the CRM backend (src/orderflow-alert.ts), which holds

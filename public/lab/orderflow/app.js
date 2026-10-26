@@ -14,6 +14,7 @@ import { readingsAt } from "./metrics.js";
 import { Notifier } from "./notify.js";
 import { Player, drawOverlay, prepare } from "./replay.js";
 import { LEVEL_LABELS, priorDayLevels } from "./keylevels.js";
+import { crossClusters } from "./cross.js";
 import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
 import { BAR_KINDS } from "./watch.js";
 import { maybeStartGuide, startGuide } from "./guide.js";
@@ -116,7 +117,7 @@ let hadSavedPrefs = false;
 const prefs = (() => {
   // Phones show fewer, larger prints by default so 15-minute bars do not drown in bubbles.
   // heat: the viewer's heatmap colour range in BTC per $10 of price, or null for automatic.
-  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: NARROW ? 25 : 10, heat: null };
+  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: EX === "all" ? (NARROW ? 50 : 25) : NARROW ? 25 : 10, heat: null };
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     hadSavedPrefs = !!saved?.show;
@@ -160,7 +161,7 @@ const writeKey = (key, value) => {
   } catch {}
 };
 let layoutId = startLayout({ saved: readKey(LAYOUT_KEY), hasSavedIndicators: hadSavedPrefs, shared: query.has("ind") });
-if (layoutId !== "custom" && !query.has("ind")) Object.assign(prefs, layoutPrefs(layoutId, INDICATORS, { narrow: NARROW }) ?? {}, layoutId === "pro" ? { printMin: prefs.printMin } : {});
+if (layoutId !== "custom" && !query.has("ind")) Object.assign(prefs, layoutPrefs(layoutId, INDICATORS, { narrow: NARROW, merged: EX === "all" }) ?? {}, layoutId === "pro" ? { printMin: prefs.printMin } : {});
 let railOpen = (() => {
   const saved = readKey(RAIL_KEY);
   if (saved === "open" || saved === "closed") return saved === "open";
@@ -490,7 +491,7 @@ function updateEvents() {
   events = detect(aggregateSignals(mergedRows, TICK, mergedOi, now)).map((e) => ({ ...e, name: SIGNALS[e.kind].name, line: `${SIGNALS[e.kind].name} ${e.note}` }));
 }
 
-const EVENT_NAMES = { print: "大單", liq: "連環爆倉", oi: "OI 異動", wall: "掛單牆", wall_eaten: "牆被吃", wall_pulled: "牆撤單", spoof: "誘單", iceberg: "冰山" };
+const EVENT_NAMES = { cross: "跨所同步大單", print: "大單", liq: "連環爆倉", oi: "OI 異動", wall: "掛單牆", wall_eaten: "牆被吃", wall_pulled: "牆撤單", spoof: "誘單", iceberg: "冰山" };
 const UP_SIDES = new Set(["up", "buy", "bid", "short"]);
 const DOWN_SIDES = new Set(["down", "sell", "ask", "long"]);
 
@@ -507,8 +508,8 @@ async function loadEvents() {
     const res = await fetch(api("events", `since=${since}`), FRESH);
     if (!res.ok) return;
     const list = (await res.json()).events;
-    liveEvents = list.map(liveEvent);
     rawEvents = list;
+    liveEvents = rawEvents.map(liveEvent);
     notifier.ingest(list);
     renderNarration();
     maybeOpenSharedReplay();
@@ -1072,7 +1073,11 @@ function drawPrints(L, from, to, yOf, merged = false) {
   }
   const shown = [];
   for (let k = lo; k < printList.length && printList[k][0] < t1; k++) if (printList[k][3] >= prefs.printMin) shown.push(printList[k]);
+  const cross = crossMembers();
   if (merged) {
+    // A bar side holding a 跨所同步大單 gets a gold ring around its bubble.
+    const ringed = new Set();
+    for (const p of shown) if (cross.has(p)) ringed.add(`${barIndex.get(Math.floor(p[0] / tfMs) * tfMs)}|${p[1]}`);
     const groups = mergePrints(shown, (t) => barIndex.get(Math.floor(t / tfMs) * tfMs) ?? null).sort((a, b) => a.qty - b.qty);
     ctx.font = `600 10px ${MONO}`;
     ctx.textAlign = "center";
@@ -1089,6 +1094,7 @@ function drawPrints(L, from, to, yOf, merged = false) {
       ctx.strokeStyle = `rgba(${rgb},0.8)`;
       ctx.fill();
       ctx.stroke();
+      if (ringed.has(`${g.i}|${g.side}`)) crossRing(x, y, r);
       if (g.count >= 3 && r >= 9) {
         ctx.fillStyle = `rgb(${rgb})`;
         ctx.fillText(String(g.count), x, y + 0.5);
@@ -1099,7 +1105,8 @@ function drawPrints(L, from, to, yOf, merged = false) {
     return;
   }
   shown.sort((a, b) => a[3] - b[3]); // largest on top
-  for (const [t, side, price, qty] of shown) {
+  for (const p of shown) {
+    const [t, side, price, qty] = p;
     const i = barIndex.get(Math.floor(t / tfMs) * tfMs);
     if (i == null) continue;
     const x = xOf(i, L) + ((t - bars[i].t) / tfMs) * view.barW;
@@ -1110,7 +1117,30 @@ function drawPrints(L, from, to, yOf, merged = false) {
     ctx.strokeStyle = side === "buy" ? C.buy : C.sell;
     ctx.fill();
     ctx.stroke();
+    if (cross.has(p)) crossRing(x, yOf(price), r);
   }
+}
+
+// Prints that belong to a 跨所同步大單 (three or more exchanges, same side, within 10 s, each at least
+// the chosen size). 全市場 only; recomputed when the prints or the size change.
+let crossCache = { key: "", members: new Set() };
+function crossMembers() {
+  if (EX !== "all") return crossCache.members;
+  const key = `${printList.length}|${printList.at(-1)?.[0] ?? 0}|${prefs.printMin}`;
+  if (key !== crossCache.key) crossCache = { key, members: new Set(crossClusters(printList, { min: prefs.printMin }).flatMap((c) => c.prints)) };
+  return crossCache.members;
+}
+
+// A dashed pale-gold ring a little outside the bubble, so it never reads as a sell bubble's orange edge.
+function crossRing(x, y, r) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r + 4.5, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,236,190,0.95)";
+  ctx.lineWidth = 1.6;
+  ctx.setLineDash([3, 3]);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawVwap(L, from, to, yOf) {
@@ -2494,7 +2524,7 @@ const layoutButtons = [...document.querySelectorAll("[data-layout]")];
 // "custom" only marks the buttons; a named layout also sets the indicators and the rail.
 function setLayout(id) {
   if (id !== "custom") {
-    const next = layoutPrefs(id, INDICATORS, { narrow: NARROW });
+    const next = layoutPrefs(id, INDICATORS, { narrow: NARROW, merged: EX === "all" });
     for (const [key, shown] of Object.entries(next.show)) {
       if (prefs.show[key] === shown) continue;
       prefs.show[key] = shown;

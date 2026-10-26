@@ -1,7 +1,7 @@
 // 一鍵覆盤: the script for replaying one narration story (narrate.js) bar by bar on 1-minute bars.
 // Pure functions of the story and the 1-minute rows [t, o, h, l, c, …]; captions and the closing
 // facts only describe what happened, from the event lines and the bars (docs/VISION.md).
-import { NOTIFY_KINDS, choiceOf } from "./notify.js";
+import { ALL_KINDS, NOTIFY_KINDS, choiceOf } from "./notify.js";
 import { LEVEL_LABELS } from "./keylevels.js";
 import { BAR_KINDS } from "./watch.js";
 import { detailOf, fmt, levelPriceOf, spaced, timeOf } from "./narrate.js";
@@ -13,7 +13,7 @@ export const TAIL_MS = 15 * MINUTE; // what came after the last one
 export const START_MS = 5 * MINUTE; // bars already drawn when playback starts
 // One bar a second, faster for long stories so a replay lasts about a minute and a half at 1×.
 export const barsPerSecond = (win) => Math.max(1, Math.round((win.to - win.from) / MINUTE / 90));
-const KIND = new Map(NOTIFY_KINDS.map((k) => [k.id, k]));
+const KIND = new Map(ALL_KINDS.map((k) => [k.id, k]));
 const kindOf = (e) => KIND.get(choiceOf(e.kind));
 const kindsOf = (group) => new Set(group.items.map(kindOf));
 const CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];

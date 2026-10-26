@@ -40,6 +40,8 @@ export interface OrderflowEnv {
   // OKX and BingX, reached directly (src/orderflow/okx-collector.ts, bingx-collector.ts).
   OKX?: DurableObjectNamespace<Collector>;
   BINGX?: DurableObjectNamespace<Collector>;
+  // 全市場: the four merged, with events on the whole market (src/orderflow/market-collector.ts).
+  MARKET?: DurableObjectNamespace<Collector>;
   ORDERFLOW_RELAY_TOKEN?: string;
   ORDERFLOW_ADMIN_TOKEN?: string;
   ORDERFLOW_STREAMS?: string; // "off" keeps the object from connecting (tests)
@@ -62,9 +64,9 @@ const HEALTH_ERRORS = 10; // errors within 10 minutes
 const HEALTH_REPEAT_MS = 3_600_000;
 // Bar detectors run once a 5-minute bar has settled (late trades in), over enough history for their
 // z-scores and swing levels, at most once per kind and direction in half an hour like detect().
-const BAR_SETTLE_MS = 15_000;
-const BAR_HISTORY_MS = 6 * 3_600_000;
-const BAR_COOLDOWN_MS = 30 * 60_000;
+export const BAR_SETTLE_MS = 15_000;
+export const BAR_HISTORY_MS = 6 * 3_600_000;
+export const BAR_COOLDOWN_MS = 30 * 60_000;
 // Public events (GET /events): the newest at-level market events, at most this many per request.
 const EVENTS_MAX = 2_000;
 type AlertConfig = typeof ALERT_DEFAULTS;
@@ -137,18 +139,18 @@ export class Collector extends DurableObject<OrderflowEnv> {
   protected lastTradeT = 0;
   protected lastPrice = 0;
   protected alertConfig: AlertConfig = { ...ALERT_DEFAULTS };
-  private liqWatch = new LiqWatch(this.alertConfig);
-  private oiWatch = new OiWatch(this.alertConfig);
+  protected liqWatch = new LiqWatch(this.alertConfig);
+  protected oiWatch = new OiWatch(this.alertConfig);
   protected wallWatch = new WallWatch(this.alertConfig);
   private iceWatch = new IcebergWatch(this.alertConfig);
   protected spoofWatch = new SpoofWatch(this.alertConfig);
   // Key levels of the previous and current UTC day, from closed persisted minutes; rebuilt
   // from storage after a restart or an archive import (which can correct the previous day).
-  private levelBook = new LevelBook(TICK);
-  private levelsStale = true;
+  protected levelBook = new LevelBook(TICK);
+  protected levelsStale = true;
   private levelsUntil = 0; // minutes before this have been fed to the book
   private levelSent = new Map<string, number>(); // kind|level|side → time last let through
-  private barSent = new Map<string, number>(); // bar kind:dir → close of the bar last reported
+  protected barSent = new Map<string, number>(); // bar kind:dir → close of the bar last reported
   private archive: ArchiveJob | null = null;
   protected status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[], archive: null as Record<string, unknown> | null };
   protected source = "bybit";
@@ -197,6 +199,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
     // be forwarded. Rows from before count as forwarded, so a deploy never sends old events.
     if (!this.rows("PRAGMA table_info(alerts)").some((c) => c.name === "fanout"))
       this.sql.exec("ALTER TABLE alerts ADD COLUMN repeat INTEGER NOT NULL DEFAULT 0; ALTER TABLE alerts ADD COLUMN fanout INTEGER NOT NULL DEFAULT 1");
+    // Added with 全市場: which exchange a merged print came from (null in one exchange's collector).
+    if (!this.rows("PRAGMA table_info(prints)").some((c) => c.name === "ex")) this.sql.exec("ALTER TABLE prints ADD COLUMN ex TEXT");
     // Added with Binance: top-trader position and account ratios (Bybit has none, so they stay null).
     if (!this.rows("PRAGMA table_info(ratios)").some((c) => c.name === "top_pos")) this.sql.exec("ALTER TABLE ratios ADD COLUMN top_pos REAL; ALTER TABLE ratios ADD COLUMN top_acc REAL");
     // The current minute is persisted every alarm; pick it back up so a restart only loses
@@ -490,7 +494,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
 
   // Feeds closed minutes to the level book: the previous and current UTC day after a restart or
   // an archive import, then only the minutes closed since. Cheap when nothing new has closed.
-  private updateLevels() {
+  protected updateLevels() {
     const current = Math.floor(Date.now() / MINUTE) * MINUTE;
     let from = this.levelsUntil;
     if (this.levelsStale) {
@@ -588,7 +592,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     }
   }
 
-  private async flushAlerts() {
+  protected async flushAlerts() {
     await this.fanOut();
     const mode = this.env.ORDERFLOW_ALERTS ?? "log";
     let pending = this.rows("SELECT id, t, kind, text FROM alerts WHERE state = 'pending' ORDER BY id");
@@ -926,7 +930,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   // ---------- queries ----------
 
   // Rows are stored as JSON text; responses are assembled from it without re-parsing.
-  private series(from: number, to: number) {
+  protected series(from: number, to: number) {
     const bars = new Map<number, string>(this.rows("SELECT t, row FROM bars WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [Number(r.t), String(r.row)]));
     for (const [t, bar] of this.bars) if (t >= from && t < to) bars.set(t, JSON.stringify(barRow(t, bar)));
     const heat = new Map<number, string>(this.rows("SELECT t, row FROM heat WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [Number(r.t), String(r.row)]));
@@ -936,7 +940,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       heat: `[${[...heat.entries()].sort((a, b) => a[0] - b[0]).map((e) => e[1]).join(",")}]`,
       metrics: JSON.stringify(this.metrics(from, to)),
       liquidations: JSON.stringify(this.rows("SELECT t, side, price, qty, ex FROM liqs WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [r.t, r.side, r.price, r.qty, r.ex])),
-      prints: JSON.stringify(this.rows("SELECT t, side, price, qty FROM prints WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [r.t, r.side, r.price, r.qty])),
+      prints: JSON.stringify(this.rows("SELECT t, side, price, qty, ex FROM prints WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => (r.ex ? [r.t, r.side, r.price, r.qty, r.ex] : [r.t, r.side, r.price, r.qty]))),
     };
   }
 
@@ -972,7 +976,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     return rows;
   }
 
-  private respond(parts: Record<string, string>, extra: Record<string, unknown>) {
+  protected respond(parts: Record<string, string>, extra: Record<string, unknown>) {
     const head = JSON.stringify({ symbol: SYMBOL, tick: TICK, source: this.source, ...extra }).slice(0, -1);
     const body = `${head},${Object.entries(parts).map(([k, v]) => `"${k}":${v}`).join(",")}}`;
     return new Response(body, { headers: { "content-type": "application/json; charset=utf-8" } });
