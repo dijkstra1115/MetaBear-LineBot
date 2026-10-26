@@ -796,8 +796,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
     const cursor = saved?.day === day ? saved.t : from;
     let res: Response;
     try {
-      // Bybit's CloudFront refuses requests without a User-Agent (403), which Workers omit.
-      res = await within(fetch(source.url, { headers: { "user-agent": "metabear-orderflow (+https://metabear.io)" } }), 30_000, "fetch");
+      // Bybit's CloudFront refuses requests without a User-Agent (403), which Workers omit. No cache:
+      // a 404 cached before the file was published kept OKX's 10/25 "missing" for hours after.
+      res = await within(fetch(source.url, { cache: "no-store", headers: { "user-agent": "metabear-orderflow (+https://metabear.io)" } }), 30_000, "fetch");
     } catch (err) {
       this.archiveFailed(day, `fetch: ${err}`);
       return null;

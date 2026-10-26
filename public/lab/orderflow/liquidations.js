@@ -43,4 +43,4 @@ export const LIQ_FEEDS = [
   },
 ];
 
-export const LIQ_EXCHANGES = { bybit: "Bybit", okx: "OKX", binance: "幣安" };
+export const LIQ_EXCHANGES = { bybit: "Bybit", okx: "OKX", binance: "Binance" };
