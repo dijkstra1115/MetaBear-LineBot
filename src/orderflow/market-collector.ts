@@ -226,12 +226,18 @@ export class MarketCollector extends Collector {
   }
 
   override async fetch(request: Request): Promise<Response> {
-    // POST /archive (the admin token at the Worker): merge today and yesterday again now.
-    if (new URL(request.url).pathname === "/archive" && request.method === "POST") {
+    // POST /archive (the admin token at the Worker): merge today and yesterday again now. With
+    // ?days=all every day again, for history imported after this collector first merged it (a
+    // new market's collector starts before its backfill lands and merges empty days).
+    const url = new URL(request.url);
+    if (url.pathname === "/archive" && request.method === "POST") {
       const today = Math.floor(Date.now() / DAY) * DAY;
+      const all = url.searchParams.get("days") === "all";
       this.sql.exec("DELETE FROM meta WHERE k IN (?, ?)", `merged:${today}`, `merged:${today - DAY}`);
+      if (all) this.sql.exec("DELETE FROM meta WHERE k = 'mergedDays'");
       await this.wake();
-      return Response.json({ remerge: [today - DAY, today].map((t) => new Date(t).toISOString().slice(0, 10)) });
+      const days = all ? Array.from({ length: HISTORY_DAYS }, (_, k) => today - k * DAY).reverse() : [today - DAY, today];
+      return Response.json({ remerge: days.map((t) => new Date(t).toISOString().slice(0, 10)) });
     }
     return super.fetch(request);
   }
