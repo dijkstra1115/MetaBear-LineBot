@@ -2,12 +2,14 @@
 // interest, funding and liquidations from OKX's public WebSocket; history from its REST and the
 // daily trade archive (zipped, one file per Beijing-time day).
 import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
-import { OKX_CHANNELS, OKX_INST, OKX_REST, OKX_WS, OkxBook, okxArchiveUrl, parseOkxArchiveLine, parseOkxCandles, parseOkxTrades } from "../../public/lab/orderflow/okx.js";
+import { OKX_CHANNELS, OKX_INST, OKX_REST, OKX_WS, OkxBook, missingRanges, okxArchiveUrl, parseOkxArchiveLine, parseOkxCandles, parseOkxTrades } from "../../public/lab/orderflow/okx.js";
 import { BACKFILL_DAYS, DAY, FIVE_MIN, MINUTE, type Trade } from "./collector";
 import { DirectCollector } from "./direct-collector";
 
 const OKX_LIQ = LIQ_FEEDS.find((f) => f.ex === "okx")!;
 const HOUR = 3_600_000;
+const RECENT_CANDLES = 300; // /market/candles serves the newest 300 minutes in one request
+const RECENT_SPAN = 290 * 60_000; // what it covers for sure, a few minutes short of 300
 
 export class OkxCollector extends DirectCollector {
   protected override book = new OkxBook();
@@ -124,19 +126,28 @@ export class OkxCollector extends DirectCollector {
     }
   }
 
-  // Minutes the collector never saw get 1-minute candles, 100 a page going back two days, paced
-  // under OKX's rate limit. OKX counts requests per IP and Cloudflare's outbound IPs are shared, so
-  // a refusal waits 10 minutes instead of retrying every alarm.
+  // Minutes the collector never saw get 1-minute candles, and only those: OKX limits candles per IP
+  // and Cloudflare's outbound IPs are shared, so asking for two days every hour was refused every
+  // time (50011). Gaps in the last five hours come from /market/candles (300 at once, a looser
+  // limit); older ones page back through /market/history-candles. A refusal waits 10 minutes.
   protected override async fillKlines() {
     const now = Date.now();
     if (now - Number(this.meta("klinesFilled") ?? 0) < HOUR || now < Number(this.meta("klinesRetryAt") ?? 0)) return;
     const end = Math.floor(now / MINUTE) * MINUTE - 2 * MINUTE;
+    const gaps = missingRanges(new Set(this.rows("SELECT t FROM bars WHERE t >= ? AND t <= ?", end - 2 * DAY, end).map((r) => Number(r.t))), end - 2 * DAY, end);
+    const store = (list: number[][], from: number, to: number) => {
+      for (const [t, o, h, l, c] of list) if (t >= from && t <= to) this.sql.exec("INSERT OR IGNORE INTO bars (t, src, row) VALUES (?, 'kline', ?)", t, JSON.stringify([t, o, h, l, c, []]));
+    };
     try {
-      for (let after = end + MINUTE; after > end - 2 * DAY; after -= 100 * MINUTE) {
-        const list = parseOkxCandles(await this.get(`/api/v5/market/history-candles?instId=${OKX_INST}&bar=1m&after=${after}&limit=100`));
-        for (const [t, o, h, l, c] of list) if (t <= end) this.sql.exec("INSERT OR IGNORE INTO bars (t, src, row) VALUES (?, 'kline', ?)", t, JSON.stringify([t, o, h, l, c, []]));
-        if (list.length < 100) break;
-        await new Promise((r) => setTimeout(r, 500)); // history-candles allows 10 requests in 2 s per IP
+      if (gaps.some(([, to]) => to > end - RECENT_SPAN)) {
+        const recent = parseOkxCandles(await this.get(`/api/v5/market/candles?instId=${OKX_INST}&bar=1m&limit=${RECENT_CANDLES}`));
+        for (const [from, to] of gaps) store(recent, from, to);
+      }
+      for (const [from, to] of gaps.filter(([f]) => f <= end - RECENT_SPAN)) {
+        for (let after = Math.min(to, end - RECENT_SPAN) + MINUTE; after > from; after -= 100 * MINUTE) {
+          store(parseOkxCandles(await this.get(`/api/v5/market/history-candles?instId=${OKX_INST}&bar=1m&after=${after}&limit=100`)), from, to);
+          await new Promise((r) => setTimeout(r, 500)); // history-candles allows 10 requests in 2 s per IP
+        }
       }
       this.setMeta("klinesFilled", now);
     } catch (err) {
