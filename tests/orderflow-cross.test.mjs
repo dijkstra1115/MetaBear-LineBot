@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { chapterCard, chaptersOf } from "../public/lab/orderflow/chapters.js";
 import { crossClusters } from "../public/lab/orderflow/cross.js";
 import { cardOf, detailOf, filterGroups, groupEvents } from "../public/lab/orderflow/narrate.js";
-import { choiceOf, kindNames } from "../public/lab/orderflow/notify.js";
+import { NOTIFY_KINDS, choiceOf, kindNames, readSettings, storedKinds, upgradeKinds } from "../public/lab/orderflow/notify.js";
 
 const T0 = Date.UTC(2026, 9, 26, 6, 0);
 
@@ -28,7 +28,7 @@ test("same-side prints from three or more exchanges within 10 s form one cluster
   assert.equal(crossClusters(prints.filter((p) => p[4] !== "okx"), { min: 10, exchanges: 2 }).length, 1);
 });
 
-test("跨所同步大單 reads as its own story, under 大單爆倉, and is not a notification choice", () => {
+test("跨所同步大單 reads as its own story under 大單爆倉", () => {
   const e = {
     t: T0,
     kind: "cross",
@@ -49,6 +49,25 @@ test("跨所同步大單 reads as its own story, under 大單爆倉, and is not 
   assert.equal(filterGroups(groups, "book").length, 0);
   const [chapter] = chaptersOf(groupEvents([e]));
   assert.match(chapterCard(chapter).text, /OKX、Bybit、Binance 10 秒內同時主動賣 57\.0 BTC/);
-  // Notifications only list the collector's kinds, so a subscriber's 「全部」 stays 全部.
-  assert.doesNotMatch(kindNames(["sweep"]), /跨所/);
+});
+
+test("跨所同步大單 is a notification choice that 「全部」 subscribers get without choosing again", () => {
+  const before = NOTIFY_KINDS.map((k) => k.id).filter((id) => id !== "cross");
+  assert.equal(before.length, 11);
+  // Saved before the type existed: every type then, so 全部 now includes it.
+  assert.ok(upgradeKinds(before).includes("cross"));
+  assert.equal(kindNames(upgradeKinds(before)), "全部");
+  assert.equal(readSettings({ kinds: before }).kinds.length, 12);
+  // A partial choice stays as it was.
+  assert.deepEqual(upgradeKinds(["sweep", "print"]), ["sweep", "print"]);
+  assert.deepEqual(readSettings({ kinds: ["sweep"] }).kinds, ["sweep"]);
+  // Someone who chose the new type alone keeps that.
+  assert.deepEqual(upgradeKinds(["cross"]), ["cross"]);
+  // Turning it off with everything else on is stored as declined and stays off.
+  const declined = storedKinds(before);
+  assert.deepEqual(declined.slice(-1), ["!cross"]);
+  assert.deepEqual(upgradeKinds(declined), before);
+  assert.equal(readSettings({ kinds: declined }).kinds.length, 11);
+  assert.deepEqual(storedKinds([...before, "cross"]), [...before, "cross"], "nothing declined");
+  assert.deepEqual(storedKinds(["sweep"]), ["sweep"], "a partial choice is stored as it is");
 });

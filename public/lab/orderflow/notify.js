@@ -54,6 +54,14 @@ export const NOTIFY_KINDS = [
     about: "成交量明顯放大，收盤站到近兩小時的區間之外，主動買賣差也站在同一邊。",
   },
   { id: "print", name: "大單", group: "live", lesson: "footprint", hint: "單筆主動大單", about: "一張主動單在同一瞬間吃掉大量掛單，成交量遠大於平常的單筆。" },
+  {
+    id: "cross",
+    name: "跨所同步大單",
+    group: "live",
+    lesson: "footprint",
+    hint: "三家以上交易所幾秒內同方向的大單",
+    about: "三家以上的交易所在 10 秒內出現同方向的大單，代表不只一個市場的大戶同時在買或賣，比單一交易所的大單更值得注意。只在全市場偵測。",
+  },
   { id: "liq", name: "連環爆倉", group: "live", lesson: "liquidation", hint: "短時間內同方向大量爆倉", about: "同一方向的強制平倉在一分鐘內大量出現。" },
   {
     id: "oi",
@@ -82,21 +90,32 @@ export const NOTIFY_KINDS = [
     about: "同一價格的成交量遠大於掛單簿上顯示過的量，掛單一直被補上。",
   },
 ];
-// Kinds the lab finds itself rather than the collector: shown in the narration and on the chart, not
-// offered as notifications (the collector's feed never carries them).
-export const LOCAL_KINDS = [
-  {
-    id: "cross",
-    name: "跨所同步大單",
-    group: "live",
-    lesson: "footprint",
-    hint: "多家交易所幾秒內同方向的大單",
-    about: "三家以上的交易所在 10 秒內出現同方向的大單，代表不只一個市場的大戶同時在買或賣，比單一交易所的大單更值得注意。",
-  },
-];
-export const ALL_KINDS = [...NOTIFY_KINDS, ...LOCAL_KINDS];
-const CHOICE_OF = new Map(ALL_KINDS.flatMap((k) => (k.kinds ?? [k.id]).map((kind) => [kind, k.id])));
+export const ALL_KINDS = NOTIFY_KINDS;
+const CHOICE_OF = new Map(NOTIFY_KINDS.flatMap((k) => (k.kinds ?? [k.id]).map((kind) => [kind, k.id])));
 const IDS = NOTIFY_KINDS.map((k) => k.id);
+
+// Settings store the chosen types, not "全部", so a type added later would leave out everyone who had
+// chosen them all. Each added type lists the types there were before it: a saved list holding all of
+// those gets the new one too, while a partial choice stays as it was. Lists saved since the type
+// exists record a declined one as "!id", so turning it off is not undone.
+const ADDED_KINDS = [["cross", ["absorption", "sweep", "divergence", "stackedRetest", "breakout", "print", "liq", "oi", "wall", "spoof", "iceberg"]]];
+
+/** A stored list of types, as chosen: types added since it was saved join a list that had them all. */
+export function upgradeKinds(kinds) {
+  const out = kinds.filter((k) => !k.startsWith("!"));
+  for (const [id, before] of ADDED_KINDS)
+    if (!out.includes(id) && !kinds.includes(`!${id}`) && before.every((k) => out.includes(k))) out.push(id);
+  return out;
+}
+
+/**
+ * The list to store: the chosen types, plus "!id" for an added type left out of a list that has every
+ * type before it (the one case upgradeKinds would otherwise read as chosen).
+ */
+export function storedKinds(kinds) {
+  const declined = ADDED_KINDS.filter(([id, before]) => !kinds.includes(id) && before.every((k) => kinds.includes(k)));
+  return [...kinds, ...declined.map(([id]) => `!${id}`)];
+}
 const PREFS_KEY = "metabear-orderflow-notify";
 const TITLE = "MetaBear 關鍵位事件";
 const DISCLAIMER = "盤面事件，不是買賣建議。";
@@ -129,7 +148,10 @@ export function readSettings(saved) {
   const out = defaultSettings();
   if (!saved || typeof saved !== "object") return out;
   if (typeof saved.on === "boolean") out.on = saved.on;
-  if (Array.isArray(saved.kinds)) out.kinds = IDS.filter((id) => saved.kinds.includes(id));
+  if (Array.isArray(saved.kinds)) {
+    const kinds = upgradeKinds(saved.kinds);
+    out.kinds = IDS.filter((id) => kinds.includes(id));
+  }
   if (Number.isInteger(saved.daily) && saved.daily >= 1 && saved.daily <= LINE_DAILY_MAX) out.daily = saved.daily;
   if (QUIET_CHOICES.some(([v]) => v === saved.quiet)) out.quiet = saved.quiet;
   return out;
@@ -279,7 +301,7 @@ export class Notifier {
 
   save() {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify(this.settings));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ ...this.settings, kinds: storedKinds(this.settings.kinds) }));
     } catch {}
   }
 

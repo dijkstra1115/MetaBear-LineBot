@@ -11,7 +11,7 @@ import { recordOutgoing, setOutgoingStatus } from "./conversations";
 import { reasons } from "./automation";
 import { taipeiDay } from "./bingx";
 import { getTeam } from "./team";
-import { NOTIFY_KINDS, choiceOf, inQuiet } from "../public/lab/orderflow/notify.js";
+import { NOTIFY_KINDS, choiceOf, inQuiet, storedKinds, upgradeKinds } from "../public/lab/orderflow/notify.js";
 
 export type OrderflowAlertMessage = { kind: "orderflow-alert-delivery"; id: string };
 export type AlertSettings = { kinds: string[]; daily: number; quiet: string };
@@ -50,7 +50,8 @@ export async function alertEligibility(db: D1Database, userId: string) {
 
 export async function getSubscription(db: D1Database, userId: string): Promise<AlertSettings | null> {
   const row = await db.prepare("SELECT kinds,daily,quiet FROM orderflow_alert_subs WHERE line_user_id=?").bind(userId).first<{ kinds: string; daily: number; quiet: string }>();
-  return row ? { kinds: row.kinds.split(",").filter(Boolean), daily: row.daily, quiet: row.quiet } : null;
+  // Stored lists predate later types; upgradeKinds gives 「全部」 subscribers the new ones.
+  return row ? { kinds: upgradeKinds(row.kinds.split(",").filter(Boolean)), daily: row.daily, quiet: row.quiet } : null;
 }
 
 export async function setSubscription(db: D1Database, userId: string, settings: AlertSettings | null) {
@@ -62,7 +63,7 @@ export async function setSubscription(db: D1Database, userId: string, settings: 
     .prepare(
       "INSERT INTO orderflow_alert_subs(line_user_id,kinds,daily,quiet,created_at,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(line_user_id) DO UPDATE SET kinds=excluded.kinds,daily=excluded.daily,quiet=excluded.quiet,updated_at=excluded.updated_at",
     )
-    .bind(userId, settings.kinds.join(","), settings.daily, settings.quiet, now(), now())
+    .bind(userId, storedKinds(settings.kinds).join(","), settings.daily, settings.quiet, now(), now())
     .run();
 }
 
@@ -135,7 +136,7 @@ export async function enqueueOrderflowEvents(env: Env, value: unknown) {
     const choice = choiceOf(e.kind);
     const day = taipeiDay(e.t);
     for (const s of subs) {
-      if (!choice || !s.kinds.split(",").includes(choice) || inQuiet(s.quiet, taipeiHour(e.t))) continue;
+      if (!choice || !upgradeKinds(s.kinds.split(",")).includes(choice) || inQuiet(s.quiet, taipeiHour(e.t))) continue;
       const key = `${s.line_user_id}|${day}`;
       if ((used.get(key) ?? 0) >= s.daily) continue;
       used.set(key, (used.get(key) ?? 0) + 1);
@@ -194,7 +195,7 @@ export async function processOrderflowDelivery(message: OrderflowAlertMessage, e
     const still = await env.DB.prepare(`SELECT s.kinds FROM orderflow_alert_subs s JOIN customers c ON c.line_user_id=s.line_user_id WHERE s.line_user_id=? AND ${ELIGIBLE}`)
       .bind(delivery.line_user_id, team.revision)
       .first<{ kinds: string }>();
-    if (!still || !still.kinds.split(",").includes(choiceOf(delivery.kind) ?? "")) return await finish("skipped", "已退訂、封鎖或不再符合會員資格");
+    if (!still || !upgradeKinds(still.kinds.split(",")).includes(choiceOf(delivery.kind) ?? "")) return await finish("skipped", "已退訂、封鎖或不再符合會員資格");
     const messages = [{ type: "text" as const, text: delivery.body }];
     await recordOutgoing(env, delivery.line_user_id, "orderflow:" + delivery.id, messages);
     const response = await fetch("https://api.line.me/v2/bot/message/push", {
