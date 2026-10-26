@@ -15,7 +15,7 @@ trap 'rm -rf "$STAGE"' EXIT
 
 mkdir -p "$STAGE/relay" "$STAGE/public/lab/orderflow"
 cp "$ROOT/relay/binance-relay.mjs" "$ROOT/relay/metabear-relay.service" "$STAGE/relay/"
-cp "$ROOT/public/lab/orderflow/binance.js" "$ROOT/public/lab/orderflow/bybit.js" "$STAGE/public/lab/orderflow/"
+cp "$ROOT/public/lab/orderflow/binance.js" "$ROOT/public/lab/orderflow/bybit.js" "$ROOT/public/lab/orderflow/markets.js" "$STAGE/public/lab/orderflow/"
 # Node resolves the shared modules as ES modules from the nearest package.json.
 printf '{ "type": "module" }\n' > "$STAGE/package.json"
 

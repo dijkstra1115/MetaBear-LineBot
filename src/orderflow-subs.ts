@@ -3,7 +3,8 @@
 // /api/internal/orderflow-alert with { events }); one delivery per subscriber who chose that type
 // is queued, within their daily count and outside their quiet hours, and pushed by the queue
 // consumer. Eligibility is the VIP rule: joined, an accepted VIP invitation, or a current eligible
-// BingX check (referral, KYC and the 60-day deposit minimum).
+// BingX check (referral, KYC and the 60-day deposit minimum). Members choose BTC, ETH or both; the
+// daily count covers them together.
 import { HttpError, json, readJson } from "./http";
 import { audit, now } from "./db";
 import { lineQuota, reservedLineMessages } from "./campaigns";
@@ -12,10 +13,11 @@ import { reasons } from "./automation";
 import { taipeiDay } from "./bingx";
 import { getTeam } from "./team";
 import { NOTIFY_KINDS, choiceOf, inQuiet, storedKinds, upgradeKinds } from "../public/lab/orderflow/notify.js";
+import { MARKETS } from "../public/lab/orderflow/markets.js";
 
 export type OrderflowAlertMessage = { kind: "orderflow-alert-delivery"; id: string };
-export type AlertSettings = { kinds: string[]; daily: number; quiet: string };
-type Delivery = { id: string; line_user_id: string; kind: string; body: string; status: string; attempts: number; created_at: string };
+export type AlertSettings = { kinds: string[]; daily: number; quiet: string; markets: string[] };
+type Delivery = { id: string; line_user_id: string; kind: string; body: string; market: string; status: string; attempts: number; created_at: string };
 
 // Events are only worth sending while price is still near what they describe.
 const STALE_MS = 10 * 60_000;
@@ -49,9 +51,12 @@ export async function alertEligibility(db: D1Database, userId: string) {
 }
 
 export async function getSubscription(db: D1Database, userId: string): Promise<AlertSettings | null> {
-  const row = await db.prepare("SELECT kinds,daily,quiet FROM orderflow_alert_subs WHERE line_user_id=?").bind(userId).first<{ kinds: string; daily: number; quiet: string }>();
+  const row = await db
+    .prepare("SELECT kinds,daily,quiet,markets FROM orderflow_alert_subs WHERE line_user_id=?")
+    .bind(userId)
+    .first<{ kinds: string; daily: number; quiet: string; markets: string }>();
   // Stored lists predate later types; upgradeKinds gives 「全部」 subscribers the new ones.
-  return row ? { kinds: upgradeKinds(row.kinds.split(",").filter(Boolean)), daily: row.daily, quiet: row.quiet } : null;
+  return row ? { kinds: upgradeKinds(row.kinds.split(",").filter(Boolean)), daily: row.daily, quiet: row.quiet, markets: row.markets.split(",").filter(Boolean) } : null;
 }
 
 export async function setSubscription(db: D1Database, userId: string, settings: AlertSettings | null) {
@@ -61,13 +66,13 @@ export async function setSubscription(db: D1Database, userId: string, settings: 
   }
   await db
     .prepare(
-      "INSERT INTO orderflow_alert_subs(line_user_id,kinds,daily,quiet,created_at,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(line_user_id) DO UPDATE SET kinds=excluded.kinds,daily=excluded.daily,quiet=excluded.quiet,updated_at=excluded.updated_at",
+      "INSERT INTO orderflow_alert_subs(line_user_id,kinds,daily,quiet,markets,created_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(line_user_id) DO UPDATE SET kinds=excluded.kinds,daily=excluded.daily,quiet=excluded.quiet,markets=excluded.markets,updated_at=excluded.updated_at",
     )
-    .bind(userId, storedKinds(settings.kinds).join(","), settings.daily, settings.quiet, now(), now())
+    .bind(userId, storedKinds(settings.kinds).join(","), settings.daily, settings.quiet, settings.markets.join(","), now(), now())
     .run();
 }
 
-type IncomingEvent = { key: string; t: number; kind: string; text: string; at: number };
+type IncomingEvent = { key: string; t: number; kind: string; text: string; at: number; m: string };
 function readEvents(value: unknown): IncomingEvent[] {
   if (!Array.isArray(value) || value.length > MAX_EVENTS) throw new HttpError(400, "事件格式不正確");
   return value.map((e) => {
@@ -81,21 +86,24 @@ function readEvents(value: unknown): IncomingEvent[] {
       choiceOf(e.kind) &&
       typeof e.text === "string" &&
       e.text.length > 0 &&
-      e.text.length <= 400;
+      e.text.length <= 400 &&
+      (e.m === undefined || Object.hasOwn(MARKETS, e.m));
     if (!ok) throw new HttpError(400, "事件格式不正確");
-    return { key: e.key, t: e.t, kind: e.kind, text: e.text.replace(/[\r\n]+/g, " "), at: e.at };
+    // Collectors from before ETH send no market.
+    return { key: e.key, t: e.t, kind: e.kind, text: e.text.replace(/[\r\n]+/g, " "), at: e.at, m: e.m ?? "btc" };
   });
 }
 
 function alertBody(env: Env, e: IncomingEvent) {
   const base = env.PUBLIC_BASE_URL.replace(/\/$/, "");
   const lesson = NOTIFY_KINDS.find((k) => k.id === choiceOf(e.kind))?.lesson;
+  const market = e.m === "btc" ? "" : `&m=${e.m}`;
   return [
-    "MetaBear 關鍵位提醒",
+    `MetaBear 關鍵位提醒（${MARKETS[e.m as keyof typeof MARKETS].base}）`,
     e.text,
-    `看當下盤面：${base}/lab/orderflow/?tf=1&at=${e.at}`,
+    `看當下盤面：${base}/lab/orderflow/?tf=1&at=${e.at}${market}`,
     // The lab's 一鍵覆盤 of the story this event belongs to (public/lab/orderflow/event-replay.js).
-    `看這段覆盤：${base}/lab/orderflow/?replay=${e.t}&k=${encodeURIComponent(e.kind)}`,
+    `看這段覆盤：${base}/lab/orderflow/?replay=${e.t}&k=${encodeURIComponent(e.kind)}${market}`,
     ...(lesson ? [`對應課程：${base}/orderflow/${lesson}`] : []),
     "提醒不是買賣訊號，要不要進場請看接下來的訂單流。非投資建議。",
     "回覆「警報設定」可以修改或取消。",
@@ -105,8 +113,8 @@ function alertBody(env: Env, e: IncomingEvent) {
 const taipeiHour = (t: number) => new Date(t + 8 * 3_600_000).getUTCHours();
 
 /**
- * Queues deliveries for events from the collector. Each subscriber gets the types they chose, at
- * most their daily count per Taiwan day and nothing in their quiet hours; when the month's LINE
+ * Queues deliveries for events from the collector. Each subscriber gets the types and markets they
+ * chose, at most their daily count per Taiwan day and nothing in their quiet hours; when the month's LINE
  * quota would dip under QUOTA_FLOOR, the rest are dropped rather than kept for later.
  */
 export async function enqueueOrderflowEvents(env: Env, value: unknown) {
@@ -115,11 +123,11 @@ export async function enqueueOrderflowEvents(env: Env, value: unknown) {
   if (!team.orderflow_alerts_enabled || !events.length) return { queued: 0, dropped: 0 };
   const subs = (
     await env.DB.prepare(
-      `SELECT s.line_user_id,s.kinds,s.daily,s.quiet FROM orderflow_alert_subs s JOIN customers c ON c.line_user_id=s.line_user_id
+      `SELECT s.line_user_id,s.kinds,s.daily,s.quiet,s.markets FROM orderflow_alert_subs s JOIN customers c ON c.line_user_id=s.line_user_id
        WHERE ${ELIGIBLE} ORDER BY s.created_at LIMIT ?`,
     )
       .bind(team.revision, SUBSCRIBERS_MAX)
-      .all<{ line_user_id: string; kinds: string; daily: number; quiet: string }>()
+      .all<{ line_user_id: string; kinds: string; daily: number; quiet: string; markets: string }>()
   ).results;
   // Messages already counted against each subscriber's Taiwan day ("user|day" → count).
   const used = new Map<string, number>();
@@ -131,16 +139,16 @@ export async function enqueueOrderflowEvents(env: Env, value: unknown) {
       .all<{ line_user_id: string; n: number }>();
     for (const c of counts.results) used.set(`${c.line_user_id}|${day}`, c.n);
   }
-  const rows: { id: string; key: string; user: string; kind: string; body: string; day: string }[] = [];
+  const rows: { id: string; key: string; user: string; kind: string; body: string; day: string; market: string }[] = [];
   for (const e of events) {
     const choice = choiceOf(e.kind);
     const day = taipeiDay(e.t);
     for (const s of subs) {
-      if (!choice || !upgradeKinds(s.kinds.split(",")).includes(choice) || inQuiet(s.quiet, taipeiHour(e.t))) continue;
+      if (!choice || !upgradeKinds(s.kinds.split(",")).includes(choice) || !s.markets.split(",").includes(e.m) || inQuiet(s.quiet, taipeiHour(e.t))) continue;
       const key = `${s.line_user_id}|${day}`;
       if ((used.get(key) ?? 0) >= s.daily) continue;
       used.set(key, (used.get(key) ?? 0) + 1);
-      rows.push({ id: crypto.randomUUID(), key: e.key, user: s.line_user_id, kind: e.kind, body: alertBody(env, e), day });
+      rows.push({ id: crypto.randomUUID(), key: e.key, user: s.line_user_id, kind: e.kind, body: alertBody(env, e), day, market: e.m });
     }
   }
   let dropped = 0;
@@ -157,13 +165,14 @@ export async function enqueueOrderflowEvents(env: Env, value: unknown) {
   const created = now();
   const results = await env.DB.batch(
     rows.map((r) =>
-      env.DB.prepare("INSERT OR IGNORE INTO orderflow_alert_deliveries(id,event_key,line_user_id,kind,body,day,created_at) VALUES (?,?,?,?,?,?,?)").bind(
+      env.DB.prepare("INSERT OR IGNORE INTO orderflow_alert_deliveries(id,event_key,line_user_id,kind,body,day,market,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(
         r.id,
         r.key,
         r.user,
         r.kind,
         r.body,
         r.day,
+        r.market,
         created,
       ),
     ),
@@ -192,10 +201,11 @@ export async function processOrderflowDelivery(message: OrderflowAlertMessage, e
     if (!team.orderflow_alerts_enabled) return await finish("skipped", "訂單流提醒已急停");
     if (time - Date.parse(delivery.created_at) > STALE_MS) return await finish("skipped", "事件已過時，不再發送");
     if (delivery.attempts > MAX_ATTEMPTS) return await finish("failed", "重試次數已達上限；請核對 LINE 紀錄");
-    const still = await env.DB.prepare(`SELECT s.kinds FROM orderflow_alert_subs s JOIN customers c ON c.line_user_id=s.line_user_id WHERE s.line_user_id=? AND ${ELIGIBLE}`)
+    const still = await env.DB.prepare(`SELECT s.kinds,s.markets FROM orderflow_alert_subs s JOIN customers c ON c.line_user_id=s.line_user_id WHERE s.line_user_id=? AND ${ELIGIBLE}`)
       .bind(delivery.line_user_id, team.revision)
-      .first<{ kinds: string }>();
-    if (!still || !upgradeKinds(still.kinds.split(",")).includes(choiceOf(delivery.kind) ?? "")) return await finish("skipped", "已退訂、封鎖或不再符合會員資格");
+      .first<{ kinds: string; markets: string }>();
+    if (!still || !upgradeKinds(still.kinds.split(",")).includes(choiceOf(delivery.kind) ?? "") || !still.markets.split(",").includes(delivery.market))
+      return await finish("skipped", "已退訂、封鎖或不再符合會員資格");
     const messages = [{ type: "text" as const, text: delivery.body }];
     await recordOutgoing(env, delivery.line_user_id, "orderflow:" + delivery.id, messages);
     const response = await fetch("https://api.line.me/v2/bot/message/push", {

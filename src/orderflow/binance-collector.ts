@@ -1,13 +1,11 @@
-// Binance BTCUSDT collector: the same storage, queries and detectors as the Bybit Collector, fed by
+// Binance collector (one per market): the same storage, queries and detectors as the Bybit Collector, fed by
 // the Tokyo relay (relay/binance-relay.mjs) instead of its own sockets, because Binance refuses
 // Cloudflare (docs/ORDERFLOW-CF-PROBE.md, docs/ORDERFLOW-BINANCE-RELAY.md). The relay connects in
 // over a WebSocket, forwards Binance's combined-stream messages untouched and answers REST requests
 // for whitelisted public paths, so every Binance call goes through it.
-import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
-import { BINANCE_SYMBOL, BinanceBook, binanceArchiveUrl, parseAggTrade, parseArchiveLine, parseKlines } from "../../public/lab/orderflow/binance.js";
+import { BinanceBook, binanceArchiveUrl, parseAggTrade, parseArchiveLine, parseKlines } from "../../public/lab/orderflow/binance.js";
 import { BACKFILL_DAYS, Collector, DAY, FIVE_MIN, HEALTH_DOWN_MS, MINUTE, SILENT_MS, type OrderflowEnv, type Trade } from "./collector";
 
-const BINANCE_LIQ = LIQ_FEEDS.find((f) => f.ex === "binance")!;
 const REST_TIMEOUT_MS = 15_000;
 // Missed aggregate trades are fetched by id, 1,000 a page (a few minutes of BTC each). Longer
 // outages are left to the hourly klines and recorded as a gap.
@@ -24,7 +22,7 @@ export class BinanceCollector extends Collector {
   protected override archiveName = "Binance";
   protected override archiveLateMs = 12 * 3_600_000;
   protected override archiveSource(day: string) {
-    return { url: binanceArchiveUrl(day), zip: true };
+    return { url: binanceArchiveUrl(day, this.m.symbol), zip: true };
   }
   protected override archiveTrade(line: string) {
     return parseArchiveLine(line);
@@ -106,7 +104,7 @@ export class BinanceCollector extends Collector {
     if (stream.endsWith("@aggTrade")) this.onAgg(parseAggTrade(m.data));
     else if (stream.includes("@depth")) this.onDepth(m.data);
     else if (stream.includes("@markPrice")) (this.ticker.funding = Number(m.data.r)), ((this.ticker as { mark?: number }).mark = Number(m.data.p));
-    else if (stream.endsWith("@forceOrder")) this.saveLiqs(BINANCE_LIQ.parse(m));
+    else if (stream.endsWith("@forceOrder")) this.saveLiqs(this.liqFeed("binance").parse(m));
   }
 
   /** GET a whitelisted Binance REST path through the relay. */
@@ -150,7 +148,7 @@ export class BinanceCollector extends Collector {
         const [from, to] = this.gaps[0];
         let next = from;
         for (let page = 0; next <= to && page < GAP_PAGES; page++) {
-          const list = ((await this.rest<any[]>(`/fapi/v1/aggTrades?symbol=${BINANCE_SYMBOL}&fromId=${next}&limit=1000`)) ?? []).map(parseAggTrade).filter((tr) => tr.a <= to);
+          const list = ((await this.rest<any[]>(`/fapi/v1/aggTrades?symbol=${this.m.symbol}&fromId=${next}&limit=1000`)) ?? []).map(parseAggTrade).filter((tr) => tr.a <= to);
           if (!list.length) break;
           this.addTrades(list);
           next = list[list.length - 1].a + 1;
@@ -189,7 +187,7 @@ export class BinanceCollector extends Collector {
     this.syncing = true;
     try {
       for (let attempt = 0; attempt < 3 && this.relay; attempt++) {
-        const snap = await this.rest(`/fapi/v1/depth?symbol=${BINANCE_SYMBOL}&limit=1000`);
+        const snap = await this.rest(`/fapi/v1/depth?symbol=${this.m.symbol}&limit=1000`);
         if (this.book.load(snap) === "snapshot") {
           this.spoofWatch.reset(Date.now(), this.book.bids, this.book.asks);
           return;
@@ -219,7 +217,7 @@ export class BinanceCollector extends Collector {
     // Binance streams no open interest, so it is read every alarm; the reading-time rule then
     // records the value held at each 5-minute boundary, as with Bybit's tickers.
     try {
-      const oi = await this.rest<{ openInterest: string; time: number }>(`/fapi/v1/openInterest?symbol=${BINANCE_SYMBOL}`);
+      const oi = await this.rest<{ openInterest: string; time: number }>(`/fapi/v1/openInterest?symbol=${this.m.symbol}`);
       const ts = Number(oi.time) || now;
       this.reading(ts);
       this.ticker.oi = Number(oi.openInterest);
@@ -263,8 +261,8 @@ export class BinanceCollector extends Collector {
       const end = Math.min(now, cursor + pageMs);
       const url =
         kind === "funding"
-          ? `/fapi/v1/fundingRate?symbol=${BINANCE_SYMBOL}&limit=1000&startTime=${cursor}&endTime=${end}`
-          : `/futures/data/${path}?symbol=${BINANCE_SYMBOL}&period=5m&limit=500&startTime=${cursor}&endTime=${end}`;
+          ? `/fapi/v1/fundingRate?symbol=${this.m.symbol}&limit=1000&startTime=${cursor}&endTime=${end}`
+          : `/futures/data/${path}?symbol=${this.m.symbol}&period=5m&limit=500&startTime=${cursor}&endTime=${end}`;
       try {
         for (const r of await this.rest<any[]>(url)) {
           const t = Number(r.timestamp ?? r.fundingTime);
@@ -291,7 +289,7 @@ export class BinanceCollector extends Collector {
     try {
       for (let start = end - 2 * DAY; start < end; start += 1000 * MINUTE) {
         const stop = Math.min(end, start + 999 * MINUTE);
-        const list = parseKlines(await this.rest(`/fapi/v1/klines?symbol=${BINANCE_SYMBOL}&interval=1m&limit=1000&startTime=${start}&endTime=${stop}`));
+        const list = parseKlines(await this.rest(`/fapi/v1/klines?symbol=${this.m.symbol}&interval=1m&limit=1000&startTime=${start}&endTime=${stop}`));
         for (const [t, o, h, l, c] of list) this.sql.exec("INSERT OR IGNORE INTO bars (t, src, row) VALUES (?, 'kline', ?)", t, JSON.stringify([t, o, h, l, c, []]));
       }
       this.setMeta("klinesFilled", now);

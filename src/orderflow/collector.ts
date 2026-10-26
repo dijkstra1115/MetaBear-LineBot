@@ -1,31 +1,27 @@
-// Order-flow collector: one Durable Object holding Bybit's BTCUSDT streams (trades, 1,000-level
-// book, tickers, liquidations) plus OKX liquidations, writing footprint bars, large prints,
+// Order-flow collector: one Durable Object per market (BTCUSDT, ETHUSDT; markets.js) holding Bybit's
+// streams (trades, 1,000-level book, tickers, liquidations) plus OKX liquidations, writing footprint bars, large prints,
 // heatmap columns, OI and funding readings and liquidations to its SQLite storage. Binance refuses Cloudflare, see
 // docs/ORDERFLOW-CF-PROBE.md, which also explains the 10 s alarm: open outbound sockets alone
 // keep an object alive for at most 15 minutes.
 import { DurableObject } from "cloudflare:workers";
 import { LEVEL_LABELS, LevelBook, closedBarEvents, eventPrice, levelText, sessionOf, sessionStart } from "../../public/lab/orderflow/keylevels.js";
-import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
-import { ALERT_DEFAULTS, BAR_KINDS, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
+import { liqFeeds } from "../../public/lab/orderflow/liquidations.js";
+import { DEFAULT_MARKET, MARKETS, marketOf, sized } from "../../public/lab/orderflow/markets.js";
+import { ALERT_DEFAULTS, BAR_KINDS, alertDefaults, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
 import {
   ArchiveDay,
   BOOK_CHUNK_MS,
   BOOK_STEP_MS,
-  BOOK_TICK,
-  BOOK_TOPIC,
   OrderBook,
   PING,
   PRINT_MIN,
   REST_URL,
-  SYMBOL,
-  TICK,
-  TICKER_TOPIC,
-  TRADE_TOPIC,
   WS_URL,
   addTrade,
   applyTicker,
   archiveUrl,
   bybitGet,
+  bybitTopics,
   parseArchiveLine,
   barRow,
   groupPrints,
@@ -85,9 +81,6 @@ const SEEN_TRADES = 5_000; // trade ids kept to drop duplicates between the stre
 // readings and liquidations, and a week of heatmap columns (the largest rows, ~3 KB a minute).
 export const KEEP_MS = { bars: 30 * DAY, prints: 30 * DAY, heat: 30 * DAY, book: 30 * DAY, readings: 30 * DAY, liqs: 30 * DAY, alerts: 30 * DAY };
 export const BACKFILL_DAYS = 15; // OI, long/short ratio and funding history fetched from REST
-const LIQ_TOPIC = `allLiquidation.${SYMBOL}`;
-const BYBIT_LIQ = LIQ_FEEDS.find((f) => f.ex === "bybit")!;
-const OKX_LIQ = LIQ_FEEDS.find((f) => f.ex === "okx")!;
 // Daily archive import. Bybit published 10/14's file at about 01:10 UTC, so a day is first tried
 // an hour after it ends and then every 15 minutes until the file is there. A busy day (1.9 M
 // trades, 72 MB gzip) parses in about 1.3 s with a 14 MB heap; it is still split into slices of
@@ -150,7 +143,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   protected spoofWatch = new SpoofWatch(this.alertConfig);
   // Key levels of the previous and current UTC day, from closed persisted minutes; rebuilt
   // from storage after a restart or an archive import (which can correct the previous day).
-  protected levelBook = new LevelBook(TICK);
+  protected levelBook = new LevelBook(DEFAULT_MARKET.tick); // replaced for the object's market in the constructor
   protected levelsStale = true;
   private levelsUntil = 0; // minutes before this have been fed to the book
   private levelSent = new Map<string, number>(); // kind|level|side → time last let through
@@ -158,13 +151,20 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private archive: ArchiveJob | null = null;
   protected status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[], archive: null as Record<string, unknown> | null };
   protected source = "bybit";
+  // The market this object collects, from the name it was opened with ("ETHUSDT"), kept in meta for
+  // calls that arrive without one. Objects from before ETH are BTC.
+  protected m = DEFAULT_MARKET;
+  protected topics = bybitTopics(DEFAULT_MARKET.symbol);
+  protected liqFeed(ex: string) {
+    return liqFeeds(this.m).find((f) => f.ex === ex)!;
+  }
   // Daily trade archive: where a day's file is and how its lines read. Bybit's is a gzipped CSV per
   // UTC day; Binance and OKX publish zips, OKX by Beijing day (archiveOffset −8 h).
   protected archiveName = "Bybit";
   protected archiveOffset = 0;
   protected archiveLateMs = ARCHIVE_LATE;
   protected archiveSource(day: string): { url: string; zip: boolean } {
-    return { url: archiveUrl(day), zip: false };
+    return { url: archiveUrl(day, undefined, this.m.symbol), zip: false };
   }
   protected archiveTrade(line: string): { t: number; price: number; qty: number; sell: boolean } | null {
     return parseArchiveLine(line);
@@ -209,6 +209,12 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (!this.rows("PRAGMA table_info(prints)").some((c) => c.name === "ex")) this.sql.exec("ALTER TABLE prints ADD COLUMN ex TEXT");
     // Added with Binance: top-trader position and account ratios (Bybit has none, so they stay null).
     if (!this.rows("PRAGMA table_info(ratios)").some((c) => c.name === "top_pos")) this.sql.exec("ALTER TABLE ratios ADD COLUMN top_pos REAL; ALTER TABLE ratios ADD COLUMN top_acc REAL");
+    const named = Object.values(MARKETS).find((m) => m.symbol === ctx.id.name);
+    const stored = this.meta("market");
+    this.m = named ?? marketOf(stored ?? "btc");
+    if (named && stored !== named.id) this.setMeta("market", named.id);
+    this.topics = bybitTopics(this.m.symbol);
+    this.levelBook = new LevelBook(this.m.tick);
     // The current minute is persisted every alarm; pick it back up so a restart only loses
     // the seconds since then, which the REST backfill on reconnect fills in.
     this.lastTradeT = Number(this.meta("lastTradeT") ?? 0);
@@ -250,7 +256,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   }
 
   private async openStream(name: "bybit" | "okx") {
-    const url = name === "bybit" ? WS_URL : OKX_LIQ.url;
+    const url = name === "bybit" ? WS_URL : this.liqFeed("okx").url;
     let res: Response;
     try {
       // No AbortSignal: it stays attached to the upgraded socket and would cut it later.
@@ -272,11 +278,12 @@ export class Collector extends DurableObject<OrderflowEnv> {
     this.status[name] = "open";
     if (name === "bybit") {
       this.book.reset();
-      ws.send(JSON.stringify({ op: "subscribe", args: [TRADE_TOPIC, BOOK_TOPIC, TICKER_TOPIC, LIQ_TOPIC] }));
+      ws.send(JSON.stringify({ op: "subscribe", args: [this.topics.trade, this.topics.book, this.topics.ticker, this.topics.liq] }));
       sock.ping = setInterval(() => ws.send(PING), 20_000);
     } else {
-      ws.send(JSON.stringify(OKX_LIQ.subscribe));
-      sock.ping = setInterval(() => ws.send(OKX_LIQ.ping!), 20_000);
+      const okx = this.liqFeed("okx");
+      ws.send(JSON.stringify(okx.subscribe));
+      sock.ping = setInterval(() => ws.send(okx.ping!), 20_000);
     }
     ws.addEventListener("message", (e) => {
       if (this.sockets.get(name) !== sock) return;
@@ -285,7 +292,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       if (text === "pong") return;
       try {
         if (name === "bybit") this.onBybit(JSON.parse(text));
-        else this.saveLiqs(OKX_LIQ.parse(JSON.parse(text)));
+        else this.saveLiqs(this.liqFeed("okx").parse(JSON.parse(text)));
       } catch (err) {
         this.note("errors", `${name} message: ${err}`);
       }
@@ -317,10 +324,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
   }
 
   private onBybit(m: any) {
-    if (m.topic === TRADE_TOPIC) this.addTrades(parseTrades(m));
-    else if (m.topic === BOOK_TOPIC) this.onBook(m);
-    else if (m.topic === TICKER_TOPIC) this.onTicker(m);
-    else if (m.topic === LIQ_TOPIC) this.saveLiqs(BYBIT_LIQ.parse(m));
+    if (m.topic === this.topics.trade) this.addTrades(parseTrades(m));
+    else if (m.topic === this.topics.book) this.onBook(m);
+    else if (m.topic === this.topics.ticker) this.onTicker(m);
+    else if (m.topic === this.topics.liq) this.saveLiqs(this.liqFeed("bybit").parse(m));
   }
 
   // Book updates feed the spoofing watcher as they arrive; a vanished wall it reports is not
@@ -347,7 +354,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       if (this.seen.has(tr.id)) continue;
       this.seen.add(tr.id);
       if (this.seen.size > SEEN_TRADES) this.seen.delete(this.seen.values().next().value!);
-      addTrade(this.bars, tr, TICK);
+      addTrade(this.bars, tr, this.m.tick);
       if (tr.t > this.lastTradeT) (this.lastTradeT = tr.t), (this.lastPrice = tr.price);
       fresh.push(tr);
       this.wallWatch.trade(tr.price);
@@ -358,7 +365,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     const now = Date.now();
     for (const print of groupPrints(fresh)) {
       const [t, side, price, qty] = print;
-      if (qty < PRINT_MIN) continue;
+      if (qty < sized(this.m, PRINT_MIN)) continue;
       this.sql.exec("INSERT OR IGNORE INTO prints (t, side, price, qty, src) VALUES (?, ?, ?, ?, 'live')", t, side, price, qty);
       if (t > now - ALERT_FRESH_MS) this.alert(watchPrint(print, this.alertConfig));
     }
@@ -369,7 +376,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private async backfillTrades() {
     if (!this.lastTradeT) return;
     try {
-      const list: Trade[] = parseRestTrades((await bybitGet(`${REST_URL}/v5/market/recent-trade?category=linear&symbol=${SYMBOL}&limit=1000`)).list);
+      const list: Trade[] = parseRestTrades((await bybitGet(`${REST_URL}/v5/market/recent-trade?category=linear&symbol=${this.m.symbol}&limit=1000`)).list);
       const oldest = Math.min(...list.map((tr) => tr.t));
       if (oldest > this.lastTradeT) this.note("gaps", `trades ${iso(this.lastTradeT).slice(11, 19)}–${iso(oldest).slice(11, 19)} missing`);
       const since = this.lastTradeT;
@@ -424,7 +431,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private loadAlertConfig() {
     const saved = JSON.parse(this.meta("alertConfig") ?? "{}") as Partial<AlertConfig>;
     // The watchers hold this object, so tuning takes effect without a restart.
-    Object.assign(this.alertConfig, ALERT_DEFAULTS);
+    Object.assign(this.alertConfig, alertDefaults(this.m));
     for (const [k, v] of Object.entries(saved)) if (validSetting(k, v)) (this.alertConfig as Record<string, number>)[k] = v as number;
   }
 
@@ -437,7 +444,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     const market = !HEALTH_KINDS.has(e.kind) && e.kind !== "test";
     const on = HEALTH_KINDS.has(e.kind) ? this.alertConfig.healthOn : e.kind === "test" ? 1 : this.alertConfig.marketOn;
     let state = !on ? "muted" : market && !this.marketLive ? "logged" : "pending";
-    let text = describe(e);
+    let text = describe({ unit: this.m.base, bin: this.alertConfig.wallBin, ...e });
     let level: { name: string; price: number; dist: number } | null = null;
     let price: number | null = null;
     let near = false;
@@ -482,7 +489,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     this.setMeta("barsDetected", end);
     const rows = this.rows("SELECT row FROM bars WHERE t >= ? AND t < ? ORDER BY t", end - BAR_HISTORY_MS, end).map((r) => JSON.parse(String(r.row)));
     this.updateLevels();
-    for (const e of closedBarEvents(rows, TICK, this.levelBook.levels(end), end)) {
+    for (const e of closedBarEvents(rows, this.m.tick, this.levelBook.levels(end), end)) {
       const key = `${e.kind}:${e.side}`;
       if (end - (this.barSent.get(key) ?? -Infinity) < BAR_COOLDOWN_MS) continue;
       this.barSent.set(key, end);
@@ -582,7 +589,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       const t = Number(r.t);
       // Bar events carry the close of their bar; the link opens the bar's last minute.
       const at = Math.floor((BAR_KINDS.includes(String(r.kind)) ? t - 1 : t) / MINUTE) * MINUTE;
-      return { key: `of-${r.id}-${t}`, t, kind: r.kind, text: r.text, at };
+      return { key: `of-${this.m.id === "btc" ? "" : `${this.m.id}-`}${r.id}-${t}`, t, kind: r.kind, text: r.text, at, m: this.m.id };
     });
     try {
       const res = await this.env.BACKEND.fetch("https://backend/api/internal/orderflow-alert", {
@@ -626,9 +633,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (pending.length > ALERT_LINES) lines.push(`…另有 ${pending.length - ALERT_LINES} 則`);
     const at = Math.floor(Number(pending[0].t) / MINUTE) * MINUTE;
     const text = [
-      "MetaBear 訂單流通知",
+      `MetaBear 訂單流通知（${this.m.base}）`,
       ...lines,
-      `https://metabear.io/lab/orderflow/?tf=1&at=${at}&ex=${this.source}`,
+      `https://metabear.io/lab/orderflow/?tf=1&at=${at}&ex=${this.source}${this.m.id === "btc" ? "" : `&m=${this.m.id}`}`,
       sentToday + 1 === cap ? "今天的通知已達上限，之後的事件只記錄不推送。" : "",
       "盤面事件，不是買賣建議。",
     ]
@@ -663,7 +670,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     return {
       mode: this.env.ORDERFLOW_ALERTS ?? "log",
       config: this.alertConfig,
-      defaults: ALERT_DEFAULTS,
+      defaults: alertDefaults(this.m),
       sentToday: this.meta("alertDay") === day ? Number(this.meta("alertCount") ?? 0) : 0,
       dailyCap: this.alertConfig.dailyCap,
       levels: this.levelsView(Date.now()),
@@ -689,7 +696,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   }
 
   protected persistHeat() {
-    const col = this.book.column();
+    const col = this.book.column(this.m.tick);
     if (!col) return;
     const now = Date.now();
     const minute = Math.floor(now / MINUTE) * MINUTE;
@@ -697,7 +704,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     // at $1 every 10 s for detail. A fine row is about 2 KB, about 520 MB over 30 days.
     this.heat = [minute, ...col] as [number, number, number, number[]];
     this.sql.exec("INSERT INTO heat (t, row) VALUES (?, ?) ON CONFLICT(t) DO UPDATE SET row = excluded.row", minute, JSON.stringify(this.heat));
-    const fine = this.book.span(BOOK_TICK);
+    const fine = this.book.span(this.m.bookTick);
     const slot = Math.floor(now / BOOK_STEP_MS) * BOOK_STEP_MS;
     if (fine) this.sql.exec("INSERT OR REPLACE INTO book (t, row) VALUES (?, ?)", slot, JSON.stringify([slot, ...fine]));
   }
@@ -714,10 +721,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
       if (caughtUp) cursor = now - 30 * MINUTE;
       const end = Math.min(now, cursor + pageMs);
       const url = {
-        oi: `${REST_URL}/v5/market/open-interest?category=linear&symbol=${SYMBOL}&intervalTime=5min&limit=200&startTime=${cursor}&endTime=${end}`,
-        ratio: `${REST_URL}/v5/market/account-ratio?category=linear&symbol=${SYMBOL}&period=5min&limit=500&startTime=${cursor}&endTime=${end}`,
+        oi: `${REST_URL}/v5/market/open-interest?category=linear&symbol=${this.m.symbol}&intervalTime=5min&limit=200&startTime=${cursor}&endTime=${end}`,
+        ratio: `${REST_URL}/v5/market/account-ratio?category=linear&symbol=${this.m.symbol}&period=5min&limit=500&startTime=${cursor}&endTime=${end}`,
         // Settled rates, every 8 hours.
-        funding: `${REST_URL}/v5/market/funding/history?category=linear&symbol=${SYMBOL}&limit=200&startTime=${cursor}&endTime=${end}`,
+        funding: `${REST_URL}/v5/market/funding/history?category=linear&symbol=${this.m.symbol}&limit=200&startTime=${cursor}&endTime=${end}`,
       }[kind];
       try {
         for (const r of (await bybitGet(url)).list) {
@@ -743,7 +750,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     try {
       for (let start = end - 2 * DAY; start < end; start += 1000 * MINUTE) {
         const stop = Math.min(end, start + 999 * MINUTE);
-        const result = await bybitGet(`${REST_URL}/v5/market/kline?category=linear&symbol=${SYMBOL}&interval=1&limit=1000&start=${start}&end=${stop}`);
+        const result = await bybitGet(`${REST_URL}/v5/market/kline?category=linear&symbol=${this.m.symbol}&interval=1&limit=1000&start=${start}&end=${stop}`);
         for (const [t, o, h, l, c] of result.list as string[][])
           this.sql.exec("INSERT OR IGNORE INTO bars (t, src, row) VALUES (?, 'kline', ?)", Number(t), JSON.stringify([Number(t), Number(o), Number(h), Number(l), Number(c), []]));
       }
@@ -830,7 +837,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     }
     const reader = body.pipeThrough(new TextDecoderStream()).getReader();
     this.status.archive = { day, state: "importing", from: iso(cursor) };
-    return (this.archive = { day, from, cursor, open: cursor, reader, build: new ArchiveDay(), carry: "" });
+    return (this.archive = { day, from, cursor, open: cursor, reader, build: new ArchiveDay(this.m.tick, sized(this.m, PRINT_MIN)), carry: "" });
   }
 
   // Writes the finished minutes before `before` (all of them at the end of the file) and
@@ -977,7 +984,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   }
 
   protected respond(parts: Record<string, string>, extra: Record<string, unknown>) {
-    const head = JSON.stringify({ symbol: SYMBOL, tick: TICK, source: this.source, ...extra }).slice(0, -1);
+    const head = JSON.stringify({ symbol: this.m.symbol, tick: this.m.tick, source: this.source, ...extra }).slice(0, -1);
     const body = `${head},${Object.entries(parts).map(([k, v]) => `"${k}":${v}`).join(",")}}`;
     return new Response(body, { headers: { "content-type": "application/json; charset=utf-8" } });
   }
@@ -1042,7 +1049,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       // One 30-minute chunk of fine order-book columns.
       const from = Number(url.searchParams.get("from"));
       const rows = this.rows("SELECT row FROM book WHERE t >= ? AND t < ? ORDER BY t", from, from + BOOK_CHUNK_MS);
-      return new Response(`{"from":${from},"step":${BOOK_STEP_MS},"tick":${BOOK_TICK},"columns":[${rows.map((r) => String(r.row)).join(",")}]}`, {
+      return new Response(`{"from":${from},"step":${BOOK_STEP_MS},"tick":${this.m.bookTick},"columns":[${rows.map((r) => String(r.row)).join(",")}]}`, {
         headers: { "content-type": "application/json; charset=utf-8" },
       });
     }

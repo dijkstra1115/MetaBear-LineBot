@@ -94,9 +94,25 @@ test("requests outside the allowed shapes are refused before reaching the collec
   for (const since of [minute + 1, minute - 3 * DAY, minute + 5 * MINUTE, "abc"])
     assert.equal((await call(`/recent?since=${since}`)).status, 400, String(since));
   assert.equal((await call("/unknown")).status, 404);
-  assert.equal((await mf.dispatchFetch("https://metabear.io/api/orderflow/ethusdt/status")).status, 404);
+  assert.equal((await mf.dispatchFetch("https://metabear.io/api/orderflow/dogeusdt/status")).status, 404, "markets.js lists the markets");
+  assert.equal((await mf.dispatchFetch("https://metabear.io/api/orderflow/btcusdt")).status, 404);
   assert.equal((await call("/status", { method: "POST" })).status, 405);
   const status = (await (await call("/status")).json()) as any;
   assert.deepEqual(status.open, []);
   assert.equal(status.bybit, "idle");
+});
+
+test("ETH has its own collector, named for its market, with ETH's price bins", async () => {
+  const minute = Math.floor(Date.now() / MINUTE) * MINUTE - 2 * MINUTE;
+  const eth = "https://metabear.io/api/orderflow/ethusdt";
+  const post = (path: string, rows: unknown[]) =>
+    mf.dispatchFetch(path + "/import", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ rows }) });
+  assert.equal((await post(eth, [[minute, 2311, 2312, 2310.5, 2311.5, [[4622, 40, 10]]]])).status, 200);
+  const body = (await (await mf.dispatchFetch(`${eth}/recent?since=${minute}`)).json()) as any;
+  assert.deepEqual([body.symbol, body.tick, body.source], ["ETHUSDT", 0.5, "bybit"]);
+  assert.equal(body.bars.length, 1);
+  // BTC's collector never sees ETH's minutes.
+  const btc = (await (await call(`/recent?since=${minute}`)).json()) as any;
+  assert.equal(btc.symbol, "BTCUSDT");
+  assert.ok(!btc.bars.some((b: number[]) => b[1] === 2311));
 });

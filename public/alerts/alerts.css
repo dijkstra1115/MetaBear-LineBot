@@ -190,6 +190,16 @@
   color: var(--text);
   font: inherit;
 }
+.notify-market-checks {
+  display: flex;
+  gap: 16px;
+}
+.notify-market-checks .check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
 .notify-keyword {
   display: block;
   padding: 12px 14px;

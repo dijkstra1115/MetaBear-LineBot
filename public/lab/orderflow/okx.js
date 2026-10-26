@@ -10,22 +10,22 @@ export const OKX_WS = "wss://ws.okx.com:8443/ws/v5/public";
 export const OKX_REST = "https://www.okx.com";
 export const OKX_CHANNELS = ["trades", "books", "open-interest", "funding-rate"];
 
-const btc = (contracts) => Math.round(Number(contracts) * OKX_CT * 1e6) / 1e6;
+const coins = (contracts, ct = OKX_CT) => Math.round(Number(contracts) * ct * 1e6) / 1e6;
 
-/** trades message or REST /market/trades list → trades; side is the taker's. */
-export function parseOkxTrades(list) {
-  return (list ?? []).filter((d) => d.instId === OKX_INST).map((d) => ({ id: String(d.tradeId), t: Number(d.ts), price: Number(d.px), qty: btc(d.sz), sell: d.side === "sell" }));
+/** trades message or REST /market/trades list → trades in coins; side is the taker's. */
+export function parseOkxTrades(list, inst = OKX_INST, ct = OKX_CT) {
+  return (list ?? []).filter((d) => d.instId === inst).map((d) => ({ id: String(d.tradeId), t: Number(d.ts), price: Number(d.px), qty: coins(d.sz, ct), sell: d.side === "sell" }));
 }
 
 // OKX's daily trade archive (one zipped CSV per day, named by its Beijing-time date).
-export const okxArchiveUrl = (day) => `https://static.okx.com/cdn/okex/traderecords/trades/daily/${day.replaceAll("-", "")}/${OKX_INST}-trades-${day}.zip`;
+export const okxArchiveUrl = (day, inst = OKX_INST) => `https://static.okx.com/cdn/okex/traderecords/trades/daily/${day.replaceAll("-", "")}/${inst}-trades-${day}.zip`;
 
 /** Archive line instrument_name,trade_id,side,price,size,created_time → trade, or null for the header. */
-export function parseOkxArchiveLine(line) {
+export function parseOkxArchiveLine(line, inst = OKX_INST, ct = OKX_CT) {
   const c = line.split(",", 6);
   const t = Number(c[5]);
-  if (c[0] !== OKX_INST || !(t > 0)) return null;
-  return { t, price: Number(c[3]), qty: btc(c[4]), sell: c[2].toLowerCase() === "sell" };
+  if (c[0] !== inst || !(t > 0)) return null;
+  return { t, price: Number(c[3]), qty: coins(c[4], ct), sell: c[2].toLowerCase() === "sell" };
 }
 
 /** The [first, last] minute of each run of minutes in [from, to] missing from `have` (minute ms). */
@@ -50,9 +50,10 @@ export function parseOkxCandles(list) {
  * chain resets the book and returns "resync"; the collector resubscribes for a new snapshot.
  */
 export class OkxBook extends OrderBook {
-  constructor() {
+  constructor(ct = OKX_CT) {
     super();
     this.seq = null;
+    this.ct = ct;
   }
 
   reset() {
@@ -79,7 +80,7 @@ export class OkxBook extends OrderBook {
     for (const [side, book, list] of [["bid", this.bids, d.bids], ["ask", this.asks, d.asks]])
       for (const [ps, qs] of list) {
         const p = Number(ps);
-        const q = btc(qs);
+        const q = coins(qs, this.ct);
         const before = book.get(p) ?? 0;
         q === 0 ? book.delete(p) : book.set(p, q);
         if (!snapshot) changes.push([side, p, before, q]);

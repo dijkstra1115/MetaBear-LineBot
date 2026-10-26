@@ -4,14 +4,16 @@
 // collector, the lab and the archive tools treat both exchanges alike.
 
 import { OrderBook } from "./bybit.js";
+import { DEFAULT_MARKET } from "./markets.js";
 
 export const BINANCE_SYMBOL = "BTCUSDT";
 export const BINANCE_REST = "https://fapi.binance.com";
 // Binance serves trades and mark price on /market and depth on /public.
-export const BINANCE_STREAMS = {
-  market: "wss://fstream.binance.com/market/stream?streams=btcusdt@aggTrade/btcusdt@markPrice@1s/btcusdt@forceOrder",
-  depth: "wss://fstream.binance.com/public/stream?streams=btcusdt@depth@100ms",
-};
+export const binanceStreams = (m = DEFAULT_MARKET) => ({
+  market: `wss://fstream.binance.com/market/stream?streams=${m.binance}@aggTrade/${m.binance}@markPrice@1s/${m.binance}@forceOrder`,
+  depth: `wss://fstream.binance.com/public/stream?streams=${m.binance}@depth@100ms`,
+});
+export const BINANCE_STREAMS = binanceStreams();
 // The only REST paths the relay forwards: the public market data the collector reads, nothing else.
 export const RELAY_PATHS =
   /^\/(fapi\/v1\/(depth|aggTrades|klines|openInterest|fundingRate)|futures\/data\/(openInterestHist|globalLongShortAccountRatio|topLongShortPositionRatio|topLongShortAccountRatio))\?[A-Za-z0-9=&.]*$/;
@@ -27,7 +29,7 @@ export function parseAggTrade(d) {
 }
 
 // Binance's daily aggTrades archive: one zipped CSV per UTC day, published early the next day.
-export const binanceArchiveUrl = (day) => `https://data.binance.vision/data/futures/um/daily/aggTrades/${BINANCE_SYMBOL}/${BINANCE_SYMBOL}-aggTrades-${day}.zip`;
+export const binanceArchiveUrl = (day, symbol = BINANCE_SYMBOL) => `https://data.binance.vision/data/futures/um/daily/aggTrades/${symbol}/${symbol}-aggTrades-${day}.zip`;
 
 /** Archive line agg_trade_id,price,quantity,first_trade_id,last_trade_id,transact_time,is_buyer_maker → trade, or null for the header. */
 export function parseArchiveLine(line) {

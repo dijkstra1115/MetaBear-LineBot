@@ -7,7 +7,8 @@ import { OrderBook } from "./bybit.js";
 export const BINGX_SYMBOL = "BTC-USDT";
 export const BINGX_WS = "wss://open-api-swap.bingx.com/swap-market";
 export const BINGX_REST = "https://open-api.bingx.com";
-export const BINGX_TOPICS = [`${BINGX_SYMBOL}@trade`, `${BINGX_SYMBOL}@depth100@500ms`];
+export const bingxTopics = (symbol = BINGX_SYMBOL) => [`${symbol}@trade`, `${symbol}@depth100@500ms`];
+export const BINGX_TOPICS = bingxTopics();
 
 /** A gzipped frame → text; the server's keep-alive arrives as "Ping" and wants "Pong". */
 export async function gunzipText(data) {

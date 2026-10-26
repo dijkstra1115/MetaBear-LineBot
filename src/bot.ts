@@ -44,13 +44,13 @@ import { isGreeting } from "./greetings";
 import { faqMenu, knowledgeActions } from "./faq";
 import { setSignalSubscription, userSignalSubs } from "./signals";
 import { alertEligibility, getSubscription, setSubscription, type AlertSettings } from "./orderflow-subs";
-import { kindNames, parseLineKeyword } from "../public/lab/orderflow/notify.js";
+import { kindNames, marketNames, parseLineKeyword } from "../public/lab/orderflow/notify.js";
 
 const ALERT_TERMS =
   "LINE 關鍵位提醒開放給 MetaBear 會員：綁定 BingX 邀請碼 ZD0CQ0，並且 60 日內累計入金 200 USDT（不含內部轉帳）；已加入 VIP 群的會員可以直接開通。";
 function alertSettingsText(s: AlertSettings) {
   const quiet = s.quiet ? s.quiet.replace(/^(\d{2})-(\d{2})$/, "$1:00–$2:00") : "不設定";
-  return `事件：${kindNames(s.kinds)}\n每天最多 ${s.daily} 則\n安靜時段（台灣時間）：${quiet}`;
+  return `幣種：${marketNames(s.markets)}\n事件：${kindNames(s.kinds)}\n每天最多 ${s.daily} 則\n安靜時段（台灣時間）：${quiet}`;
 }
 
 // The keyword from /alerts/ subscribes a member; 警報設定 shows it and 退訂警報 removes it.

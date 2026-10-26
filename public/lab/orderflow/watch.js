@@ -39,6 +39,16 @@ export const ALERT_DEFAULTS = {
   dailyCap: 3, // LINE messages of market alerts per Taipei day; health alerts are not capped
 };
 
+// Size thresholds above are in BTC; another market's are its coin's equivalent (markets.js scale),
+// and the wall band is its footprint bin. Dollar and percent thresholds are shared.
+const SIZE_KEYS = ["printBtc", "crossBtc", "wallBtc", "icebergBtc", "spoofBtc"];
+export function alertDefaults(m) {
+  if (!m || m.scale === 1) return { ...ALERT_DEFAULTS };
+  const out = { ...ALERT_DEFAULTS, wallBin: m.tick };
+  for (const k of SIZE_KEYS) out[k] = ALERT_DEFAULTS[k] * m.scale;
+  return out;
+}
+
 const median = (list) => {
   if (!list.length) return 0;
   const s = [...list].sort((a, b) => a - b);
@@ -335,31 +345,34 @@ const BAR_ICONS = { absorption: "🛡️", sweep: "🪝", divergence: "↔️", 
 export const HEALTH_KINDS = new Set(["health_down", "health_up", "health_archive", "health_errors", "health_unreachable"]);
 
 const usdText = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${Math.round(v / 1e3)}k`);
-const priceText = (p) => p.toLocaleString("en-US", { maximumFractionDigits: 1 });
+const priceText = (p) => p.toLocaleString("en-US", { maximumFractionDigits: p < 10_000 ? 2 : 1 });
 const timeText = (t) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(t);
 
 /** One line of zh-Hant per event, for the LINE message. */
 export function describe(e) {
   const at = timeText(e.t);
+  // e.unit and e.bin come from the collector's market (BTC and its $10 band when absent).
+  const u = e.unit ?? "BTC";
+  const band = e.bin ?? 10;
   switch (e.kind) {
     case "print":
-      return `🐋 大單 ${e.side === "buy" ? "主動買" : "主動賣"} ${e.qty.toFixed(1)} BTC @ ${priceText(e.price)}（${at}）`;
+      return `🐋 大單 ${e.side === "buy" ? "主動買" : "主動賣"} ${e.qty.toFixed(1)} ${u} @ ${priceText(e.price)}（${at}）`;
     case "cross":
-      return `🔗 跨所同步大單 ${e.names} ${Math.round(e.windowMs / 1000)} 秒內同時${e.side === "buy" ? "主動買" : "主動賣"} ${e.qty.toFixed(1)} BTC @ ${priceText(e.price)}（${at}）`;
+      return `🔗 跨所同步大單 ${e.names} ${Math.round(e.windowMs / 1000)} 秒內同時${e.side === "buy" ? "主動買" : "主動賣"} ${e.qty.toFixed(1)} ${u} @ ${priceText(e.price)}（${at}）`;
     case "liq":
       return `💥 連環爆倉 ${e.side === "long" ? "多單" : "空單"} ${usdText(e.usd)}，${e.count} 筆，${priceText(e.low)}–${priceText(e.high)}（${at}）`;
     case "oi":
       return `📊 OI 5 分鐘 ${e.pct >= 0 ? "+" : ""}${e.pct.toFixed(2)}%（z ${e.z.toFixed(1)}），價格 ${e.pricePct >= 0 ? "+" : ""}${e.pricePct.toFixed(2)}%：${e.reading}（${at}）`;
     case "wall":
-      return `🧱 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)}–${priceText(e.price + 10)} 掛 ${e.size.toFixed(0)} BTC，已持續 ${Math.round(e.heldMs / 60_000)} 分（${at}）`;
+      return `🧱 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)}–${priceText(e.price + band)} 掛 ${e.size.toFixed(0)} ${u}，已持續 ${Math.round(e.heldMs / 60_000)} 分（${at}）`;
     case "wall_eaten":
-      return `🧱 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)} 被吃掉（原本 ${e.size.toFixed(0)} BTC）（${at}）`;
+      return `🧱 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)} 被吃掉（原本 ${e.size.toFixed(0)} ${u}）（${at}）`;
     case "wall_pulled":
-      return `🧱 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)} 撤單，價格沒碰到（原本 ${e.size.toFixed(0)} BTC）（${at}）`;
+      return `🧱 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)} 撤單，價格沒碰到（原本 ${e.size.toFixed(0)} ${u}）（${at}）`;
     case "spoof":
-      return `🎭 疑似誘單 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)}–${priceText(e.price + 10)}：價格距離 ${e.distPct.toFixed(2)}% 時，1 秒內撤掉 ${e.size.toFixed(0)} BTC，期間只成交 ${e.traded.toFixed(1)} BTC（掛了 ${Math.round(e.heldMs / 1000)} 秒）（${at}）`;
+      return `🎭 疑似誘單 ${e.side === "bid" ? "買單牆" : "賣單牆"} ${priceText(e.price)}–${priceText(e.price + band)}：價格距離 ${e.distPct.toFixed(2)}% 時，1 秒內撤掉 ${e.size.toFixed(0)} ${u}，期間只成交 ${e.traded.toFixed(1)} ${u}（掛了 ${Math.round(e.heldMs / 1000)} 秒）（${at}）`;
     case "iceberg":
-      return `🧊 冰山 ${e.side === "bid" ? "買方" : "賣方"} ${priceText(e.price)} 已成交 ${e.filled.toFixed(1)} BTC，最多只顯示 ${e.shown.toFixed(1)} BTC（${at}）`;
+      return `🧊 冰山 ${e.side === "bid" ? "買方" : "賣方"} ${priceText(e.price)} 已成交 ${e.filled.toFixed(1)} ${u}，最多只顯示 ${e.shown.toFixed(1)} ${u}（${at}）`;
     case "absorption":
     case "sweep":
     case "divergence":

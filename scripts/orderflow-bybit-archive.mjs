@@ -12,7 +12,8 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { createGunzip } from "node:zlib";
-import { ArchiveDay, PRINT_MIN, SYMBOL, archiveUrl } from "../public/lab/orderflow/bybit.js";
+import { ArchiveDay, PRINT_MIN, archiveUrl } from "../public/lab/orderflow/bybit.js";
+import { marketOf, sized } from "../public/lab/orderflow/markets.js";
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -20,7 +21,8 @@ const opt = (name, fallback) => {
   return i >= 0 ? args[i + 1] : fallback;
 };
 const DAYS = Number(opt("days", 14));
-const API = opt("api", "http://127.0.0.1:8792/api/orderflow/btcusdt");
+const M = marketOf(opt("m", "btc")); // --m eth for ETH
+const API = opt("api", `http://127.0.0.1:8792/api/orderflow/${M.path}`);
 const BATCH = 240;
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -37,11 +39,11 @@ async function token() {
 }
 
 async function download(day) {
-  const file = `${cacheDir}${SYMBOL}${day}.csv.gz`;
+  const file = `${cacheDir}${M.symbol}${day}.csv.gz`;
   try {
     if ((await stat(file)).size > 0) return file;
   } catch {}
-  const res = await fetch(archiveUrl(day));
+  const res = await fetch(archiveUrl(day, undefined, M.symbol));
   if (!res.ok) throw new Error(`${day}: HTTP ${res.status}`);
   await writeFile(file, Buffer.from(await res.arrayBuffer()));
   return file;
@@ -50,7 +52,7 @@ async function download(day) {
 // The collector imports each new day by itself (src/orderflow/collector.ts) with the same
 // ArchiveDay builder; this script re-imports older days or fills gaps.
 async function buildDay(file) {
-  const day = new ArchiveDay();
+  const day = new ArchiveDay(M.tick, sized(M, PRINT_MIN));
   const lines = createInterface({ input: createReadStream(file).pipe(createGunzip()), crlfDelay: Infinity });
   for await (const line of lines) day.add(line);
   return { ...day.take(), trades: day.trades };
@@ -81,5 +83,5 @@ for (let k = DAYS; k >= 1; k--) {
   // The day's prints replace whatever the collector stored for it.
   const from = Date.parse(`${day}T00:00:00Z`);
   await post({ prints: built.prints, from, to: from + 86_400_000 });
-  console.log(`${day}: ${built.trades.toLocaleString()} trades → ${built.rows.length} bars, ${built.prints.length.toLocaleString()} prints ≥ ${PRINT_MIN} BTC`);
+  console.log(`${day}: ${built.trades.toLocaleString()} trades → ${built.rows.length} bars, ${built.prints.length.toLocaleString()} prints ≥ ${sized(M, PRINT_MIN)} ${M.base}`);
 }

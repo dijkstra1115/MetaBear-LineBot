@@ -10,13 +10,15 @@
 //   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token)
 //   GET  /api/orderflow/btcusdt/alerts             alert thresholds and the latest alerts (same token)
 //   POST /api/orderflow/btcusdt/alerts             { config } tunes thresholds, { test: true } sends a test
-//   GET  /api/orderflow/relay                      WebSocket from the Binance relay (Bearer ORDERFLOW_RELAY_TOKEN)
+//   GET  /api/orderflow/relay?m=eth                WebSocket from the Binance relay for one market (Bearer ORDERFLOW_RELAY_TOKEN)
 //
-// Every btcusdt path takes ?ex=binance, okx or bingx for that exchange's collector and ?ex=all for
+// ethusdt in place of btcusdt reads the ETH collectors (markets.js; docs/ORDERFLOW-ETH.md).
+// Every market path takes ?ex=binance, okx or bingx for that exchange's collector and ?ex=all for
 // 全市場, the exchanges merged (src/orderflow/aggregate.ts); without it, Bybit's answers.
 // Every viewer polls the same minute-aligned URLs, so the edge cache absorbs repeat requests
 // and the single collector object only answers each URL once per few seconds.
 import { BOOK_CHUNK_MS } from "../../public/lab/orderflow/bybit.js";
+import { MARKETS, marketByPath, marketOf, type Market } from "../../public/lab/orderflow/markets.js";
 import { describe } from "../../public/lab/orderflow/watch.js";
 import { mergeParts, type Part } from "./aggregate";
 import { BinanceCollector } from "./binance-collector";
@@ -28,7 +30,7 @@ import { OkxCollector } from "./okx-collector";
 
 export { BinanceCollector, BingxCollector, Collector, MarketCollector, OkxCollector };
 
-const PREFIX = "/api/orderflow/btcusdt";
+const PREFIX = "/api/orderflow/";
 const MINUTE = 60_000;
 const DAY = 86_400_000;
 const HISTORY_DAYS = 30; // matches the collector's KEEP_MS
@@ -39,22 +41,12 @@ const json = (data: unknown, status = 200) =>
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" },
   });
 
-function collector(env: OrderflowEnv) {
-  // Asia-Pacific: Bybit blocks US data centers (docs/ORDERFLOW-CF-PROBE.md).
-  return env.COLLECTOR.get(env.COLLECTOR.idFromName("BTCUSDT"), { locationHint: "apac-se" });
-}
-
-function binanceCollector(env: OrderflowEnv) {
-  // Near the relay in Tokyo.
-  return env.BINANCE?.get(env.BINANCE.idFromName("BTCUSDT"), { locationHint: "apac" }) ?? null;
-}
-
 // 全市場: every exchange's answer for the same collector path, merged. An exchange that does not
 // answer is left out rather than failing the whole response.
-async function mergedAnswer(env: OrderflowEnv, path: string, from: number, extra: Record<string, unknown>) {
+async function mergedAnswer(env: OrderflowEnv, m: Market, path: string, from: number, extra: Record<string, unknown>) {
   const answers = await Promise.all(
     EXCHANGES.map(async (ex): Promise<[Exchange, (Part & { status?: { lastTrade?: number } }) | null]> => {
-      const stub = stubFor(env, ex);
+      const stub = stubFor(env, ex, m);
       if (!stub) return [ex, null];
       try {
         const res = await stub.fetch(`https://collector${path}`);
@@ -67,7 +59,7 @@ async function mergedAnswer(env: OrderflowEnv, path: string, from: number, extra
   const parts = Object.fromEntries(answers.filter(([, part]) => part)) as Partial<Record<Exchange, Part>>;
   const lastTrades = Object.fromEntries(answers.map(([ex, part]) => [ex, Number(part?.status?.lastTrade) || null]));
   const lastTrade = Math.max(0, ...Object.values(lastTrades).map(Number));
-  return new Response(JSON.stringify({ symbol: "BTCUSDT", tick: 10, source: "all", ...extra, status: { lastTrade: lastTrade || null, exchanges: lastTrades }, ...mergeParts(parts, from) }), {
+  return new Response(JSON.stringify({ symbol: m.symbol, tick: m.tick, source: "all", ...extra, status: { lastTrade: lastTrade || null, exchanges: lastTrades }, ...mergeParts(parts, from) }), {
     headers: { "content-type": "application/json; charset=utf-8" },
   });
 }
@@ -98,20 +90,23 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
     const token = env.ORDERFLOW_RELAY_TOKEN;
     const auth = request.headers.get("authorization") ?? "";
     if (!token || !timingSafeEqual(auth, `Bearer ${token}`)) return json({ error: "未授權" }, 401);
-    const binance = binanceCollector(env);
+    // One socket per market; the relay names it (?m=eth), BTC when it does not.
+    const binance = stubFor(env, "binance", marketOf(url.searchParams.get("m") ?? "btc"));
     if (!binance) return json({ error: "找不到這個路徑" }, 404);
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return json({ error: "需要 WebSocket" }, 426);
     return binance.fetch("https://collector/relay", { headers: { upgrade: "websocket" } });
   }
-  if (!url.pathname.startsWith(`${PREFIX}/`)) return json({ error: "找不到這個路徑" }, 404);
-  const route = url.pathname.slice(PREFIX.length);
+  const [segment, ...rest] = url.pathname.startsWith(PREFIX) ? url.pathname.slice(PREFIX.length).split("/") : [];
+  const m = marketByPath(segment ?? "");
+  if (!m || !rest.length) return json({ error: "找不到這個路徑" }, 404);
+  const route = `/${rest.join("/")}`;
   const now = Date.now();
   const ex = url.searchParams.get("ex") ?? "bybit";
   // 全市場: the market collector when bound (its own merged minutes and events); otherwise every
   // request is merged here and the events are Binance's. Both draw Binance's fine book.
-  const market = ex === "all" ? stubFor(env, "all") : null;
+  const market = ex === "all" ? stubFor(env, "all", m) : null;
   const all = ex === "all" && !market;
-  const stub = route === "/book" && ex === "all" ? stubFor(env, "binance") : (market ?? stubFor(env, all ? "binance" : ex));
+  const stub = route === "/book" && ex === "all" ? stubFor(env, "binance", m) : (market ?? stubFor(env, all ? "binance" : ex, m));
   if (!stub) return json({ error: "沒有這個交易所" }, 404);
   if (ex === "all" && !["/day", "/recent", "/book", "/events", "/status", "/archive", "/alerts"].includes(route)) return json({ error: "全市場只能讀取" }, 400);
 
@@ -133,7 +128,7 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
 
   if (route === "/status") {
     if (!all) return json(await (await stub.fetch("https://collector/status")).json());
-    const list = await Promise.all(EXCHANGES.map(async (name) => [name, await stubFor(env, name)?.fetch("https://collector/status").then((r) => r.json(), () => null)] as const));
+    const list = await Promise.all(EXCHANGES.map(async (name) => [name, await stubFor(env, name, m)?.fetch("https://collector/status").then((r) => r.json(), () => null)] as const));
     return json(Object.fromEntries(list.map(([name, st]) => [name, st && { lastTrade: (st as { lastTrade?: unknown }).lastTrade, errors: ((st as { errors?: unknown[] }).errors ?? []).length }])));
   }
 
@@ -143,7 +138,7 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
     if (!Number.isFinite(from) || from > now || from < now - HISTORY_DAYS * DAY) return json({ error: "日期格式錯誤或超出範圍" }, 400);
     // A finished day only changes when an archive import lands; today keeps growing.
     const done = from + DAY <= now - 10 * MINUTE;
-    return cached(request, ctx, done ? 600 : 5, () => (all ? mergedAnswer(env, `/day?d=${d}`, from, { day: d, updated: now }) : stub.fetch(`https://collector/day?d=${d}`)));
+    return cached(request, ctx, done ? 600 : 5, () => (all ? mergedAnswer(env, m, `/day?d=${d}`, from, { day: d, updated: now }) : stub.fetch(`https://collector/day?d=${d}`)));
   }
 
   if (route === "/book") {
@@ -157,7 +152,7 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   if (route === "/recent") {
     const since = Number(url.searchParams.get("since"));
     if (!Number.isInteger(since) || since % MINUTE !== 0 || since < now - 2 * DAY || since > now) return json({ error: "since 需為最近兩天內的整分鐘毫秒時間" }, 400);
-    return cached(request, ctx, 3, () => (all ? mergedAnswer(env, `/recent?since=${since}`, since, { since, updated: now }) : stub.fetch(`https://collector/recent?since=${since}`)));
+    return cached(request, ctx, 3, () => (all ? mergedAnswer(env, m, `/recent?since=${since}`, since, { since, updated: now }) : stub.fetch(`https://collector/recent?since=${since}`)));
   }
 
   if (route === "/events") {
@@ -176,13 +171,14 @@ export default {
   // also covers the one failure the collector cannot report itself: not answering at all.
   async scheduled(event: ScheduledController, env: OrderflowEnv) {
     // The other exchanges' objects only need their alarm chains kept; they report their own outages.
-    for (const ex of ["binance", "okx", "bingx", "all"]) {
-      const stub = stubFor(env, ex);
-      if (stub) await stub.fetch("https://collector/wake").catch((err) => console.error(JSON.stringify({ event: "orderflow_collector_unreachable", ex, detail: String(err) })));
-    }
+    for (const m of Object.values(MARKETS))
+      for (const ex of ["binance", "okx", "bingx", "all", ...(m.id === "btc" ? [] : ["bybit"])]) {
+        const stub = stubFor(env, ex, m);
+        if (stub) await stub.fetch("https://collector/wake").catch((err) => console.error(JSON.stringify({ event: "orderflow_collector_unreachable", ex, market: m.id, detail: String(err) })));
+      }
     try {
       const res = await Promise.race([
-        collector(env).fetch("https://collector/wake"),
+        stubFor(env, "bybit")!.fetch("https://collector/wake"),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error("20 秒沒有回應")), 20_000)),
       ]);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -191,7 +187,7 @@ export default {
       // Every 30 minutes while it lasts (the cron runs every 5).
       if (Math.floor(event.scheduledTime / 300_000) % 6 !== 0) return;
       if (env.ORDERFLOW_ALERTS !== "live" || !env.BACKEND || !env.ORDERFLOW_ALERT_TOKEN) return;
-      const text = `MetaBear 訂單流通知\n${describe({ kind: "health_unreachable", t: Date.now(), reason: err instanceof Error ? err.message : String(err) })}`;
+      const text = `MetaBear 訂單流通知（BTC）\n${describe({ kind: "health_unreachable", t: Date.now(), reason: err instanceof Error ? err.message : String(err) })}`;
       await env.BACKEND.fetch("https://backend/api/internal/orderflow-alert", {
         method: "POST",
         headers: { authorization: `Bearer ${env.ORDERFLOW_ALERT_TOKEN}`, "content-type": "application/json" },
