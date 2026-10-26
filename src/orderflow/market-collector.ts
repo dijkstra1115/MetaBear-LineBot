@@ -25,8 +25,6 @@ type Merged = ReturnType<typeof mergeParts>;
 
 export class MarketCollector extends Collector {
   protected override source = "all";
-  // Recorded and shown on 全市場; LINE keeps reading Bybit until this source is chosen for it.
-  protected override marketLive = false;
   private seenPrints = new Set<string>();
   private seenLiqs = new Set<string>();
   private crossSent = new Set<number>();

@@ -49,6 +49,8 @@ export interface OrderflowEnv {
   // "live" sends, "log" only records them (the default, also for local dev).
   ORDERFLOW_ALERTS?: string;
   ORDERFLOW_ALERT_TOKEN?: string;
+  // Which collector's market events go to LINE: bybit (the default), binance, okx, bingx or all (全市場).
+  ORDERFLOW_LINE_SOURCE?: string;
   BACKEND?: Fetcher;
 }
 
@@ -165,9 +167,11 @@ export class Collector extends DurableObject<OrderflowEnv> {
   protected archiveTrade(line: string): { t: number; price: number; qty: number; sell: boolean } | null {
     return parseArchiveLine(line);
   }
-  // Market events go out to LINE (the admin and members); when false they are only recorded.
-  // Collector health is sent either way.
-  protected marketLive = true;
+  // Market events go out to LINE (the admin and members) from the one collector ORDERFLOW_LINE_SOURCE
+  // names; the others only record theirs. Collector health is sent either way.
+  protected get marketLive() {
+    return (this.env.ORDERFLOW_LINE_SOURCE ?? "bybit") === this.source;
+  }
 
   constructor(ctx: DurableObjectState, env: OrderflowEnv) {
     super(ctx, env);
@@ -623,7 +627,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     const text = [
       "MetaBear 訂單流通知",
       ...lines,
-      `https://metabear.io/lab/orderflow/?tf=1&at=${at}`,
+      `https://metabear.io/lab/orderflow/?tf=1&at=${at}&ex=${this.source}`,
       sentToday + 1 === cap ? "今天的通知已達上限，之後的事件只記錄不推送。" : "",
       "盤面事件，不是買賣建議。",
     ]

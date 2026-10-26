@@ -93,6 +93,8 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 
 ## 會員的 LINE 關鍵位提醒
 
+2026-10-26 起，推播的事件來自全市場收集器（`ORDERFLOW_LINE_SOURCE`，見 [ORDERFLOW-MULTI-EXCHANGE.md](ORDERFLOW-MULTI-EXCHANGE.md)），不再是 Bybit。
+
 收集器每次寫入在關鍵位、不是同一關鍵位冷卻中的市場事件時，標記成待轉送（`alerts.fanout = 0`）；每次 alarm 把 5 分鐘內的這類事件以 `{ events }` 送到後端的 `/api/internal/orderflow-alert`。後端（`src/orderflow-subs.ts`）依會員的勾選、每天則數與安靜時段建立逐人投遞，經佇列推播。這條路徑不受管理員的 `dailyCap` 限制；會員資格、額度保留與急停開關見 [ORDERFLOW-ALERT-SUBSCRIPTION.md](ORDERFLOW-ALERT-SUBSCRIPTION.md)。
 
 ## 通知（管理員）

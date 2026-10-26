@@ -1,6 +1,7 @@
 // Admin page for the order-flow alerts: switches, thresholds, a test message and the latest
 // events, over /api/orderflow/btcusdt/alerts with the ORDERFLOW_ADMIN_TOKEN.
-const API = "/api/orderflow/btcusdt/alerts";
+// The collector whose events go to LINE: 全市場 (ORDERFLOW_LINE_SOURCE in wrangler.orderflow.jsonc).
+const API = "/api/orderflow/btcusdt/alerts?ex=all";
 const KEY = "metabear-orderflow-admin";
 const $ = (id) => document.getElementById(id);
 

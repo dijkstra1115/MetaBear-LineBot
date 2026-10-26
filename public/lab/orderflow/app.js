@@ -38,6 +38,8 @@ const EX_NAMES = { all: "全市場", binance: "Binance", bybit: "Bybit", okx: "O
 const EX = (() => {
   const asked = query.get("ex");
   if (Object.hasOwn(EX_NAMES, asked ?? "")) return asked;
+  // LINE alerts link to an event (?at= or ?replay=) without naming the exchange; they come from 全市場.
+  if (query.has("replay") || query.has("at")) return "all";
   try {
     const saved = localStorage.getItem(EX_KEY);
     if (Object.hasOwn(EX_NAMES, saved ?? "")) return saved;
@@ -2575,7 +2577,7 @@ function shareUrl() {
   if (b && b.end <= Date.now()) url.searchParams.set("at", String(b.t));
   url.searchParams.set("ind", INDICATORS.map(([id]) => id).filter(on).join(","));
   url.searchParams.set("pm", String(prefs.printMin));
-  if (EX !== "bybit") url.searchParams.set("ex", EX);
+  url.searchParams.set("ex", EX);
   return url.href;
 }
 
