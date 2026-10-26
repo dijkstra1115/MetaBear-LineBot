@@ -1,11 +1,11 @@
 // 盤面旁白: turns the collector's key-level events into a short plain-language feed. Pure
 // functions only, so the copy is testable; every number comes from an event or the chart, and the
 // text describes what happened without saying what to do (docs/VISION.md, principle 4).
-import { NOTIFY_KINDS, choiceOf } from "./notify.js";
+import { ALL_KINDS, NOTIFY_KINDS, choiceOf } from "./notify.js";
 import { LEVEL_LABELS } from "./keylevels.js";
 import { courses } from "../../orderflow/academy-catalog.js";
 
-const KIND = new Map(NOTIFY_KINDS.map((k) => [k.id, k]));
+const KIND = new Map(ALL_KINDS.map((k) => [k.id, k]));
 const COURSE = new Map(courses.map((c) => [c.id, c]));
 // Repeats of one kind at one level within this long read as one story.
 export const MERGE_MS = 90 * 60_000;
@@ -19,6 +19,7 @@ const PHRASE = {
   stackedRetest: () => "回測不平衡區並守住",
   breakout: () => "放量收在區間之外",
   print: (n) => (n > 1 ? `出現 ${n} 筆大單` : "出現大單"),
+  cross: (n) => (n > 1 ? `${n} 次多家交易所同時出現大單` : "多家交易所同時出現大單"),
   liq: () => "出現連環爆倉",
   oi: () => "未平倉量急變",
   wall: () => "掛單牆有變化",
@@ -30,7 +31,7 @@ const PHRASE = {
 export const FILTERS = [
   { id: "all", label: "全部", kinds: null },
   { id: "bar", label: "價格行為", kinds: NOTIFY_KINDS.filter((k) => k.group === "bar").map((k) => k.id) },
-  { id: "flow", label: "大單爆倉", kinds: ["print", "liq", "oi"] },
+  { id: "flow", label: "大單爆倉", kinds: ["print", "cross", "liq", "oi"] },
   { id: "book", label: "掛單", kinds: ["wall", "spoof", "iceberg"] },
 ];
 
@@ -82,7 +83,7 @@ export function detailOf(e) {
   s = s.replace(/（[^（）]*）\s*$/, "");
   s = s.replace(/^[^：]{1,8}：/, "");
   // Live events name their kind without a colon ("大單 主動買 …"); the card's badge already does.
-  s = s.replace(/^(大單|連環爆倉|疑似誘單|冰山)\s+/, "");
+  s = s.replace(/^(大單|跨所同步大單|連環爆倉|疑似誘單|冰山)\s+/, "");
   s = s.replace(/(\d{5,})(\.\d+)?/g, (m) => fmt(Number(m)));
   s = spaced(s);
   return s.trim();

@@ -25,6 +25,7 @@ export const bubbleRadius = (qty) => Math.min(24, 4 + 0.9 * Math.sqrt(qty));
 
 // One-character names for a single event on a bar.
 const SHORT = {
+  cross: "跨",
   sweep: "掃",
   absorption: "吸",
   divergence: "背",

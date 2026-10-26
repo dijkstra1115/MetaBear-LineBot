@@ -1,7 +1,7 @@
 // 盤面旁白 in paragraphs: stories (narrate.js groupEvents) that happen close together at about
 // the same price become one chapter told as one sentence, in time order. Every clause comes from
 // fixed phrases and the numbers in the collector's own event lines; nothing judges what comes next.
-import { NOTIFY_KINDS, choiceOf } from "./notify.js";
+import { ALL_KINDS, choiceOf } from "./notify.js";
 import { LEVEL_LABELS } from "./keylevels.js";
 import { courses } from "../../orderflow/academy-catalog.js";
 import { detailOf, fmt, rangeOf, spaced, timeOf } from "./narrate.js";
@@ -14,7 +14,7 @@ export const NEAR_PCT = 0.002; // …at prices within 0.2 % of its first story's
 // liquidations, then open interest falling).
 const QUICK_MS = 5 * MINUTE;
 const QUICK_PCT = 0.005;
-const KIND = new Map(NOTIFY_KINDS.map((k) => [k.id, k]));
+const KIND = new Map(ALL_KINDS.map((k) => [k.id, k]));
 const COURSE = new Map(courses.map((c) => [c.id, c]));
 const near = (a, b, pct) => Math.abs(a - b) / b <= pct;
 const isLong = (s) => s.last - s.first > SPAN_MS;
@@ -87,6 +87,10 @@ function clauseOf(p, { short = false } = {}) {
       const detail = one && n <= 3 && qtys.length === n ? `（${qtys.map((q) => fmt(q)).join("、")} BTC）` : one ? "" : `（${buys} 筆主動買、${n - buys} 筆主動賣）`;
       const noun = `${n > 1 ? `${n} 筆` : "一筆"}${one}大單${detail}`;
       return short ? noun : `出現${noun}`;
+    }
+    case "cross": {
+      if (n > 1) return `${n} 次多家交易所同時出現大單`;
+      return short ? "多家交易所同時大單" : d;
     }
     case "liq": {
       const m = String(last.text).match(/(多單|空單) (\$[\d.]+[MK]?)，(\d+) 筆/);

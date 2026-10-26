@@ -82,7 +82,20 @@ export const NOTIFY_KINDS = [
     about: "同一價格的成交量遠大於掛單簿上顯示過的量，掛單一直被補上。",
   },
 ];
-const CHOICE_OF = new Map(NOTIFY_KINDS.flatMap((k) => (k.kinds ?? [k.id]).map((kind) => [kind, k.id])));
+// Kinds the lab finds itself rather than the collector: shown in the narration and on the chart, not
+// offered as notifications (the collector's feed never carries them).
+export const LOCAL_KINDS = [
+  {
+    id: "cross",
+    name: "跨所同步大單",
+    group: "live",
+    lesson: "footprint",
+    hint: "多家交易所幾秒內同方向的大單",
+    about: "三家以上的交易所在 10 秒內出現同方向的大單，代表不只一個市場的大戶同時在買或賣，比單一交易所的大單更值得注意。",
+  },
+];
+export const ALL_KINDS = [...NOTIFY_KINDS, ...LOCAL_KINDS];
+const CHOICE_OF = new Map(ALL_KINDS.flatMap((k) => (k.kinds ?? [k.id]).map((kind) => [kind, k.id])));
 const IDS = NOTIFY_KINDS.map((k) => k.id);
 const PREFS_KEY = "metabear-orderflow-notify";
 const TITLE = "MetaBear 關鍵位事件";
