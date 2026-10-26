@@ -9,9 +9,10 @@
 // - History: the last 30 days, one day of all four per alarm; today and yesterday are merged again
 //   every hour, so archive imports and backfills reach it.
 import { CROSS_WINDOW_MS, EXCHANGE_NAMES, crossClusters } from "../../public/lab/orderflow/cross.js";
+import { closedBarEvents } from "../../public/lab/orderflow/keylevels.js";
 import { watchPrint } from "../../public/lab/orderflow/watch.js";
 import { mergeParts, type Part } from "./aggregate";
-import { Collector, DAY, FIVE_MIN, HEALTH_DOWN_MS, MINUTE, type OrderflowEnv } from "./collector";
+import { BAR_COOLDOWN_MS, BAR_HISTORY_MS, BAR_SETTLE_MS, Collector, DAY, FIVE_MIN, HEALTH_DOWN_MS, MINUTE, type OrderflowEnv } from "./collector";
 import { EXCHANGES, stubFor, type Exchange } from "./exchanges";
 
 const HISTORY_DAYS = 30;
@@ -151,11 +152,52 @@ export class MarketCollector extends Collector {
     this.setMeta("mergedDays", JSON.stringify([...done].filter((x) => x > today - HISTORY_DAYS * DAY)));
   }
 
+  // Once, after yesterday and today are merged: the last day's events found on the merged market
+  // (bar events, large prints, 跨所同步大單, liquidation bursts), so the narration does not start
+  // empty. They are only recorded, like every event here.
+  private replayDay(now: number) {
+    if (this.meta("replayed") || !this.meta(`merged:${Math.floor(now / DAY) * DAY - DAY}`)) return;
+    const from = now - DAY;
+    this.updateLevels();
+    const rows = this.rows("SELECT t, row FROM bars WHERE t >= ? AND t < ? ORDER BY t", from - BAR_HISTORY_MS, now).map((r) => JSON.parse(String(r.row)));
+    const last = Math.floor((now - BAR_SETTLE_MS) / FIVE_MIN) * FIVE_MIN;
+    let lo = 0;
+    for (let end = Math.ceil(from / FIVE_MIN) * FIVE_MIN; end <= last; end += FIVE_MIN) {
+      while (lo < rows.length && rows[lo][0] < end - BAR_HISTORY_MS) lo++;
+      let hi = lo;
+      while (hi < rows.length && rows[hi][0] < end) hi++;
+      for (const e of closedBarEvents(rows.slice(lo, hi), 10, this.levelBook.levels(end), end)) {
+        const key = `${e.kind}:${e.side}`;
+        if (end - (this.barSent.get(key) ?? -Infinity) < BAR_COOLDOWN_MS) continue;
+        this.barSent.set(key, end);
+        this.alert(e);
+      }
+    }
+    this.setMeta("barsDetected", last);
+    const prints = this.rows("SELECT t, side, price, qty, ex FROM prints WHERE t >= ? ORDER BY t", from).map((r) => [r.t, r.side, r.price, r.qty, r.ex] as [number, string, number, number, string]);
+    for (const p of prints) {
+      this.remember(this.seenPrints, p.join("|"));
+      this.alert(watchPrint(p, this.alertConfig));
+    }
+    for (const c of crossClusters(prints, { min: this.alertConfig.crossBtc })) {
+      this.crossSent.add(c.t);
+      const names = c.exchanges.map(([ex]: [string]) => EXCHANGE_NAMES[ex as Exchange] ?? ex).join("、");
+      this.alert({ kind: "cross", t: c.t, side: c.side, price: c.price, qty: c.qty, names, windowMs: CROSS_WINDOW_MS });
+    }
+    for (const r of this.rows("SELECT t, side, price, qty, ex FROM liqs WHERE t >= ? ORDER BY t", from)) {
+      const row = [r.t, r.side, r.price, r.qty, r.ex] as [number, string, number, number, string];
+      this.remember(this.seenLiqs, row.join("|"));
+      this.alert(this.liqWatch.add(row));
+    }
+    this.setMeta("replayed", now);
+  }
+
   protected override async ensureStreams() {
     const now = Date.now();
     try {
       // History first: the key levels judging new events come from yesterday's merged minutes.
       await this.mergeHistory(now);
+      this.replayDay(now);
       await this.pullRecent(now);
       await this.copyBookEvents(now);
     } catch (err) {

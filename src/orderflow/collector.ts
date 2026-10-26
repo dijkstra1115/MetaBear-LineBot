@@ -64,9 +64,9 @@ const HEALTH_ERRORS = 10; // errors within 10 minutes
 const HEALTH_REPEAT_MS = 3_600_000;
 // Bar detectors run once a 5-minute bar has settled (late trades in), over enough history for their
 // z-scores and swing levels, at most once per kind and direction in half an hour like detect().
-const BAR_SETTLE_MS = 15_000;
-const BAR_HISTORY_MS = 6 * 3_600_000;
-const BAR_COOLDOWN_MS = 30 * 60_000;
+export const BAR_SETTLE_MS = 15_000;
+export const BAR_HISTORY_MS = 6 * 3_600_000;
+export const BAR_COOLDOWN_MS = 30 * 60_000;
 // Public events (GET /events): the newest at-level market events, at most this many per request.
 const EVENTS_MAX = 2_000;
 type AlertConfig = typeof ALERT_DEFAULTS;
@@ -146,11 +146,11 @@ export class Collector extends DurableObject<OrderflowEnv> {
   protected spoofWatch = new SpoofWatch(this.alertConfig);
   // Key levels of the previous and current UTC day, from closed persisted minutes; rebuilt
   // from storage after a restart or an archive import (which can correct the previous day).
-  private levelBook = new LevelBook(TICK);
+  protected levelBook = new LevelBook(TICK);
   protected levelsStale = true;
   private levelsUntil = 0; // minutes before this have been fed to the book
   private levelSent = new Map<string, number>(); // kind|level|side → time last let through
-  private barSent = new Map<string, number>(); // bar kind:dir → close of the bar last reported
+  protected barSent = new Map<string, number>(); // bar kind:dir → close of the bar last reported
   private archive: ArchiveJob | null = null;
   protected status = { boot: Date.now(), bybit: "idle", okx: "idle", gaps: [] as string[], errors: [] as string[], archive: null as Record<string, unknown> | null };
   protected source = "bybit";
