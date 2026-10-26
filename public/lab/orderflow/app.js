@@ -2132,8 +2132,9 @@ function connectWs(url, { onOpen, onMessage, ping: pingText, decode }) {
     };
   };
   open();
-  return () => {
-    if (Date.now() - lastMessage < 5_000 || ws.readyState !== WebSocket.OPEN) return;
+  // force reconnects a healthy socket too, so its next open subscribes to what is needed now.
+  return (force = false) => {
+    if (!force && (Date.now() - lastMessage < 5_000 || ws.readyState !== WebSocket.OPEN)) return;
     delay = 1000;
     ws.close();
     ws.onclose?.();
@@ -2173,6 +2174,29 @@ function printer(ex) {
     if (run.length && (run[0].t !== tr.t || run[0].sell !== tr.sell)) flush();
     run.push(tr);
   };
+}
+
+// The order book (heatmap, book imbalance) and the liquidation feeds stream only while an indicator
+// that draws them is on: Binance alone pushes about ten depth updates a second, and the beginner
+// layout, where most visitors from LINE land on their phones, shows neither. Turning one on opens
+// its stream (indicatorChanged); the collector's history fills the chart meanwhile.
+const BOOK_INDICATORS = ["heat", "imb"];
+const LIQ_INDICATORS = ["liq", "liqmark"];
+const needsBook = () => BOOK_INDICATORS.some(on);
+const needsLiq = () => LIQ_INDICATORS.some(on);
+let openBook = () => {}; // set by the exchange whose book the chart draws
+
+let liqStarted = false;
+function startLiq() {
+  if (liqStarted) return;
+  liqStarted = true;
+  for (const feed of LIQ_FEEDS) {
+    connectWs(feed.url, {
+      ping: feed.ping,
+      onOpen: (ws) => feed.subscribe && ws.send(JSON.stringify(feed.subscribe)),
+      onMessage: (m) => mergeLiquidations(feed.parse(m)) && scheduleRefresh(),
+    });
+  }
 }
 
 function snapshotBook() {
@@ -2219,14 +2243,21 @@ function startBinance() {
       syncing = false;
     }
   };
-  const resumeDepth = connectWs(BINANCE_STREAMS.depth, {
-    onOpen: () => {
-      book.reset();
-      // Diffs are buffered until the snapshot lands; give the stream a moment to start.
-      setTimeout(sync, 500);
-    },
-    onMessage: (m) => m.data?.e === "depthUpdate" && book.diff(m.data) === "resync" && sync(),
-  });
+  let resumeDepth = () => {};
+  let depthOpen = false;
+  openBook = () => {
+    if (depthOpen) return;
+    depthOpen = true;
+    resumeDepth = connectWs(BINANCE_STREAMS.depth, {
+      onOpen: () => {
+        book.reset();
+        // Diffs are buffered until the snapshot lands; give the stream a moment to start.
+        setTimeout(sync, 500);
+      },
+      onMessage: (m) => m.data?.e === "depthUpdate" && book.diff(m.data) === "resync" && sync(),
+    });
+  };
+  if (needsBook()) openBook();
   const readOi = () =>
     fetch(`${BINANCE_REST}/fapi/v1/openInterest?symbol=${BINANCE_SYMBOL}`)
       .then((res) => res.json())
@@ -2247,12 +2278,14 @@ function startBinance() {
 // Alone, an exchange streams trades, its book and readings; in 全市場 (priced = false) only its
 // trades, which add volume to Binance's bars.
 function startBybit(priced = true) {
-  return connectWs(WS_URL, {
+  let withBook = false;
+  const resume = connectWs(WS_URL, {
     ping: PING,
     onOpen: (ws) => {
       stream.gaps.reconnect();
-      if (priced) stream.book.reset();
-      ws.send(JSON.stringify({ op: "subscribe", args: priced ? [TRADE_TOPIC, BOOK_TOPIC, TICKER_TOPIC] : [TRADE_TOPIC] }));
+      withBook = priced && needsBook();
+      if (withBook) stream.book.reset();
+      ws.send(JSON.stringify({ op: "subscribe", args: priced ? [TRADE_TOPIC, ...(withBook ? [BOOK_TOPIC] : []), TICKER_TOPIC] : [TRADE_TOPIC] }));
     },
     onMessage: (m) => {
       if (m.topic === TRADE_TOPIC) {
@@ -2265,17 +2298,21 @@ function startBybit(priced = true) {
       else if (m.topic === TICKER_TOPIC) stream.oi = applyTicker(stream.ticker, m).oi ?? null;
     },
   });
+  if (priced) openBook = () => withBook || resume(true);
+  return resume;
 }
 
 function startOkx(priced = true) {
   const book = priced ? (stream.book = new OkxBook()) : null;
   const print = printer("okx");
-  const channels = priced ? ["trades", "books", "open-interest", "funding-rate"] : ["trades"];
-  return connectWs(OKX_WS, {
+  let withBook = false;
+  const resume = connectWs(OKX_WS, {
     ping: "ping",
     onOpen: (ws) => {
       stream.gaps.reconnect();
       book?.reset();
+      withBook = priced && needsBook();
+      const channels = priced ? ["trades", ...(withBook ? ["books"] : []), "open-interest", "funding-rate"] : ["trades"];
       ws.send(JSON.stringify({ op: "subscribe", args: channels.map((channel) => ({ channel, instId: OKX_INST })) }));
     },
     onMessage: (m) => {
@@ -2287,16 +2324,20 @@ function startOkx(priced = true) {
       else if (channel === "funding-rate" && m.data?.[0]) stream.ticker.funding = Number(m.data[0].fundingRate);
     },
   });
+  if (priced) openBook = () => withBook || resume(true);
+  return resume;
 }
 
 function startBingx(priced = true) {
   const book = priced ? (stream.book = new BingxBook()) : null;
   const print = printer("bingx");
-  return connectWs(BINGX_WS, {
+  let withBook = false;
+  const resume = connectWs(BINGX_WS, {
     decode: gunzipText,
     onOpen: (ws) => {
       stream.gaps.reconnect();
-      for (const dataType of priced ? BINGX_TOPICS : BINGX_TOPICS.slice(0, 1)) ws.send(JSON.stringify({ id: dataType, reqType: "sub", dataType }));
+      withBook = priced && needsBook();
+      for (const dataType of withBook ? BINGX_TOPICS : BINGX_TOPICS.slice(0, 1)) ws.send(JSON.stringify({ id: dataType, reqType: "sub", dataType }));
     },
     onMessage: (m) => {
       if (!m.data) return;
@@ -2304,6 +2345,8 @@ function startBingx(priced = true) {
       else if (m.dataType === BINGX_TOPICS[1]) book?.load(m.data);
     },
   });
+  if (priced) openBook = () => withBook || resume(true);
+  return resume;
 }
 
 // 全市場: Binance for prices, its book and funding; the others' trades for volume and prints.
@@ -2314,13 +2357,7 @@ function startAll() {
 
 function startStreams() {
   const resumeLive = { all: startAll, binance: startBinance, okx: startOkx, bingx: startBingx }[EX]?.() ?? startBybit();
-  for (const feed of LIQ_FEEDS) {
-    connectWs(feed.url, {
-      ping: feed.ping,
-      onOpen: (ws) => feed.subscribe && ws.send(JSON.stringify(feed.subscribe)),
-      onMessage: (m) => mergeLiquidations(feed.parse(m)) && scheduleRefresh(),
-    });
-  }
+  if (needsLiq()) startLiq();
   setInterval(snapshotBook, 1_000);
   // Phones suspend background pages: on return, catch up from the collector and reconnect.
   document.addEventListener("visibilitychange", () => {
@@ -2449,6 +2486,8 @@ async function pollRecent() {
 
 const indicatorBoxes = new Map();
 function indicatorChanged(id) {
+  if (BOOK_INDICATORS.includes(id) && on(id)) openBook();
+  if (LIQ_INDICATORS.includes(id) && on(id)) startLiq();
   if (id === "lmap") updateLiqMap(true);
   if (id === "events") {
     eventsKey = "";
