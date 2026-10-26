@@ -22,12 +22,14 @@ export const BOOK_TOPIC = `orderbook.1000.${SYMBOL}`;
 export const TRADE_TOPIC = `publicTrade.${SYMBOL}`;
 export const TICKER_TOPIC = `tickers.${SYMBOL}`;
 export const PING = JSON.stringify({ op: "ping" });
+/** One symbol's topics (markets.js symbol). */
+export const bybitTopics = (symbol) => ({ trade: `publicTrade.${symbol}`, book: `orderbook.1000.${symbol}`, ticker: `tickers.${symbol}`, liq: `allLiquidation.${symbol}` });
 
 const round = (v, d) => Math.round(v * 10 ** d) / 10 ** d;
 
 /** publicTrade message → [{ id, t, price, qty, sell }], where sell means the taker sold. */
 export function parseTrades(m) {
-  if (m.topic !== TRADE_TOPIC) return [];
+  if (!String(m.topic).startsWith("publicTrade.")) return [];
   return m.data.map((d) => ({ id: d.i, t: d.T, price: Number(d.p), qty: Number(d.v), sell: d.S === "Sell", seq: d.seq }));
 }
 
@@ -130,7 +132,7 @@ export class StreamGaps {
 
 // Bybit's daily trade archive: one gzipped CSV per UTC day, published early the next day.
 export const ARCHIVE_URL = "https://public.bybit.com/trading";
-export const archiveUrl = (day, base = ARCHIVE_URL) => `${base}/${SYMBOL}/${SYMBOL}${day}.csv.gz`;
+export const archiveUrl = (day, base = ARCHIVE_URL, symbol = SYMBOL) => `${base}/${symbol}/${symbol}${day}.csv.gz`;
 
 /** Archive columns: timestamp (seconds), symbol, side (taker), size, price, …; null for the header and blank lines. */
 export function parseArchiveLine(line) {
@@ -146,8 +148,10 @@ export function parseArchiveLine(line) {
  * without holding it all; `take()` closes and returns the rest.
  */
 export class ArchiveDay {
-  constructor(tick = TICK) {
+  /** tick and printMin follow the market (markets.js); BTC's by default. */
+  constructor(tick = TICK, printMin = PRINT_MIN) {
     this.tick = tick;
+    this.printMin = printMin;
     this.bars = new Map();
     this.prints = [];
     this.run = []; // fills of one taker order share a timestamp and side (groupPrints)
@@ -170,7 +174,7 @@ export class ArchiveDay {
   }
 
   closeRun() {
-    for (const p of groupPrints(this.run)) if (p[3] >= PRINT_MIN) this.prints.push(p);
+    for (const p of groupPrints(this.run)) if (p[3] >= this.printMin) this.prints.push(p);
     this.run = [];
   }
 
@@ -212,7 +216,7 @@ export class OrderBook {
    * levels as [side, price, size before, size after], or null when ignored.
    */
   apply(m) {
-    if (m.topic !== BOOK_TOPIC) return null;
+    if (!String(m.topic).startsWith("orderbook.")) return null;
     const d = m.data;
     // A snapshot, or u = 1 after a Bybit service restart, replaces the whole book.
     const snapshot = m.type === "snapshot" || d.u === 1;
@@ -275,7 +279,7 @@ export class OrderBook {
 
 /** Merges a tickers snapshot or delta into state; returns the fields as { oi (BTC), oiValue (USDT), funding, mark }. */
 export function applyTicker(state, m) {
-  if (m.topic !== TICKER_TOPIC) return state;
+  if (!String(m.topic).startsWith("tickers.")) return state;
   const d = m.data;
   if (d.openInterest != null) state.oi = Number(d.openInterest);
   if (d.openInterestValue != null) state.oiValue = Number(d.openInterestValue);

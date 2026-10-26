@@ -107,7 +107,7 @@ test("alert thresholds are tuned over the admin API and a test alert reaches the
 
   const tested = (await (await alerts({ method: "POST", body: JSON.stringify({ test: true }) })).json()) as any;
   assert.equal(delivered.length, 1);
-  assert.match(delivered[0].text, /^MetaBear 訂單流通知\n✅ 測試通知/);
+  assert.match(delivered[0].text, /^MetaBear 訂單流通知（BTC）\n✅ 測試通知/);
   assert.match(delivered[0].text, /https:\/\/metabear\.io\/lab\/orderflow\/\?tf=1&at=\d+/);
   assert.match(delivered[0].text, /盤面事件，不是買賣建議。$/);
   assert.match(delivered[0].key, /^orderflow-\d+$/);

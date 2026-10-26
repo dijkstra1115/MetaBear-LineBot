@@ -1,18 +1,16 @@
 // OKX BTC-USDT-SWAP collector (docs/ORDERFLOW-MULTI-EXCHANGE.md): trades, the 400-level book, open
 // interest, funding and liquidations from OKX's public WebSocket; history from its REST and the
 // daily trade archive (zipped, one file per Beijing-time day).
-import { LIQ_FEEDS } from "../../public/lab/orderflow/liquidations.js";
-import { OKX_CHANNELS, OKX_INST, OKX_REST, OKX_WS, OkxBook, missingRanges, okxArchiveUrl, parseOkxArchiveLine, parseOkxCandles, parseOkxTrades } from "../../public/lab/orderflow/okx.js";
+import { OKX_CHANNELS, OKX_REST, OKX_WS, OkxBook, missingRanges, okxArchiveUrl, parseOkxArchiveLine, parseOkxCandles, parseOkxTrades } from "../../public/lab/orderflow/okx.js";
 import { BACKFILL_DAYS, DAY, FIVE_MIN, MINUTE, type Trade } from "./collector";
 import { DirectCollector } from "./direct-collector";
 
-const OKX_LIQ = LIQ_FEEDS.find((f) => f.ex === "okx")!;
 const HOUR = 3_600_000;
 const RECENT_CANDLES = 300; // /market/candles serves the newest 300 minutes in one request
 const RECENT_SPAN = 290 * 60_000; // what it covers for sure, a few minutes short of 300
 
 export class OkxCollector extends DirectCollector {
-  protected override book = new OkxBook();
+  protected override book = new OkxBook(this.m.okxCt);
   protected override source = "okx";
   protected wsUrl = OKX_WS;
   protected feed = "OKX" as const;
@@ -21,10 +19,10 @@ export class OkxCollector extends DirectCollector {
   protected override archiveOffset = -8 * HOUR;
   protected override archiveLateMs = 12 * HOUR;
   protected override archiveSource(day: string) {
-    return { url: okxArchiveUrl(day), zip: true };
+    return { url: okxArchiveUrl(day, this.m.okxInst), zip: true };
   }
   protected override archiveTrade(line: string) {
-    return parseOkxArchiveLine(line);
+    return parseOkxArchiveLine(line, this.m.okxInst, this.m.okxCt);
   }
 
   private async get(path: string): Promise<any> {
@@ -35,7 +33,7 @@ export class OkxCollector extends DirectCollector {
   }
 
   protected subscribe(ws: WebSocket) {
-    const args = [...OKX_CHANNELS.map((channel) => ({ channel, instId: OKX_INST })), ...OKX_LIQ.subscribe!.args];
+    const args = [...OKX_CHANNELS.map((channel) => ({ channel, instId: this.m.okxInst })), ...this.liqFeed("okx").subscribe!.args];
     this.send(ws, { op: "subscribe", args });
   }
 
@@ -45,7 +43,7 @@ export class OkxCollector extends DirectCollector {
     if (m.event === "error") return this.note("errors", `okx: ${m.code} ${m.msg}`);
     switch (m.arg?.channel) {
       case "trades":
-        for (const tr of parseOkxTrades(m.data)) this.queueTrade(tr);
+        for (const tr of parseOkxTrades(m.data, this.m.okxInst, this.m.okxCt)) this.queueTrade(tr);
         break;
       case "books": {
         const changes = this.book.applyOkx(m);
@@ -53,7 +51,7 @@ export class OkxCollector extends DirectCollector {
         else if (changes === "resync") {
           // A broken chain: subscribe again for a fresh snapshot.
           this.note("gaps", "okx book chain broken, resubscribing");
-          const arg = { channel: "books", instId: OKX_INST };
+          const arg = { channel: "books", instId: this.m.okxInst };
           this.send(ws, { op: "unsubscribe", args: [arg] });
           this.send(ws, { op: "subscribe", args: [arg] });
         } else if (changes?.length) this.watchChanges(Number(m.data[0].ts) || Date.now(), changes);
@@ -73,7 +71,7 @@ export class OkxCollector extends DirectCollector {
         if (m.data?.[0]) this.ticker.funding = Number(m.data[0].fundingRate);
         break;
       case "liquidation-orders":
-        this.saveLiqs(OKX_LIQ.parse(m));
+        this.saveLiqs(this.liqFeed("okx").parse(m));
         break;
     }
   }
@@ -82,7 +80,7 @@ export class OkxCollector extends DirectCollector {
   protected override async backfill() {
     if (!this.lastTradeT) return;
     try {
-      const list: Trade[] = parseOkxTrades(await this.get(`/api/v5/market/trades?instId=${OKX_INST}&limit=500`));
+      const list: Trade[] = parseOkxTrades(await this.get(`/api/v5/market/trades?instId=${this.m.okxInst}&limit=500`), this.m.okxInst, this.m.okxCt);
       if (!list.length) return;
       const oldest = Math.min(...list.map((tr) => tr.t));
       if (oldest > this.lastTradeT) this.note("gaps", `okx trades ${new Date(this.lastTradeT).toISOString().slice(11, 19)}–${new Date(oldest).toISOString().slice(11, 19)} missing`);
@@ -106,7 +104,7 @@ export class OkxCollector extends DirectCollector {
       const end = Math.min(now, cursor + 100 * FIVE_MIN);
       const path = kind === "oi" ? "open-interest-history" : "long-short-account-ratio-contract";
       try {
-        for (const r of (await this.get(`/api/v5/rubik/stat/contracts/${path}?instId=${OKX_INST}&period=5m&begin=${cursor}&end=${end}&limit=100`)) as string[][]) {
+        for (const r of (await this.get(`/api/v5/rubik/stat/contracts/${path}?instId=${this.m.okxInst}&period=5m&begin=${cursor}&end=${end}&limit=100`)) as string[][]) {
           if (kind === "oi") this.sql.exec("INSERT OR REPLACE INTO oi_rest (t, oi) VALUES (?, ?)", Number(r[0]), Number(r[2]));
           else this.sql.exec("INSERT INTO ratios (t, ratio) VALUES (?, ?) ON CONFLICT(t) DO UPDATE SET ratio = excluded.ratio", Number(r[0]), Number(r[1]));
         }
@@ -118,7 +116,7 @@ export class OkxCollector extends DirectCollector {
     }
     if (now - Number(this.meta("fundingPolled") ?? 0) < HOUR) return;
     try {
-      for (const r of (await this.get(`/api/v5/public/funding-rate-history?instId=${OKX_INST}&limit=100`)) as { fundingTime: string; fundingRate: string }[])
+      for (const r of (await this.get(`/api/v5/public/funding-rate-history?instId=${this.m.okxInst}&limit=100`)) as { fundingTime: string; fundingRate: string }[])
         this.sql.exec("INSERT OR REPLACE INTO funding (t, rate) VALUES (?, ?)", Number(r.fundingTime), Number(r.fundingRate));
       this.setMeta("fundingPolled", now);
     } catch (err) {
@@ -140,12 +138,12 @@ export class OkxCollector extends DirectCollector {
     };
     try {
       if (gaps.some(([, to]) => to > end - RECENT_SPAN)) {
-        const recent = parseOkxCandles(await this.get(`/api/v5/market/candles?instId=${OKX_INST}&bar=1m&limit=${RECENT_CANDLES}`));
+        const recent = parseOkxCandles(await this.get(`/api/v5/market/candles?instId=${this.m.okxInst}&bar=1m&limit=${RECENT_CANDLES}`));
         for (const [from, to] of gaps) store(recent, from, to);
       }
       for (const [from, to] of gaps.filter(([f]) => f <= end - RECENT_SPAN)) {
         for (let after = Math.min(to, end - RECENT_SPAN) + MINUTE; after > from; after -= 100 * MINUTE) {
-          store(parseOkxCandles(await this.get(`/api/v5/market/history-candles?instId=${OKX_INST}&bar=1m&after=${after}&limit=100`)), from, to);
+          store(parseOkxCandles(await this.get(`/api/v5/market/history-candles?instId=${this.m.okxInst}&bar=1m&after=${after}&limit=100`)), from, to);
           await new Promise((r) => setTimeout(r, 500)); // history-candles allows 10 requests in 2 s per IP
         }
       }

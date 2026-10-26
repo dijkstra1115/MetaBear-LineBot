@@ -5,6 +5,7 @@
 //
 //   npm run lab:orderflow:archive -- --days 30 --api https://metabear.io/api/orderflow/btcusdt
 //   npm run lab:orderflow:archive -- --ex okx --days 30 --api https://metabear.io/api/orderflow/btcusdt
+//   npm run lab:orderflow:archive -- --m eth --ex okx --days 30 --api https://metabear.io/api/orderflow/ethusdt
 //
 // The token comes from ORDERFLOW_ADMIN_TOKEN, or from .dev.vars for the local Worker
 // (npm run orderflow:dev). Downloads are cached in .data/orderflow/binance/.
@@ -13,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
 import { ArchiveDay, PRINT_MIN } from "../public/lab/orderflow/bybit.js";
 import { binanceArchiveUrl, parseArchiveLine } from "../public/lab/orderflow/binance.js";
+import { marketOf, sized } from "../public/lab/orderflow/markets.js";
 import { okxArchiveUrl, parseOkxArchiveLine } from "../public/lab/orderflow/okx.js";
 
 const args = process.argv.slice(2);
@@ -21,19 +23,20 @@ const opt = (name, fallback) => {
   return i >= 0 ? args[i + 1] : fallback;
 };
 const DAYS = Number(opt("days", 30));
-const API = opt("api", "http://127.0.0.1:8792/api/orderflow/btcusdt");
+const M = marketOf(opt("m", "btc"));
+const API = opt("api", `http://127.0.0.1:8792/api/orderflow/${M.path}`);
 const BATCH = 240;
 const EX = opt("ex", "binance");
 // OKX names its files by Beijing-time day, which starts at 16:00 UTC the day before.
 const SOURCES = {
-  binance: { url: binanceArchiveUrl, parse: parseArchiveLine, offset: 0 },
-  okx: { url: okxArchiveUrl, parse: parseOkxArchiveLine, offset: -8 * 3_600_000 },
+  binance: { url: (day) => binanceArchiveUrl(day, M.symbol), parse: parseArchiveLine, offset: 0 },
+  okx: { url: (day) => okxArchiveUrl(day, M.okxInst), parse: (line) => parseOkxArchiveLine(line, M.okxInst, M.okxCt), offset: -8 * 3_600_000 },
 };
 const source = SOURCES[EX];
 if (!source) throw new Error("--ex must be binance or okx");
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const cacheDir = `${root}.data/orderflow/${EX}/`;
+const cacheDir = `${root}.data/orderflow/${EX}${M.id === "btc" ? "" : `-${M.id}`}/`;
 
 async function token() {
   if (process.env.ORDERFLOW_ADMIN_TOKEN) return process.env.ORDERFLOW_ADMIN_TOKEN;
@@ -73,7 +76,7 @@ function unzipSingle(zip) {
 }
 
 function buildDay(csv) {
-  const day = new ArchiveDay();
+  const day = new ArchiveDay(M.tick, sized(M, PRINT_MIN));
   for (let i = 0; i < csv.length; ) {
     let j = csv.indexOf(10, i);
     if (j < 0) j = csv.length;
@@ -116,5 +119,5 @@ for (let k = DAYS; k >= 1; k--) {
   for (let i = 0; i < built.rows.length; i += BATCH) await post({ rows: built.rows.slice(i, i + BATCH) });
   const from = Date.parse(`${day}T00:00:00Z`) + source.offset;
   await post({ prints: built.prints, from, to: from + 86_400_000 });
-  console.log(`${day}: ${built.trades.toLocaleString()} trades → ${built.rows.length} bars, ${built.prints.length.toLocaleString()} prints ≥ ${PRINT_MIN} BTC`);
+  console.log(`${day}: ${built.trades.toLocaleString()} trades → ${built.rows.length} bars, ${built.prints.length.toLocaleString()} prints ≥ ${sized(M, PRINT_MIN)} ${M.base}`);
 }

@@ -65,7 +65,8 @@ export function chaptersOf(stories) {
   return out.sort((a, b) => b.last - a.last);
 }
 
-const qtyOf = (e) => Number(String(e.text).match(/([\d.]+) BTC/)?.[1]);
+const qtyOf = (e) => Number(String(e.text).match(/([\d.]+) (?:BTC|ETH)/)?.[1]);
+const unitOf = (e) => String(e.text).match(/[\d.]+ (BTC|ETH)/)?.[1] ?? "BTC";
 const sideName = (side) => (side === "buy" ? "主動買" : "主動賣");
 
 // One clause per kind in a chapter. short: the noun form used after 「期間另有」.
@@ -84,7 +85,7 @@ function clauseOf(p, { short = false } = {}) {
       const buys = p.items.filter((e) => e.side === "buy").length;
       const one = buys === 0 || buys === n ? sideName(p.items[0].side) : "";
       const qtys = p.items.map(qtyOf).filter(Number.isFinite);
-      const detail = one && n <= 3 && qtys.length === n ? `（${qtys.map((q) => fmt(q)).join("、")} BTC）` : one ? "" : `（${buys} 筆主動買、${n - buys} 筆主動賣）`;
+      const detail = one && n <= 3 && qtys.length === n ? `（${qtys.map((q) => fmt(q)).join("、")} ${unitOf(p.items[0])}）` : one ? "" : `（${buys} 筆主動買、${n - buys} 筆主動賣）`;
       const noun = `${n > 1 ? `${n} 筆` : "一筆"}${one}大單${detail}`;
       return short ? noun : `出現${noun}`;
     }

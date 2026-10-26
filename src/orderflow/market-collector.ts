@@ -37,7 +37,7 @@ export class MarketCollector extends Collector {
   }
 
   private async read(ex: Exchange, path: string): Promise<(Part & { status?: { lastTrade?: number }; events?: any[] }) | null> {
-    const stub = stubFor(this.env, ex);
+    const stub = stubFor(this.env, ex, this.m);
     if (!stub) return null;
     try {
       const res = await stub.fetch(`https://collector${path}`);
@@ -164,7 +164,7 @@ export class MarketCollector extends Collector {
       while (lo < rows.length && rows[lo][0] < end - BAR_HISTORY_MS) lo++;
       let hi = lo;
       while (hi < rows.length && rows[hi][0] < end) hi++;
-      for (const e of closedBarEvents(rows.slice(lo, hi), 10, this.levelBook.levels(end), end)) {
+      for (const e of closedBarEvents(rows.slice(lo, hi), this.m.tick, this.levelBook.levels(end), end)) {
         const key = `${e.kind}:${e.side}`;
         if (end - (this.barSent.get(key) ?? -Infinity) < BAR_COOLDOWN_MS) continue;
         this.barSent.set(key, end);
