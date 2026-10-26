@@ -82,6 +82,11 @@ test("layouts: beginners see a quiet chart, pro is the full default set", () => 
   assert.deepEqual(Object.keys(b.show).filter((k) => b.show[k]), ["prints", "vwap", "levels", "events", "cvd"]);
   assert.equal(b.printMin, 10);
   assert.equal(layoutPrefs("beginner", indicators, { narrow: true }).printMin, 25);
+  // 全市場 sums four exchanges' prints, so its thresholds sit one step higher.
+  assert.equal(layoutPrefs("beginner", indicators, { merged: true }).printMin, 25);
+  assert.equal(layoutPrefs("beginner", indicators, { narrow: true, merged: true }).printMin, 50);
+  assert.equal(layoutPrefs("advanced", indicators, { merged: true }).printMin, 10);
+  assert.equal(layoutPrefs("pro", indicators, { merged: true }).printMin, null);
   const pro = layoutPrefs("pro", indicators);
   assert.deepEqual(Object.keys(pro.show).filter((k) => pro.show[k]), ["profile", "heat", "prints", "vwap", "events", "volume", "cvd", "oi"]);
   assert.equal(pro.printMin, null);

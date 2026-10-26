@@ -117,7 +117,7 @@ let hadSavedPrefs = false;
 const prefs = (() => {
   // Phones show fewer, larger prints by default so 15-minute bars do not drown in bubbles.
   // heat: the viewer's heatmap colour range in BTC per $10 of price, or null for automatic.
-  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: NARROW ? 25 : 10, heat: null };
+  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: EX === "all" ? (NARROW ? 50 : 25) : NARROW ? 25 : 10, heat: null };
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     hadSavedPrefs = !!saved?.show;
@@ -161,7 +161,7 @@ const writeKey = (key, value) => {
   } catch {}
 };
 let layoutId = startLayout({ saved: readKey(LAYOUT_KEY), hasSavedIndicators: hadSavedPrefs, shared: query.has("ind") });
-if (layoutId !== "custom" && !query.has("ind")) Object.assign(prefs, layoutPrefs(layoutId, INDICATORS, { narrow: NARROW }) ?? {}, layoutId === "pro" ? { printMin: prefs.printMin } : {});
+if (layoutId !== "custom" && !query.has("ind")) Object.assign(prefs, layoutPrefs(layoutId, INDICATORS, { narrow: NARROW, merged: EX === "all" }) ?? {}, layoutId === "pro" ? { printMin: prefs.printMin } : {});
 let railOpen = (() => {
   const saved = readKey(RAIL_KEY);
   if (saved === "open" || saved === "closed") return saved === "open";
@@ -2554,7 +2554,7 @@ const layoutButtons = [...document.querySelectorAll("[data-layout]")];
 // "custom" only marks the buttons; a named layout also sets the indicators and the rail.
 function setLayout(id) {
   if (id !== "custom") {
-    const next = layoutPrefs(id, INDICATORS, { narrow: NARROW });
+    const next = layoutPrefs(id, INDICATORS, { narrow: NARROW, merged: EX === "all" });
     for (const [key, shown] of Object.entries(next.show)) {
       if (prefs.show[key] === shown) continue;
       prefs.show[key] = shown;
