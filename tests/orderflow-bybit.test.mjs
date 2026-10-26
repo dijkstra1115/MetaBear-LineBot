@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOOK_TOPIC, OrderBook, StreamGaps, TICKER_TOPIC, TRADE_TOPIC, addTrade, applyTicker, barRow, groupPrints, parseTrades, takerTotals } from "../public/lab/orderflow/bybit.js";
+import { BOOK_TOPIC, OrderBook, StreamGaps, bybitGet, TICKER_TOPIC, TRADE_TOPIC, addTrade, applyTicker, barRow, groupPrints, parseTrades, takerTotals } from "../public/lab/orderflow/bybit.js";
 
 const T0 = Date.UTC(2026, 9, 15, 13, 0);
 
@@ -89,4 +89,12 @@ test("live fills merge by Bybit's seq, so orders sharing a millisecond stay apar
     [T0, "buy", 80_010, 2],
   ]);
   assert.deepEqual(parseTrades({ topic: TRADE_TOPIC, data: [{ i: "x", T: T0, S: "Buy", v: "1", p: "80000", seq: 42 }] })[0].seq, 42);
+});
+
+test("Bybit REST errors say what came back instead of undefined", async () => {
+  const reply = (status, body) => async () => new Response(body, { status });
+  assert.deepEqual(await bybitGet("u", reply(200, JSON.stringify({ retCode: 0, result: { list: [1] } }))), { list: [1] });
+  await assert.rejects(bybitGet("u", reply(200, JSON.stringify({ retCode: 10006, retMsg: "Too many visits!" }))), /HTTP 200 10006 Too many visits!/);
+  await assert.rejects(bybitGet("u", reply(403, "<html><body><h1>403 ERROR</h1>Request blocked.</body></html>")), /HTTP 403 403 ERROR Request blocked\./);
+  await assert.rejects(bybitGet("u", reply(429, "{}")), /HTTP 429 \{\}/);
 });

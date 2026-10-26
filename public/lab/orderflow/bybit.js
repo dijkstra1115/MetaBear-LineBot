@@ -31,6 +31,22 @@ export function parseTrades(m) {
   return m.data.map((d) => ({ id: d.i, t: d.T, price: Number(d.p), qty: Number(d.v), sell: d.S === "Sell", seq: d.seq }));
 }
 
+/**
+ * Bybit's REST result, or an error that says what came back. A rate limit or a CDN refusal is not
+ * Bybit's { retCode, retMsg } JSON; reading those fields used to log "undefined undefined".
+ */
+export async function bybitGet(url, fetchImpl = fetch) {
+  const res = await fetchImpl(url);
+  const text = await res.text();
+  let body = null;
+  try {
+    body = JSON.parse(text);
+  } catch {}
+  if (res.ok && body?.retCode === 0) return body.result;
+  const detail = body?.retCode != null ? `${body.retCode} ${body.retMsg}` : text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+  throw new Error(`HTTP ${res.status} ${detail}`);
+}
+
 /** /v5/market/recent-trade list → the same trade objects. */
 export function parseRestTrades(list) {
   return list.map((d) => ({ id: d.execId, t: Number(d.time), price: Number(d.price), qty: Number(d.size), sell: d.side === "Sell", seq: Number(d.seq) }));

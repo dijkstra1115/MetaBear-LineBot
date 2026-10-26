@@ -25,6 +25,7 @@ import {
   addTrade,
   applyTicker,
   archiveUrl,
+  bybitGet,
   parseArchiveLine,
   barRow,
   groupPrints,
@@ -108,6 +109,7 @@ export type Row = Record<string, SqlStorageValue>;
 type ArchiveJob = { day: string; from: number; cursor: number; open: number; reader: ReadableStreamDefaultReader<string>; build: ArchiveDay; carry: string };
 
 const iso = (t: number) => new Date(t).toISOString();
+
 // The one file in a zip archive, inflated as a stream. Sizes come from the central directory, since
 // entries may carry a data descriptor with zero sizes in their local header.
 function zipEntry(buf: ArrayBuffer): ReadableStream<Uint8Array> {
@@ -367,8 +369,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   private async backfillTrades() {
     if (!this.lastTradeT) return;
     try {
-      const res = await fetch(`${REST_URL}/v5/market/recent-trade?category=linear&symbol=${SYMBOL}&limit=1000`);
-      const list: Trade[] = parseRestTrades(((await res.json()) as any).result.list);
+      const list: Trade[] = parseRestTrades((await bybitGet(`${REST_URL}/v5/market/recent-trade?category=linear&symbol=${SYMBOL}&limit=1000`)).list);
       const oldest = Math.min(...list.map((tr) => tr.t));
       if (oldest > this.lastTradeT) this.note("gaps", `trades ${iso(this.lastTradeT).slice(11, 19)}–${iso(oldest).slice(11, 19)} missing`);
       const since = this.lastTradeT;
@@ -719,10 +720,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
         funding: `${REST_URL}/v5/market/funding/history?category=linear&symbol=${SYMBOL}&limit=200&startTime=${cursor}&endTime=${end}`,
       }[kind];
       try {
-        const res = await fetch(url);
-        const body = (await res.json()) as any;
-        if (body.retCode !== 0) throw new Error(`${body.retCode} ${body.retMsg}`);
-        for (const r of body.result.list) {
+        for (const r of (await bybitGet(url)).list) {
           if (kind === "oi") this.sql.exec("INSERT OR REPLACE INTO oi_rest (t, oi) VALUES (?, ?)", Number(r.timestamp), Number(r.openInterest));
           else if (kind === "funding") this.sql.exec("INSERT OR REPLACE INTO funding (t, rate) VALUES (?, ?)", Number(r.fundingRateTimestamp), Number(r.fundingRate));
           else this.sql.exec("INSERT OR REPLACE INTO ratios (t, ratio) VALUES (?, ?)", Number(r.timestamp), Math.round((Number(r.buyRatio) / Number(r.sellRatio)) * 1e4) / 1e4);
@@ -745,10 +743,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
     try {
       for (let start = end - 2 * DAY; start < end; start += 1000 * MINUTE) {
         const stop = Math.min(end, start + 999 * MINUTE);
-        const res = await fetch(`${REST_URL}/v5/market/kline?category=linear&symbol=${SYMBOL}&interval=1&limit=1000&start=${start}&end=${stop}`);
-        const body = (await res.json()) as any;
-        if (body.retCode !== 0) throw new Error(`${body.retCode} ${body.retMsg}`);
-        for (const [t, o, h, l, c] of body.result.list as string[][])
+        const result = await bybitGet(`${REST_URL}/v5/market/kline?category=linear&symbol=${SYMBOL}&interval=1&limit=1000&start=${start}&end=${stop}`);
+        for (const [t, o, h, l, c] of result.list as string[][])
           this.sql.exec("INSERT OR IGNORE INTO bars (t, src, row) VALUES (?, 'kline', ?)", Number(t), JSON.stringify([Number(t), Number(o), Number(h), Number(l), Number(c), []]));
       }
       this.setMeta("klinesFilled", now);
