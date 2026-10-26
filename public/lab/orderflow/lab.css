@@ -83,6 +83,22 @@ input {
   color: var(--muted);
   font-size: 12px;
 }
+/* The pair reads like the bold symbol it replaced; the arrow shows it is a choice. */
+.mk-pick {
+  align-self: center;
+  padding: 1px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--f-mono);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.mk-pick option {
+  background: var(--panel);
+}
 .ex-pick {
   align-self: center;
   max-width: 150px; /* 全市場's full name shows in the open list */

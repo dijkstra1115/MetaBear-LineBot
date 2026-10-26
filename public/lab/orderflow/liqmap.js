@@ -25,12 +25,12 @@ const MAX_STEPS = 1500; // snapshots kept for drawing; two weeks of 5-minute ste
  * @param tick   price size of a row bin
  * @param oi     [[t, oiBtc], …] sorted, roughly every 5 minutes; the last may be live
  * @returns { lo, bins, steps: [{ t, long: Float32Array, short: Float32Array }] }
- *          where values are BTC at liquidation prices lo + i × BIN.
+ *          where values are coins at liquidation prices lo + i × bin (BIN, $25, for BTC).
  * @param onStep optional (t, { wipedLong, wipedShort }, { lo, long, short }) after each interval:
  *               BTC the model says was liquidated by price trading through it, and the live map
  *               (read it inside the callback; it changes after). keepSteps: false skips snapshots.
  */
-export function buildLiqMap(rows, tick, oi, { onStep, keepSteps = true } = {}) {
+export function buildLiqMap(rows, tick, oi, { onStep, keepSteps = true, bin = BIN } = {}) {
   if (rows.length < 2 || oi.length < 2) return null;
   let min = Infinity;
   let max = -Infinity;
@@ -39,12 +39,12 @@ export function buildLiqMap(rows, tick, oi, { onStep, keepSteps = true } = {}) {
     if (r[2] > max) max = r[2];
   }
   // Liquidation prices reach 1/10 + margin away from entry at the lowest tier.
-  const lo = Math.floor((min * 0.85) / BIN) * BIN;
-  const bins = Math.ceil((max * 1.15 - lo) / BIN);
+  const lo = Math.floor((min * 0.85) / bin) * bin;
+  const bins = Math.ceil((max * 1.15 - lo) / bin);
   const long = new Float32Array(bins);
   const short = new Float32Array(bins);
   const steps = [];
-  const binOf = (p) => Math.min(bins - 1, Math.max(0, Math.floor((p - lo) / BIN)));
+  const binOf = (p) => Math.min(bins - 1, Math.max(0, Math.floor((p - lo) / bin)));
 
   const stride = Math.max(1, Math.ceil((oi.length - 1) / MAX_STEPS));
   let r = 0;

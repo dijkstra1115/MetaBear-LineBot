@@ -24,7 +24,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="MetaBear 首頁"><img src="/metabear-logo-transparent-64.png" width="22" height="22" alt="" /><span>MetaBear</span></a>
-    <div class="symbol"><b>BTCUSDT</b><small>永續</small><select id="ex" class="ex-pick" aria-label="交易所"><option value="all">全市場（聚合 Binance、OKX、Bybit、BingX）</option><option value="binance">Binance</option><option value="bybit">Bybit</option><option value="okx">OKX</option><option value="bingx">BingX</option></select></div>
+    <div class="symbol"><select id="mk" class="mk-pick" aria-label="交易對"><option value="btc">BTCUSDT</option><option value="eth">ETHUSDT</option></select><small>永續</small><select id="ex" class="ex-pick" aria-label="交易所"><option value="all">全市場（聚合 Binance、OKX、Bybit、BingX）</option><option value="binance">Binance</option><option value="bybit">Bybit</option><option value="okx">OKX</option><option value="bingx">BingX</option></select></div>
     <div class="tools" role="toolbar" aria-label="圖表設定">
       <div class="seg layout" role="group" aria-label="版面">
         <button type="button" data-layout="beginner">新手</button><button type="button" data-layout="advanced">進階</button><button type="button" data-layout="pro">專業</button>
@@ -52,7 +52,7 @@
               </select>
             </label>
             <div class="ind-heat" id="heat-range">
-              <span>熱力圖顏色（每 $10 的掛單 BTC）</span>
+              <span id="heat-label">熱力圖顏色（每 $10 的掛單 BTC）</span>
               <label for="heat-lo">下限</label><input id="heat-lo" type="range" min="0" max="100" step="1" />
               <label for="heat-hi">上限</label><input id="heat-hi" type="range" min="0" max="100" step="1" />
               <button id="heat-auto" type="button" aria-pressed="true">自動</button><output id="heat-val"></output>

@@ -1,15 +1,16 @@
-// BTC order-flow lab: footprint, volume profile, CVD, OI and long/short
+// Order-flow lab for BTC and ETH (markets.js, ?m=eth): footprint, volume profile, CVD, OI and long/short
 // ratios drawn on one canvas. History comes from the order-flow API (src/orderflow/),
 // whose collectors record Bybit's, Binance's, OKX's and BingX's BTCUSDT 1-minute bars with $10 price
 // bins; the page streams the newest minutes straight from the chosen exchange, or from all four for
 // 全市場 (prices from Binance, volume summed; docs/ORDERFLOW-MULTI-EXCHANGE.md).
 
-import { BOOK_CHUNK_MS, BOOK_STEP_MS, BOOK_TICK, BOOK_TOPIC, OrderBook, PING, PRINT_MIN, StreamGaps, TICK, TICKER_TOPIC, TRADE_TOPIC, WS_URL, addTrade, applyTicker, barRow, groupPrints, parseTrades } from "./bybit.js";
-import { BINANCE_REST, BINANCE_STREAMS, BINANCE_SYMBOL, BinanceBook, parseAggTrade } from "./binance.js";
-import { BINGX_TOPICS, BINGX_WS, BingxBook, gunzipText, parseBingxTrades } from "./bingx.js";
-import { OKX_INST, OKX_WS, OkxBook, parseOkxTrades } from "./okx.js";
-import { LIQ_EXCHANGES, LIQ_FEEDS } from "./liquidations.js";
-import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
+import { BOOK_CHUNK_MS, BOOK_STEP_MS, OrderBook, PING, PRINT_MIN as BTC_PRINT_MIN, StreamGaps, WS_URL, addTrade, applyTicker, barRow, bybitTopics, groupPrints, parseTrades } from "./bybit.js";
+import { BINANCE_REST, BinanceBook, binanceStreams, parseAggTrade } from "./binance.js";
+import { BINGX_WS, BingxBook, bingxTopics, gunzipText, parseBingxTrades } from "./bingx.js";
+import { OKX_WS, OkxBook, parseOkxTrades } from "./okx.js";
+import { LIQ_EXCHANGES, liqFeeds } from "./liquidations.js";
+import { BIN as BTC_MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
+import { MARKETS, marketOf, sized } from "./markets.js";
 import { readingsAt } from "./metrics.js";
 import { Notifier } from "./notify.js";
 import { Player, drawOverlay, prepare } from "./replay.js";
@@ -24,7 +25,6 @@ import { FILTERS, cardOf, detailOf, filterGroups, groupEvents, levelPriceOf, now
 import { chapterCard, chapterStory, chaptersOf, findChapter } from "./chapters.js";
 import { START_MS, barsPerSecond, beatAt, beatsOf, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
 
-const API = "/api/orderflow/btcusdt";
 // Cloudflare stretches the API's short max-age to hours in browsers; revalidate every request
 // (the edge cache still answers most of them).
 const FRESH = { cache: "no-cache" };
@@ -32,6 +32,33 @@ const MINUTE = 60_000;
 const DAY = 86_400_000;
 // A shared link (see shareUrl) opens the same view: ?tf=&mode=&at=<bar start ms>&ind=<ids>&pm=&ex=.
 const query = new URLSearchParams(location.search);
+// The market: ?m= (shared links), else the viewer's last choice, else BTC. Everything below reads
+// its bins, pair names and coin from these instead of BTC's constants.
+const MK_KEY = "metabear-orderflow-market";
+const MK = (() => {
+  const asked = query.get("m");
+  if (Object.hasOwn(MARKETS, asked ?? "")) return MARKETS[asked];
+  try {
+    const saved = localStorage.getItem(MK_KEY);
+    if (Object.hasOwn(MARKETS, saved ?? "")) return MARKETS[saved];
+  } catch {}
+  return marketOf("btc");
+})();
+const API = `/api/orderflow/${MK.path}`;
+const UNIT = MK.base;
+const TICK = MK.tick;
+const BOOK_TICK = MK.bookTick;
+const PRINT_MIN = sized(MK, BTC_PRINT_MIN);
+const MAP_BIN = (BTC_MAP_BIN * MK.tick) / 10;
+const { trade: TRADE_TOPIC, book: BOOK_TOPIC, ticker: TICKER_TOPIC } = bybitTopics(MK.symbol);
+const BINANCE_SYMBOL = MK.symbol;
+const BINANCE_STREAMS = binanceStreams(MK);
+const OKX_INST = MK.okxInst;
+const BINGX_TOPICS = bingxTopics(MK.bingx);
+const LIQ_FEEDS = liqFeeds(MK);
+// The large-print threshold is kept in BTC terms (prefs.printMin) so one choice means the same
+// weight in either market; this is it in the market's coin.
+const printQty = () => sized(MK, prefs.printMin);
 // The exchange: ?ex= (shared links), else the viewer's last choice, else 全市場, all four merged.
 const EX_KEY = "metabear-orderflow-ex";
 const EX_NAMES = { all: "全市場", binance: "Binance", bybit: "Bybit", okx: "OKX", bingx: "BingX" };
@@ -78,7 +105,7 @@ const C = {
 };
 const BUY_RGB = "120,225,213";
 const SELL_RGB = "240,154,90";
-const AUTO_TICK = { 1: 10, 5: 10, 15: 25, 60: 50, 240: 100 };
+const AUTO_TICK = Object.fromEntries(Object.entries({ 1: 10, 5: 10, 15: 25, 60: 50, 240: 100 }).map(([tf, usd]) => [tf, (usd * TICK) / 10]));
 const IMBALANCE = 3;
 const MONO = '"JetBrains Mono Variable", ui-monospace, Menlo, monospace';
 
@@ -124,7 +151,7 @@ const prefs = (() => {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     hadSavedPrefs = !!saved?.show;
     if (saved?.show) for (const id of Object.keys(out.show)) if (typeof saved.show[id] === "boolean") out.show[id] = saved.show[id];
-    if (Number(saved?.printMin) >= PRINT_MIN) out.printMin = Number(saved.printMin);
+    if (Number(saved?.printMin) >= BTC_PRINT_MIN) out.printMin = Number(saved.printMin);
     if (saved?.heat && saved.heat.lo > 0 && saved.heat.hi > saved.heat.lo) out.heat = { lo: Number(saved.heat.lo), hi: Number(saved.heat.hi) };
   } catch {}
   // A shared view shows the sender's indicators without changing this browser's saved choice.
@@ -132,7 +159,7 @@ const prefs = (() => {
     const shown = new Set(query.get("ind").split(","));
     for (const id of Object.keys(out.show)) out.show[id] = shown.has(id);
   }
-  if (Number(query.get("pm")) >= PRINT_MIN) out.printMin = Number(query.get("pm"));
+  if (Number(query.get("pm")) >= BTC_PRINT_MIN) out.printMin = Number(query.get("pm"));
   return out;
 })();
 const on = (id) => prefs.show[id];
@@ -550,7 +577,7 @@ function updateLiqMap(force) {
   // The model replays every interval; refreshing it every 10 s is plenty.
   if (!force && Date.now() - liqMapAt < 10_000) return;
   liqMapAt = Date.now();
-  liqMap = buildLiqMap(mergedRows, TICK, mergedOi);
+  liqMap = buildLiqMap(mergedRows, TICK, mergedOi, { bin: MAP_BIN });
 }
 
 function liquidationsIn(from, to) {
@@ -593,7 +620,7 @@ function resize() {
   draw();
 }
 
-const unitLabel = () => (usd() ? "USD" : "BTC");
+const unitLabel = () => (usd() ? "USD" : UNIT);
 // Sub-panes in display order: `key` panes draw a line of that bar field, the rest are histograms.
 const PANES = {
   stats: { label: () => "K 棒統計" },
@@ -903,7 +930,8 @@ function loadFine(t0, t1) {
 // 98.5th percentile, from 5 % of it.
 let heatScale = null; // { lo, hi, auto, step } of the last drawn heatmap, for the legend and sliders
 function heatRange(perTen, step) {
-  if (prefs.heat) return (heatScale = { ...prefs.heat, auto: false, step });
+  // prefs.heat is in BTC terms, like the print threshold.
+  if (prefs.heat) return (heatScale = { lo: sized(MK, prefs.heat.lo), hi: sized(MK, prefs.heat.hi), auto: false, step });
   const sorted = perTen.filter((q) => q > 0).sort((x, y) => x - y);
   const hi = sorted[Math.floor(sorted.length * 0.985)] || 1;
   return (heatScale = { lo: hi * 0.05, hi, auto: true, step });
@@ -933,8 +961,8 @@ function drawHeatLegend(L) {
   ctx.font = `11px ${MONO}`;
   ctx.textBaseline = "middle";
   ctx.fillStyle = C.muted;
-  const step = heatScale.step > 1 ? ` · 每格 ${heatScale.step}` : "";
-  ctx.fillText(`${fmtHeat(heatScale.lo)}–${fmtHeat(heatScale.hi)}+ BTC / $10${heatScale.auto ? "（自動）" : ""}${step}`, x + w + 8, y + 5);
+  const step = heatScale.step !== TICK ? ` · 每格 $${heatScale.step}` : "";
+  ctx.fillText(`${fmtHeat(heatScale.lo)}–${fmtHeat(heatScale.hi)}+ ${UNIT} / $${TICK}${heatScale.auto ? "（自動）" : ""}${step}`, x + w + 8, y + 5);
   ctx.restore();
 }
 const fmtHeat = (q) => (q >= 100 ? Math.round(q).toString() : q >= 10 ? q.toFixed(1) : q >= 1 ? q.toFixed(2) : q.toPrecision(2));
@@ -950,7 +978,7 @@ function drawFineHeat(L, from, to, yOf) {
   if (t1 - t0 > FINE_MAX_SPAN) return false;
   loadFine(t0, t1);
   const pxPerDollar = Math.abs(yOf(0) - yOf(1));
-  const step = [1, 2, 5, 10].find((s) => pxPerDollar * s >= 2) ?? 10;
+  const step = [1, 2, 5, 10].map((k) => k * BOOK_TICK).find((s) => pxPerDollar * s >= 2) ?? 10 * BOOK_TICK;
   const cells = [];
   for (let i = from; i <= to; i++) {
     const b = bars[i];
@@ -974,7 +1002,7 @@ function drawFineHeat(L, from, to, yOf) {
   }
   if (!cells.length) return false;
   // Rows hold $step of price; scaled to $10 so the colour range reads the same at every zoom.
-  const toTen = 10 / step;
+  const toTen = TICK / step; // to one footprint bin ($10 for BTC, $0.5 for ETH)
   const range = heatRange(cells.flatMap(([, rows]) => [...rows.values()].map((q) => q * toTen)), step);
   const w = Math.max(1, (view.barW * BOOK_STEP_MS) / tfMs + 0.5);
   ctx.save();
@@ -1008,7 +1036,7 @@ function drawHeat(L, from, to, yOf) {
     if (col) cols.push([i, col]);
   }
   if (!cols.length) return;
-  const range = heatRange(cols.flatMap(([, c]) => c[3]), TICK / 10);
+  const range = heatRange(cols.flatMap(([, c]) => c[3]), TICK);
   const bin = TICK;
   ctx.save();
   ctx.beginPath();
@@ -1074,7 +1102,7 @@ function drawPrints(L, from, to, yOf, merged = false) {
     else hi = m;
   }
   const shown = [];
-  for (let k = lo; k < printList.length && printList[k][0] < t1; k++) if (printList[k][3] >= prefs.printMin) shown.push(printList[k]);
+  for (let k = lo; k < printList.length && printList[k][0] < t1; k++) if (printList[k][3] >= printQty()) shown.push(printList[k]);
   const cross = crossMembers();
   if (merged) {
     // A bar side holding a 跨所同步大單 gets a gold ring around its bubble.
@@ -1088,7 +1116,7 @@ function drawPrints(L, from, to, yOf, merged = false) {
     for (const g of groups) {
       const x = xOf(g.i, L) + view.barW / 2;
       const y = yOf(g.price);
-      const r = bubbleRadius(g.qty);
+      const r = bubbleRadius(g.qty / MK.scale);
       const rgb = g.side === "buy" ? BUY_RGB : SELL_RGB;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -1112,7 +1140,7 @@ function drawPrints(L, from, to, yOf, merged = false) {
     const i = barIndex.get(Math.floor(t / tfMs) * tfMs);
     if (i == null) continue;
     const x = xOf(i, L) + ((t - bars[i].t) / tfMs) * view.barW;
-    const r = Math.min(30, Math.max(3, 2.2 * Math.sqrt(qty)));
+    const r = Math.min(30, Math.max(3, 2.2 * Math.sqrt(qty / MK.scale)));
     ctx.beginPath();
     ctx.arc(x, yOf(price), r, 0, Math.PI * 2);
     ctx.fillStyle = side === "buy" ? `rgba(${BUY_RGB},0.3)` : `rgba(${SELL_RGB},0.3)`;
@@ -1128,8 +1156,8 @@ function drawPrints(L, from, to, yOf, merged = false) {
 let crossCache = { key: "", members: new Set() };
 function crossMembers() {
   if (EX !== "all") return crossCache.members;
-  const key = `${printList.length}|${printList.at(-1)?.[0] ?? 0}|${prefs.printMin}`;
-  if (key !== crossCache.key) crossCache = { key, members: new Set(crossClusters(printList, { min: prefs.printMin }).flatMap((c) => c.prints)) };
+  const key = `${printList.length}|${printList.at(-1)?.[0] ?? 0}|${printQty()}`;
+  if (key !== crossCache.key) crossCache = { key, members: new Set(crossClusters(printList, { min: printQty() }).flatMap((c) => c.prints)) };
   return crossCache.members;
 }
 
@@ -1703,7 +1731,7 @@ function drawLegend(L) {
   const narrow = L.plotW < 600;
   const gap = narrow ? " " : "  ";
   const parts = [
-    ...(narrow ? [] : [["BTCUSDT", C.text], [` · ${replay || EX === "binance" ? "Binance" : EXN} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.muted]]),
+    ...(narrow ? [] : [[MK.symbol, C.text], [` · ${replay || EX === "binance" ? "Binance" : EXN} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.muted]]),
     ["O ", C.muted],
     [fmtPrice(b.o), C.text],
     [`${gap}H `, C.muted],
@@ -1792,11 +1820,11 @@ function printsText(b) {
   let ns = 0;
   let qs = 0;
   for (const [t, side, , qty] of printList) {
-    if (t < b.t || t >= b.end || qty < prefs.printMin) continue;
+    if (t < b.t || t >= b.end || qty < printQty()) continue;
     if (side === "buy") (nb++, (qb += qty));
     else (ns++, (qs += qty));
   }
-  return nb || ns ? `大單 買 ${nb} 筆 ${fmtVol(qb)} / 賣 ${ns} 筆 ${fmtVol(qs)} BTC` : "";
+  return nb || ns ? `大單 買 ${nb} 筆 ${fmtVol(qb)} / 賣 ${ns} 筆 ${fmtVol(qs)} ${UNIT}` : "";
 }
 
 function liqText() {
@@ -2525,7 +2553,7 @@ function buildIndicatorPanel() {
     setLayout("custom");
     redraw();
   });
-  // Heat colour bounds on a log scale, 0.01 to 1,000 BTC per $10.
+  // Heat colour bounds on a log scale, 0.01 to 1,000 BTC per $10 (ETH's in the same terms).
   const toBtc = (x) => 0.01 * 10 ** (Number(x) / 20);
   const lo = $("heat-lo");
   const hi = $("heat-hi");
@@ -2554,7 +2582,7 @@ function syncHeatControls() {
   box.hidden = !on("heat");
   const s = heatScale ?? (prefs.heat ? { ...prefs.heat, auto: false } : null);
   $("heat-auto").setAttribute("aria-pressed", String(!prefs.heat));
-  $("heat-val").textContent = s ? `${fmtHeat(s.lo)}–${fmtHeat(s.hi)} BTC` : "";
+  $("heat-val").textContent = s ? `${fmtHeat(s.lo)}–${fmtHeat(s.hi)} ${UNIT}` : "";
   if (!s) return;
   if (document.activeElement !== $("heat-lo")) $("heat-lo").value = toSlider(s.lo);
   if (document.activeElement !== $("heat-hi")) $("heat-hi").value = toSlider(s.hi);
@@ -2616,13 +2644,14 @@ function shareUrl() {
   if (b && b.end <= Date.now()) url.searchParams.set("at", String(b.t));
   url.searchParams.set("ind", INDICATORS.map(([id]) => id).filter(on).join(","));
   url.searchParams.set("pm", String(prefs.printMin));
+  url.searchParams.set("m", MK.id);
   url.searchParams.set("ex", EX);
   return url.href;
 }
 
 function shareText() {
   const b = hover ? bars[hover.i] : null;
-  return b && b.end <= Date.now() ? `BTC 訂單流 ${fmtTime(b.t)}（MetaBear）` : "BTC 即時訂單流（MetaBear）";
+  return b && b.end <= Date.now() ? `${UNIT} 訂單流 ${fmtTime(b.t)}（MetaBear）` : `${UNIT} 即時訂單流（MetaBear）`;
 }
 
 // A shared link, a notification or a toast opens the bar an event happened in, about two thirds
@@ -3161,7 +3190,7 @@ function startEventReplay(story, { autoplay = true } = {}) {
   view.barW = Math.max(4, (Math.max(100, size.w - 74) - 8) / (evReplay.bars + 1));
   document.body.classList.add("er-on");
   er.title.textContent = card.title;
-  er.range.textContent = `${dateOf.format(win.from)} ${timeOf(win.from)}–${timeOf(win.to)} · 1 分 K · ${EXN} BTCUSDT 永續`;
+  er.range.textContent = `${dateOf.format(win.from)} ${timeOf(win.from)}–${timeOf(win.to)} · 1 分 K · ${EXN} ${MK.symbol} 永續`;
   er.ticks.replaceChildren(
     ...win.spans
       .filter((s) => s.end <= win.to)
@@ -3521,7 +3550,7 @@ function fillBarCard(b, events, pinned, liq) {
   if (on("prints")) {
     let nb = 0, qb = 0, ns = 0, qs = 0;
     for (const [t, side, , qty] of printList) {
-      if (t < b.t || t >= b.end || qty < prefs.printMin) continue;
+      if (t < b.t || t >= b.end || qty < printQty()) continue;
       if (side === "buy") (nb++, (qb += qty));
       else (ns++, (qs += qty));
     }
@@ -3530,7 +3559,7 @@ function fillBarCard(b, events, pinned, liq) {
     if (EX === "all" && (nb || ns)) {
       const by = new Map();
       for (const [t, , , qty, ex] of printList) {
-        if (t < b.t || t >= b.end || qty < prefs.printMin || !ex) continue;
+        if (t < b.t || t >= b.end || qty < printQty() || !ex) continue;
         const e = by.get(ex) ?? [0, 0];
         by.set(ex, [e[0] + 1, e[1] + qty]);
       }
@@ -3584,6 +3613,30 @@ $("conn-retry").addEventListener("click", () => location.reload());
 $("bc-unpin").addEventListener("click", unpinBar);
 $("bc-replay").addEventListener("click", replayPinnedBar);
 
+// ---------- market ----------
+
+// BTC or ETH. Switching reloads the page: every series, stream and cache entry belongs to one market.
+const mkPick = $("mk");
+mkPick.value = MK.id;
+mkPick.disabled = !!CASE; // case replays are recorded BTC data
+mkPick.addEventListener("change", () => {
+  try {
+    localStorage.setItem(MK_KEY, mkPick.value);
+  } catch {}
+  const url = new URL(location.href);
+  url.searchParams.set("m", mkPick.value);
+  for (const k of ["at", "replay", "k", "lv"]) url.searchParams.delete(k); // a moment in one market is not one in the other
+  location.href = url.href;
+});
+if (MK.id !== "btc" && !CASE) {
+  document.title = `${UNIT} 訂單流實驗室 · MetaBear`;
+  canvas.setAttribute("aria-label", `${UNIT} 足跡圖、CVD、未平倉量與多空比`);
+}
+// Menus written in BTC terms show this market's coin and price steps.
+for (const o of ui.printMin.options) o.textContent = `≥ ${sized(MK, Number(o.value)).toLocaleString("en-US")} ${UNIT}`;
+for (const o of ui.tick.options) if (o.value !== "auto") (o.value = String((Number(o.value) * TICK) / 10)), (o.textContent = `$${o.value}`);
+$("heat-label").textContent = `熱力圖顏色（每 $${TICK} 的掛單 ${UNIT}）`;
+
 // ---------- exchange ----------
 
 // Switching reloads the page: every series, stream and cache entry belongs to one exchange.
@@ -3598,8 +3651,8 @@ exPick.addEventListener("change", () => {
   url.searchParams.set("ex", exPick.value);
   location.href = url.href;
 });
-if (EX !== "bybit")
-  $("er-note").textContent = `這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自${EX === "all" ? "四家交易所合計（價格以 Binance 為準）的 " : EXW}BTCUSDT 永續 1 分 K。`;
+if (EX !== "bybit" || MK.id !== "btc")
+  $("er-note").textContent = `這是過去行情的回放，只描述發生了什麼，不是買賣訊號。數字來自${EX === "all" ? "四家交易所合計（價格以 Binance 為準）的 " : EXW}${MK.symbol} 永續 1 分 K。`;
 
 // ---------- boot ----------
 
@@ -3613,7 +3666,7 @@ if (CASE) {
   try {
     await loadDays();
     if (!store.bars.size) throw new Error("no data");
-    $("source").textContent =
+    $("source").textContent = (
       EX === "all"
         ? "資料：全市場是 Binance、Bybit、OKX、BingX 四家 BTCUSDT 永續合約合計。K 線的價格以 Binance 為準（各家價格差幾美元，混在一起會畫出假影線）；成交量、Delta、CVD、足跡、大單、OI 與爆倉是四家加總。" +
           "掛單熱力圖、多空比與資金費率用 Binance 的。OI 只加總整段時間都有紀錄的交易所（BingX 沒有歷史 OI）。BingX 沒有公開的爆倉資料，Binance 的爆倉每秒只推一筆。資料保留 30 天。"
@@ -3627,7 +3680,8 @@ if (CASE) {
           "爆倉合併 Bybit（完整）、OKX 與 Binance（每秒只推一筆，連環爆倉時會少算）；這個收集器只記錄 Binance。"
         : "資料：Bybit BTCUSDT 永續合約（USDT 本位，僅單一交易所）。歷史足跡由 Bybit 每日成交封存檔重建，之後由 MetaBear 收集器即時記錄；" +
           "掛單熱力圖只有收集器啟動後的資料，且 Bybit 只提供現價上下約 0.25% 的掛單；1 分與 5 分 K 會顯示每 10 秒、$1 格距的細節。多空比是 Bybit 全體帳戶多空比。資料保留 30 天。" +
-          "爆倉合併 Bybit（完整）、OKX 與 Binance（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。";
+          "爆倉合併 Bybit（完整）、OKX 與 Binance（每秒只推一筆，連環爆倉時會少算）；收集器只記錄 Bybit 與 OKX。"
+    ).replace(/BTCUSDT/g, MK.symbol);
     build();
     view.end = bars.length + RIGHT_PAD;
     view.barW = NARROW ? 9 : 14;
