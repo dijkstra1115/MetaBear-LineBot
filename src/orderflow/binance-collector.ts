@@ -20,8 +20,6 @@ type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; time
 export class BinanceCollector extends Collector {
   protected override book = new BinanceBook();
   protected override source = "binance";
-  // Runs beside Bybit while it is compared; its events are recorded and shown, not sent to LINE.
-  protected override marketLive = false;
   // Binance's daily aggTrades zip is downloadable from Cloudflare (only the live API refuses it).
   protected override archiveName = "Binance";
   protected override archiveLateMs = 12 * 3_600_000;

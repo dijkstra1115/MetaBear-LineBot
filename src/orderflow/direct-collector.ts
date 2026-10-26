@@ -1,13 +1,11 @@
 // Base for exchanges Cloudflare reaches directly besides Bybit (OKX, BingX; docs/ORDERFLOW-MULTI-EXCHANGE.md):
 // one outbound WebSocket kept open by the alarm, trades summed into prints by taker order, and the
-// same storage, queries and detectors as the Bybit Collector. Their market events are recorded and
-// shown, not sent to LINE, while the exchanges run side by side.
+// same storage, queries and detectors as the Bybit Collector.
 import { Collector, HEALTH_DOWN_MS, SILENT_MS, type Trade } from "./collector";
 
 type Sock = { ws: WebSocket; last: number; ping: ReturnType<typeof setInterval> | null };
 
 export abstract class DirectCollector extends Collector {
-  protected override marketLive = false;
   protected abstract wsUrl: string;
   protected abstract feed: keyof typeof HEALTH_DOWN_MS;
   protected pingText: string | null = null; // sent every 20 s when the exchange wants it
