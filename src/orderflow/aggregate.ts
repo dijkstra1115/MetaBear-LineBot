@@ -9,8 +9,9 @@
 //   the series has no step where an exchange's history starts; ratios and funding are Binance's.
 // - Heatmap: Binance's (books differ in depth, so they are not summed).
 
-export const EXCHANGES = ["binance", "bybit", "okx", "bingx"] as const;
-export type Exchange = (typeof EXCHANGES)[number];
+import { EXCHANGES, type Exchange } from "./exchanges";
+
+export { EXCHANGES, type Exchange };
 const PRICE_ORDER: Exchange[] = ["binance", "bybit", "okx", "bingx"];
 // An exchange covers the period when its first reading is the first 5-minute slot at or after the start.
 const COVER_SLACK = 5 * 60_000;

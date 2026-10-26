@@ -13,8 +13,8 @@ import { BIN as MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
 import { readingsAt } from "./metrics.js";
 import { Notifier } from "./notify.js";
 import { Player, drawOverlay, prepare } from "./replay.js";
-import { LEVEL_LABELS, levelText, priorDayLevels } from "./keylevels.js";
-import { CROSS_WINDOW_MS, crossClusters } from "./cross.js";
+import { LEVEL_LABELS, priorDayLevels } from "./keylevels.js";
+import { crossClusters } from "./cross.js";
 import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
 import { BAR_KINDS } from "./watch.js";
 import { maybeStartGuide, startGuide } from "./guide.js";
@@ -508,7 +508,7 @@ async function loadEvents() {
     const res = await fetch(api("events", `since=${since}`), FRESH);
     if (!res.ok) return;
     const list = (await res.json()).events;
-    rawEvents = EX === "all" ? withCross(list) : list;
+    rawEvents = list;
     liveEvents = rawEvents.map(liveEvent);
     notifier.ingest(list);
     renderNarration();
@@ -521,36 +521,6 @@ async function loadEvents() {
 
 // Buyers' side (bids, buy prints, shorts liquidated, "up") below the bar, sellers' above; events
 // with no side of their own, like OI changes or vanished walls, above in gold.
-// 跨所同步大單 for the narration: three or more exchanges' prints of at least 10 BTC (or the chosen
-// size) on one side within 10 s (cross.js), at a key level like the collector's events (within 0.1 %).
-function withCross(list) {
-  const min = Math.max(10, prefs.printMin);
-  const found = [];
-  for (const c of crossClusters(printList, { min })) {
-    const bar = bars[barIndex.get(Math.floor(c.t / (Number(ui.tf.value) * MINUTE)) * Number(ui.tf.value) * MINUTE)];
-    const levels = [...(dayLevels.get(Math.floor(c.t / DAY)) ?? []), ...(bar?.vwap != null ? [{ name: "vwap", price: bar.vwap }] : [])];
-    let near = null;
-    for (const L of levels) {
-      const dist = Math.abs(c.price - L.price);
-      if (dist <= c.price * 0.001 && (!near || dist < near.dist)) near = { name: L.name, price: L.price, dist };
-    }
-    if (!near) continue;
-    const names = c.exchanges.map(([ex]) => EX_NAMES[ex] ?? ex).join("、");
-    const verb = c.side === "buy" ? "主動買" : "主動賣";
-    found.push({
-      t: c.t,
-      kind: "cross",
-      price: c.price,
-      side: c.side,
-      level: near.name,
-      dist: Math.round(near.dist),
-      repeat: false,
-      text: `🔗 跨所同步大單 ${names} ${CROSS_WINDOW_MS / 1000} 秒內同時${verb} ${c.qty.toFixed(1)} BTC｜${levelText(near)}`,
-    });
-  }
-  return [...list, ...found].sort((a, b) => a.t - b.t);
-}
-
 function liveEvent(e) {
   const sided = !["oi", "spoof", "wall_eaten", "wall_pulled"].includes(e.kind);
   const dir = sided && UP_SIDES.has(e.side) ? "up" : sided && DOWN_SIDES.has(e.side) ? "down" : null;

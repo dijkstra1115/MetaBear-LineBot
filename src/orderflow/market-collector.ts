@@ -1,0 +1,198 @@
+// 全市場 collector (docs/ORDERFLOW-MULTI-EXCHANGE.md): it reads the four exchanges' collectors every
+// alarm, stores their merged minutes (aggregate.ts) and runs the detectors on the merged market, so
+// 全市場's events come from the whole market rather than from Binance alone, and can go to LINE later.
+//
+// - Every alarm: the last 10–15 minutes of each collector (/recent, from a 5-minute boundary so OI
+//   readings line up), merged and written over its own minutes. New prints, liquidations and OI
+//   readings feed the same watchers as one exchange's collector; 跨所同步大單 (cross.js) is found here.
+// - Book events (walls, spoofing, icebergs) need one exchange's book: Binance's are copied.
+// - History: the last 30 days, one day of all four per alarm; today and yesterday are merged again
+//   every hour, so archive imports and backfills reach it.
+import { CROSS_WINDOW_MS, EXCHANGE_NAMES, crossClusters } from "../../public/lab/orderflow/cross.js";
+import { watchPrint } from "../../public/lab/orderflow/watch.js";
+import { mergeParts, type Part } from "./aggregate";
+import { Collector, DAY, FIVE_MIN, HEALTH_DOWN_MS, MINUTE, type OrderflowEnv } from "./collector";
+import { EXCHANGES, stubFor, type Exchange } from "./exchanges";
+
+const HISTORY_DAYS = 30;
+const HOUR = 3_600_000;
+const FRESH_MS = 120_000; // prints and liquidations older than this are history, not news
+const SEEN_MAX = 20_000;
+const BOOK_KINDS = new Set(["wall", "wall_eaten", "wall_pulled", "spoof", "iceberg"]);
+
+type Merged = ReturnType<typeof mergeParts>;
+
+export class MarketCollector extends Collector {
+  protected override source = "all";
+  // Recorded and shown on 全市場; LINE keeps reading Bybit until this source is chosen for it.
+  protected override marketLive = false;
+  private seenPrints = new Set<string>();
+  private seenLiqs = new Set<string>();
+  private crossSent = new Set<number>();
+  private lastBookEvent = 0;
+  private lastTrades: Record<string, number> = {};
+
+  constructor(ctx: DurableObjectState, env: OrderflowEnv) {
+    super(ctx, env);
+    this.lastBookEvent = Number(this.meta("lastBookEvent") ?? 0);
+  }
+
+  private async read(ex: Exchange, path: string): Promise<(Part & { status?: { lastTrade?: number }; events?: any[] }) | null> {
+    const stub = stubFor(this.env, ex);
+    if (!stub) return null;
+    try {
+      const res = await stub.fetch(`https://collector${path}`);
+      return res.ok ? await res.json() : null;
+    } catch (err) {
+      this.note("errors", `market read ${ex}: ${err}`);
+      return null;
+    }
+  }
+
+  private async readAll(path: string) {
+    const answers = await Promise.all(EXCHANGES.map(async (ex) => [ex, await this.read(ex, path)] as const));
+    for (const [ex, part] of answers) if (part?.status?.lastTrade) this.lastTrades[ex] = Number(part.status.lastTrade);
+    return Object.fromEntries(answers.filter(([, part]) => part)) as Partial<Record<Exchange, Part>>;
+  }
+
+  // Writes merged minutes over [from, to): bars, prints and heat are replaced, liquidations and
+  // readings added. Returns the merged answer for the watchers.
+  private write(m: Merged, from: number, to: number) {
+    this.sql.exec("DELETE FROM bars WHERE t >= ? AND t < ?", from, to);
+    for (const row of m.bars) this.sql.exec("INSERT OR REPLACE INTO bars (t, src, row) VALUES (?, 'merged', ?)", row[0], JSON.stringify(row));
+    this.sql.exec("DELETE FROM prints WHERE t >= ? AND t < ?", from, to);
+    for (const [t, side, price, qty, ex] of m.prints as [number, string, number, number, string][])
+      this.sql.exec("INSERT OR IGNORE INTO prints (t, side, price, qty, src, ex) VALUES (?, ?, ?, ?, 'merged', ?)", t, side, price, qty, ex);
+    for (const [t, side, price, qty, ex] of m.liquidations as [number, string, number, number, string][]) this.sql.exec("INSERT OR IGNORE INTO liqs VALUES (?, ?, ?, ?, ?)", t, side, price, qty, ex);
+    for (const col of m.heat as [number, ...unknown[]][]) this.sql.exec("INSERT OR REPLACE INTO heat (t, row) VALUES (?, ?)", col[0], JSON.stringify(col));
+    for (const [t, oi, value, topPos, topAcc, ratio, , funding] of m.metrics) {
+      this.sql.exec("INSERT OR REPLACE INTO oi (t, oi, oi_value, taker, funding) VALUES (?, ?, ?, NULL, ?)", t, oi, value, funding);
+      this.sql.exec("INSERT OR REPLACE INTO ratios (t, ratio, top_pos, top_acc) VALUES (?, ?, ?, ?)", t, ratio, topPos, topAcc);
+    }
+    const last = m.bars.at(-1);
+    if (last) (this.lastPrice = last[4]), (this.lastTradeT = Math.max(this.lastTradeT, ...Object.values(this.lastTrades)));
+  }
+
+  private remember(set: Set<string>, key: string) {
+    if (set.has(key)) return false;
+    set.add(key);
+    if (set.size > SEEN_MAX) set.delete(set.values().next().value!);
+    return true;
+  }
+
+  // The newest minutes of all four, merged; new prints, liquidations, OI readings and cross-exchange
+  // clusters go to the watchers.
+  private async pullRecent(now: number) {
+    const from = Math.floor(now / FIVE_MIN) * FIVE_MIN - 10 * MINUTE;
+    const parts = await this.readAll(`/recent?since=${from}`);
+    if (!parts.binance && !parts.bybit) return;
+    const m = mergeParts(parts, from);
+    const known = new Set(this.rows("SELECT t FROM oi WHERE t >= ?", from).map((r) => Number(r.t)));
+    this.write(m, from, now + MINUTE);
+    const fresh = now - FRESH_MS;
+    for (const p of m.prints as [number, string, number, number, string][]) {
+      if (!this.remember(this.seenPrints, p.join("|")) || p[0] < fresh) continue;
+      this.alert(watchPrint(p, this.alertConfig));
+    }
+    for (const r of m.liquidations as [number, string, number, number, string][]) {
+      if (!this.remember(this.seenLiqs, r.join("|")) || r[0] < fresh) continue;
+      this.alert(this.liqWatch.add(r));
+    }
+    for (const [t, oi] of m.metrics) if (!known.has(t as number) && oi != null && (t as number) > now - 2 * FIVE_MIN) this.alert(this.oiWatch.add(t as number, oi, this.lastPrice));
+    for (const c of crossClusters(m.prints, { min: this.alertConfig.crossBtc })) {
+      if (c.t < fresh || this.crossSent.has(c.t)) continue;
+      this.crossSent.add(c.t);
+      if (this.crossSent.size > 1000) this.crossSent.delete(this.crossSent.values().next().value!);
+      const names = c.exchanges.map(([ex]: [string]) => EXCHANGE_NAMES[ex as Exchange] ?? ex).join("、");
+      this.alert({ kind: "cross", t: c.t, side: c.side, price: c.price, qty: c.qty, names, windowMs: CROSS_WINDOW_MS });
+    }
+  }
+
+  // Binance's book events (walls, spoofing, icebergs), already placed at a key level by its collector.
+  private async copyBookEvents(now: number) {
+    const since = Math.floor(Math.max(this.lastBookEvent + 1, now - HOUR) / MINUTE) * MINUTE;
+    const answer = await this.read("binance", `/events?since=${since}`);
+    for (const e of answer?.events ?? []) {
+      if (!BOOK_KINDS.has(e.kind) || e.t <= this.lastBookEvent) continue;
+      this.sql.exec(
+        "INSERT INTO alerts (t, kind, text, state, level, dist, price, side, near, repeat, fanout) VALUES (?, ?, ?, 'logged', ?, ?, ?, ?, 1, ?, 1)",
+        e.t,
+        e.kind,
+        e.text,
+        e.level ?? null,
+        e.dist ?? null,
+        e.price ?? null,
+        e.side ?? null,
+        Number(Boolean(e.repeat)),
+      );
+      this.lastBookEvent = Math.max(this.lastBookEvent, e.t);
+    }
+    this.setMeta("lastBookEvent", this.lastBookEvent);
+  }
+
+  // One day of history per alarm: yesterday and today once an hour (yesterday first, for the key
+  // levels), then the rest of the 30 days not merged yet, newest first.
+  private async mergeHistory(now: number) {
+    const today = Math.floor(now / DAY) * DAY;
+    const done = new Set(JSON.parse(this.meta("mergedDays") ?? "[]") as number[]);
+    let day = [today - DAY, today].find((d) => now - Number(this.meta(`merged:${d}`) ?? 0) > HOUR) ?? null;
+    if (day == null) for (let d = today - 2 * DAY; d > today - HISTORY_DAYS * DAY && day == null; d -= DAY) if (!done.has(d)) day = d;
+    if (day == null) return;
+    const d = new Date(day).toISOString().slice(0, 10);
+    const parts = await this.readAll(`/day?d=${d}`);
+    if (!parts.binance && !parts.bybit) return;
+    // Today's newest minutes belong to pullRecent; stop short of them.
+    const to = Math.min(day + DAY, Math.floor(now / FIVE_MIN) * FIVE_MIN - 10 * MINUTE);
+    const m = mergeParts(parts, day);
+    this.write({ ...m, bars: m.bars.filter((b) => b[0] < to), prints: m.prints.filter((p) => (p[0] as number) < to) }, day, to);
+    this.levelsStale = true;
+    this.setMeta(`merged:${day}`, now);
+    done.add(day);
+    this.setMeta("mergedDays", JSON.stringify([...done].filter((x) => x > today - HISTORY_DAYS * DAY)));
+  }
+
+  protected override async ensureStreams() {
+    const now = Date.now();
+    try {
+      // History first: the key levels judging new events come from yesterday's merged minutes.
+      await this.mergeHistory(now);
+      await this.pullRecent(now);
+      await this.copyBookEvents(now);
+    } catch (err) {
+      this.note("errors", `market merge: ${err}`);
+    }
+  }
+
+  // It only reads the other collectors, never an exchange, so it runs with the exchanges' streams off too.
+  protected override streamsOn() {
+    return true;
+  }
+
+  // Readings, klines and archives all arrive through the exchanges' collectors.
+  protected override async pollRest() {}
+  protected override async fillKlines() {}
+  protected override async importArchive() {}
+  protected override healthFeeds(): [keyof typeof HEALTH_DOWN_MS, boolean, number][] {
+    return [];
+  }
+
+  protected override liveStatus() {
+    return { lastTrade: this.lastTradeT, exchanges: this.lastTrades };
+  }
+
+  override publicStatus() {
+    const { bybit, okx, open, bookReady, ...rest } = super.publicStatus();
+    return { ...rest, exchanges: this.lastTrades, mergedDays: (JSON.parse(this.meta("mergedDays") ?? "[]") as number[]).length };
+  }
+
+  override async fetch(request: Request): Promise<Response> {
+    // POST /archive (the admin token at the Worker): merge today and yesterday again now.
+    if (new URL(request.url).pathname === "/archive" && request.method === "POST") {
+      const today = Math.floor(Date.now() / DAY) * DAY;
+      this.sql.exec("DELETE FROM meta WHERE k IN (?, ?)", `merged:${today}`, `merged:${today - DAY}`);
+      await this.wake();
+      return Response.json({ remerge: [today - DAY, today].map((t) => new Date(t).toISOString().slice(0, 10)) });
+    }
+    return super.fetch(request);
+  }
+}

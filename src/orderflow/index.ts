@@ -18,13 +18,15 @@
 // and the single collector object only answers each URL once per few seconds.
 import { BOOK_CHUNK_MS } from "../../public/lab/orderflow/bybit.js";
 import { describe } from "../../public/lab/orderflow/watch.js";
-import { EXCHANGES, mergeParts, type Exchange, type Part } from "./aggregate";
+import { mergeParts, type Part } from "./aggregate";
 import { BinanceCollector } from "./binance-collector";
 import { BingxCollector } from "./bingx-collector";
 import { Collector, type OrderflowEnv } from "./collector";
+import { EXCHANGES, stubFor, type Exchange } from "./exchanges";
+import { MarketCollector } from "./market-collector";
 import { OkxCollector } from "./okx-collector";
 
-export { BinanceCollector, BingxCollector, Collector, OkxCollector };
+export { BinanceCollector, BingxCollector, Collector, MarketCollector, OkxCollector };
 
 const PREFIX = "/api/orderflow/btcusdt";
 const MINUTE = 60_000;
@@ -45,13 +47,6 @@ function collector(env: OrderflowEnv) {
 function binanceCollector(env: OrderflowEnv) {
   // Near the relay in Tokyo.
   return env.BINANCE?.get(env.BINANCE.idFromName("BTCUSDT"), { locationHint: "apac" }) ?? null;
-}
-
-function stubFor(env: OrderflowEnv, ex: string) {
-  if (ex === "bybit") return collector(env);
-  if (ex === "binance") return binanceCollector(env);
-  const ns = ex === "okx" ? env.OKX : ex === "bingx" ? env.BINGX : undefined;
-  return ns?.get(ns.idFromName("BTCUSDT"), { locationHint: "apac" }) ?? null;
 }
 
 // 全市場: every exchange's answer for the same collector path, merged. An exchange that does not
@@ -112,11 +107,13 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   const route = url.pathname.slice(PREFIX.length);
   const now = Date.now();
   const ex = url.searchParams.get("ex") ?? "bybit";
-  const all = ex === "all";
-  // 全市場 draws Binance's heatmap and events; only the bars, prints and readings are merged.
-  const stub = stubFor(env, all ? "binance" : ex);
+  // 全市場: the market collector when bound (its own merged minutes and events); otherwise every
+  // request is merged here and the events are Binance's. Both draw Binance's fine book.
+  const market = ex === "all" ? stubFor(env, "all") : null;
+  const all = ex === "all" && !market;
+  const stub = route === "/book" && ex === "all" ? stubFor(env, "binance") : (market ?? stubFor(env, all ? "binance" : ex));
   if (!stub) return json({ error: "沒有這個交易所" }, 404);
-  if (all && !["/day", "/recent", "/book", "/events", "/status"].includes(route)) return json({ error: "全市場只能讀取" }, 400);
+  if (ex === "all" && !["/day", "/recent", "/book", "/events", "/status", "/archive", "/alerts"].includes(route)) return json({ error: "全市場只能讀取" }, 400);
 
   if (route === "/import" || route === "/archive" || route === "/alerts") {
     if (request.method !== "POST" && route !== "/alerts") return json({ error: "只接受 POST" }, 405);
@@ -179,7 +176,7 @@ export default {
   // also covers the one failure the collector cannot report itself: not answering at all.
   async scheduled(event: ScheduledController, env: OrderflowEnv) {
     // The other exchanges' objects only need their alarm chains kept; they report their own outages.
-    for (const ex of ["binance", "okx", "bingx"]) {
+    for (const ex of ["binance", "okx", "bingx", "all"]) {
       const stub = stubFor(env, ex);
       if (stub) await stub.fetch("https://collector/wake").catch((err) => console.error(JSON.stringify({ event: "orderflow_collector_unreachable", ex, detail: String(err) })));
     }

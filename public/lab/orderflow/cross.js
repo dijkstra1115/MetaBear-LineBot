@@ -2,6 +2,7 @@
 // in 全市場's merged prints ([t, side, price, qty, exchange]). Pure, so the lab, the narration and the
 // tests share it (docs/ORDERFLOW-MULTI-EXCHANGE.md).
 
+export const EXCHANGE_NAMES = { binance: "Binance", bybit: "Bybit", okx: "OKX", bingx: "BingX" };
 export const CROSS_WINDOW_MS = 10_000;
 // Two exchanges together are common (about 11 an hour at 10 BTC on 2026-10-26); three or more about
 // 2 an hour, rare enough to stand out.
@@ -12,7 +13,7 @@ export const CROSS_EXCHANGES = 3;
  * every later one within `windowMs` of it. Only clusters with `exchanges` or more exchanges are kept.
  * Returns [{ t, end, side, qty, price, exchanges: [[ex, count, qty], …] (largest first), prints }].
  */
-export function crossClusters(prints, { min, windowMs = CROSS_WINDOW_MS, exchanges: need = CROSS_EXCHANGES } = {}) {
+export function crossClusters(prints, { min = 0, windowMs = CROSS_WINDOW_MS, exchanges: need = CROSS_EXCHANGES } = {}) {
   const out = [];
   for (const side of ["buy", "sell"]) {
     let cur = null;

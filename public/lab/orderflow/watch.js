@@ -11,6 +11,7 @@ export const ALERT_DEFAULTS = {
   marketOn: 1, // 1 sends market alerts, 0 only records them
   healthOn: 1, // 1 sends collector health alerts, 0 only records them
   printBtc: 50, // one aggregated taker order
+  crossBtc: 10, // 全市場: each exchange's print in a 跨所同步大單 (cross.js)
   liqUsd: 2_000_000, // liquidations on one side within liqWindowMs
   liqWindowMs: 60_000,
   oiZ: 3, // 5-minute OI change against the last day of changes
@@ -343,6 +344,8 @@ export function describe(e) {
   switch (e.kind) {
     case "print":
       return `🐋 大單 ${e.side === "buy" ? "主動買" : "主動賣"} ${e.qty.toFixed(1)} BTC @ ${priceText(e.price)}（${at}）`;
+    case "cross":
+      return `🔗 跨所同步大單 ${e.names} ${Math.round(e.windowMs / 1000)} 秒內同時${e.side === "buy" ? "主動買" : "主動賣"} ${e.qty.toFixed(1)} BTC @ ${priceText(e.price)}（${at}）`;
     case "liq":
       return `💥 連環爆倉 ${e.side === "long" ? "多單" : "空單"} ${usdText(e.usd)}，${e.count} 筆，${priceText(e.low)}–${priceText(e.high)}（${at}）`;
     case "oi":
