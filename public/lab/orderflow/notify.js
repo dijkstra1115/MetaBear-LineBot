@@ -7,6 +7,7 @@
 // alerts send, so only events within 0.1 % of a key level ever arrive here.
 //
 // Nothing here runs at import, so tests load the module without a DOM.
+import { MARKETS } from "./markets.js";
 
 /**
  * Event types a viewer can choose. `kinds` groups the collector kinds one choice covers, `hint` is
@@ -93,6 +94,9 @@ export const NOTIFY_KINDS = [
 export const ALL_KINDS = NOTIFY_KINDS;
 const CHOICE_OF = new Map(NOTIFY_KINDS.flatMap((k) => (k.kinds ?? [k.id]).map((kind) => [kind, k.id])));
 const IDS = NOTIFY_KINDS.map((k) => k.id);
+// Markets a LINE subscription can cover. A keyword without one means BTC, as before ETH.
+const MARKET_IDS = Object.keys(MARKETS);
+const DEFAULT_MARKETS = ["btc"];
 
 // Settings store the chosen types, not "全部", so a type added later would leave out everyone who had
 // chosen them all. Each added type lists the types there were before it: a saved list holding all of
@@ -141,7 +145,7 @@ export const QUIET_CHOICES = [
 const BAR_CHOICES = new Set(NOTIFY_KINDS.filter((k) => k.group === "bar").map((k) => k.id));
 const openAt = (e) => (BAR_CHOICES.has(e.kind) ? e.t - 1 : e.t);
 
-export const defaultSettings = () => ({ on: false, kinds: [...IDS], daily: LINE_DAILY_MAX, quiet: "" });
+export const defaultSettings = () => ({ on: false, kinds: [...IDS], daily: LINE_DAILY_MAX, quiet: "", markets: [...DEFAULT_MARKETS] });
 
 /** Settings from storage, keeping only what is still valid. */
 export function readSettings(saved) {
@@ -154,6 +158,7 @@ export function readSettings(saved) {
   }
   if (Number.isInteger(saved.daily) && saved.daily >= 1 && saved.daily <= LINE_DAILY_MAX) out.daily = saved.daily;
   if (QUIET_CHOICES.some(([v]) => v === saved.quiet)) out.quiet = saved.quiet;
+  if (Array.isArray(saved.markets)) out.markets = MARKET_IDS.filter((id) => saved.markets.includes(id));
   return out;
 }
 
@@ -173,11 +178,18 @@ export function pickFresh(events, seen, settings) {
   return fresh;
 }
 
-/** The subscribe keyword: "訂閱警報 吸收,掃蕩收回 每天3則 安靜00-08", or 全部 for every type. */
-export function lineKeyword({ kinds, daily, quiet }) {
+/**
+ * The subscribe keyword: "訂閱警報 ETH 吸收,掃蕩收回 每天3則 安靜00-08", or 全部 for every type. BTC
+ * alone is left out, so keywords from before ETH read the same.
+ */
+export function lineKeyword({ kinds, daily, quiet, markets = DEFAULT_MARKETS }) {
   const names = kinds.length === IDS.length ? "全部" : NOTIFY_KINDS.filter((k) => kinds.includes(k.id)).map((k) => k.name.replace(/\s+/g, "")).join(",");
-  return ["訂閱警報", names, `每天${daily}則`, quiet ? `安靜${quiet}` : ""].filter(Boolean).join(" ");
+  const coins = markets.join() === DEFAULT_MARKETS.join() ? "" : marketNames(markets, ",");
+  return ["訂閱警報", coins, names, `每天${daily}則`, quiet ? `安靜${quiet}` : ""].filter(Boolean).join(" ");
 }
+
+/** "BTC、ETH" for a list of market ids. */
+export const marketNames = (markets, sep = "、") => MARKET_IDS.filter((id) => markets.includes(id)).map((id) => MARKETS[id].base).join(sep);
 
 /** The choice id a collector event kind belongs to, or undefined. */
 export const choiceOf = (kind) => CHOICE_OF.get(kind);
@@ -195,17 +207,19 @@ export function inQuiet(quiet, hour) {
 }
 
 /**
- * Reads a subscribe keyword back: { ok: true, settings: { kinds, daily, quiet } } or { ok: false,
- * error }. Lenient about spacing and separators people type by hand; a bare 訂閱警報 means every
- * type at the most messages a day.
+ * Reads a subscribe keyword back: { ok: true, settings: { kinds, daily, quiet, markets } } or
+ * { ok: false, error }. Lenient about spacing, separators and case people type by hand; a bare
+ * 訂閱警報 means every type on BTC at the most messages a day.
  * @param {string} text
- * @returns {{ ok: true, settings: { kinds: string[], daily: number, quiet: string } } | { ok: false, error: string } | null}
+ * @returns {{ ok: true, settings: { kinds: string[], daily: number, quiet: string, markets: string[] } } | { ok: false, error: string } | null}
  */
 export function parseLineKeyword(text) {
   const m = /^訂閱警報(?:\s+([\s\S]*))?$/.exec(String(text).replace(/　/g, " ").trim());
   if (!m) return null;
   const byName = new Map(NOTIFY_KINDS.map((k) => [k.name.replace(/\s+/g, ""), k.id]));
+  const byCoin = new Map(MARKET_IDS.map((id) => [MARKETS[id].base, id]));
   let kinds = null;
+  let markets = null;
   let daily = LINE_DAILY_MAX;
   let quiet = "";
   for (const token of (m[1] ?? "").split(/\s+/).filter(Boolean)) {
@@ -218,13 +232,17 @@ export function parseLineKeyword(text) {
       if (!QUIET_CHOICES.some(([v]) => v && v === hush[1])) return { ok: false, error: `安靜時段可以選 ${QUIET_CHOICES.filter(([v]) => v).map(([v]) => v).join("、")}。` };
       quiet = hush[1];
     } else if (token === "全部") kinds = [...IDS];
-    else {
+    else if (/^[a-z]+([,，、][a-z]+)*$/i.test(token)) {
+      const ids = token.split(/[,，、]/).map((coin) => byCoin.get(coin.toUpperCase()));
+      if (ids.some((id) => !id)) return { ok: false, error: `幣種可以選 ${marketNames(MARKET_IDS)}。` };
+      markets = MARKET_IDS.filter((id) => ids.includes(id) || markets?.includes(id));
+    } else {
       const ids = token.split(/[,，、]/).filter(Boolean).map((name) => byName.get(name));
       if (!ids.length || ids.some((id) => !id)) return { ok: false, error: "看不懂其中的事件名稱。" };
       kinds = IDS.filter((id) => ids.includes(id) || kinds?.includes(id));
     }
   }
-  return { ok: true, settings: { kinds: kinds ?? [...IDS], daily, quiet } };
+  return { ok: true, settings: { kinds: kinds ?? [...IDS], daily, quiet, markets: markets ?? [...DEFAULT_MARKETS] } };
 }
 
 /** Opens the official account's chat with the text typed in; LINE still needs the user to send it. */
@@ -410,6 +428,7 @@ export class Notifier {
     const note = el("p", "notify-note");
     const lineParts = { keyword: null, button: null };
     const kindBoxes = new Map();
+    const marketBoxes = new Map();
     const refresh = () => {
       switchBtn.setAttribute("aria-pressed", String(this.on));
       switchBtn.textContent = this.on ? "關閉網頁通知" : "開啟網頁通知";
@@ -418,8 +437,9 @@ export class Notifier {
       if (lineParts.keyword) {
         const text = lineKeyword(this.settings);
         lineParts.keyword.textContent = text;
-        const none = this.settings.kinds.length === 0;
-        lineParts.button.textContent = none ? "請至少選一種事件" : "透過 LINE 接收通知";
+        const noMarket = this.settings.markets.length === 0;
+        const none = noMarket || this.settings.kinds.length === 0;
+        lineParts.button.textContent = noMarket ? "請至少選一個幣種" : none ? "請至少選一種事件" : "透過 LINE 接收通知";
         lineParts.button.setAttribute("aria-disabled", String(none));
         if (none) lineParts.button.removeAttribute("href");
         else lineParts.button.href = lineUrl(text);
@@ -486,12 +506,32 @@ export class Notifier {
         label.append(input);
         return label;
       };
+      // Web notifications follow the market on screen; LINE covers the ones chosen here.
+      const coins = el("div", "notify-select notify-markets");
+      coins.append(el("span", "", "幣種"));
+      const coinChecks = el("span", "notify-market-checks");
+      for (const id of MARKET_IDS) {
+        const label = el("label", "check");
+        const input = el("input");
+        input.type = "checkbox";
+        input.checked = this.settings.markets.includes(id);
+        marketBoxes.set(id, input);
+        input.addEventListener("change", () => {
+          this.settings.markets = MARKET_IDS.filter((x) => marketBoxes.get(x).checked);
+          this.save();
+          refresh();
+        });
+        label.append(input, el("span", "", MARKETS[id].base));
+        coinChecks.append(label);
+      }
+      coins.append(coinChecks);
       lineParts.keyword = el("code", "notify-keyword");
       lineParts.button = el("a", "notify-line-button");
       lineParts.button.target = "_blank";
       lineParts.button.rel = "noopener noreferrer";
       box.append(
-        row("每天最多", daily),
+        coins,
+        row("每天最多（各幣種合計）", daily),
         row("安靜時段（台灣時間）", quiet),
         lineParts.keyword,
         lineParts.button,

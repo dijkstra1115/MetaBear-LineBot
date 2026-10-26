@@ -589,7 +589,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       const t = Number(r.t);
       // Bar events carry the close of their bar; the link opens the bar's last minute.
       const at = Math.floor((BAR_KINDS.includes(String(r.kind)) ? t - 1 : t) / MINUTE) * MINUTE;
-      return { key: `of-${r.id}-${t}`, t, kind: r.kind, text: r.text, at };
+      return { key: `of-${this.m.id === "btc" ? "" : `${this.m.id}-`}${r.id}-${t}`, t, kind: r.kind, text: r.text, at, m: this.m.id };
     });
     try {
       const res = await this.env.BACKEND.fetch("https://backend/api/internal/orderflow-alert", {

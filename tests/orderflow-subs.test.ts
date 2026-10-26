@@ -63,7 +63,7 @@ async function settle() {
 // 12:00 in Taiwan on 2026-10-22, and 01:00 the next Taiwan day.
 const noon = Date.parse("2026-10-22T04:00:00Z");
 const night = Date.parse("2026-10-22T17:00:00Z");
-const ev = (key: string, kind: string, t = noon) => ({ key, t, kind, text: `${kind} 測試事件｜VWAP 81,900（差 $10）`, at: Math.floor(t / 60_000) * 60_000 });
+const ev = (key: string, kind: string, t = noon, m?: string) => ({ key, t, kind, text: `${kind} 測試事件｜VWAP 81,900（差 $10）`, at: Math.floor(t / 60_000) * 60_000, ...(m ? { m } : {}) });
 
 before(async () => {
   const result = await build({ entryPoints: ["src/index.ts"], bundle: true, write: false, format: "esm", platform: "neutral", target: "es2022" });
@@ -142,9 +142,14 @@ test("only members can subscribe, with the keyword from /alerts/", async () => {
   await db.prepare("UPDATE customers SET stage='joined' WHERE line_user_id=?").bind(alice).run();
   const done = await say(alice, "訂閱警報 吸收,掃蕩收回 每天2則 安靜00-08");
   assert.match(done, /已開通 LINE 關鍵位提醒/);
-  assert.match(done, /事件：吸收、掃蕩收回/);
+  assert.match(done, /幣種：BTC\n事件：吸收、掃蕩收回/);
   assert.match(done, /安靜時段（台灣時間）：00:00–08:00/);
-  assert.deepEqual(await db.prepare("SELECT kinds,daily,quiet FROM orderflow_alert_subs WHERE line_user_id=?").bind(alice).first(), { kinds: "absorption,sweep", daily: 2, quiet: "00-08" });
+  assert.deepEqual(await db.prepare("SELECT kinds,daily,quiet,markets FROM orderflow_alert_subs WHERE line_user_id=?").bind(alice).first(), {
+    kinds: "absorption,sweep",
+    daily: 2,
+    quiet: "00-08",
+    markets: "btc",
+  });
   assert.match(await say(alice, "警報設定"), /每天最多 2 則/);
 
   // A current eligible BingX check also counts; a stale one (an older settings revision) does not.
@@ -161,12 +166,13 @@ test("only members can subscribe, with the keyword from /alerts/", async () => {
 
   // Carol has a subscription row but is not a member.
   await say(carol, "選單");
-  await db.prepare("INSERT INTO orderflow_alert_subs VALUES (?,?,?,?,?,?)").bind(carol, "sweep", 3, "", "x", "x").run();
+  await db.prepare("INSERT INTO orderflow_alert_subs(line_user_id,kinds,daily,quiet,created_at,updated_at) VALUES (?,?,?,?,?,?)").bind(carol, "sweep", 3, "", "x", "x").run();
 });
 
 test("events reach the subscribers who chose them, within their daily count and outside quiet hours", async () => {
   assert.equal((await post({ events: [ev("k0", "sweep")] }, "wrong")).status, 401);
   assert.equal((await post({ events: [{ ...ev("k0", "sweep"), kind: "test" }] })).status, 400);
+  assert.equal((await post({ events: [ev("k0", "sweep", noon, "doge")] })).status, 400);
 
   const first = await post({ events: [ev("k1", "sweep"), ev("k2", "absorption"), ev("k3", "print"), ev("k4", "sweep")] });
   assert.deepEqual(await first.json(), { queued: 5, dropped: 0 });
@@ -176,7 +182,8 @@ test("events reach the subscribers who chose them, within their daily count and 
   assert.equal(to(bob).length, 3, "bob chose everything, three a day");
   assert.equal(to(carol).length, 0, "not a member");
   const text = to(alice)[0].messages[0].text as string;
-  assert.match(text, /^MetaBear 關鍵位提醒\nsweep 測試事件/);
+  assert.match(text, /^MetaBear 關鍵位提醒（BTC）\nsweep 測試事件/);
+  assert.doesNotMatch(text, /&m=/, "BTC links stay as they were");
   assert.match(text, /看當下盤面：https:\/\/crm\.test\/lab\/orderflow\/\?tf=1&at=\d+/);
   assert.match(text, /看這段覆盤：https:\/\/crm\.test\/lab\/orderflow\/\?replay=\d+&k=sweep/);
   assert.match(text, /對應課程：https:\/\/crm\.test\/orderflow\/failed-auction/);
@@ -213,4 +220,22 @@ test("the quota floor, the stop switch and unsubscribing hold alerts back", asyn
     pushes.slice(before).map((p) => p.to),
     [bob],
   );
+});
+
+test("members choose BTC, ETH or both, and ETH alerts name the coin and open ETH", async () => {
+  const day4 = Date.parse("2026-10-25T04:00:00Z");
+  assert.match(await say(bob, "訂閱警報 BTC,ETH 全部 每天3則"), /幣種：BTC、ETH\n事件：全部/);
+  const before = pushes.length;
+  assert.deepEqual(await (await post({ events: [ev("e1", "sweep", day4, "eth"), ev("b1", "absorption", day4)] })).json(), { queued: 2, dropped: 0 });
+  await settle();
+  const sent = pushes.slice(before).map((p) => p.messages[0].text as string);
+  const eth = sent.find((t) => t.includes("（ETH）"));
+  assert.ok(eth, "the ETH alert names its coin");
+  assert.match(eth, /看當下盤面：https:\/\/crm\.test\/lab\/orderflow\/\?tf=1&at=\d+&m=eth/);
+  assert.match(eth, /看這段覆盤：.*&k=sweep&m=eth/);
+  assert.ok(sent.some((t) => t.startsWith("MetaBear 關鍵位提醒（BTC）")));
+
+  // Back to BTC only: ETH events no longer reach bob.
+  assert.match(await say(bob, "訂閱警報 全部 每天3則"), /幣種：BTC\n/);
+  assert.deepEqual(await (await post({ events: [ev("e2", "sweep", day4, "eth")] })).json(), { queued: 0, dropped: 0 });
 });
