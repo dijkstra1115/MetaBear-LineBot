@@ -7,7 +7,8 @@
 //   GET  /api/orderflow/btcusdt/status             collector health
 //   GET  /api/orderflow/btcusdt/events?since=ms    market events at a key level since a minute in the last 30 days
 //   POST /api/orderflow/btcusdt/import             archive footprint rows (Bearer ORDERFLOW_ADMIN_TOKEN)
-//   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token)
+//   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token);
+//                                                  ?ex=all&days=all merges all 30 days of 全市場 again
 //   GET  /api/orderflow/btcusdt/alerts             alert thresholds and the latest alerts (same token)
 //   POST /api/orderflow/btcusdt/alerts             { config } tunes thresholds, { test: true } sends a test
 //   GET  /api/orderflow/relay?m=eth                WebSocket from the Binance relay for one market (Bearer ORDERFLOW_RELAY_TOKEN)
@@ -115,7 +116,7 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
     const token = env.ORDERFLOW_ADMIN_TOKEN;
     const auth = request.headers.get("authorization") ?? "";
     if (!token || !timingSafeEqual(auth, `Bearer ${token}`)) return json({ error: "未授權" }, 401);
-    if (route === "/archive") return json(await (await stub.fetch("https://collector/archive", { method: "POST" })).json());
+    if (route === "/archive") return json(await (await stub.fetch(`https://collector/archive${url.search}`, { method: "POST" })).json());
     if (route === "/alerts") {
       if (!["GET", "POST"].includes(request.method)) return json({ error: "只接受 GET 或 POST" }, 405);
       const body = request.method === "POST" ? await request.text() : undefined;

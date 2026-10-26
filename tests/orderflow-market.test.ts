@@ -80,3 +80,16 @@ test("全市場 merges the exchanges' minutes and finds a 跨所同步大單 at 
   // Only reads and the admin's re-merge reach 全市場.
   assert.equal((await post("all", { rows: [] })).status, 400);
 });
+
+test("the admin can have 全市場 merge every day again after a late backfill", async () => {
+  const remerge = (query: string) => mf.dispatchFetch(`${base}/archive?ex=all${query}`, { method: "POST", headers: { authorization: `Bearer ${token}` } });
+  const today = new Date(Math.floor(Date.now() / DAY) * DAY).toISOString().slice(0, 10);
+  assert.equal((await mf.dispatchFetch(`${base}/archive?ex=all&days=all`, { method: "POST" })).status, 401);
+  assert.equal(((await (await remerge("")).json()) as any).remerge.length, 2, "today and yesterday by default");
+  const all = ((await (await remerge("&days=all")).json()) as any).remerge as string[];
+  assert.equal(all.length, 30);
+  assert.equal(all.at(-1), today);
+  const yesterday = Math.floor(Date.now() / DAY) * DAY - DAY;
+  await until(async () => (await getJson("/status?ex=all")).mergedDays >= 1, "the re-merge to start");
+  assert.ok((await getJson(`/recent?ex=all&since=${yesterday}`)).bars?.length, "history merged again");
+});
