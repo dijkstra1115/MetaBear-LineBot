@@ -28,6 +28,18 @@ export function parseOkxArchiveLine(line) {
   return { t, price: Number(c[3]), qty: btc(c[4]), sell: c[2].toLowerCase() === "sell" };
 }
 
+/** The [first, last] minute of each run of minutes in [from, to] missing from `have` (minute ms). */
+export function missingRanges(have, from, to) {
+  const out = [];
+  for (let t = from; t <= to; t += 60_000) {
+    if (have.has(t)) continue;
+    const last = out.at(-1);
+    if (last && last[1] === t - 60_000) last[1] = t;
+    else out.push([t, t]);
+  }
+  return out;
+}
+
 /** history-candles rows (newest first) → [t, open, high, low, close]. */
 export function parseOkxCandles(list) {
   return list.map(([t, o, h, l, c]) => [Number(t), Number(o), Number(h), Number(l), Number(c)]);

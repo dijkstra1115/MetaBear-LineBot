@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { gzipSync } from "node:zlib";
 import { BingxBook, gunzipText, parseBingxKlines, parseBingxTrades } from "../public/lab/orderflow/bingx.js";
 import { ArchiveDay, parseArchiveLine } from "../public/lab/orderflow/bybit.js";
-import { OkxBook, okxArchiveUrl, parseOkxArchiveLine, parseOkxCandles, parseOkxTrades } from "../public/lab/orderflow/okx.js";
+import { OkxBook, missingRanges, okxArchiveUrl, parseOkxArchiveLine, parseOkxCandles, parseOkxTrades } from "../public/lab/orderflow/okx.js";
 
 const T0 = Date.UTC(2026, 9, 25, 3, 0);
 
@@ -48,4 +48,12 @@ test("the archive builder takes any exchange's parsed trades and keeps Bybit's l
   const { rows, prints } = day.take();
   assert.deepEqual(rows, [[T0, 80_000, 80_011, 80_000, 80_011, [[8000, 0, 1.5], [8001, 2, 0]]]]);
   assert.deepEqual(prints, [[T0 + 1, "buy", 80_011, 2]]);
+});
+
+test("only the minutes a collector lacks are asked for again, as runs", () => {
+  const M = 60_000;
+  const have = new Set([T0, T0 + M, T0 + 4 * M, T0 + 5 * M]);
+  assert.deepEqual(missingRanges(have, T0, T0 + 5 * M), [[T0 + 2 * M, T0 + 3 * M]]);
+  assert.deepEqual(missingRanges(have, T0, T0 + M), [], "nothing missing, nothing to ask OKX");
+  assert.deepEqual(missingRanges(new Set(), T0, T0 + 2 * M), [[T0, T0 + 2 * M]]);
 });
