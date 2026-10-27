@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOOK_TOPIC, OrderBook, StreamGaps, bybitGet, TICKER_TOPIC, TRADE_TOPIC, addTrade, applyTicker, barRow, groupPrints, parseTrades, takerTotals } from "../public/lab/orderflow/bybit.js";
+import { BOOK_TOPIC, OrderBook, StreamGaps, bybitGet, bybitRefused, TICKER_TOPIC, TRADE_TOPIC, addTrade, applyTicker, barRow, groupPrints, parseTrades, takerTotals } from "../public/lab/orderflow/bybit.js";
 
 const T0 = Date.UTC(2026, 9, 15, 13, 0);
 
@@ -97,4 +97,14 @@ test("Bybit REST errors say what came back instead of undefined", async () => {
   await assert.rejects(bybitGet("u", reply(200, JSON.stringify({ retCode: 10006, retMsg: "Too many visits!" }))), /HTTP 200 10006 Too many visits!/);
   await assert.rejects(bybitGet("u", reply(403, "<html><body><h1>403 ERROR</h1>Request blocked.</body></html>")), /HTTP 403 403 ERROR Request blocked\./);
   await assert.rejects(bybitGet("u", reply(429, "{}")), /HTTP 429 \{\}/);
+});
+
+test("Bybit refusing this IP is told apart from a bad request", async () => {
+  const reply = (status, text) => async () => new Response(text, { status });
+  const error = (p) => p.then(() => null, (e) => e);
+  assert.equal(bybitRefused(await error(bybitGet("u", reply(403, '{ "error": "Access too frequent. Please try again in 5 minutes." }')))), true);
+  assert.equal(bybitRefused(await error(bybitGet("u", reply(429, "{}")))), true);
+  assert.equal(bybitRefused(await error(bybitGet("u", reply(200, JSON.stringify({ retCode: 10006, retMsg: "Too many visits!" }))))), true);
+  assert.equal(bybitRefused(await error(bybitGet("u", reply(200, JSON.stringify({ retCode: 10001, retMsg: "params error" }))))), false);
+  assert.equal(bybitRefused(await error(bybitGet("u", reply(500, "oops")))), false);
 });

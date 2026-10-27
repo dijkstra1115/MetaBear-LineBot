@@ -49,6 +49,9 @@ export async function bybitGet(url, fetchImpl = fetch) {
   throw new Error(`HTTP ${res.status} ${detail}`);
 }
 
+/** Whether a bybitGet error is Bybit refusing this IP for a while (rate limit or block), not a bad request. */
+export const bybitRefused = (err) => /^Error: HTTP (403|429)\b|\b10006\b|too frequent/i.test(String(err));
+
 /** /v5/market/recent-trade list → the same trade objects. */
 export function parseRestTrades(list) {
   return list.map((d) => ({ id: d.execId, t: Number(d.time), price: Number(d.price), qty: Number(d.size), sell: d.side === "Sell", seq: Number(d.seq) }));
