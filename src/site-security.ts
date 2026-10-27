@@ -21,7 +21,7 @@ export function siteSecurityHeaders(path: string, origin: string): Headers {
     connections.push("wss://stream.bybit.com");
   if (productionAnalytics) connections.push("https://cloudflareinsights.com");
   return new Headers({
-    "Content-Security-Policy": `default-src 'self'; script-src ${scriptSources}; style-src 'self'; img-src 'self' data:; connect-src ${connections.join(" ")}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
+    "Content-Security-Policy": `default-src 'self'; script-src ${scriptSources}; style-src 'self'; img-src 'self' data: https://media.metabear.io; media-src 'self' https://media.metabear.io; connect-src ${connections.join(" ")}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
   });

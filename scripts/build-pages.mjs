@@ -26,7 +26,7 @@ await writeFile(new URL("_routes.json", output), JSON.stringify({
 
 // Only narration needs a Pages Function. Keep production analytics and the
 // academy's WebSocket permission scoped to their existing document paths.
-const common = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+const common = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://media.metabear.io; media-src 'self' https://media.metabear.io; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 const analytics = common.replace("script-src 'self'", "script-src 'self' https://static.cloudflareinsights.com/beacon.min.js/").replace("connect-src 'self'", "connect-src 'self' https://cloudflareinsights.com");
 const academy = analytics.replace("connect-src 'self'", "connect-src 'self' wss://stream.bybit.com");
 const rules = [

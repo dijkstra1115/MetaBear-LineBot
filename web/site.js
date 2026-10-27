@@ -1,6 +1,7 @@
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { initAll, motionOff } from "../public/mb.js";
+import { initAll, initReveal, motionOff } from "../public/mb.js";
+import { initCaseWall } from "./case-wall.js";
 import { drawMarket } from "./market-snapshot.js";
 import { markets } from "./market-data.js";
 
@@ -10,6 +11,9 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const root = document.documentElement;
 
 initAll();
+// The case cards are built after initAll(), so they need their own reveal pass.
+initCaseWall({ motionOff });
+initReveal($("[data-case-wall]") ?? undefined);
 
 // ---------------- motion preference ----------------
 const listeners = new Set();
