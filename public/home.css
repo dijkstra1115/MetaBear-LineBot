@@ -1919,7 +1919,7 @@ input[type="range"]::-moz-range-thumb {
 /* ================= REPLAY CASES ================= */
 .case-wall {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(12px, 1.4vw, 20px);
   margin: 0;
   padding: 0;
@@ -2093,35 +2093,10 @@ input[type="range"]::-moz-range-thumb {
   font-size: 40px;
   line-height: 1;
 }
-.case-levels {
-  display: grid;
-  gap: 8px;
-  margin: 4px 0 0;
-}
-.case-level {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: var(--r-s);
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: inset 3px 0 0 var(--muted);
-}
-.case-level dt {
-  color: var(--muted);
-  font-size: 14px;
-}
-.case-level dd {
-  margin: 0;
-  font-size: 19px;
-}
-.case-level.long,
-.case-level.target {
-  box-shadow: inset 3px 0 0 var(--teal);
-}
-.case-level.short,
-.case-level.stop {
-  box-shadow: inset 3px 0 0 var(--red);
+.case-rule {
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1.7;
 }
 .case-info .case-label {
   margin-top: 6px;
@@ -2129,23 +2104,39 @@ input[type="range"]::-moz-range-thumb {
   letter-spacing: 0.18em;
   color: var(--dim);
 }
-.case-evidence {
+/* Every trade of the stretch, stops included, in the order they opened. */
+.case-trades {
   display: grid;
   gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.case-evidence li {
+.case-trades li {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
   gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--r-s);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 3px 0 0 var(--teal);
   font-size: 15px;
 }
-.case-evidence time {
+.case-trades li.stop {
+  box-shadow: inset 3px 0 0 var(--red);
+}
+.case-trades time {
   color: var(--dim);
   font-size: 13px;
-  line-height: 1.75;
+}
+.case-trades b {
+  color: var(--teal);
+  font-size: 15px;
+  white-space: nowrap;
+}
+.case-trades li.stop b {
+  color: var(--red);
 }
 .case-close {
   position: absolute;
@@ -2166,11 +2157,6 @@ input[type="range"]::-moz-range-thumb {
   background: rgba(255, 255, 255, 0.12);
 }
 
-@media (max-width: 1100px) {
-  .case-wall {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 /* Phones: one swipeable row instead of five rows of cards. */
 @media (max-width: 760px) {
   .case-wall {
@@ -2197,5 +2183,20 @@ input[type="range"]::-moz-range-thumb {
   }
   .case-video {
     max-height: 62dvh;
+  }
+  /* Time and result on one line, the trade's reason on its own below. */
+  .case-trades li {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "time result" "why why";
+    gap: 4px 12px;
+  }
+  .case-trades time {
+    grid-area: time;
+  }
+  .case-trades span {
+    grid-area: why;
+  }
+  .case-trades b {
+    grid-area: result;
   }
 }
