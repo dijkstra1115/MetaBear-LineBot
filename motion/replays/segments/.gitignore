@@ -1,0 +1,15 @@
+# HyperFrames render outputs and caches
+renders/
+snapshots/
+.thumbnails/
+.hyperframes/
+.waveform-cache/
+check.log
+# Mix (rebuilt by scripts/mix.mjs) and the font glyph list
+assets/audio/soundtrack.wav
+scripts/.chars.txt
+# Sound effects: synthesized ones are rebuilt by scripts/sfx.py; downloaded clips stay local
+assets/audio/sfx/*.mp3
+assets/audio/sfx/synth/
+# The licensed song stays local
+assets/audio/song.mp3

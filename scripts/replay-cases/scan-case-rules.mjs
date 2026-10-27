@@ -13,7 +13,10 @@
 // 0.1 % beyond the extreme since the touch; target the case's R (or --r). After a trigger or a
 // 30-minute watch without one, price must move 0.3 % away before the level counts again.
 //
-//   node scripts/replay-cases/scan-case-rules.mjs [--case 9] [--r 2] [--list]
+//   node scripts/replay-cases/scan-case-rules.mjs [--case 9] [--r 2] [--list] [--json]
+//
+// --json writes every trade with its outcome at --r (default 2) to
+// .data/orderflow/replay-cases/case-rule-trades.json, the input of motion/replays/segments.
 import { readFile } from "node:fs/promises";
 import { fromArchive } from "../../public/lab/orderflow/metrics.js";
 import { buildLiqMap } from "../../public/lab/orderflow/liqmap.js";
@@ -108,19 +111,20 @@ buildLiqMap(rows, tick, readings.map((r) => [r[0], r[1]]), {
 });
 
 const trades = [];
-function enter(rule, L, b, i, name) {
+function enter(rule, L, b, i, name, run) {
   if (trades.some((x) => x.entryT === b.t && x.long === L.long)) return; // two levels, one trade
   const stop = L.long ? L.ext * (1 - RULE.stopBufferPct) : L.ext * (1 + RULE.stopBufferPct);
   const risk = Math.abs(b.c - stop);
   if (risk / b.c > RULE.maxRiskPct) return;
-  trades.push({ rule, long: L.long, name, level: L.price, touchT: L.touchT, entryT: b.t, entry: b.c, stop, risk, i });
+  trades.push({ rule, long: L.long, name, level: L.price, touchT: L.touchT, extT: L.extT, entryT: b.t, entry: b.c, stop, risk, run, i });
 }
 // A watch: track the extreme, give up after watchMin, trigger on a stacked close back across.
 function watch(rule, L, b, i, name) {
-  L.ext = L.long ? Math.min(L.ext, b.l) : Math.max(L.ext, b.h);
+  if (L.long ? b.l <= L.ext : b.h >= L.ext) Object.assign(L, { ext: L.long ? b.l : b.h, extT: b.t });
   if (b.t - L.touchT > RULE.watchMin * MIN) return "timeout";
-  if (stacked(b, L.long) >= RULE.stack && (L.long ? b.c > L.price : b.c < L.price)) {
-    enter(rule, L, b, i, name);
+  const run = stacked(b, L.long);
+  if (run >= RULE.stack && (L.long ? b.c > L.price : b.c < L.price)) {
+    enter(rule, L, b, i, name, run);
     return "fired";
   }
   return null;
@@ -198,7 +202,7 @@ for (let i = 0; i < bars.length; i++) {
     const hit = snap.filter((c) => (long ? c <= far && c >= edge : c >= far && c <= edge));
     if (!hit.length) continue;
     // The trigger closes back across the run's extreme bar body; the watch's "level" is that body edge.
-    Object.assign(L, { state: "watch", long, touchT: b.t, ext: edge, price: long ? Math.max(b.o, b.c) : Math.min(b.o, b.c) });
+    Object.assign(L, { state: "watch", long, touchT: b.t, ext: edge, extT: b.t, price: long ? Math.max(b.o, b.c) : Math.min(b.o, b.c) });
   }
   // Keep the liq level at the extreme bar's body as the extreme moves.
   for (const long of [true, false]) {
@@ -269,6 +273,16 @@ for (const no of pick) {
   for (const x of xs) console.log(`    ${x === c || x.entryT === c.entryT ? "★" : " "} ${line(x)}`);
   const a = seq.indexOf(seq.find((x) => x.entryT === xs[0].entryT)), z = a + xs.length;
   console.log(`  段外：前一筆 ${a > 0 ? line(seq[a - 1]) : "無"}；後一筆 ${seq[z] ? line(seq[z]) : "無"}`);
+}
+if (argv.includes("--json")) {
+  const R = Number(arg("r") ?? 2);
+  const out = trades.map(({ i, risk, ...t }) => {
+    const o = outcome({ ...t, i, risk }, R);
+    return { ...t, tp: +(t.entry + (t.long ? 1 : -1) * R * risk).toFixed(1), stop: +t.stop.toFixed(1), r: R, result: o.timeout ? "timeout" : o.r > 0 ? "tp" : "stop", exitT: o.t, exitR: o.r };
+  });
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(new URL(".data/orderflow/replay-cases/case-rule-trades.json", root), JSON.stringify(out));
+  console.log(`case-rule-trades.json: ${out.length} trades at ${R}R`);
 }
 if ("list" in Object.fromEntries(argv.map((a) => [a.replace(/^--/, ""), 1]))) {
   for (const rule of ["flip", "reject", "liq"]) {
