@@ -9,8 +9,6 @@
 //   POST /api/orderflow/btcusdt/import             archive footprint rows (Bearer ORDERFLOW_ADMIN_TOKEN)
 //   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token);
 //                                                  ?ex=all&days=all merges all 30 days of 全市場 again
-//   GET  /api/orderflow/btcusdt/alerts             alert thresholds and the latest alerts (same token)
-//   POST /api/orderflow/btcusdt/alerts             { config } tunes thresholds, { test: true } sends a test
 //   GET  /api/orderflow/relay?m=eth                WebSocket from the Binance relay for one market (Bearer ORDERFLOW_RELAY_TOKEN)
 //
 // ethusdt in place of btcusdt reads the ETH collectors (markets.js; docs/ORDERFLOW-ETH.md).
@@ -34,7 +32,8 @@ export { BinanceCollector, BingxCollector, Collector, MarketCollector, OkxCollec
 
 // The alert settings of the collector whose events go to LINE, for the CRM backend's /admin.
 // Reached only through the backend's ORDERFLOW service binding, after it has checked the admin's
-// session, never from the public route; so unlike /alerts above it takes no token.
+// session, never from the public route, which has no alert settings; so it takes no token. Each
+// change is audited on the backend.
 //   GET  /alerts?m=btc|eth   POST /alerts?m=…  { config } | { config: null } | { test: true }
 export class OrderflowAdmin extends WorkerEntrypoint<OrderflowEnv> {
   override async fetch(request: Request) {
@@ -131,20 +130,14 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   const all = ex === "all" && !market;
   const stub = route === "/book" && ex === "all" ? stubFor(env, "binance", m) : (market ?? stubFor(env, all ? "binance" : ex, m));
   if (!stub) return json({ error: "沒有這個交易所" }, 404);
-  if (ex === "all" && !["/day", "/recent", "/book", "/events", "/status", "/archive", "/alerts"].includes(route)) return json({ error: "全市場只能讀取" }, 400);
+  if (ex === "all" && !["/day", "/recent", "/book", "/events", "/status", "/archive"].includes(route)) return json({ error: "全市場只能讀取" }, 400);
 
-  if (route === "/import" || route === "/archive" || route === "/alerts") {
-    if (request.method !== "POST" && route !== "/alerts") return json({ error: "只接受 POST" }, 405);
+  if (route === "/import" || route === "/archive") {
+    if (request.method !== "POST") return json({ error: "只接受 POST" }, 405);
     const token = env.ORDERFLOW_ADMIN_TOKEN;
     const auth = request.headers.get("authorization") ?? "";
     if (!token || !timingSafeEqual(auth, `Bearer ${token}`)) return json({ error: "未授權" }, 401);
     if (route === "/archive") return json(await (await stub.fetch(`https://collector/archive${url.search}`, { method: "POST" })).json());
-    if (route === "/alerts") {
-      if (!["GET", "POST"].includes(request.method)) return json({ error: "只接受 GET 或 POST" }, 405);
-      const body = request.method === "POST" ? await request.text() : undefined;
-      if (body && body.length > 4_000) return json({ error: "內容太長" }, 413);
-      return json(await (await stub.fetch("https://collector/alerts", { method: request.method, body, headers: { "content-type": "application/json" } })).json());
-    }
     return stub.fetch("https://collector/import", { method: "POST", body: request.body, headers: { "content-type": "application/json" } });
   }
   if (request.method !== "GET") return json({ error: "只接受 GET" }, 405);
