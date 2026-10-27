@@ -49,7 +49,7 @@
 - **K 棒事件**（吸收、掃蕩收回、CVD 背離、不平衡回測、放量突破）在合併後的 5 分 K 上跑，關鍵位也來自合併後的資料。
 - **掛單事件**（掛單牆、誘單、冰山）要看單一交易所的掛單簿，所以複製 Binance 收集器的。
 - **歷史**：每次 alarm 補一天，先昨天和今天（每小時重新合併一次，交易所的封存檔或補資料補進來後會更新），再往前補到 30 天。管理員可以 `POST /api/orderflow/btcusdt/archive?ex=all` 要它馬上重新合併昨天和今天。
-- **LINE**：2026-10-26 起，LINE 推播（管理員與會員）改看全市場。哪個收集器推播由 `wrangler.orderflow.jsonc` 的 `ORDERFLOW_LINE_SOURCE` 決定（`bybit`、`binance`、`okx`、`bingx`、`all`），其他收集器只記錄；改回 Bybit 只要改這個值再部署。各收集器的健康通知照常推播。管理頁 `/lab/orderflow/alerts.html` 調的是全市場收集器的門檻（切換時已把 Bybit 的設定複製過去）。跨所同步大單也是會員可以訂閱的種類（見下一節）。LINE 裡的連結沒有帶交易所，網頁看到 `?at=` 或 `?replay=` 而沒有 `ex` 時開全市場；分享連結一律帶 `ex`。
+- **LINE**：2026-10-26 起，LINE 推播（管理員與會員）改看全市場。哪個收集器推播由 `wrangler.orderflow.jsonc` 的 `ORDERFLOW_LINE_SOURCE` 決定（`bybit`、`binance`、`okx`、`bingx`、`all`），其他收集器只記錄；改回 Bybit 只要改這個值再部署。各收集器的健康通知照常推播。CRM `/admin` 的「訂單流通知」分頁調的是全市場收集器的門檻（切換時已把 Bybit 的設定複製過去）。跨所同步大單也是會員可以訂閱的種類（見下一節）。LINE 裡的連結沒有帶交易所，網頁看到 `?at=` 或 `?replay=` 而沒有 `ex` 時開全市場；分享連結一律帶 `ex`。
 - 大單紀錄多了交易所欄位（`prints.ex`），單一交易所的收集器是空的。
 
 ## 跨所同步大單
