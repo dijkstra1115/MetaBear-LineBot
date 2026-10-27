@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ALERT_DEFAULTS, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../public/lab/orderflow/watch.js";
+import { ALERT_DEFAULTS, HEALTH_KINDS, IcebergWatch, healthStep, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../public/lab/orderflow/watch.js";
 
 const T0 = Date.UTC(2026, 9, 16, 12, 0);
 const S = 1_000;
@@ -146,4 +146,33 @@ test("switches take 0 or 1, thresholds only positive numbers, and health events 
   assert.match(describe({ kind: "health_down", t: T0, feed: "Bybit", downMs: 180_000, lastTrade: T0 - 180_000 }), /收集器與 Bybit 斷線已 3 分鐘，最後一筆成交/);
   assert.match(describe({ kind: "health_up", t: T0, feed: "Bybit", downMs: 240_000 }), /Bybit 連線恢復，中斷約 4 分鐘；缺的成交隔天由封存檔補齊/);
   assert.match(describe({ kind: "health_archive", t: T0, day: "2026-10-16", reason: "HTTP 403" }), /2026-10-16 的封存檔還沒匯入：HTTP 403/);
+});
+
+test("an outage is reported once, and a few trades in the middle of it do not count as recovery", () => {
+  const M = 60 * S;
+  const step = (s, up, now, lastTrade = T0) => healthStep(s, { up, now, lastTrade, downMs: 2 * M, stableMs: 3 * M });
+  let s = { since: 0, told: 0, upAt: 0 };
+  let e;
+  [s, e] = step(s, false, T0 + M);
+  assert.equal(e, null);
+  [s, e] = step(s, false, T0 + 2 * M);
+  assert.deepEqual(e, { kind: "health_down", downMs: 2 * M, lastTrade: T0 });
+  // A trade comes through, then the feed falls quiet again: no recovery and no second report.
+  [s, e] = step(s, true, T0 + 3 * M);
+  assert.equal(e, null);
+  [s, e] = step(s, false, T0 + 4 * M, T0 + 3 * M);
+  assert.equal(e, null);
+  assert.equal(s.since, T0, "the outage keeps its start");
+  // Back for good: reported once the feed has held for stableMs, with the time it was out.
+  [s, e] = step(s, true, T0 + 5 * M);
+  [s, e] = step(s, true, T0 + 7 * M);
+  assert.equal(e, null);
+  [s, e] = step(s, true, T0 + 8 * M);
+  assert.deepEqual(e, { kind: "health_up", downMs: 5 * M });
+  assert.deepEqual(s, { since: 0, told: 0, upAt: 0 });
+  // A short gap under downMs is forgotten without a message.
+  [s, e] = step(s, false, T0 + 9 * M, T0 + 9 * M);
+  [s, e] = step(s, true, T0 + 10 * M);
+  assert.equal(e, null);
+  assert.deepEqual(s, { since: 0, told: 0, upAt: 0 });
 });

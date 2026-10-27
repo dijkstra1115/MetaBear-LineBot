@@ -7,7 +7,7 @@ import { DurableObject } from "cloudflare:workers";
 import { LEVEL_LABELS, LevelBook, closedBarEvents, eventPrice, levelText, sessionOf, sessionStart } from "../../public/lab/orderflow/keylevels.js";
 import { liqFeeds } from "../../public/lab/orderflow/liquidations.js";
 import { DEFAULT_MARKET, MARKETS, marketOf, sized } from "../../public/lab/orderflow/markets.js";
-import { ALERT_DEFAULTS, BAR_KINDS, alertDefaults, HEALTH_KINDS, IcebergWatch, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
+import { ALERT_DEFAULTS, BAR_KINDS, alertDefaults, HEALTH_KINDS, IcebergWatch, healthStep, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
 import {
   ArchiveDay,
   BOOK_CHUNK_MS,
@@ -537,15 +537,14 @@ export class Collector extends DurableObject<OrderflowEnv> {
     const now = Date.now();
     for (const [feed, up, lastTrade] of this.healthFeeds(now)) {
       const key = `health${feed}`;
-      const since = Number(this.meta(`${key}Since`) ?? 0);
-      if (!up && !since) this.setMeta(`${key}Since`, lastTrade || now);
-      if (!up && since && now - since >= HEALTH_DOWN_MS[feed] && this.meta(`${key}Told`) !== "1") {
-        this.alert({ kind: "health_down", t: now, feed, downMs: now - since, lastTrade });
-        this.setMeta(`${key}Told`, "1");
-      }
-      if (up && since) {
-        if (this.meta(`${key}Told`) === "1") this.alert({ kind: "health_up", t: now, feed, downMs: now - since });
-        this.sql.exec("DELETE FROM meta WHERE k IN (?, ?)", `${key}Since`, `${key}Told`);
+      const state = { since: Number(this.meta(`${key}Since`) ?? 0), told: this.meta(`${key}Told`) === "1" ? 1 : 0, upAt: Number(this.meta(`${key}Up`) ?? 0) };
+      const [next, event] = healthStep(state, { up, now, lastTrade, downMs: HEALTH_DOWN_MS[feed] });
+      if (event) this.alert({ ...event, t: now, feed });
+      if (!next.since) this.sql.exec("DELETE FROM meta WHERE k IN (?, ?, ?)", `${key}Since`, `${key}Told`, `${key}Up`);
+      else {
+        if (next.since !== state.since) this.setMeta(`${key}Since`, next.since);
+        if (next.told && !state.told) this.setMeta(`${key}Told`, "1");
+        if (next.upAt !== state.upAt) next.upAt ? this.setMeta(`${key}Up`, next.upAt) : this.sql.exec("DELETE FROM meta WHERE k = ?", `${key}Up`);
       }
     }
     // A day still missing after its retries, reported once per day.
@@ -632,12 +631,14 @@ export class Collector extends DurableObject<OrderflowEnv> {
     const lines = pending.slice(0, ALERT_LINES).map((r) => String(r.text));
     if (pending.length > ALERT_LINES) lines.push(`…另有 ${pending.length - ALERT_LINES} 則`);
     const at = Math.floor(Number(pending[0].t) / MINUTE) * MINUTE;
+    // Collector health has nothing to look at on the chart, and is not a market event.
+    const healthOnly = pending.every((r) => HEALTH_KINDS.has(String(r.kind)));
     const text = [
       `MetaBear 訂單流通知（${this.m.base}）`,
       ...lines,
-      `https://metabear.io/lab/orderflow/?tf=1&at=${at}&ex=${this.source}${this.m.id === "btc" ? "" : `&m=${this.m.id}`}`,
+      healthOnly ? "" : `https://metabear.io/lab/orderflow/?tf=1&at=${at}&ex=${this.source}${this.m.id === "btc" ? "" : `&m=${this.m.id}`}`,
       sentToday + 1 === cap ? "今天的通知已達上限，之後的事件只記錄不推送。" : "",
-      "盤面事件，不是買賣建議。",
+      healthOnly ? "" : "盤面事件，不是買賣建議。",
     ]
       .filter(Boolean)
       .join("\n");

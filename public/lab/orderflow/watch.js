@@ -344,6 +344,26 @@ const BAR_ICONS = { absorption: "🛡️", sweep: "🪝", divergence: "↔️", 
 /** Health events are about the collector itself, not the market. */
 export const HEALTH_KINDS = new Set(["health_down", "health_up", "health_archive", "health_errors", "health_unreachable"]);
 
+export const HEALTH_STABLE_MS = 3 * 60_000;
+
+// One feed's outage, stepped every alarm: state { since, told, upAt } → [next state, event or null].
+// The outage is reported once after downMs. A reported feed counts as back only after stableMs of
+// steady trades, so a few trades in the middle of an outage neither announce a recovery nor get the
+// same outage reported again.
+export function healthStep(s, { up, now, lastTrade, downMs, stableMs = HEALTH_STABLE_MS }) {
+  const clear = { since: 0, told: 0, upAt: 0 };
+  if (!up) {
+    const since = s.since || lastTrade || now;
+    if (!s.told && now - since >= downMs) return [{ since, told: 1, upAt: 0 }, { kind: "health_down", downMs: now - since, lastTrade }];
+    return [{ ...s, since, upAt: 0 }, null];
+  }
+  if (!s.since) return [s, null];
+  if (!s.told) return [clear, null];
+  if (!s.upAt) return [{ ...s, upAt: now }, null];
+  if (now - s.upAt < stableMs) return [s, null];
+  return [clear, { kind: "health_up", downMs: s.upAt - s.since }];
+}
+
 const usdText = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${Math.round(v / 1e3)}k`);
 const priceText = (p) => p.toLocaleString("en-US", { maximumFractionDigits: p < 10_000 ? 2 : 1 });
 const timeText = (t) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(t);
