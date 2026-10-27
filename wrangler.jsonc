@@ -56,6 +56,15 @@
     ],
   },
   "triggers": { "crons": ["*/5 * * * *"] },
+  // Local: run with the order-flow Worker for /admin's 訂單流通知 tab
+  // (wrangler dev -c wrangler.jsonc -c wrangler.orderflow.jsonc); without it the tab says so.
+  "services": [
+    {
+      "binding": "ORDERFLOW",
+      "service": "metabear-orderflow",
+      "entrypoint": "OrderflowAdmin",
+    },
+  ],
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "env": {
     "production": {
@@ -76,11 +85,21 @@
         { "pattern": "metabear.io/app.js*", "zone_name": "metabear.io" },
         { "pattern": "metabear.io/crm-automation.js*", "zone_name": "metabear.io" },
         { "pattern": "metabear.io/crm-knowledge.js*", "zone_name": "metabear.io" },
+        { "pattern": "metabear.io/crm-orderflow.js*", "zone_name": "metabear.io" },
         { "pattern": "metabear.io/arena/api/*", "zone_name": "metabear.io" },
         { "pattern": "www.metabear.io", "custom_domain": true },
       ],
       "triggers": { "crons": ["*/5 * * * *"] },
       "preview_urls": false,
+      // /admin's 訂單流通知 tab reads and tunes the alert collector through this entrypoint
+      // (src/orderflow/index.ts, OrderflowAdmin). Deploy metabear-orderflow first.
+      "services": [
+        {
+          "binding": "ORDERFLOW",
+          "service": "metabear-orderflow",
+          "entrypoint": "OrderflowAdmin",
+        },
+      ],
       "assets": {
         "directory": "./dist/backend",
         "binding": "ASSETS",

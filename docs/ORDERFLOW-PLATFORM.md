@@ -123,7 +123,8 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 - **開關**：`marketOn`（市場事件）和 `healthOn`（收集器健康）都可以設為 0。關掉時事件照樣記錄，狀態顯示「已關閉」，只是不推送。
 - **健康通知**：Bybit 沒有成交超過 2 分鐘、OKX 斷線超過 5 分鐘時通知一次，恢復時再通知一次；某天的封存檔重試 3 次仍失敗，或過了隔天 06:00（UTC）還沒發布，通知一次；10 分鐘內出現 10 個以上錯誤，最多每小時通知一次。每日上限只限制市場通知，不會擋住健康通知。
 - **收集器整個沒回應**：收集器自己沒辦法回報，所以由 Worker 每 5 分鐘的 cron 偵測，持續期間每 30 分鐘直接透過後端通知一次。
-- **管理頁**：`/lab/orderflow/alerts.html`，輸入管理權杖（`ORDERFLOW_ADMIN_TOKEN`，正式環境的存在本機 `.data/orderflow/admin-token`）後，可以開關兩種通知、調整門檻（時間類以秒顯示）、送測試通知，並查看最近 50 則事件和各自的狀態。
+- **CRM 後台**（2026-10-27 起）：`/admin` 的「訂單流通知」分頁，用 CRM 的管理員登入（分析師看不到），可切換 BTC／ETH。CRM 後端驗證身分、寫稽核紀錄（`orderflow.collector.tuned`、`.reset`、`.tested`）後，經 service binding `ORDERFLOW` 呼叫訂單流 Worker 的 `OrderflowAdmin` 入口，調的是推到 LINE 的收集器（`ORDERFLOW_LINE_SOURCE`）。這個入口只能從 binding 呼叫，不經公開路由，所以不用權杖。部署順序：先 `metabear-orderflow`，再 `metabear-backend`。會員關鍵位提醒的暫停開關也搬到這個分頁。
+- **舊管理頁**（確認 CRM 分頁可用後移除）：`/lab/orderflow/alerts.html`，輸入管理權杖（`ORDERFLOW_ADMIN_TOKEN`，正式環境的存在本機 `.data/orderflow/admin-token`）後，可以開關兩種通知、調整門檻（時間類以秒顯示）、送測試通知，並查看最近 50 則事件和各自的狀態。
 
 ## 網頁效能
 

@@ -262,12 +262,14 @@ async function showView(view) {
     automation: "自動審核與同步",
     knowledge: "常見問題知識庫",
     signals: "報單與分析師",
+    orderflow: "訂單流通知",
   }[view];
   if (view === "campaigns")
     await Promise.all([loadAudience(), loadDrafts(), loadRuns()]);
   if (view === "signals") await loadSignalsAdmin();
   if (view === "automation") await window.CrmAutomation.load();
   if (view === "knowledge") await window.CrmKnowledge.load();
+  if (view === "orderflow") await window.CrmOrderflow.load();
 }
 const localMode = ["localhost", "127.0.0.1"].includes(location.hostname);
 function authFailure() {
@@ -787,20 +789,10 @@ function dirLabel(direction) {
   return direction === "short" ? "做空" : "做多";
 }
 async function loadSignalsAdmin() {
-  const [staff, signals, alerts] = await Promise.all([
+  const [staff, signals] = await Promise.all([
     api("/api/staff"),
     api("/api/signals"),
-    api("/api/orderflow-alerts"),
   ]);
-  const sent = alerts.last24h;
-  $("#orderflow-alerts-kill").textContent = alerts.enabled
-    ? "暫停關鍵位提醒"
-    : "恢復關鍵位提醒";
-  $("#orderflow-alerts-status").textContent =
-    (alerts.enabled
-      ? "推播中。暫停後，新的事件不再排入，佇列裡尚未送出的會略過。"
-      : "已暫停。會員的訂閱保留，恢復後只推送之後的新事件。") +
-    ` 訂閱 ${alerts.subscribers} 人 · 近 24 小時送達 ${sent.accepted || 0} · 略過 ${sent.skipped || 0} · 失敗 ${sent.failed || 0}`;
   $("#signal-kill").textContent = signals.enabled
     ? "暫停全部報單"
     : "恢復報單發送";
@@ -890,20 +882,6 @@ $("#staff-form").addEventListener(
 );
 $("#staff-refresh").onclick = run(loadSignalsAdmin);
 $("#signals-refresh").onclick = run(loadSignalsAdmin);
-$("#orderflow-alerts-kill").onclick = run(async () => {
-  const current = await api("/api/orderflow-alerts");
-  if (
-    current.enabled &&
-    !confirm("暫停後，所有會員都不會收到關鍵位提醒，直到恢復為止。確定暫停？")
-  )
-    return;
-  await api("/api/orderflow-alerts/settings", {
-    method: "POST",
-    body: JSON.stringify({ enabled: !current.enabled }),
-  });
-  toast(current.enabled ? "已暫停關鍵位提醒" : "已恢復關鍵位提醒");
-  await loadSignalsAdmin();
-});
 $("#signal-kill").onclick = run(async () => {
   const current = await api("/api/signals");
   await api("/api/signals/settings", {

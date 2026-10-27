@@ -265,5 +265,36 @@ export async function adminOrderflowAlertsApi(request: Request, env: Env, actor:
     await audit(env.DB, null, data.enabled ? "orderflow.alerts.resumed" : "orderflow.alerts.stopped", { actor });
     return json({ enabled: data.enabled });
   }
+  if (path === "/api/orderflow-alerts/collector") return collectorSettings(request, env, actor);
   return null;
+}
+
+// The thresholds and switches of the collector whose events go to LINE, held by the order-flow
+// Worker. It is reached over the ORDERFLOW service binding (its OrderflowAdmin entrypoint), so the
+// admin's session here stands in for the order-flow admin token.
+async function collectorSettings(request: Request, env: Env & { ORDERFLOW?: Fetcher }, actor: string) {
+  if (!env.ORDERFLOW) throw new HttpError(503, "訂單流服務未連線");
+  const market = new URL(request.url).searchParams.get("m") ?? "btc";
+  if (!Object.hasOwn(MARKETS, market)) throw new HttpError(400, "沒有這個市場");
+  let body: string | undefined;
+  let action = "";
+  let detail: Record<string, unknown> = {};
+  if (request.method === "POST") {
+    const data = await readJson(request);
+    if (data.test === true) action = "orderflow.collector.tested";
+    else if (data.config === null) action = "orderflow.collector.reset";
+    else if (data.config && typeof data.config === "object" && !Array.isArray(data.config)) {
+      const config = data.config as Record<string, unknown>;
+      if (!Object.keys(config).length || Object.keys(config).length > 40 || !Object.values(config).every((v) => typeof v === "number" && Number.isFinite(v)))
+        throw new HttpError(400, "門檻需為數字");
+      action = "orderflow.collector.tuned";
+      detail = { config };
+    } else throw new HttpError(400, "請指定要調整的門檻或測試通知");
+    body = JSON.stringify(data.test === true ? { test: true } : { config: data.config });
+  } else if (request.method !== "GET") throw new HttpError(405, "Method not allowed");
+  const res = await env.ORDERFLOW.fetch(`https://orderflow/alerts?m=${market}`, { method: request.method, body, headers: { "content-type": "application/json" } });
+  const answer = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) throw new HttpError(502, typeof answer.error === "string" ? answer.error : "訂單流服務暫時無法回應");
+  if (action) await audit(env.DB, null, action, { actor, market, ...detail });
+  return json(answer);
 }

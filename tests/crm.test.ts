@@ -47,6 +47,7 @@ const pushes: { to: string; messages: any[]; retryKey: string }[] = [];
 let pushMode = "ok",
   pushGate: Promise<void> | undefined;
 let quotaLimit = 1000;
+const orderflowCalls: { url: string; method: string; body: string }[] = [];
 const adminToken = "test-admin-token-not-a-live-credential-123456";
 const lineSecret = "test-line-secret";
 const alice = "Uaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -175,6 +176,14 @@ before(async () => {
         OPENAI_MODEL: "gpt-5.6-luna",
         OPENAI_API_KEY: "test-only-openai-key",
         ENVIRONMENT: "production",
+      },
+      serviceBindings: {
+        ORDERFLOW: async (request: Request) => {
+          const body = await request.text();
+          orderflowCalls.push({ url: request.url, method: request.method, body });
+          const config = { printBtc: 50, ...(body ? JSON.parse(body).config : {}) };
+          return Response.json({ market: new URL(request.url).searchParams.get("m"), source: "all", config });
+        },
       },
       outboundService: async (request) => {
         if (request.url.startsWith("https://api.line.me/v2/bot/profile/"))
@@ -1775,6 +1784,24 @@ test("unsends remove received text and suppress late-arriving original content",
     transcript.messages.some((m: any) => m.content === "不應保留的文字"),
     false,
   );
+});
+
+test("admins tune the LINE collector's thresholds from /admin, and each change is audited", async () => {
+  assert.equal((await call("/api/orderflow-alerts/collector", "GET", undefined, false)).status, 401);
+  const read = (await (await call("/api/orderflow-alerts/collector?m=eth")).json()) as any;
+  assert.deepEqual([read.market, read.config.printBtc], ["eth", 50]);
+  assert.equal((await call("/api/orderflow-alerts/collector?m=doge")).status, 400);
+  assert.equal((await call("/api/orderflow-alerts/collector", "POST", { config: { printBtc: "75" } })).status, 400);
+  assert.equal((await call("/api/orderflow-alerts/collector", "POST", { other: 1 })).status, 400);
+  const tuned = (await (await call("/api/orderflow-alerts/collector", "POST", { config: { printBtc: 75 } })).json()) as any;
+  assert.equal(tuned.config.printBtc, 75);
+  assert.deepEqual(JSON.parse(orderflowCalls.at(-1)!.body), { config: { printBtc: 75 } });
+  assert.match(orderflowCalls.at(-1)!.url, /\/alerts\?m=btc$/);
+  const row = await db.prepare("SELECT detail FROM audit_log WHERE action='orderflow.collector.tuned' ORDER BY id DESC").first<{ detail: string }>();
+  assert.deepEqual(JSON.parse(row!.detail), { actor: owner, market: "btc", config: { printBtc: 75 } });
+  await call("/api/orderflow-alerts/collector", "POST", { test: true });
+  assert.ok(await db.prepare("SELECT 1 FROM audit_log WHERE action='orderflow.collector.tested'").first());
+  assert.equal(orderflowCalls.filter((c) => c.method === "POST").length, 2, "rejected requests never reach the collector");
 });
 
 test("admins can stop and resume LINE key-level alerts without touching VIP checks", async () => {
