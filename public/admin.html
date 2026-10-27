@@ -9,6 +9,7 @@
     <script src="/app.js" defer></script>
     <script src="/crm-automation.js" defer></script>
     <script src="/crm-knowledge.js" defer></script>
+    <script src="/crm-orderflow.js" defer></script>
   </head>
   <body>
     <div id="login" class="login-shell" hidden>
@@ -61,6 +62,8 @@
             ↗ <span>受眾與推播</span></button
           ><button class="nav-item" data-view="signals">
             ✶ <span>報單與分析師</span></button
+          ><button class="nav-item" data-view="orderflow">
+            ⌇ <span>訂單流通知</span></button
           ><button class="nav-item" data-view="content">
             ▤ <span>教學內容</span></button
           ><button class="nav-item" data-view="knowledge">
@@ -297,13 +300,6 @@
             </div>
           </div>
           <p id="signal-kill-status" class="callout"></p>
-          <div class="callout alert-switch">
-            <p>
-              <b>關鍵位提醒（LINE 會員推播）</b><br />
-              <span id="orderflow-alerts-status">載入中…</span>
-            </p>
-            <button id="orderflow-alerts-kill" class="secondary" type="button">暫停關鍵位提醒</button>
-          </div>
           <div class="campaign-grid">
             <form id="staff-form" class="panel">
               <h2>新增分析師</h2>
@@ -444,6 +440,62 @@
             <button id="crm-reload" class="quiet">更新狀態 ↻</button>
           </div>
           <div id="crm-jobs" class="table-wrap"></div>
+        </section>
+        <section id="orderflow-view" class="view" hidden>
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">ORDER FLOW ALERTS</p>
+              <h1>訂單流通知，<span>門檻與開關。</span></h1>
+              <p class="muted">
+                這裡調的是推到 LINE 的收集器（目前是全市場）。管理員通知與會員的關鍵位提醒都依這些門檻，儲存後馬上生效。
+              </p>
+            </div>
+            <div class="crm-actions">
+              <div class="of-markets" role="group" aria-label="市場">
+                <button class="secondary active" type="button" data-of-market="btc" aria-pressed="true">BTC</button
+                ><button class="secondary" type="button" data-of-market="eth" aria-pressed="false">ETH</button>
+              </div>
+              <button id="of-refresh" class="quiet" type="button">更新 ↻</button>
+            </div>
+          </div>
+          <div class="callout alert-switch">
+            <p>
+              <b>關鍵位提醒（LINE 會員推播）</b><br />
+              <span id="orderflow-alerts-status">載入中…</span>
+            </p>
+            <button id="orderflow-alerts-kill" class="secondary" type="button">暫停關鍵位提醒</button>
+          </div>
+          <div class="campaign-grid">
+            <div class="panel">
+              <h2>狀態</h2>
+              <p id="of-summary" class="muted">載入中…</p>
+              <label class="checkbox"><input id="of-marketOn" type="checkbox" />市場通知（大單、爆倉、OI、牆、誘單、冰山）</label>
+              <label class="checkbox"><input id="of-healthOn" type="checkbox" />收集器健康通知（斷線、封存檔、錯誤）</label>
+              <label class="checkbox"><input id="of-levelOn" type="checkbox" />市場通知只推關鍵位附近的事件</label>
+              <p class="muted">關掉時事件仍會記錄在最近事件裡，只是不推到 LINE。</p>
+              <p id="of-levels" class="muted"></p>
+              <button id="of-test" class="secondary" type="button">送測試通知到管理員 LINE</button>
+            </div>
+            <div class="panel">
+              <h2>門檻</h2>
+              <form id="of-config" class="of-thresholds"></form>
+              <div class="crm-actions">
+                <button id="of-save" class="primary" type="button">儲存門檻與開關</button>
+                <button id="of-reset" class="quiet" type="button">全部恢復預設</button>
+              </div>
+            </div>
+          </div>
+          <div class="section-heading">
+            <h2>最近 50 則事件</h2>
+          </div>
+          <div class="table-wrap">
+            <table class="of-events">
+              <thead>
+                <tr><th>時間</th><th>狀態</th><th>內容</th></tr>
+              </thead>
+              <tbody id="of-recent"></tbody>
+            </table>
+          </div>
         </section>
         <section id="content-view" class="view" hidden>
           <div class="page-heading">

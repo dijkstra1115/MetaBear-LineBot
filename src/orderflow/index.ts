@@ -18,6 +18,7 @@
 // 全市場, the exchanges merged (src/orderflow/aggregate.ts); without it, Bybit's answers.
 // Every viewer polls the same minute-aligned URLs, so the edge cache absorbs repeat requests
 // and the single collector object only answers each URL once per few seconds.
+import { WorkerEntrypoint } from "cloudflare:workers";
 import { BOOK_CHUNK_MS } from "../../public/lab/orderflow/bybit.js";
 import { MARKETS, marketByPath, marketOf, type Market } from "../../public/lab/orderflow/markets.js";
 import { describe } from "../../public/lab/orderflow/watch.js";
@@ -30,6 +31,27 @@ import { MarketCollector } from "./market-collector";
 import { OkxCollector } from "./okx-collector";
 
 export { BinanceCollector, BingxCollector, Collector, MarketCollector, OkxCollector };
+
+// The alert settings of the collector whose events go to LINE, for the CRM backend's /admin.
+// Reached only through the backend's ORDERFLOW service binding, after it has checked the admin's
+// session, never from the public route; so unlike /alerts above it takes no token.
+//   GET  /alerts?m=btc|eth   POST /alerts?m=…  { config } | { config: null } | { test: true }
+export class OrderflowAdmin extends WorkerEntrypoint<OrderflowEnv> {
+  override async fetch(request: Request) {
+    const url = new URL(request.url);
+    if (url.pathname !== "/alerts") return json({ error: "找不到這個路徑" }, 404);
+    if (!["GET", "POST"].includes(request.method)) return json({ error: "只接受 GET 或 POST" }, 405);
+    const id = url.searchParams.get("m") ?? "btc";
+    const m = Object.hasOwn(MARKETS, id) ? MARKETS[id as keyof typeof MARKETS] : null;
+    if (!m) return json({ error: "沒有這個市場" }, 400);
+    const stub = stubFor(this.env, this.env.ORDERFLOW_LINE_SOURCE ?? "bybit", m);
+    if (!stub) return json({ error: "推播用的收集器沒有啟用" }, 503);
+    const body = request.method === "POST" ? await request.text() : undefined;
+    if (body && body.length > 4_000) return json({ error: "內容太長" }, 413);
+    const res = await stub.fetch("https://collector/alerts", { method: request.method, body, headers: { "content-type": "application/json" } });
+    return json({ ...((await res.json()) as object), market: m.id, source: this.env.ORDERFLOW_LINE_SOURCE ?? "bybit" }, res.status);
+  }
+}
 
 const PREFIX = "/api/orderflow/";
 const MINUTE = 60_000;
