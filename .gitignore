@@ -66,3 +66,6 @@ Thumbs.db
 .cache/
 .data/
 public/lab/data/
+
+# Case-wall media for local preview; production serves them from R2
+public/media/

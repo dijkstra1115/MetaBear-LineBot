@@ -1915,3 +1915,287 @@ input[type="range"]::-moz-range-thumb {
     aspect-ratio: 4 / 3;
   }
 }
+
+/* ================= REPLAY CASES ================= */
+.case-wall {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(12px, 1.4vw, 20px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.case-card {
+  position: relative;
+  display: grid;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-m);
+  overflow: hidden;
+  background: var(--panel-solid);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.4s var(--ease),
+    box-shadow 0.4s var(--ease);
+}
+.case-card:hover,
+.case-card:focus-visible {
+  transform: translateY(-4px);
+  box-shadow:
+    inset 0 0 0 1px var(--line-2),
+    0 24px 60px -28px rgba(120, 225, 213, 0.35);
+}
+.case-card:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+/* 9:13 crops the video's own caption band (its bottom fifth), which the card body replaces. */
+.case-media {
+  position: relative;
+  display: block;
+  aspect-ratio: 9 / 13;
+  overflow: hidden;
+  background: #131722;
+}
+.case-media img,
+.case-media video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+.case-media video {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.case-card.is-previewing video {
+  opacity: 1;
+}
+/* Fade the poster's lower third into the card body so the caption band reads as part of the card. */
+.case-media::after {
+  content: "";
+  position: absolute;
+  inset: 55% 0 0;
+  background: linear-gradient(180deg, transparent, rgba(8, 14, 24, 0.92));
+  pointer-events: none;
+}
+.case-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(5, 9, 15, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(120, 225, 213, 0.5);
+  color: var(--teal);
+  font-size: 18px;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 0.3s,
+    transform 0.4s var(--ease);
+}
+.case-card:hover .case-play {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+.case-card.is-previewing .case-play {
+  opacity: 0;
+}
+.case-body {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px 16px;
+}
+.case-meta {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+.case-tag {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.case-result {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.case-result b {
+  color: var(--teal);
+  font-size: 24px;
+}
+.cases-note {
+  margin: 22px 0 0;
+}
+
+.case-player {
+  width: min(100% - 32px, 980px);
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+.case-player::backdrop {
+  background: rgba(3, 6, 10, 0.82);
+  backdrop-filter: blur(6px);
+}
+.case-player-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr);
+  gap: clamp(20px, 3vw, 36px);
+  padding: clamp(16px, 2.4vw, 28px);
+}
+.case-video {
+  width: 100%;
+  max-height: calc(100dvh - 120px);
+  aspect-ratio: 9 / 16;
+  border-radius: var(--r-m);
+  background: #131722;
+  object-fit: contain;
+}
+.case-info {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding-top: 8px;
+}
+.case-info .mb-eyebrow {
+  color: var(--gold);
+  letter-spacing: 0.14em;
+}
+.case-info .mb-h3,
+.case-info p {
+  margin: 0;
+}
+.case-outcome {
+  font-size: 18px;
+  color: var(--text-2);
+}
+.case-outcome b {
+  color: var(--teal);
+  font-size: 40px;
+  line-height: 1;
+}
+.case-levels {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 0;
+}
+.case-level {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--r-s);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 3px 0 0 var(--muted);
+}
+.case-level dt {
+  color: var(--muted);
+  font-size: 14px;
+}
+.case-level dd {
+  margin: 0;
+  font-size: 19px;
+}
+.case-level.long,
+.case-level.target {
+  box-shadow: inset 3px 0 0 var(--teal);
+}
+.case-level.short,
+.case-level.stop {
+  box-shadow: inset 3px 0 0 var(--red);
+}
+.case-info .case-label {
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--dim);
+}
+.case-evidence {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.case-evidence li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  font-size: 15px;
+}
+.case-evidence time {
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.75;
+}
+.case-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.case-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 1100px) {
+  .case-wall {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+/* Phones: one swipeable row instead of five rows of cards. */
+@media (max-width: 760px) {
+  .case-wall {
+    display: flex;
+    gap: 12px;
+    margin-inline: calc(var(--gutter) * -1);
+    padding: 4px var(--gutter) 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+  }
+  .case-wall::-webkit-scrollbar {
+    display: none;
+  }
+  .case-item {
+    flex: 0 0 58vw;
+    scroll-snap-align: start;
+  }
+  .case-player-inner {
+    grid-template-columns: 1fr;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+  }
+  .case-video {
+    max-height: 62dvh;
+  }
+}
