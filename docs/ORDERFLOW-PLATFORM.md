@@ -114,7 +114,7 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 - 同一種事件、同一方向或同一價格，10 分鐘內只通知一次。重連後補回的舊成交和爆倉不會觸發通知。
 - 每分鐘最多推一則，多個事件合併在一起，最多列 8 行，附上那一分鐘的分享連結。每天（台灣時間）最多 `dailyCap` 則（預設 3；LINE 目前是免費方案，每月 200 則要和其他推播共用），超過就只記錄不推送。
 - **關鍵位過濾（影子模式）**：市場事件會標上最近的關鍵位（前一個 UTC 日的高、低、POC、VAH、VAL，當天 VWAP，未回測的堆疊區；`public/lab/orderflow/keylevels.js`）。`levelOn=1`（預設）時，離所有關鍵位超過 `levelTolPct`（0.1%）的事件記成「不在關鍵位」，同一種事件在同一個關鍵位 `levelCooldownMs`（60 分鐘）內重複的記成「同一關鍵位冷卻中」，兩者都不推送。關鍵位以 UTC 日（台灣早上 8 點）換日，和網頁畫的前日關鍵位一致（2026-10-22 起，理由見 [ORDERFLOW-ALERT-SUBSCRIPTION.md](ORDERFLOW-ALERT-SUBSCRIPTION.md)）。每個市場事件都記下價位、方向，以及是否在關鍵位 0.1% 以內（`near`），不受 `levelOn` 影響。細節與回測見 [ORDERFLOW-KEYLEVEL-ALERTS.md](ORDERFLOW-KEYLEVEL-ALERTS.md)。
-- 門檻可以不用重新部署就調整：`POST /api/orderflow/btcusdt/alerts`，body 帶 `{ "config": { "printBtc": 80 } }`；帶 `{ "config": null }` 恢復預設，帶 `{ "test": true }` 會送一則測試通知。`GET` 同一路徑可以看目前門檻和最近 50 則事件。這兩個都要帶管理權杖。
+- 門檻可以不用重新部署就調整：在 CRM `/admin` 的「訂單流通知」分頁（見下方「CRM 後台」）。2026-10-27 起公開的 `/api/orderflow/*/alerts` 已關閉，帶權杖也不能再讀寫門檻，所有修改都留在 CRM 的稽核紀錄裡。
 - 牆、誘單與冰山只看得到 Bybit 1000 檔的範圍（現價上下約 0.25%）。牆和冰山每 10 秒檢查一次，誘單則是每次掛單簿更新就檢查。
 - 誘單只代表「大量掛單在價格接近時被撤掉」，不一定是惡意操縱；做市商調整報價也會出現同樣的樣子。2026-10-17 本機試跑時，用 50 BTC、3 倍、3 秒的門檻大約每分鐘就會標一次，多半是最佳報價第二、三檔被移動，所以預設改得和掛單牆一樣嚴格。
 
@@ -187,7 +187,6 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | POST | `/api/orderflow/btcusdt/archive` | 馬上嘗試待匯入的每日封存檔（略過重試等待）。權杖同上 |
 | GET | `/api/orderflow/btcusdt/book?from=<對齊 30 分鐘的毫秒>` | 30 分鐘的細掛單簿（每 10 秒一欄、$1 格距），網頁在 1、5 分 K 時使用 |
 | GET | `/api/orderflow/btcusdt/events?since=<整分鐘毫秒>` | 30 天內某分鐘之後、發生在關鍵位的市場事件（最多最新 2,000 則，舊到新）：`t`、`kind`、`price`、`side`、`level`、`dist`、`repeat`（同一關鍵位冷卻中）、`text`。不含推送狀態，不需要權杖；邊緣快取 10 秒 |
-| GET/POST | `/api/orderflow/btcusdt/alerts` | 通知門檻與最近的事件；POST 可調整門檻或送測試通知。權杖同上 |
 
 `metrics` 每一列的欄位：`[讀取時間, OI (BTC), OI (USDT), 大戶持倉比, 大戶帳戶比, 全體多空比, 主動買賣比, 資金費率]`。Bybit 沒有的欄位是 `null`。
 

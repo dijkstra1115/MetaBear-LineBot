@@ -69,31 +69,46 @@ before(async () => {
   const result = await build({ entryPoints: ["src/orderflow/index.ts"], bundle: true, write: false, format: "esm", platform: "neutral", target: "es2022", external: ["cloudflare:workers"] });
   mf = new Miniflare(
     convertV4MiniflareOptions({
-      modules: true,
-      script: result.outputFiles[0].text,
-      compatibilityDate: "2026-09-11",
-      durableObjects: { COLLECTOR: { className: "Collector", useSQLite: true } },
-      bindings: { ORDERFLOW_ADMIN_TOKEN: adminToken, ORDERFLOW_STREAMS: "off", ORDERFLOW_ALERTS: "live", ORDERFLOW_ALERT_TOKEN: token },
-      serviceBindings: {
-        BACKEND: async (request: Request) => {
-          assert.equal(request.headers.get("authorization"), `Bearer ${token}`);
-          delivered.push(await request.json());
-          return Response.json({ sent: true });
+      workers: [
+        {
+          name: "orderflow",
+          modules: true,
+          script: result.outputFiles[0].text,
+          compatibilityDate: "2026-09-11",
+          durableObjects: { COLLECTOR: { className: "Collector", useSQLite: true } },
+          bindings: { ORDERFLOW_ADMIN_TOKEN: adminToken, ORDERFLOW_STREAMS: "off", ORDERFLOW_ALERTS: "live", ORDERFLOW_ALERT_TOKEN: token },
+          serviceBindings: {
+            BACKEND: async (request: Request) => {
+              assert.equal(request.headers.get("authorization"), `Bearer ${token}`);
+              delivered.push(await request.json());
+              return Response.json({ sent: true });
+            },
+          },
+          outboundService: async () => new Response("not found", { status: 404 }),
         },
-      },
-      outboundService: async () => new Response("not found", { status: 404 }),
-    }),
+        // Stands in for the CRM backend, which reaches the alert settings only through this entrypoint.
+        {
+          name: "crm",
+          modules: true,
+          compatibilityDate: "2026-09-11",
+          script: "export default { fetch(request, env) { return env.ORDERFLOW.fetch(request); } };",
+          serviceBindings: { ORDERFLOW: { name: "orderflow", entrypoint: "OrderflowAdmin" } },
+        },
+      ],
+    } as any),
   );
 });
 after(async () => {
   await mf?.dispose();
 });
 
-const alerts = (init?: RequestInit, auth = `Bearer ${adminToken}`) =>
-  mf.dispatchFetch("https://metabear.io/api/orderflow/btcusdt/alerts", { ...init, headers: { authorization: auth, "content-type": "application/json", ...(init?.headers ?? {}) } });
+const alerts = async (init?: RequestInit, market = "btc") =>
+  (await mf.getWorker("crm")).fetch(`https://orderflow/alerts?m=${market}`, { ...init, headers: { "content-type": "application/json" } } as any) as unknown as Promise<Response>;
 
 test("alert thresholds are tuned over the admin API and a test alert reaches the backend", async () => {
-  assert.equal((await alerts(undefined, "Bearer wrong")).status, 401);
+  // The public route has no alert settings, with or without the token; only the CRM backend reaches them.
+  for (const auth of ["", `Bearer ${adminToken}`])
+    assert.equal((await mf.dispatchFetch("https://metabear.io/api/orderflow/btcusdt/alerts", { headers: { authorization: auth } })).status, 404);
   const initial = (await (await alerts()).json()) as any;
   assert.equal(initial.mode, "live");
   assert.equal(initial.config.printBtc, 50);
@@ -165,42 +180,11 @@ test("the public events feed lists only market events at a key level", async () 
 
 // ---------- CRM backend's /admin: the OrderflowAdmin entrypoint ----------
 
-test("the CRM backend reads and tunes the LINE collector through its own entrypoint, without the token", async () => {
-  const result = await build({ entryPoints: ["src/orderflow/index.ts"], bundle: true, write: false, format: "esm", platform: "neutral", target: "es2022", external: ["cloudflare:workers"] });
-  const crm = new Miniflare(
-    convertV4MiniflareOptions({
-      workers: [
-        {
-          name: "backend",
-          modules: true,
-          compatibilityDate: "2026-09-11",
-          script: "export default { fetch(request, env) { return env.ORDERFLOW.fetch(request); } };",
-          serviceBindings: { ORDERFLOW: { name: "orderflow", entrypoint: "OrderflowAdmin" } },
-        },
-        {
-          name: "orderflow",
-          modules: true,
-          script: result.outputFiles[0].text,
-          compatibilityDate: "2026-09-11",
-          durableObjects: { COLLECTOR: { className: "Collector", useSQLite: true } },
-          bindings: { ORDERFLOW_STREAMS: "off", ORDERFLOW_ALERTS: "log" },
-          outboundService: async () => new Response("not found", { status: 404 }),
-        },
-      ],
-    } as any),
-  );
-  try {
-    const read = (await (await crm.dispatchFetch("https://orderflow/alerts?m=btc")).json()) as any;
-    assert.equal(read.config.printBtc, 50);
-    assert.deepEqual([read.market, read.source], ["btc", "bybit"]);
-    const tuned = await crm.dispatchFetch("https://orderflow/alerts?m=btc", { method: "POST", body: JSON.stringify({ config: { printBtc: 75 } }) });
-    assert.equal(((await tuned.json()) as any).config.printBtc, 75);
-    assert.equal((await crm.dispatchFetch("https://orderflow/alerts?m=doge")).status, 400);
-    assert.equal((await crm.dispatchFetch("https://orderflow/alerts?m=constructor")).status, 400);
-    assert.equal((await crm.dispatchFetch("https://orderflow/import")).status, 404, "only the alert settings are reachable");
-  } finally {
-    await crm.dispose();
-  }
-  // The public route still asks for the token.
-  assert.equal((await mf.dispatchFetch("https://metabear.io/api/orderflow/btcusdt/alerts")).status, 401);
+test("the entrypoint answers only for known markets and only with the alert settings", async () => {
+  const read = (await (await alerts(undefined, "eth")).json()) as any;
+  assert.deepEqual([read.market, read.source], ["eth", "bybit"]);
+  assert.equal(read.config.printBtc, 1_500, "ETH's size thresholds are scaled");
+  assert.equal((await alerts(undefined, "doge")).status, 400);
+  assert.equal((await alerts(undefined, "constructor")).status, 400);
+  assert.equal((await ((await mf.getWorker("crm")).fetch("https://orderflow/import") as unknown as Promise<Response>)).status, 404);
 });
