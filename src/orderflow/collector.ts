@@ -21,6 +21,7 @@ import {
   applyTicker,
   archiveUrl,
   bybitGet,
+  bybitRefused,
   bybitTopics,
   parseArchiveLine,
   barRow,
@@ -61,6 +62,9 @@ const FANOUT_FRESH_MS = 5 * 60_000; // members only get events from the last few
 export const HEALTH_DOWN_MS = { Bybit: 120_000, OKX: 300_000, Binance: 120_000, BingX: 120_000 };
 const HEALTH_ERRORS = 10; // errors within 10 minutes
 const HEALTH_REPEAT_MS = 3_600_000;
+// Bybit refuses Cloudflare's shared IPs for a while when they ask too often ("try again in 5
+// minutes"); asking again every alarm only keeps the refusal going.
+const REST_BACKOFF_MS = 5 * 60_000;
 // Bar detectors run once a 5-minute bar has settled (late trades in), over enough history for their
 // z-scores and swing levels, at most once per kind and direction in half an hour like detect().
 export const BAR_SETTLE_MS = 15_000;
@@ -714,6 +718,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   // to fill readings the stream missed. Bybit's ratio is accounts long ÷ accounts short.
   protected async pollRest() {
     const now = Date.now();
+    if (now < Number(this.meta("restRetryAt") ?? 0)) return;
     for (const [kind, pageMs] of [["oi", 200 * FIVE_MIN], ["ratio", 500 * FIVE_MIN], ["funding", 200 * 8 * 3_600_000]] as const) {
       const key = `${kind}Cursor`;
       let cursor = Number(this.meta(key) ?? 0) || now - BACKFILL_DAYS * DAY;
@@ -736,9 +741,18 @@ export class Collector extends DurableObject<OrderflowEnv> {
         this.setMeta(key, Math.max(Number(this.meta(key) ?? 0), end - 10 * MINUTE));
         this.setMeta(`${kind}Polled`, now);
       } catch (err) {
+        if (this.restRefused(err, `${kind} history`)) return;
         this.note("errors", `${kind} history: ${err}`);
       }
     }
+  }
+
+  // A refusal pauses all of this collector's Bybit REST calls, noted once per pause.
+  protected restRefused(err: unknown, what: string) {
+    if (!bybitRefused(err)) return false;
+    this.setMeta("restRetryAt", Date.now() + REST_BACKOFF_MS);
+    this.note("errors", `${what}: ${err}; Bybit REST paused 5 minutes`);
+    return true;
   }
 
   // Minutes the collector never saw (before it started, or a long outage) get Bybit's 1-minute
@@ -746,7 +760,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   // archive rows replace them.
   protected async fillKlines() {
     const now = Date.now();
-    if (now - Number(this.meta("klinesFilled") ?? 0) < 3_600_000) return;
+    if (now - Number(this.meta("klinesFilled") ?? 0) < 3_600_000 || now < Number(this.meta("restRetryAt") ?? 0)) return;
     const end = Math.floor(now / MINUTE) * MINUTE - 2 * MINUTE;
     try {
       for (let start = end - 2 * DAY; start < end; start += 1000 * MINUTE) {
@@ -757,7 +771,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       }
       this.setMeta("klinesFilled", now);
     } catch (err) {
-      this.note("errors", `kline fill: ${err}`);
+      if (!this.restRefused(err, "kline fill")) this.note("errors", `kline fill: ${err}`);
     }
   }
 
