@@ -1,8 +1,10 @@
 // Binance collector (one per market): the same storage, queries and detectors as the Bybit Collector, fed by
 // the Tokyo relay (relay/binance-relay.mjs) instead of its own sockets, because Binance refuses
 // Cloudflare (docs/ORDERFLOW-CF-PROBE.md, docs/ORDERFLOW-BINANCE-RELAY.md). The relay connects in
-// over a WebSocket, forwards Binance's combined-stream messages untouched and answers REST requests
-// for whitelisted public paths, so every Binance call goes through it.
+// over a WebSocket, forwards Binance's combined-stream messages untouched (a second's worth per
+// frame) and answers REST requests for whitelisted public paths, so every Binance call goes through it.
+// The socket is a hibernatable one and nothing here sets a timer, so the object is only billed while
+// it handles a frame or an alarm, not for the idle time in between (docs/ORDERFLOW-RELAY-HIBERNATION.md).
 import { BinanceBook, binanceArchiveUrl, parseAggTrade, parseArchiveLine, parseKlines } from "../../public/lab/orderflow/binance.js";
 import { BACKFILL_DAYS, Collector, DAY, FIVE_MIN, HEALTH_DOWN_MS, MINUTE, SILENT_MS, type OrderflowEnv, type Trade } from "./collector";
 
@@ -10,10 +12,13 @@ const REST_TIMEOUT_MS = 15_000;
 // Missed aggregate trades are fetched by id, 1,000 a page (a few minutes of BTC each). Longer
 // outages are left to the hourly klines and recorded as a gap.
 const GAP_PAGES = 30;
+const SYNC_DELAY_MS = 500; // diffs are buffered until the snapshot lands; give the stream a moment to start
 const SYNC_RETRY_MS = 2_000;
+const SYNC_TRIES = 3;
 
 type AggTrade = Trade & { a: number };
-type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> };
+// No timers: a call past its deadline is rejected by the next frame or alarm that looks.
+type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; deadline: number; path: string };
 
 export class BinanceCollector extends Collector {
   protected override book = new BinanceBook();
@@ -35,6 +40,8 @@ export class BinanceCollector extends Collector {
   private gaps: [number, number][] = [];
   private filling = false;
   private syncing = false;
+  private syncAt = 0; // the book is synced by the first frame at or after this time
+  private syncTries = 0;
   // aggTrades of one taker order share a time and side; they are held until the next one so its
   // print is summed (Bybit sends a match's fills in one message).
   private run: AggTrade[] = [];
@@ -42,6 +49,13 @@ export class BinanceCollector extends Collector {
   constructor(ctx: DurableObjectState, env: OrderflowEnv) {
     super(ctx, env);
     this.aggId = Number(this.meta("aggId") ?? 0);
+    // Back from eviction with the relay still connected: take its socket again and rebuild the book.
+    const [ws] = ctx.getWebSockets("relay");
+    if (ws) {
+      this.relay = { ws, last: Date.now(), info: {} };
+      this.relayState = "open";
+      this.syncAt = Date.now();
+    }
   }
 
   // ---------- relay connection ----------
@@ -49,26 +63,57 @@ export class BinanceCollector extends Collector {
   private acceptRelay(request: Request) {
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return new Response("expected a websocket", { status: 426 });
     const [client, server] = Object.values(new WebSocketPair());
-    server.accept();
     this.dropRelay("replaced");
-    const relay = { ws: server, last: Date.now(), info: {} };
-    this.relay = relay;
+    for (const old of this.ctx.getWebSockets("relay")) old.close(1000, "replaced");
+    this.ctx.acceptWebSocket(server, ["relay"]);
+    this.relay = { ws: server, last: Date.now(), info: {} };
     this.relayState = "open";
     this.book.reset();
-    server.addEventListener("message", (e) => {
-      if (this.relay !== relay) return;
-      relay.last = Date.now();
+    this.syncAt = Date.now() + SYNC_DELAY_MS;
+    this.syncTries = 0;
+    // The relay sends frames only to a collector that asks for them: a deploy does not restart a
+    // running object, so one still on older code keeps getting single messages until it restarts.
+    server.send(JSON.stringify({ hello: { frames: 1 } }));
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // A frame is {"b":[…]}, a second of Binance messages in order; REST replies and the relay's
+  // heartbeat come on their own.
+  override async webSocketMessage(ws: WebSocket, data: string | ArrayBuffer) {
+    if (ws !== this.relay?.ws) return;
+    const now = Date.now();
+    this.relay.last = now;
+    this.expireCalls(now);
+    let m: any;
+    try {
+      m = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data));
+    } catch (err) {
+      return this.note("errors", `relay message: ${err}`);
+    }
+    for (const one of Array.isArray(m.b) ? m.b : [m]) {
       try {
-        this.onRelay(JSON.parse(typeof e.data === "string" ? e.data : new TextDecoder().decode(e.data)));
+        this.onRelay(one);
       } catch (err) {
         this.note("errors", `relay message: ${err}`);
       }
-    });
-    server.addEventListener("close", (e) => this.relay === relay && this.dropRelay(`closed ${e.code}`));
-    server.addEventListener("error", () => this.relay === relay && this.dropRelay("error"));
-    // Diffs are buffered until the snapshot lands; give the stream a moment to start.
-    setTimeout(() => void this.syncBook(), 500);
-    return new Response(null, { status: 101, webSocket: client });
+    }
+    if (!this.book.ready && now >= this.syncAt) void this.syncBook();
+  }
+
+  override async webSocketClose(ws: WebSocket, code: number) {
+    if (ws === this.relay?.ws) this.dropRelay(`closed ${code}`);
+  }
+
+  override async webSocketError(ws: WebSocket) {
+    if (ws === this.relay?.ws) this.dropRelay("error");
+  }
+
+  private expireCalls(now: number) {
+    for (const [id, call] of this.calls)
+      if (now > call.deadline) {
+        this.calls.delete(id);
+        call.reject(new Error(`${call.path} timed out`));
+      }
   }
 
   private dropRelay(why: string) {
@@ -80,7 +125,6 @@ export class BinanceCollector extends Collector {
       relay.ws.close(1000, why.slice(0, 100));
     } catch {}
     for (const [id, call] of this.calls) {
-      clearTimeout(call.timer);
       call.reject(new Error(`relay ${why}`));
       this.calls.delete(id);
     }
@@ -91,7 +135,6 @@ export class BinanceCollector extends Collector {
       const call = this.calls.get(m.id);
       if (!call) return;
       this.calls.delete(m.id);
-      clearTimeout(call.timer);
       if (m.status === 200) call.resolve(JSON.parse(m.body));
       else call.reject(new Error(`HTTP ${m.status} ${String(m.body ?? "").slice(0, 120)}`));
       return;
@@ -113,11 +156,7 @@ export class BinanceCollector extends Collector {
     if (!relay) return Promise.reject(new Error("relay not connected"));
     const id = this.nextCall++;
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.calls.delete(id);
-        reject(new Error(`${path.split("?")[0]} timed out`));
-      }, REST_TIMEOUT_MS);
-      this.calls.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
+      this.calls.set(id, { resolve: resolve as (v: unknown) => void, reject, deadline: Date.now() + REST_TIMEOUT_MS, path: path.split("?")[0] });
       relay.ws.send(JSON.stringify({ id, get: path }));
     });
   }
@@ -170,7 +209,8 @@ export class BinanceCollector extends Collector {
     const changes = this.book.diff(e);
     if (changes === "resync") {
       this.note("gaps", "binance depth chain broken, resyncing");
-      void this.syncBook();
+      this.syncAt = 0;
+      this.syncTries = 0;
       return;
     }
     if (!changes?.length) return;
@@ -182,21 +222,27 @@ export class BinanceCollector extends Collector {
     }
   }
 
+  // One snapshot per call; one that does not join the buffered diffs is retried by a frame
+  // SYNC_RETRY_MS later, and after SYNC_TRIES misses by the next alarm.
   private async syncBook() {
     if (this.syncing || !this.relay) return;
     this.syncing = true;
     try {
-      for (let attempt = 0; attempt < 3 && this.relay; attempt++) {
-        const snap = await this.rest(`/fapi/v1/depth?symbol=${this.m.symbol}&limit=1000`);
-        if (this.book.load(snap) === "snapshot") {
-          this.spoofWatch.reset(Date.now(), this.book.bids, this.book.asks);
-          return;
-        }
-        await new Promise((r) => setTimeout(r, SYNC_RETRY_MS));
+      const snap = await this.rest(`/fapi/v1/depth?symbol=${this.m.symbol}&limit=1000`);
+      if (this.book.load(snap) === "snapshot") {
+        this.spoofWatch.reset(Date.now(), this.book.bids, this.book.asks);
+        this.syncTries = 0;
+        return;
       }
-      this.note("errors", "binance depth: snapshot does not join the stream");
+      if (++this.syncTries < SYNC_TRIES) this.syncAt = Date.now() + SYNC_RETRY_MS;
+      else {
+        this.note("errors", "binance depth: snapshot does not join the stream");
+        this.syncTries = 0;
+        this.syncAt = Infinity;
+      }
     } catch (err) {
       this.note("errors", `binance depth snapshot: ${err}`);
+      this.syncAt = Infinity;
     } finally {
       this.syncing = false;
     }
@@ -207,13 +253,17 @@ export class BinanceCollector extends Collector {
   protected override async ensureStreams() {
     this.flushRun();
     const now = Date.now();
+    this.expireCalls(now);
     // The relay sends a heartbeat every 20 s besides Binance's own messages.
     if (this.relay && now - this.relay.last > SILENT_MS) {
       this.note("gaps", "relay silent, dropping");
       this.dropRelay("silent");
     }
     if (!this.relay) return;
-    if (!this.book.ready) void this.syncBook();
+    if (!this.book.ready) {
+      this.syncAt = 0;
+      void this.syncBook();
+    }
     // Binance streams no open interest, so it is read every alarm; the reading-time rule then
     // records the value held at each 5-minute boundary, as with Bybit's tickers.
     try {

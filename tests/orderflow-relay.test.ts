@@ -60,22 +60,32 @@ test("relayed trades and depth become Binance footprints, prints and a book; mis
   const asked: string[] = [];
   const t0 = Math.floor(Date.now() / MINUTE) * MINUTE - MINUTE;
   const agg = (a: number, t: number, p: string, q: string, m: boolean) => ({ a, T: t, p, q, m, e: "aggTrade" });
+  let hello: unknown = null;
   ws.addEventListener("message", (e) => {
     const req = JSON.parse(String(e.data));
+    if (req.hello) return void (hello = req.hello);
     asked.push(req.get);
     const reply = (body: unknown) => ws.send(JSON.stringify({ id: req.id, status: 200, body: JSON.stringify(body) }));
     if (req.get.startsWith("/fapi/v1/depth")) reply({ lastUpdateId: 100, bids: [["80000.0", "1"]], asks: [["80000.1", "2"]] });
     else if (req.get.startsWith("/fapi/v1/aggTrades")) reply([agg(2, t0 + 2_000, "80003.0", "1.2", false), agg(3, t0 + 2_000, "80004.0", "1.3", false)]);
   });
-  const send = (stream: string, data: unknown) => ws.send(JSON.stringify({ stream, data }));
-  send("btcusdt@depth@100ms", { e: "depthUpdate", E: t0, U: 95, u: 101, pu: 94, b: [["79999.0", "3"]], a: [] });
-  send("btcusdt@aggTrade", agg(1, t0 + 1_000, "80001.0", "0.5", true));
-  // Ids 2 and 3 never arrive on the stream.
-  send("btcusdt@aggTrade", agg(4, t0 + 3_000, "80010.0", "0.25", true));
-  send("btcusdt@aggTrade", agg(5, t0 + 4_000, "80011.0", "0.1", false)); // closes the run of 4
-  send("btcusdt@forceOrder", { e: "forceOrder", o: { S: "SELL", q: "0.3", p: "79990", ap: "79995", z: "0.3", T: t0 + 4_500 } });
+  // The relay sends a second of messages per frame, {"b":[…]}.
+  const msg = (stream: string, data: unknown) => ({ stream, data });
+  const frame = (...msgs: unknown[]) => ws.send(JSON.stringify({ b: msgs }));
+  frame(
+    msg("btcusdt@depth@100ms", { e: "depthUpdate", E: t0, U: 95, u: 101, pu: 94, b: [["79999.0", "3"]], a: [] }),
+    msg("btcusdt@aggTrade", agg(1, t0 + 1_000, "80001.0", "0.5", true)),
+    // Ids 2 and 3 never arrive on the stream.
+    msg("btcusdt@aggTrade", agg(4, t0 + 3_000, "80010.0", "0.25", true)),
+    msg("btcusdt@aggTrade", agg(5, t0 + 4_000, "80011.0", "0.1", false)), // closes the run of 4
+    msg("btcusdt@forceOrder", { e: "forceOrder", o: { S: "SELL", q: "0.3", p: "79990", ap: "79995", z: "0.3", T: t0 + 4_500 } }),
+  );
 
   await until(() => asked.some((p) => p === "/fapi/v1/aggTrades?symbol=BTCUSDT&fromId=2&limit=1000"), "the gap request");
+  assert.deepEqual(hello, { frames: 1 }, "the collector asks the relay for frames");
+  // No timers in the object: the book is synced by the first frame half a second after the relay connects.
+  await wait(600);
+  frame(msg("btcusdt@markPrice@1s", { e: "markPriceUpdate", p: "80005", r: "0.0001" }));
   await until(() => asked.some((p) => p.startsWith("/fapi/v1/depth")), "the depth snapshot");
 
   const recent = async () => (await (await mf.dispatchFetch(`${base}/btcusdt/recent?ex=binance&since=${t0}`)).json()) as any;

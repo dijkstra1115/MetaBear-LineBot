@@ -27,7 +27,7 @@ Worker metabear-orderflow：/api/orderflow/relay ──► 收集器 DO BinanceC
 
 - **無外部套件**：Node 22 內建的 `WebSocket` 和 `fetch` 就夠用。
 - **上游**：幣安把串流分成兩個網址，`/market/stream`（`aggTrade`、`markPrice@1s`、`forceOrder`）和 `/public/stream`（`depth@100ms`），所以開兩條連線。幣安每 24 小時會強制斷線；斷線後 1 秒重連，之後逐次加長到最多 30 秒。30 秒沒有訊息也會重連。
-- **下游**：連到 `wss://metabear.io/api/orderflow/relay`，權杖用 `Authorization` 標頭，是新的 secret `ORDERFLOW_RELAY_TOKEN`。每則幣安訊息原樣轉送，不重新編碼。
+- **下游**：連到 `wss://metabear.io/api/orderflow/relay`，權杖用 `Authorization` 標頭，是新的 secret `ORDERFLOW_RELAY_TOKEN`。幣安訊息原樣轉送、不重新編碼，每秒合成一個 frame（`{"b":[…]}`）送出；收集器用休眠版 WebSocket、不設計時器，兩個 frame 之間的空檔不計費（[ORDERFLOW-RELAY-HIBERNATION.md](ORDERFLOW-RELAY-HIBERNATION.md)，2026-10-28）。REST 回覆和心跳照舊馬上送。
 - **不緩衝**：連不到 Cloudflare 時直接丟掉訊息，不需要緩衝。幣安的彙總成交 id（`a`）是連續的，收集器看到 id 跳號，就用 REST `aggTrades?fromId=` 依 id 把缺的補回來，每次最多 30 頁、3 萬筆；掛單簿則重新拿快照。這樣不論是中繼斷線、物件重啟還是部署，補回來的資料都是準確的。
 - **REST 代理**：收集器送 `{ id, get: "/fapi/v1/aggTrades?…" }`，中繼回 `{ id, status, body }`。只接受收集器用到的 9 個公開端點（`binance.js` 的 `RELAY_PATHS`：depth、aggTrades、klines、openInterest、fundingRate，以及 4 個 5 分鐘統計），而且只能是 GET，所以就算權杖外洩，也只能拿來查這些公開資料。
 - **健康狀態**：每 30 秒送一則 `{ relay: { up, lastBinance, buffered } }`，收集器記在 `/status`。
