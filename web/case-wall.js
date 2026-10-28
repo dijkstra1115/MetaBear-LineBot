@@ -77,17 +77,31 @@ export function initCaseWall({ motionOff }) {
     outcome.replaceChildren(el("b", "mb-num", String(s.trades.length)), document.createTextNode(` 筆，含 ${s.stops} 筆停損`));
     q("[data-case-rule]").textContent = s.ruleLine;
     const list = q("[data-case-trades]");
+    // Each trade opens its own 1-minute footprint short (motion/replays/trade-shorts); "回到整段"
+    // goes back to the stretch's film.
+    const whole = q("[data-case-whole]");
+    const play = (name, li) => {
+      for (const x of list.children) x.classList.toggle("is-playing", x === li);
+      whole.hidden = !li;
+      player.poster = `${MEDIA_BASE}${name}.webp`;
+      player.src = `${MEDIA_BASE}${name}.mp4`;
+      player.play().catch(() => {});
+    };
     list.replaceChildren(
-      ...s.trades.map((t) => {
+      ...s.trades.map((t, k) => {
         const li = el("li", t.result === "tp" ? "tp" : "stop");
-        li.append(el("time", "mb-mono", t.at), el("span", null, t.why), el("b", "mb-num", result(t)));
+        const btn = el("button");
+        btn.type = "button";
+        btn.setAttribute("aria-label", `播放第 ${k + 1} 筆的 1 分足跡：${t.at} ${t.why}，${result(t)}`);
+        btn.append(el("time", "mb-mono", t.at), el("span", null, t.why), el("b", "mb-num", result(t)));
+        btn.addEventListener("click", () => play(`trade-${s.id}-${k + 1}`, li));
+        li.append(btn);
         return li;
       }),
     );
-    player.poster = `${MEDIA_BASE}segment-${s.id}.webp`;
-    player.src = `${MEDIA_BASE}segment-${s.id}.mp4`;
+    whole.onclick = () => play(`segment-${s.id}`, null);
+    play(`segment-${s.id}`, null);
     dialog.showModal();
-    player.play().catch(() => {});
   }
   dialog.addEventListener("close", () => {
     player.pause();

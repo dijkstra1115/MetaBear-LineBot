@@ -2113,18 +2113,52 @@ input[type="range"]::-moz-range-thumb {
   list-style: none;
 }
 .case-trades li {
+  border-radius: var(--r-s);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 3px 0 0 var(--teal);
+  transition: background 0.2s;
+}
+.case-trades li.stop {
+  box-shadow: inset 3px 0 0 var(--red);
+}
+/* Each trade opens its own 1-minute footprint short in the player. */
+.case-trades button {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: baseline;
   gap: 12px;
+  width: 100%;
   padding: 10px 14px;
-  border-radius: var(--r-s);
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: inset 3px 0 0 var(--teal);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   font-size: 15px;
+  text-align: left;
+  cursor: pointer;
 }
-.case-trades li.stop {
-  box-shadow: inset 3px 0 0 var(--red);
+.case-trades li:hover,
+.case-trades li.is-playing {
+  background: rgba(255, 255, 255, 0.08);
+}
+.case-trades button:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: var(--r-s);
+}
+.case-whole {
+  justify-self: start;
+  padding: 8px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.case-whole[hidden] {
+  display: none;
 }
 .case-trades time {
   color: var(--dim);
@@ -2191,7 +2225,7 @@ input[type="range"]::-moz-range-thumb {
     max-height: 62dvh;
   }
   /* Time and result on one line, the trade's reason on its own below. */
-  .case-trades li {
+  .case-trades button {
     grid-template-columns: 1fr auto;
     grid-template-areas: "time result" "why why";
     gap: 4px 12px;

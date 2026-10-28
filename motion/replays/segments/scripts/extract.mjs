@@ -219,6 +219,10 @@ const trades = picked.map((t) => {
     result: t.result,
     entryT: t.entryT,
     exitT: t.exitT,
+    // The minutes the single-trade shorts (motion/replays/trade-shorts) place their alerts at.
+    touchT: t.touchT,
+    extT: t.extT ?? null,
+    push: t.push ?? null,
     why: why(t, pierced),
     alerts: alerts(t, signal),
   };
