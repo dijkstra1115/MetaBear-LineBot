@@ -37,6 +37,13 @@ export const SEGMENTS = {
     range: "8/27–8/28",
     cases: [2, 3],
   },
+  // The 08-31 short again: the course strategies over a day and a half (motion/replays/2026-08-31-short).
+  "2026-08-31": {
+    source: "strategies",
+    from: "2026-08-31 15:10",
+    range: "8/31–9/1",
+    title: "8/31–9/1 · 02 守住或翻轉、03 回調縮量",
+  },
   "2026-08-24": {
     rule: "flip",
     from: "2026-08-24 21:43",
@@ -51,4 +58,8 @@ export const RULES = {
   flip: "突破後回測",
   reject: "關鍵位拒絕",
   liq: "爆倉叢集",
+  // The course strategies (scripts/replay-cases/strategies.mjs), named as their lessons.
+  A: "01 失敗拍賣",
+  B: "02 守住或翻轉",
+  C: "03 回調縮量",
 };

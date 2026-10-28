@@ -4,7 +4,7 @@
 import glob, os, subprocess
 src = os.environ.get("FONT_SRC", "C:/Windows/Fonts/NotoSansTC-VF.ttf")
 chars = set()
-for f in ["scripts/template.html", "scripts/segments.mjs", "scripts/extract.mjs"] + glob.glob("assets/data/*.json"):
+for f in ["scripts/template.html", "scripts/segments.mjs", "scripts/extract.mjs", "scripts/cues.mjs"] + glob.glob("assets/data/*.json"):
     chars |= set(open(f, encoding="utf-8").read())
 chars |= set("0123456789,.+-−×$%?！？。，、·—–：｜→ ")
 text = "".join(sorted(c for c in chars if ord(c) >= 32))

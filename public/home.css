@@ -1919,7 +1919,7 @@ input[type="range"]::-moz-range-thumb {
 /* ================= REPLAY CASES ================= */
 .case-wall {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: clamp(12px, 1.4vw, 20px);
   margin: 0;
   padding: 0;
@@ -2157,7 +2157,13 @@ input[type="range"]::-moz-range-thumb {
   background: rgba(255, 255, 255, 0.12);
 }
 
-/* Phones: one swipeable row instead of five rows of cards. */
+/* Six cards are too narrow in one row on a small laptop or tablet: two rows of three. */
+@media (max-width: 1100px) {
+  .case-wall {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+/* Phones: one swipeable row instead of rows of cards. */
 @media (max-width: 760px) {
   .case-wall {
     display: flex;

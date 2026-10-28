@@ -573,37 +573,49 @@
         ctx.stroke();
       }
 
-      // Rule panel, top right: the one rule running over this stretch and its state, then one dot per
-      // trade in the stretch, filled with its result once it closes, so it is clear every trade is shown.
+      // Rule panel, top right: the rule running over this stretch (or each course strategy that took a
+      // trade in it, one row each) and its state, then one dot per trade in the stretch, filled with
+      // its result once it closes, so it is clear every trade is shown.
       function drawPanel(t) {
         const x0 = 680;
-        const y = 50;
+        const rows = D.rules ?? [{ key: null, name: D.ruleName }];
         let k = -1;
         D.trades.forEach((tr, j) => {
           if (t >= eventT("entry", j)) k = j;
         });
-        const tr = D.trades[k];
-        const on = k >= 0 && t < eventT("exit", k) + 0.7;
-        const done = on && t >= eventT("exit", k);
-        const rgb = on ? (tr.dir === "long" ? UP : DOWN) : "120,123,134";
         ctx.textBaseline = "middle";
-        if (on) {
-          ctx.fillStyle = `rgba(${rgb},${0.16 * clamp((t - eventT("entry", k)) / 0.25)})`;
-          roundRect(x0 - 12, y - 16, W - 24 - (x0 - 12), 32, 6);
+        rows.forEach((row, r) => {
+          const y = 50 + r * 36;
+          let kr = -1;
+          D.trades.forEach((tr, j) => {
+            if ((row.key == null || tr.rule === row.key) && t >= eventT("entry", j)) kr = j;
+          });
+          const tr = D.trades[kr];
+          const on = kr >= 0 && t < eventT("exit", kr) + 0.7;
+          const done = on && t >= eventT("exit", kr);
+          const rgb = on ? (tr.dir === "long" ? UP : DOWN) : "120,123,134";
+          if (on) {
+            ctx.fillStyle = `rgba(${rgb},${0.16 * clamp((t - eventT("entry", kr)) / 0.25)})`;
+            roundRect(x0 - 12, y - 16, W - 24 - (x0 - 12), 32, 6);
+            ctx.fill();
+          }
+          ctx.fillStyle = `rgba(${rgb},${on ? 1 : 0.7})`;
+          ctx.beginPath();
+          ctx.arc(x0 + 6, y, 6, 0, Math.PI * 2);
           ctx.fill();
-        }
-        ctx.fillStyle = `rgba(${rgb},${on ? 1 : 0.7})`;
-        ctx.beginPath();
-        ctx.arc(x0 + 6, y, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.textAlign = "left";
-        ctx.font = `500 24px ${TC}`;
-        ctx.fillStyle = on ? "#eef0f4" : COL.muted;
-        ctx.fillText(D.ruleName, x0 + 24, y + 1);
-        ctx.textAlign = "right";
-        ctx.font = `600 22px ${TC}`;
-        ctx.fillStyle = on ? `rgb(${done ? (tr.result === "tp" ? UP : DOWN) : rgb})` : "rgba(120,123,134,0.75)";
-        ctx.fillText(on ? (done ? (tr.result === "tp" ? "止盈" : "停損") : tr.dir === "long" ? "持多" : "持空") : "監控中", W - 36, y + 1);
+          ctx.textAlign = "left";
+          ctx.font = `500 24px ${TC}`;
+          ctx.fillStyle = on ? "#eef0f4" : COL.muted;
+          ctx.fillText(row.name, x0 + 24, y + 1);
+          ctx.textAlign = "right";
+          ctx.font = `600 22px ${TC}`;
+          ctx.fillStyle = on ? `rgb(${done ? (tr.result === "tp" ? UP : DOWN) : rgb})` : "rgba(120,123,134,0.75)";
+          ctx.fillText(on ? (done ? (tr.result === "tp" ? "止盈" : "停損") : tr.dir === "long" ? "持多" : "持空") : "監控中", W - 36, y + 1);
+        });
+        const y = 50 + (rows.length - 1) * 36;
+        const cur = D.trades[k];
+        const on = k >= 0 && t < eventT("exit", k) + 0.7;
+        const rgb = on ? (cur.dir === "long" ? UP : DOWN) : "120,123,134";
         D.trades.forEach((x, j) => {
           const cx = W - 42 - (D.trades.length - 1 - j) * 26;
           ctx.beginPath();
