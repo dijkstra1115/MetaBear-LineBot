@@ -26,7 +26,7 @@ for (const [id, G] of Object.entries(SEGMENTS)) {
     id,
     title: G.title.split(" · ").at(-1),
     range: G.range,
-    rule: D.ruleName,
+    rule: D.rules ? "課程策略" : D.ruleName, // the 08-31 stretch runs two course strategies
     ruleLine: D.intro[1],
     stops: D.trades.filter((t) => t.result === "stop").length,
     trades: D.trades.map((t) => ({

@@ -1,7 +1,9 @@
 // Cuts assets/data/<id>.json for one stretch: 5-minute bars from half an hour before the first
 // re-test until a little after the last exit (with five hours of history already on the chart), the
 // prior UTC day's high and low at each bar, and every trade the stretch's rule took inside it, one
-// position at a time, as scripts/replay-cases/scan-case-rules.mjs --json measured them.
+// position at a time, as scripts/replay-cases/scan-case-rules.mjs --json measured them. A stretch
+// with source "strategies" (the 08-31 short) takes the course strategies' trades instead, as
+// scripts/replay-cases/scan-strategies.mjs chose its window.
 // Run from this folder: node scripts/extract.mjs 2026-09-14
 import { readFile, writeFile } from "node:fs/promises";
 import { fromArchive, readingsAt } from "../../../../public/lab/orderflow/metrics.js";
@@ -16,17 +18,38 @@ const DAY = 86_400_000;
 const HISTORY = 60;
 const at = (s) => Date.parse(s.replace(" ", "T") + ":00+08:00");
 
-const all = JSON.parse(await readFile("../../../.data/orderflow/replay-cases/case-rule-trades.json", "utf8"));
-// One position at a time over the rule's whole history, so a trade the scanner skipped because one
-// was open before the stretch stays skipped here.
-let busy = -Infinity;
-const taken = [];
-for (const t of all.filter((x) => x.rule === G.rule).sort((a, b) => a.entryT - b.entryT)) {
-  if (t.entryT <= busy) continue;
-  busy = t.exitT;
-  taken.push(t);
+let picked;
+if (G.source === "strategies") {
+  // The window's trades, one position per strategy, in the case-rule trades' shape: times are the
+  // last minute of the 5-minute bar whose close opened (or closed) the position; the touch is
+  // found on the bars below.
+  const windows = JSON.parse(await readFile("../../../.data/orderflow/replay-cases/strategy-windows.json", "utf8"));
+  const w = windows.find((x) => x.from === at(G.from));
+  if (!w) throw new Error("stretch not found: run scripts/replay-cases/scan-strategies.mjs");
+  picked = w.trades.map((t) => ({
+    ...t,
+    rule: t.strat,
+    long: t.dir === "long",
+    name: t.level ?? "",
+    level: t.levelPrice ?? null,
+    entryT: t.entryT - MIN,
+    exitT: t.exitT - MIN,
+    touchT: t.push ? t.push.to : t.signalT - 30 * MIN,
+    r: Math.round((Math.abs(t.tp - t.entry) / Math.abs(t.entry - t.stop)) * 100) / 100,
+  }));
+} else {
+  const all = JSON.parse(await readFile("../../../.data/orderflow/replay-cases/case-rule-trades.json", "utf8"));
+  // One position at a time over the rule's whole history, so a trade the scanner skipped because one
+  // was open before the stretch stays skipped here.
+  let busy = -Infinity;
+  const taken = [];
+  for (const t of all.filter((x) => x.rule === G.rule).sort((a, b) => a.entryT - b.entryT)) {
+    if (t.entryT <= busy) continue;
+    busy = t.exitT;
+    taken.push(t);
+  }
+  picked = taken.filter((t) => t.entryT >= at(G.from) && t.entryT <= at(G.to));
 }
-const picked = taken.filter((t) => t.entryT >= at(G.from) && t.entryT <= at(G.to));
 if (!picked.length) throw new Error("no trades: run scripts/replay-cases/scan-case-rules.mjs --json");
 if (picked.some((t) => t.result === "timeout")) throw new Error("a trade timed out: the template draws only targets and stops");
 
@@ -81,11 +104,15 @@ const fmt = (p) => p.toLocaleString("en-US", { maximumFractionDigits: 0 });
 function label(t) {
   const m = t.name.match(/^(\d\d)-(\d\d) (高|低)$/);
   if (m) return `${+m[1]}/${+m[2]} ${m[3]}點`;
-  return t.name.replace(/(POC|VAH|VAL)$/, " $1");
+  return t.name.replace(/\s*(POC|VAH|VAL)$/, " $1");
 }
 function why(t, pierced) {
   const L = label(t) + (/[A-Z]$/.test(label(t)) ? " " : "");
   const side = t.long ? "做多" : "做空";
+  // Before a full-width comma no space is needed after POC, VAH or VAL.
+  if (t.rule === "B" && t.kind === "flip") return `${t.long ? "站上" : "跌破"}${label(t)}，回測不${t.long ? "破" : "過"} → ${side}`;
+  if (t.rule === "B") return `回測${label(t)}，${t.long ? "守住" : "擋住"} → ${side}`;
+  if (t.rule === "C") return t.long ? `回調縮量，突破 → ${side}` : `反彈縮量，跌破 → ${side}`;
   if (t.rule === "flip") return t.long ? `${L}回測守住 → ${side}` : `${L}回測擋住 → ${side}`;
   if (t.rule === "liq") return `衝進爆倉叢集後收回 → ${side}`;
   if (pierced) return t.long ? `跌破${L}又收回 → ${side}` : `突破${L}又收回 → ${side}`;
@@ -111,14 +138,38 @@ function context(t) {
   const oi = before != null && after != null ? after - before : null;
   const n = (x) => fmt(Math.round(Math.abs(x)));
   return [
-    `${t.rule === "liq" ? "極值區" : "回測區"}主動賣 ${n(sell)} · 買 ${n(buy)}`,
+    // A pullback (strategy C) has no level to measure around.
+    ...(t.level == null && t.rule !== "liq" ? [] : [`${t.rule === "liq" ? "極值區" : "回測區"}主動賣 ${n(sell)} · 買 ${n(buy)}`]),
     // One line for both, so the touch, the context, the stack and the order fit the feed's five rows.
     `近 15 分${delta < 0 ? "淨賣" : "淨買"} ${n(delta)}${oi == null ? "" : ` · OI 1 小時 ${oi < 0 ? "−" : "+"}${n(oi)}`}`,
   ];
 }
 // Alerts: what the rule saw, in order: the touch, the pierce if price went through and came back,
 // then the context, and the stacked imbalances on the entry minute that open the trade.
+// The course strategies' alerts, as the 08-31 short worded them (strategy B: the level, then the
+// absorption or the break; strategy C: the push, then the quiet pullback), with the same context.
+function strategyAlerts(t, signal) {
+  const out = [];
+  const z = (t.level ?? 0) * 0.0015;
+  if (t.rule === "B" && t.kind === "hold") {
+    out.push({ bar: index(t.touchT), tone: "level", text: `觸及${label(t)} ${fmt(t.level)}` });
+    out.push({ bar: signal, tone: t.long ? "sell" : "buy", text: `${t.long ? "賣" : "買"}壓 ${t.absorb} BTC 被吸收` });
+  } else if (t.rule === "B") {
+    out.push({ bar: index(t.touchT), tone: "level", text: `${t.long ? "站上" : "跌破"}${label(t)} ${fmt(t.level)}` });
+  } else {
+    const top = index(t.push.to);
+    const from = index(t.push.from);
+    const vol = (i, j) => list.slice(i, j + 1).reduce((a, b) => a + b[5], 0) / (j - i + 1);
+    const pct = (Math.abs(t.push.end - t.push.start) / t.push.start) * 100;
+    out.push({ bar: top, tone: t.long ? "buy" : "sell", text: `${t.long ? "急漲" : "急跌"} ${pct.toFixed(1)}% · 放量` });
+    out.push({ bar: signal - 1, tone: "level", text: `${t.long ? "回調" : "反彈"}量縮 ${Math.round((1 - vol(top + 1, signal - 1) / vol(from, top)) * 100)}%` });
+  }
+  for (const text of context(t)) out.push({ bar: signal, tone: "info", text });
+  return out.sort((a, b) => a.bar - b.bar);
+}
+
 function alerts(t, signal) {
+  if (G.source === "strategies") return strategyAlerts(t, signal);
   const L = label(t);
   const out = [];
   const touch = index(t.touchT);
@@ -133,14 +184,32 @@ function alerts(t, signal) {
   return out;
 }
 
+// Strategy B's touch: the first bar of the six before the signal at the level (a hold) or the
+// first close through it (a flip), as the 08-31 short found them.
+for (const t of G.source === "strategies" ? picked : []) {
+  if (t.rule !== "B") continue;
+  const signal = index(t.entryT);
+  const z = t.level * 0.0015;
+  const span = t.kind === "flip" ? 14 : 6;
+  for (let i = Math.max(0, signal - span); i <= signal; i++) {
+    const [bt, , h, l, c] = list[i];
+    const hit = t.kind === "flip" ? (t.long ? c > t.level + z : c < t.level - z) : t.long ? l <= t.level + z : h >= t.level - z;
+    if (hit) {
+      t.touchT = bt;
+      break;
+    }
+  }
+}
+
 const trades = picked.map((t) => {
   const signal = index(t.entryT);
   const ext = t.long ? t.stop / 0.999 : t.stop / 1.001;
-  const pierced = t.long ? ext < t.level : ext > t.level;
+  const pierced = t.level != null && G.source !== "strategies" && (t.long ? ext < t.level : ext > t.level);
   return {
+    rule: t.rule,
     dir: t.long ? "long" : "short",
     level: label(t),
-    levelPrice: t.rule === "liq" ? null : t.level,
+    levelPrice: t.rule === "liq" ? null : (t.level ?? null),
     signal,
     exit: index(t.exitT),
     entry: t.entry,
@@ -162,13 +231,19 @@ const RULE_LINES = {
   reject: "碰到前日高低、POC、VAH／VAL 被擋回，出現 ≥3 層堆疊就進場",
   liq: "急漲急跌衝進爆倉叢集後收回，出現 ≥3 層堆疊就進場",
 };
-const intro = [`${G.range} ${G.range.includes("–") ? "這段時間" : "這一天"}，規則開的每一筆`, RULE_LINES[G.rule], `停損也照放 · 共 ${trades.length} 筆`];
+// The course strategies that took a trade here, in the order they first did.
+const rules = G.source === "strategies" ? [...new Set(trades.map((t) => t.rule))].map((key) => ({ key, name: RULES[key] })) : null;
+const R = [...new Set(trades.map((t) => t.r))];
+const intro =
+  G.source === "strategies"
+    ? [`${G.range} 這段時間，${rules.length} 個策略開的每一筆`, `課程 ${rules.map((r) => r.name.split(" ")[0]).join("、")} 的規則照做，目標 ${R.join("／")}R`, `停損也照放 · 共 ${trades.length} 筆`]
+    : [`${G.range} ${G.range.includes("–") ? "這段時間" : "這一天"}，規則開的每一筆`, RULE_LINES[G.rule], `停損也照放 · 共 ${trades.length} 筆`];
 // A flip stretch keeps its one line on screen the whole time; the other rules draw each trade's level with it.
 const lines = G.rule === "flip" ? [...new Map(trades.map((t) => [t.levelPrice, { price: t.levelPrice, name: t.level }])).values()] : [];
 
 await writeFile(
   `assets/data/${id}.json`,
-  JSON.stringify({ id, symbol: "BTCUSDT", source: raw.source, tick, tf: "5m", history: HISTORY, rule: G.rule, ruleName: RULES[G.rule], range: G.range, intro, jumps, showPrior: G.rule === "reject", lines, bars: list, prior, trades }),
+  JSON.stringify({ id, symbol: "BTCUSDT", source: raw.source, tick, tf: "5m", history: HISTORY, rule: G.rule, ruleName: RULES[G.rule] ?? "", rules, range: G.range, intro, jumps, showPrior: G.rule === "reject" || G.source === "strategies", lines, bars: list, prior, trades }),
 );
 const tpe = (ms) => new Date(ms + 8 * 3600_000).toISOString().slice(5, 16).replace("T", " ");
 console.log(`${id}: ${list.length} bars ${tpe(list[0][0])} → ${tpe(list.at(-1)[0])}, revealed from ${tpe(list[HISTORY][0])}`);

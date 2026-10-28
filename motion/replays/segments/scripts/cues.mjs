@@ -59,5 +59,7 @@ export const EVENTS = events.map((e) => ({ ...e, t: +e.t.toFixed(4) }));
 
 // Captions: the trade's rule in one line, from its entry until the result has landed.
 const at = (type, k) => events.find((e) => e.type === type && e.trade === k).t;
-// Numbered, so every trade in the stretch reads as one of all of them.
-export const CAPTIONS = D.trades.map((tr, k) => [at("entry", k), Math.min(at("exit", k) + EXIT_HOLD + 0.2, k + 1 < D.trades.length ? at("entry", k + 1) - 0.05 : Infinity), `${k + 1}/${D.trades.length} · ${tr.why}`]);
+// Numbered with circled digits, which cannot be read as a date the way "1/5" can (2026-10-28
+// feedback); the panel's dots show how many there are in all.
+const CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩";
+export const CAPTIONS = D.trades.map((tr, k) => [at("entry", k), Math.min(at("exit", k) + EXIT_HOLD + 0.2, k + 1 < D.trades.length ? at("entry", k + 1) - 0.05 : Infinity), `${CIRCLED[k]} ${tr.why}`]);
