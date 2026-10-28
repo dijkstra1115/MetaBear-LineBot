@@ -5,7 +5,7 @@ export const SEGMENTS = [
     "title": "9/12 高點",
     "range": "9/14",
     "rule": "突破後回測",
-    "ruleLine": "前幾日高點被突破後回測，出現 ≥3 層堆疊、收回就進場",
+    "ruleLine": "前幾日高點突破後，回到 ±0.15% 內出現 ≥3 層堆疊就進場",
     "stops": 2,
     "trades": [
       {
@@ -25,7 +25,7 @@ export const SEGMENTS = [
       {
         "at": "9/14 20:58",
         "dir": "long",
-        "why": "9/12 高點回測守住 → 做多",
+        "why": "靠近 9/12 高點守住 → 做多",
         "result": "stop",
         "r": 2
       },
@@ -44,13 +44,13 @@ export const SEGMENTS = [
     "title": "前日關鍵位",
     "range": "9/24–9/25",
     "rule": "關鍵位拒絕",
-    "ruleLine": "碰到前日高低、POC、VAH／VAL 被擋回，出現 ≥3 層堆疊就進場",
+    "ruleLine": "來到前日高低、POC、VAH／VAL ±0.15% 內，出現 ≥3 層堆疊就進場",
     "stops": 3,
     "trades": [
       {
         "at": "9/24 21:41",
         "dir": "short",
-        "why": "碰到前日 POC 被擋 → 做空",
+        "why": "靠近前日 POC 被擋 → 做空",
         "result": "stop",
         "r": 2
       },
@@ -64,7 +64,7 @@ export const SEGMENTS = [
       {
         "at": "9/25 01:17",
         "dir": "long",
-        "why": "回測前日 POC 守住 → 做多",
+        "why": "靠近前日 POC 守住 → 做多",
         "result": "stop",
         "r": 2
       },
@@ -78,14 +78,14 @@ export const SEGMENTS = [
       {
         "at": "9/25 10:09",
         "dir": "short",
-        "why": "碰到前日高被擋 → 做空",
+        "why": "靠近前日高被擋 → 做空",
         "result": "tp",
         "r": 2
       },
       {
         "at": "9/25 12:49",
         "dir": "short",
-        "why": "碰到前日 POC 被擋 → 做空",
+        "why": "靠近前日 POC 被擋 → 做空",
         "result": "tp",
         "r": 2
       }
@@ -143,7 +143,7 @@ export const SEGMENTS = [
     "title": "前日關鍵位與週高",
     "range": "8/27–8/28",
     "rule": "關鍵位拒絕",
-    "ruleLine": "碰到前日高低、POC、VAH／VAL 被擋回，出現 ≥3 層堆疊就進場",
+    "ruleLine": "來到前日高低、POC、VAH／VAL ±0.15% 內，出現 ≥3 層堆疊就進場",
     "stops": 3,
     "trades": [
       {
@@ -156,21 +156,21 @@ export const SEGMENTS = [
       {
         "at": "8/28 08:12",
         "dir": "long",
-        "why": "回測前日 POC 守住 → 做多",
+        "why": "靠近前日 POC 守住 → 做多",
         "result": "tp",
         "r": 2
       },
       {
         "at": "8/28 09:06",
         "dir": "short",
-        "why": "碰到前日高被擋 → 做空",
+        "why": "靠近前日高被擋 → 做空",
         "result": "stop",
         "r": 2
       },
       {
         "at": "8/28 09:31",
         "dir": "short",
-        "why": "碰到週高被擋 → 做空",
+        "why": "靠近週高被擋 → 做空",
         "result": "stop",
         "r": 2
       },
@@ -209,7 +209,7 @@ export const SEGMENTS = [
       {
         "at": "8/31 20:10",
         "dir": "long",
-        "why": "回測前日 VAL，守住 → 做多",
+        "why": "靠近前日 VAL，守住 → 做多",
         "result": "stop",
         "r": 1
       },
@@ -230,7 +230,7 @@ export const SEGMENTS = [
       {
         "at": "9/1 21:15",
         "dir": "long",
-        "why": "回測前日低，守住 → 做多",
+        "why": "靠近前日低，守住 → 做多",
         "result": "tp",
         "r": 1
       }
@@ -242,13 +242,13 @@ export const SEGMENTS = [
     "title": "前日高轉支撐",
     "range": "8/24–8/26",
     "rule": "突破後回測",
-    "ruleLine": "前幾日高點被突破後回測，出現 ≥3 層堆疊、收回就進場",
+    "ruleLine": "前幾日高點突破後，回到 ±0.15% 內出現 ≥3 層堆疊就進場",
     "stops": 2,
     "trades": [
       {
         "at": "8/24 21:44",
         "dir": "long",
-        "why": "8/23 高點回測守住 → 做多",
+        "why": "靠近 8/23 高點守住 → 做多",
         "result": "stop",
         "r": 2
       },
@@ -262,14 +262,14 @@ export const SEGMENTS = [
       {
         "at": "8/25 21:55",
         "dir": "long",
-        "why": "8/23 高點回測守住 → 做多",
+        "why": "靠近 8/23 高點守住 → 做多",
         "result": "tp",
         "r": 2
       },
       {
         "at": "8/26 04:51",
         "dir": "long",
-        "why": "8/23 高點回測守住 → 做多",
+        "why": "靠近 8/23 高點守住 → 做多",
         "result": "stop",
         "r": 2
       }
