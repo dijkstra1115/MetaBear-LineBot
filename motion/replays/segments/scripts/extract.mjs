@@ -36,6 +36,16 @@ const first = Math.floor((Math.min(...picked.map((t) => t.touchT)) - 30 * MIN) /
 const start = first - HISTORY * TF;
 const end = Math.floor(picked.at(-1).exitT / TF) * TF + 4 * TF;
 const rows = raw.bars.filter((r) => r[0] >= start - 2 * DAY && r[0] < end);
+// A stretch spread over weeks (G.window) keeps only each trade's window — from window.pre minutes
+// before its touch to window.post after its exit — and jumps the days in between.
+const windows = [];
+for (const t of G.window ? picked : []) {
+  const from = Math.floor((t.touchT - G.window.pre * MIN) / TF) * TF;
+  const to = Math.floor(t.exitT / TF) * TF + G.window.post * MIN;
+  if (windows.length && from <= windows.at(-1)[1]) windows.at(-1)[1] = Math.max(windows.at(-1)[1], to);
+  else windows.push([windows.length ? from : from - HISTORY * TF, to]);
+}
+const shown = (t) => !windows.length || windows.some(([a, b]) => t >= a && t < b);
 
 // Prior UTC day's high and low, as the rules use them.
 const days = new Map();
@@ -46,7 +56,7 @@ for (const [t, , h, l] of rows) {
 }
 const bars = new Map();
 for (const [t, o, h, l, c, levels] of rows) {
-  if (t < start) continue;
+  if (t < start || !shown(t)) continue;
   const k = Math.floor(t / TF) * TF;
   const vol = levels.reduce((a, [, buy, sell]) => a + buy + sell, 0);
   let b = bars.get(k);
@@ -62,6 +72,7 @@ const prior = list.map(([t]) => {
   return p ? [p.h, p.l] : null;
 });
 const index = (t) => list.findIndex((b) => b[0] <= t && t < b[0] + TF);
+const jumps = windows.slice(1).map(([from], k) => ({ bar: list.findIndex((b) => b[0] >= from), days: Math.round((from - windows[k][1]) / DAY) }));
 const minute = new Map(rows.map((r) => [r[0], r]));
 const readings = fromArchive(raw.metrics).sort((a, b) => a[0] - b[0]);
 
@@ -157,7 +168,7 @@ const lines = G.rule === "flip" ? [...new Map(trades.map((t) => [t.levelPrice, {
 
 await writeFile(
   `assets/data/${id}.json`,
-  JSON.stringify({ id, symbol: "BTCUSDT", source: raw.source, tick, tf: "5m", history: HISTORY, rule: G.rule, ruleName: RULES[G.rule], range: G.range, intro, showPrior: G.rule === "reject", lines, bars: list, prior, trades }),
+  JSON.stringify({ id, symbol: "BTCUSDT", source: raw.source, tick, tf: "5m", history: HISTORY, rule: G.rule, ruleName: RULES[G.rule], range: G.range, intro, jumps, showPrior: G.rule === "reject", lines, bars: list, prior, trades }),
 );
 const tpe = (ms) => new Date(ms + 8 * 3600_000).toISOString().slice(5, 16).replace("T", " ");
 console.log(`${id}: ${list.length} bars ${tpe(list[0][0])} → ${tpe(list.at(-1)[0])}, revealed from ${tpe(list[HISTORY][0])}`);
