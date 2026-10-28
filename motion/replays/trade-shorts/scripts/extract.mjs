@@ -91,7 +91,7 @@ const out = {
   dir: T.dir,
   source: raw.source,
   tick,
-  levels: T.levelPrice ? [{ price: T.levelPrice, name: T.level, color: "level" }] : [],
+  levels: T.levelPrice ? [{ price: T.levelPrice, name: `${T.level} ±0.15%`, color: "level", zone: T.levelPrice * 0.0015 }] : [],
   marks: [],
   five,
   fiveFrom: five.findIndex((b) => b[0] >= zoomT - 3 * 3_600_000),

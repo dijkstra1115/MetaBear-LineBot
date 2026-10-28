@@ -446,7 +446,15 @@
             ctx.fillRect(0, y0, PX1, y1 - y0);
             hline(y0, 0, PX1, `rgba(${rgb},0.45)`, [4, 6], 1.5);
             hline(y1, 0, PX1, `rgba(${rgb},0.45)`, [4, 6], 1.5);
-          } else hline(y, 0, PX1, `rgba(${rgb},0.85)`, [10, 8], 2);
+          } else {
+            // The rule's range around the level (±0.15 %), so a trade that only came near the line reads as near it.
+            if (L.zone) {
+              const y0 = S.y(L.price + L.zone);
+              ctx.fillStyle = `rgba(${rgb},0.12)`;
+              ctx.fillRect(0, y0, PX1, S.y(L.price - L.zone) - y0);
+            }
+            hline(y, 0, PX1, `rgba(${rgb},0.85)`, [10, 8], 2);
+          }
           ctx.font = `600 26px ${TC}`;
           ctx.fillStyle = `rgb(${rgb})`;
           ctx.textAlign = "left";

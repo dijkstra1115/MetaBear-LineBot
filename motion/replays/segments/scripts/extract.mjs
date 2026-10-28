@@ -106,16 +106,25 @@ function label(t) {
   if (m) return `${+m[1]}/${+m[2]} ${m[3]}點`;
   return t.name.replace(/\s*(POC|VAH|VAL)$/, " $1");
 }
+// The rules count price within ±0.15 % of a level as at it, so most re-tests stop short of the
+// line itself (2026-10-28 feedback): those are worded "靠近" with the distance, not "回測".
+function reach(t) {
+  if (t.level == null || t.extPx == null) return { reached: true, gap: 0 };
+  const gap = t.long ? t.extPx - t.level : t.level - t.extPx;
+  return { reached: gap <= 0, gap: Math.round(gap) };
+}
 function why(t, pierced) {
   const L = label(t) + (/[A-Z]$/.test(label(t)) ? " " : "");
+  const { reached } = reach(t);
   const side = t.long ? "做多" : "做空";
   // Before a full-width comma no space is needed after POC, VAH or VAL.
   if (t.rule === "B" && t.kind === "flip") return `${t.long ? "站上" : "跌破"}${label(t)}，回測不${t.long ? "破" : "過"} → ${side}`;
-  if (t.rule === "B") return `回測${label(t)}，${t.long ? "守住" : "擋住"} → ${side}`;
+  if (t.rule === "B") return `${reached ? "回測" : "靠近"}${label(t)}，${t.long ? "守住" : "擋住"} → ${side}`;
   if (t.rule === "C") return t.long ? `回調縮量，突破 → ${side}` : `反彈縮量，跌破 → ${side}`;
-  if (t.rule === "flip") return t.long ? `${L}回測守住 → ${side}` : `${L}回測擋住 → ${side}`;
+  if (t.rule === "flip") return reached ? (t.long ? `${L}回測守住 → ${side}` : `${L}回測擋住 → ${side}`) : t.long ? `靠近${/^\d/.test(L) ? " " : ""}${L}守住 → ${side}` : `靠近${/^\d/.test(L) ? " " : ""}${L}被擋 → ${side}`;
   if (t.rule === "liq") return `衝進爆倉叢集後收回 → ${side}`;
   if (pierced) return t.long ? `跌破${L}又收回 → ${side}` : `突破${L}又收回 → ${side}`;
+  if (!reached) return t.long ? `靠近${/^\d/.test(L) ? " " : ""}${L}守住 → ${side}` : `靠近${/^\d/.test(L) ? " " : ""}${L}被擋 → ${side}`;
   return t.long ? `回測${L}守住 → ${side}` : `碰到${L}被擋 → ${side}`;
 }
 // Context: the same three measurements for every trade, shown whether they back the trade or not
@@ -139,9 +148,9 @@ function context(t) {
   const n = (x) => fmt(Math.round(Math.abs(x)));
   return [
     // A pullback (strategy C) has no level to measure around.
-    ...(t.level == null && t.rule !== "liq" ? [] : [`${t.rule === "liq" ? "極值區" : "回測區"}主動賣 ${n(sell)} · 買 ${n(buy)}`]),
+    ...(t.level == null && t.rule !== "liq" ? [] : [`${t.rule === "liq" ? "極值區" : "回測區"}主動賣 ${n(sell)} · 買 ${n(buy)} BTC`]),
     // One line for both, so the touch, the context, the stack and the order fit the feed's five rows.
-    `近 15 分${delta < 0 ? "淨賣" : "淨買"} ${n(delta)}${oi == null ? "" : ` · OI 1 小時 ${oi < 0 ? "−" : "+"}${n(oi)}`}`,
+    `近 15 分${delta < 0 ? "淨賣" : "淨買"} ${n(delta)} BTC${oi == null ? "" : ` · OI 1 小時 ${oi < 0 ? "−" : "+"}${n(oi)} BTC`}`,
   ];
 }
 // Alerts: what the rule saw, in order: the touch, the pierce if price went through and came back,
@@ -152,7 +161,7 @@ function strategyAlerts(t, signal) {
   const out = [];
   const z = (t.level ?? 0) * 0.0015;
   if (t.rule === "B" && t.kind === "hold") {
-    out.push({ bar: index(t.touchT), tone: "level", text: `觸及${label(t)} ${fmt(t.level)}` });
+    out.push({ bar: index(t.touchT), tone: "level", text: touchText(t, "觸及") });
     out.push({ bar: signal, tone: t.long ? "sell" : "buy", text: `${t.long ? "賣" : "買"}壓 ${t.absorb} BTC 被吸收` });
   } else if (t.rule === "B") {
     out.push({ bar: index(t.touchT), tone: "level", text: `${t.long ? "站上" : "跌破"}${label(t)} ${fmt(t.level)}` });
@@ -168,13 +177,22 @@ function strategyAlerts(t, signal) {
   return out.sort((a, b) => a.bar - b.bar);
 }
 
+// "回測前日 POC 80,005" when price reached the line; "靠近前日 POC 80,005 · 差 $106" when it only
+// came inside the rule's ±0.15 %.
+function touchText(t, verb) {
+  const L = label(t);
+  const { reached, gap } = reach(t);
+  const v = reached ? verb : "靠近";
+  return `${v}${/^\d/.test(L) ? " " : ""}${L} ${fmt(t.level)}${reached ? "" : ` · 差 $${fmt(gap)}`}`;
+}
+
 function alerts(t, signal) {
   if (G.source === "strategies") return strategyAlerts(t, signal);
   const L = label(t);
   const out = [];
   const touch = index(t.touchT);
   if (t.rule === "liq") out.push({ bar: touch, tone: t.long ? "sell" : "buy", text: `${t.long ? "急跌" : "急漲"}衝進爆倉叢集` });
-  else out.push({ bar: touch, tone: "level", text: `回測${/^\d/.test(L) ? " " : ""}${L} ${fmt(t.level)}` });
+  else out.push({ bar: touch, tone: "level", text: touchText(t, "回測") });
   const ext = t.long ? t.stop / 0.999 : t.stop / 1.001;
   const through = t.long ? (t.level - ext) / t.level : (ext - t.level) / t.level;
   if (t.rule !== "liq" && through >= 0.0005)
@@ -201,6 +219,18 @@ for (const t of G.source === "strategies" ? picked : []) {
   }
 }
 
+// The extreme between the touch and the entry: the case rules' stop sits 0.1 % beyond it; the
+// course strategies' is read from the minutes.
+for (const t of picked) {
+  if (t.level == null) continue;
+  if (G.source !== "strategies") t.extPx = t.long ? t.stop / 0.999 : t.stop / 1.001;
+  else
+    for (let m = t.touchT; m <= t.entryT; m += MIN) {
+      const r = minute.get(m);
+      if (r) t.extPx = t.long ? Math.min(t.extPx ?? Infinity, r[3]) : Math.max(t.extPx ?? -Infinity, r[2]);
+    }
+}
+
 const trades = picked.map((t) => {
   const signal = index(t.entryT);
   const ext = t.long ? t.stop / 0.999 : t.stop / 1.001;
@@ -210,6 +240,7 @@ const trades = picked.map((t) => {
     dir: t.long ? "long" : "short",
     level: label(t),
     levelPrice: t.rule === "liq" ? null : (t.level ?? null),
+    reached: reach(t).reached,
     signal,
     exit: index(t.exitT),
     entry: t.entry,
@@ -231,8 +262,8 @@ const trades = picked.map((t) => {
 const sides = new Set(trades.map((t) => t.dir));
 const pts = sides.size > 1 ? "高低點" : sides.has("long") ? "高點" : "低點";
 const RULE_LINES = {
-  flip: `前幾日${pts}被突破後回測，出現 ≥3 層堆疊、收回就進場`,
-  reject: "碰到前日高低、POC、VAH／VAL 被擋回，出現 ≥3 層堆疊就進場",
+  flip: `前幾日${pts}突破後，回到 ±0.15% 內出現 ≥3 層堆疊就進場`,
+  reject: "來到前日高低、POC、VAH／VAL ±0.15% 內，出現 ≥3 層堆疊就進場",
   liq: "急漲急跌衝進爆倉叢集後收回，出現 ≥3 層堆疊就進場",
 };
 // The course strategies that took a trade here, in the order they first did.
