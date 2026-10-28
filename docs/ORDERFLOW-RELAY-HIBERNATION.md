@@ -76,4 +76,10 @@ Vultr 東京：relay（Node 22，systemd）
 2. **其他三家搬到中繼**（約 1～2 週）：Bybit、OKX、BingX 的 WebSocket 和 REST 改由中繼負責（Bybit、OKX 的 REST 有拒絕 Cloudflare IP 的問題，搬到東京也一併解決），收集器改成和幣安一樣收 frame。
 3. **收尾**（約 3 天）：刪掉沒用到的直連程式、更新 [ORDERFLOW-BINANCE-RELAY.md](ORDERFLOW-BINANCE-RELAY.md) 與 [ORDERFLOW-PLATFORM.md](ORDERFLOW-PLATFORM.md)、確認下一期帳單。
 
+### 第 1 階段結果（2026-10-28 上線）
+
+GraphQL 每分鐘的數字，`BinanceCollector` 兩個物件合計：上線前每分鐘活躍 120 秒、15.4 GB-s；換上休眠版 WebSocket 後每分鐘活躍約 1～2 秒、0.1～0.26 GB-s，換算每天約 300 GB-s，降了約 98.7%。換上新程式時中繼還是逐則轉送，就已經降到這個程度：省錢的關鍵是「符合休眠條件」，frame 再把 WebSocket 訊息數（請求費）和 CPU 減少。
+
+部署時注意：Worker 部署後，正在跑的收集器約 5 分鐘後才重啟、換上新程式。第一次部署後 1 分鐘就換了中繼，舊程式看不懂 frame，幣安成交中斷約 1 分鐘（事後依成交 id 補回）。所以中繼只在收集器送出 `{"hello":{"frames":1}}` 後才改送 frame，新舊程式並存時也安全。
+
 每一階段都是一次發布（`npm run orderflow:deploy`、`npm run relay:deploy`），要使用者確認後才上線。
