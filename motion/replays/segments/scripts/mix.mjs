@@ -34,6 +34,7 @@ play("entry", at("entry"), 0);
 play("target", at("exit", (e) => D.trades[e.trade].result === "tp"), -1);
 play("stop", at("exit", (e) => D.trades[e.trade].result === "stop"), 1);
 play("swell", [ENDCARD_AT - 0.5], -4);
+play("swell", at("jump"), -12);
 
 const graph = `${chains.join(";")};${mixes.join("")}amix=inputs=${mixes.length}:normalize=0,alimiter=limit=0.95,atrim=0:${END}[out]`;
 execFileSync(FF, ["-y", "-v", "error", ...inputs, "-filter_complex", graph, "-map", "[out]", "-ac", "2", "-ar", "48000", "assets/audio/soundtrack.wav"], { stdio: "inherit" });

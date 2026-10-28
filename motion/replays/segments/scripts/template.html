@@ -356,6 +356,8 @@
         for (let j = Math.max(0, S.i - VIS - 2); j <= S.i; j++) {
           const t = D.bars[j][0];
           if (t % 3_600_000) continue;
+          // Hours from both sides of a jump would collide at its divider, which names the days instead.
+          if ((D.jumps ?? []).some((jp) => Math.abs(j - jp.bar) < 6)) continue;
           const x = S.cx(j);
           if (x < 0) continue;
           ctx.strokeStyle = COL.grid;
@@ -643,6 +645,7 @@
       // stays until shortly after its trade opens; the order line until the trade closes.
       const TONES = { level: "232,189,125", buy: UP, sell: DOWN, info: "120,144,176" };
       const FEED = EVENTS.flatMap((e) => {
+        if (e.type !== "alert" && e.type !== "entry") return [];
         const tr = D.trades[e.trade];
         const entryAt = eventT("entry", e.trade);
         if (e.type === "alert") {
@@ -674,6 +677,50 @@
         ctx.fillStyle = COL.gold;
         ctx.fillText(D.intro[2], x + 14, FEED_Y + 196);
         ctx.globalAlpha = 1;
+      }
+
+      // A stretch over weeks jumps the days without a trade: a card in the feed's band while the
+      // chart holds, and a dashed divider with the number of days where the bars join.
+      const JUMPS = EVENTS.filter((e) => e.type === "jump");
+      function drawJumpCard(t) {
+        for (const ev of JUMPS) {
+          const k = (t - ev.t) / 1.6;
+          if (k < 0 || k > 1) continue;
+          const a = Math.min(easeOut(clamp(k / 0.2)), 1 - clamp((k - 0.8) / 0.2));
+          const days = D.jumps[ev.jump].days;
+          ctx.globalAlpha = a;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = COL.gold;
+          ctx.fillRect(20, FEED_Y + 14, 6, 150);
+          ctx.font = `700 46px ${TC}`;
+          ctx.fillStyle = "#eef0f4";
+          ctx.fillText(`跳過 ${days} 天`, 42, FEED_Y + 50);
+          ctx.font = `500 30px ${TC}`;
+          ctx.fillStyle = COL.text;
+          ctx.fillText("這幾天規則沒有開單", 42, FEED_Y + 120);
+          ctx.globalAlpha = 1;
+        }
+      }
+      function drawJumpLines(S) {
+        for (const j of D.jumps ?? []) {
+          if (j.bar > S.i) continue;
+          const x = S.cx(j.bar) - SLOT / 2;
+          if (x < 0) continue;
+          ctx.strokeStyle = "rgba(232,189,125,0.7)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 8]);
+          ctx.beginPath();
+          ctx.moveTo(Math.round(x) + 0.5, PY0 - 30);
+          ctx.lineTo(Math.round(x) + 0.5, PY1);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font = `600 24px ${TC}`;
+          ctx.fillStyle = COL.gold;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          ctx.fillText(`+${j.days} 天`, x + 8, PY0 - 26);
+        }
       }
 
       function drawFeed(t) {
@@ -737,6 +784,7 @@
         ctx.clip();
         if (D.showPrior) drawPrior(S);
         drawLines(S);
+        drawJumpLines(S);
         drawLevels(S, t);
         drawPositions(S, t, "box");
         drawCandles(S);
@@ -747,6 +795,7 @@
         drawLast(S);
         drawPanel(t);
         drawIntro(t);
+        drawJumpCard(t);
         drawFeed(t);
         drawEdge(t);
       }

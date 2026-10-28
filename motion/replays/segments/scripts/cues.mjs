@@ -14,6 +14,7 @@ const ALERT_HOLD = 0.5; // each alert gets a beat before the next bar
 const INFO_HOLD = 0.4; // context lines (tone "info") come quicker
 const EXIT_HOLD = 0.7; // the result lands
 const START = 2.6; // the opening card reads while the chart holds still
+const JUMP_HOLD = 1.6; // a stretch over weeks skips the days without a trade; the card says how many
 const TAIL = 0.9; // after the last bar, before the end card
 export const ENDCARD = 3.2;
 
@@ -26,6 +27,11 @@ const reveal = new Array(n).fill(0);
 const events = [];
 let t = START;
 for (let i = D.history; i < n; i++) {
+  const jump = (D.jumps ?? []).findIndex((j) => j.bar === i);
+  if (jump >= 0) {
+    events.push({ type: "jump", jump, t });
+    t += JUMP_HOLD;
+  }
   reveal[i] = t;
   // One 5-minute bar can hold a stop and the next trade's alerts and entry (or two trades): play
   // them in the order of the minutes they happened, a trade's alerts just before its entry.
