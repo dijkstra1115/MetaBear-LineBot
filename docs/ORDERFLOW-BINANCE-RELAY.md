@@ -62,6 +62,42 @@ Worker metabear-orderflow：/api/orderflow/relay ──► 收集器 DO BinanceC
 - 服務用 `DynamicUser`、唯讀檔案系統、記憶體上限 300 MB 執行，沒有登入權限。
 - 安全更新已開啟 `unattended-upgrades`。需要重開機時 systemd 會自動把服務帶起來，中斷的部分由收集器用 REST 補回。
 
+### 從其他電腦連線
+
+2026-10-28 時，只有使用者的 Windows 主機有登入金鑰（`~/.ssh/metabear_vultr`），它是登入主機和 `npm run relay:deploy` 的唯一入口。要從另一台電腦連線，替那台電腦產生自己的金鑰，再從已經能登入的電腦把公鑰加進主機；不要複製私鑰。
+
+1. 在新電腦產生金鑰，在哪個資料夾執行都可以（金鑰路徑是絕對路徑）。macOS／Linux：
+   ```sh
+   ssh-keygen -t ed25519 -f ~/.ssh/metabear_vultr -C "<這台電腦的名字>"
+   ```
+   Windows PowerShell 不會把 `~` 交給 `ssh-keygen` 展開，改用 `$HOME`，並先建好資料夾：
+   ```powershell
+   New-Item -ItemType Directory -Force "$HOME\.ssh"
+   ssh-keygen -t ed25519 -f "$HOME\.ssh\metabear_vultr" -C "<這台電腦的名字>"
+   ```
+   Windows 命令提示字元（cmd，提示是 `C:\Users\…>`）改用 `%USERPROFILE%`：
+   ```bat
+   mkdir "%USERPROFILE%\.ssh"
+   ssh-keygen -t ed25519 -f "%USERPROFILE%\.ssh\metabear_vultr" -C "<這台電腦的名字>"
+   ```
+2. 把新電腦的 `metabear_vultr.pub`（公鑰，可以公開）傳到已能登入的電腦，在那台執行，`<路徑>` 換成公鑰存放的位置：
+   ```sh
+   ssh metabear-tokyo "cat >> ~/.ssh/authorized_keys" < <路徑>/metabear_vultr.pub
+   ```
+3. 在新電腦的 `~/.ssh/config` 加上同一個別名，`npm run relay:deploy` 就能照常使用：
+   ```
+   Host metabear-tokyo
+     HostName 108.160.138.183
+     User metabear
+     IdentityFile ~/.ssh/metabear_vultr
+     IdentitiesOnly yes
+   ```
+4. 停用某台電腦時，刪掉主機上 `~/.ssh/authorized_keys` 裡那一行（行尾是步驟 1 的名字）。
+
+服務已經部署過，之後的部署不需要 `.data/orderflow/relay-token`；只有重建主機時才要從原本的電腦帶過去。雲端環境（例如 GitHub Actions）要部署時，另外產生一把只給它用的金鑰存成 secret，同樣可以單獨撤銷。
+
+建議先替第二台電腦加一把金鑰當備援。密碼登入已關閉，Vultr 網頁主控台是否還能登入沒有驗證過，所以不要假設它能救援。
+
 ## 費用
 
 | 項目 | 每月 |
