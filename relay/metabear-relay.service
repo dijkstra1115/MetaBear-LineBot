@@ -1,7 +1,7 @@
-# systemd unit for the Binance relay on the Tokyo VPS (docs/ORDERFLOW-BINANCE-RELAY.md).
+# systemd unit for the exchange relay on the Tokyo VPS (docs/ORDERFLOW-BINANCE-RELAY.md).
 # Installed by scripts/relay-deploy.sh; the token lives in /etc/metabear/relay.env (mode 600).
 [Unit]
-Description=MetaBear Binance relay
+Description=MetaBear exchange relay
 After=network-online.target
 Wants=network-online.target
 

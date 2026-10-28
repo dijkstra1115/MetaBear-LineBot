@@ -1,6 +1,7 @@
 // Base for exchanges Cloudflare reaches directly besides Bybit (OKX, BingX; docs/ORDERFLOW-MULTI-EXCHANGE.md):
-// one outbound WebSocket kept open by the alarm, trades summed into prints by taker order, and the
-// same storage, queries and detectors as the Bybit Collector.
+// the exchange's messages come from the Tokyo relay like Bybit's (Collector), or, while the relay is
+// away, from one outbound WebSocket kept open by the alarm; trades are summed into prints by taker
+// order, with the same storage, queries and detectors as the Bybit Collector.
 import { Collector, HEALTH_DOWN_MS, SILENT_MS, type Trade } from "./collector";
 
 type Sock = { ws: WebSocket; last: number; ping: ReturnType<typeof setInterval> | null };
@@ -18,8 +19,20 @@ export abstract class DirectCollector extends Collector {
 
   /** Subscribes after the socket opens. */
   protected abstract subscribe(ws: WebSocket): void;
-  /** One decoded message. */
-  protected abstract onText(text: string, ws: WebSocket): void;
+  /** One parsed exchange message, from the relay or the object's own socket. */
+  protected abstract onMessage(m: any): void;
+  /** A keep-alive on the object's own socket, answered here; true when the text was one. */
+  protected keepAlive(_text: string): boolean {
+    return false;
+  }
+  private onText(text: string) {
+    if (!this.keepAlive(text)) this.onMessage(JSON.parse(text));
+  }
+  /** A message for the exchange (OKX resubscribes a broken book): through the relay or the own socket. */
+  protected upstream(msg: unknown) {
+    if (this.relay) this.relaySend({ upstream: msg });
+    else if (this.sock) this.send(this.sock.ws, msg);
+  }
   /** Frame → text; BingX gzips its frames. */
   protected decode(data: string | ArrayBuffer): string | Promise<string> {
     return typeof data === "string" ? data : new TextDecoder().decode(data);
@@ -75,7 +88,7 @@ export abstract class DirectCollector extends Collector {
       sock.last = Date.now();
       // Decoding may be async (gzip); the chain keeps messages in order.
       this.inbox = this.inbox
-        .then(async () => this.onText(await this.decode(e.data as string | ArrayBuffer), ws))
+        .then(async () => this.onText(await this.decode(e.data as string | ArrayBuffer)))
         .catch((err) => this.note("errors", `${this.source} message: ${err}`));
     });
     const dropped = (why: string) => {
@@ -89,8 +102,32 @@ export abstract class DirectCollector extends Collector {
     await this.backfill();
   }
 
+  protected override onRelayItem(m: any) {
+    this.onMessage(m);
+  }
+
+  protected override onRelayOpen() {
+    void this.backfill();
+  }
+
+  protected override closeDirect() {
+    const sock = this.sock;
+    if (!sock) return;
+    if (sock.ping) clearInterval(sock.ping);
+    this.sock = null;
+    this.wsState = "relay";
+    try {
+      sock.ws.close(1000, "relay");
+    } catch {}
+  }
+
   protected override async ensureStreams() {
     this.flushRun();
+    if (this.relayFed()) {
+      this.closeDirect();
+      this.checkRelay(Date.now());
+      return this.pollLive();
+    }
     const sock = this.sock;
     if (sock && Date.now() - sock.last > SILENT_MS) {
       this.note("gaps", `${this.source} silent, reconnecting`);
@@ -105,15 +142,15 @@ export abstract class DirectCollector extends Collector {
   }
 
   protected override healthFeeds(now: number): [keyof typeof HEALTH_DOWN_MS, boolean, number][] {
-    return [[this.feed, this.sock != null && now - this.lastTradeT < HEALTH_DOWN_MS[this.feed], this.lastTradeT]];
+    return [[this.feed, (this.relay != null || this.sock != null) && now - this.lastTradeT < HEALTH_DOWN_MS[this.feed], this.lastTradeT]];
   }
 
   protected override liveStatus() {
-    return { [this.source]: this.wsState, lastTrade: this.lastTradeT };
+    return { [this.source]: this.relay ? "relay" : this.wsState, lastTrade: this.lastTradeT };
   }
 
   override publicStatus() {
     const { bybit, okx, ...rest } = super.publicStatus();
-    return { ...rest, [this.source]: this.wsState, open: this.sock ? [this.source] : [] };
+    return { ...rest, [this.source]: this.relay ? "relay" : this.wsState, open: this.relay ? ["relay"] : this.sock ? [this.source] : [] };
   }
 }

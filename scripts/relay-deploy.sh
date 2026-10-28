@@ -1,5 +1,5 @@
 #!/bin/sh
-# Deploys the Binance relay to the Tokyo VPS (docs/ORDERFLOW-BINANCE-RELAY.md). A release step:
+# Deploys the exchange relay to the Tokyo VPS (docs/ORDERFLOW-BINANCE-RELAY.md). A release step:
 # run it only when the relay is meant to go live.
 #
 #   sh scripts/relay-deploy.sh            # host alias metabear-tokyo from ~/.ssh/config
@@ -15,7 +15,7 @@ trap 'rm -rf "$STAGE"' EXIT
 
 mkdir -p "$STAGE/relay" "$STAGE/public/lab/orderflow"
 cp "$ROOT/relay/binance-relay.mjs" "$ROOT/relay/metabear-relay.service" "$STAGE/relay/"
-cp "$ROOT/public/lab/orderflow/binance.js" "$ROOT/public/lab/orderflow/bybit.js" "$ROOT/public/lab/orderflow/markets.js" "$STAGE/public/lab/orderflow/"
+for f in binance bybit okx bingx liquidations markets; do cp "$ROOT/public/lab/orderflow/$f.js" "$STAGE/public/lab/orderflow/"; done
 # Node resolves the shared modules as ES modules from the nearest package.json.
 printf '{ "type": "module" }\n' > "$STAGE/package.json"
 
