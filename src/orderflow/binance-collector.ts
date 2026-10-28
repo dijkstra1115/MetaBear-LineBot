@@ -71,6 +71,9 @@ export class BinanceCollector extends Collector {
     this.book.reset();
     this.syncAt = Date.now() + SYNC_DELAY_MS;
     this.syncTries = 0;
+    // The relay sends frames only to a collector that asks for them: a deploy does not restart a
+    // running object, so one still on older code keeps getting single messages until it restarts.
+    server.send(JSON.stringify({ hello: { frames: 1 } }));
     return new Response(null, { status: 101, webSocket: client });
   }
 

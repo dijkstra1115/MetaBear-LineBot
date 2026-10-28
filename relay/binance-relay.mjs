@@ -1,8 +1,9 @@
 // Binance relay for the order-flow platform. Binance refuses Cloudflare, so this small process on
 // the Tokyo VPS (docs/ORDERFLOW-BINANCE-RELAY.md) holds Binance's public streams and passes every
 // message, untouched, to the Binance collector Durable Object of its market over one outbound
-// WebSocket per market (BTC, ETH; markets.js). Messages go down once a second in one frame, so the
-// collector is idle between frames and is not billed for it (docs/ORDERFLOW-RELAY-HIBERNATION.md).
+// WebSocket per market (BTC, ETH; markets.js). To a collector that asks for it ({"hello":{"frames":1}}),
+// messages go down once a second in one frame, so it is idle between frames and is not billed for it
+// (docs/ORDERFLOW-RELAY-HIBERNATION.md); one on older code still gets them one by one.
 // It also answers each collector's REST requests for whitelisted public paths. It keeps no state:
 // whatever it drops while either side is down, the collector fetches again by trade id or resyncs.
 //
@@ -87,9 +88,16 @@ async function answer(ws, stats, text) {
 function relay(m) {
   const stats = { market: m.id, started: Date.now(), forwarded: 0, dropped: 0, rest: 0, lastBinance: 0, upstream: {}, downstream: "connecting" };
   let down = null;
+  let framed = false; // set by the collector's hello on this connection
   // Each message is already JSON, so a frame is them joined, not re-encoded: {"b":[m1,m2,…]}.
   let held = [];
-  const forward = (text) => held.push(text);
+  const forward = (text) => {
+    if (framed) return held.push(text);
+    if (down?.readyState === WebSocket.OPEN && down.bufferedAmount < MAX_BUFFERED) {
+      down.send(text);
+      stats.forwarded++;
+    } else stats.dropped++;
+  };
   setInterval(() => {
     if (!held.length) return;
     const frame = held;
@@ -122,14 +130,24 @@ function relay(m) {
       const ws = new WebSocket(`${TARGET}?m=${m.id}`, { headers: { authorization: `Bearer ${TOKEN}` } });
       ws.addEventListener("open", () => {
         down = ws;
+        framed = false;
+        held = [];
         stats.downstream = "open";
+        stats.framed = false;
       });
       ws.addEventListener("close", () => {
         if (down === ws) (down = null), (stats.downstream = "closed");
       });
       return ws;
     },
-    (ws, text) => void answer(ws, stats, text),
+    (ws, text) => {
+      if (text.startsWith('{"hello"')) {
+        framed = ws === down && Boolean(JSON.parse(text).hello?.frames);
+        stats.framed = framed;
+        return log(`${m.id} collector asks for ${framed ? "frames" : "single messages"}`);
+      }
+      void answer(ws, stats, text);
+    },
   );
   setInterval(() => {
     if (down?.readyState === WebSocket.OPEN) down.send(JSON.stringify({ relay: { ...stats, at: Date.now() } }));

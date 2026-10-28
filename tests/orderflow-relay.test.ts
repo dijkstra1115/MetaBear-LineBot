@@ -60,8 +60,10 @@ test("relayed trades and depth become Binance footprints, prints and a book; mis
   const asked: string[] = [];
   const t0 = Math.floor(Date.now() / MINUTE) * MINUTE - MINUTE;
   const agg = (a: number, t: number, p: string, q: string, m: boolean) => ({ a, T: t, p, q, m, e: "aggTrade" });
+  let hello: unknown = null;
   ws.addEventListener("message", (e) => {
     const req = JSON.parse(String(e.data));
+    if (req.hello) return void (hello = req.hello);
     asked.push(req.get);
     const reply = (body: unknown) => ws.send(JSON.stringify({ id: req.id, status: 200, body: JSON.stringify(body) }));
     if (req.get.startsWith("/fapi/v1/depth")) reply({ lastUpdateId: 100, bids: [["80000.0", "1"]], asks: [["80000.1", "2"]] });
@@ -80,6 +82,7 @@ test("relayed trades and depth become Binance footprints, prints and a book; mis
   );
 
   await until(() => asked.some((p) => p === "/fapi/v1/aggTrades?symbol=BTCUSDT&fromId=2&limit=1000"), "the gap request");
+  assert.deepEqual(hello, { frames: 1 }, "the collector asks the relay for frames");
   // No timers in the object: the book is synced by the first frame half a second after the relay connects.
   await wait(600);
   frame(msg("btcusdt@markPrice@1s", { e: "markPriceUpdate", p: "80005", r: "0.0001" }));
