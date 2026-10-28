@@ -111,3 +111,37 @@ test("relayed trades and depth become Binance footprints, prints and a book; mis
   assert.deepEqual(bybit.bars, []);
   ws.close(1000, "done");
 });
+
+test("Bybit's collector takes its streams from the relay too, OKX liquidations included", async () => {
+  const res = await mf.dispatchFetch(`${base}/relay?ex=bybit&m=btc`, { headers: { upgrade: "websocket", authorization: `Bearer ${relayToken}` } });
+  assert.equal(res.status, 101);
+  const ws = res.webSocket!;
+  ws.accept();
+  const got: any[] = [];
+  ws.addEventListener("message", (e) => got.push(JSON.parse(String(e.data))));
+  const t0 = Math.floor(Date.now() / MINUTE) * MINUTE - MINUTE;
+  ws.send(
+    JSON.stringify({
+      b: [
+        { topic: "orderbook.1000.BTCUSDT", type: "snapshot", ts: t0, data: { b: [["80000.0", "4"]], a: [["80000.1", "5"]], u: 7, seq: 1 } },
+        { topic: "publicTrade.BTCUSDT", data: [{ i: "x1", T: t0 + 1_000, p: "80000.1", v: "2", S: "Buy", seq: 10 }] },
+        { arg: { channel: "liquidation-orders", instType: "SWAP" }, data: [{ instId: "BTC-USDT-SWAP", details: [{ ts: String(t0 + 2_000), side: "sell", bkPx: "79990", sz: "30" }] }] },
+      ],
+    }),
+  );
+  // /status is not cached; /recent is (per minute-aligned URL), so it is read once the frame is in,
+  // with a different since than the Binance test above.
+  const status = await until(async () => {
+    const s = (await (await mf.dispatchFetch(`${base}/btcusdt/status`)).json()) as any;
+    return s.counts?.liqs && s.lastTrade ? s : undefined;
+  }, "Bybit's relayed trade and OKX's liquidation");
+  const body = (await (await mf.dispatchFetch(`${base}/btcusdt/recent?since=${t0 - MINUTE}`)).json()) as any;
+  assert.equal(body.source, "bybit");
+  assert.equal(body.status.bybit, "relay");
+  assert.equal(body.bars.length, 1);
+  assert.deepEqual(body.liquidations, [[t0 + 2_000, "long", 79_990, 0.3, "okx"]]);
+  assert.equal(status.bookReady, true);
+  assert.deepEqual(status.open, ["relay"]);
+  assert.deepEqual(got[0], { hello: { frames: 1 } }, "the collector asks for frames");
+  ws.close(1000, "done");
+});

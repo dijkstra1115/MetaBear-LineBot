@@ -30,9 +30,14 @@ export class BingxCollector extends DirectCollector {
     for (const dataType of this.topics2) this.send(ws, { id: dataType, reqType: "sub", dataType });
   }
 
-  protected onText(text: string, ws: WebSocket) {
-    if (text === "Ping") return this.send(ws, "Pong");
-    const m = JSON.parse(text);
+  // The relay answers BingX's keep-alive itself; on the object's own socket it is answered here.
+  protected override keepAlive(text: string) {
+    if (text !== "Ping") return false;
+    this.upstream("Pong");
+    return true;
+  }
+
+  protected onMessage(m: any) {
     if (!m.data) return;
     if (m.dataType === this.topics2[0]) for (const tr of parseBingxTrades(m.data)) this.queueTrade(tr);
     else if (m.dataType === this.topics2[1]) {

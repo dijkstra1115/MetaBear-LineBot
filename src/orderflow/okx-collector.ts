@@ -37,9 +37,11 @@ export class OkxCollector extends DirectCollector {
     this.send(ws, { op: "subscribe", args });
   }
 
-  protected onText(text: string, ws: WebSocket) {
-    if (text === "pong") return;
-    const m = JSON.parse(text);
+  protected override keepAlive(text: string) {
+    return text === "pong";
+  }
+
+  protected onMessage(m: any) {
     if (m.event === "error") return this.note("errors", `okx: ${m.code} ${m.msg}`);
     switch (m.arg?.channel) {
       case "trades":
@@ -52,8 +54,8 @@ export class OkxCollector extends DirectCollector {
           // A broken chain: subscribe again for a fresh snapshot.
           this.note("gaps", "okx book chain broken, resubscribing");
           const arg = { channel: "books", instId: this.m.okxInst };
-          this.send(ws, { op: "unsubscribe", args: [arg] });
-          this.send(ws, { op: "subscribe", args: [arg] });
+          this.upstream({ op: "unsubscribe", args: [arg] });
+          this.upstream({ op: "subscribe", args: [arg] });
         } else if (changes?.length) this.watchChanges(Number(m.data[0].ts) || Date.now(), changes);
         break;
       }

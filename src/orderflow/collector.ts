@@ -3,6 +3,12 @@
 // heatmap columns, OI and funding readings and liquidations to its SQLite storage. Binance refuses Cloudflare, see
 // docs/ORDERFLOW-CF-PROBE.md, which also explains the 10 s alarm: open outbound sockets alone
 // keep an object alive for at most 15 minutes.
+//
+// The streams come from the Tokyo relay (relay/binance-relay.mjs), which connects in over a
+// hibernatable WebSocket and sends a second of the exchange's messages per frame; with no outbound
+// socket and no timer, the object is billed only while it handles a frame or an alarm
+// (docs/ORDERFLOW-RELAY-HIBERNATION.md). If the relay stays away, the object connects to the
+// exchange itself as before.
 import { DurableObject } from "cloudflare:workers";
 import { LEVEL_LABELS, LevelBook, closedBarEvents, eventPrice, levelText, sessionOf, sessionStart } from "../../public/lab/orderflow/keylevels.js";
 import { liqFeeds } from "../../public/lab/orderflow/liquidations.js";
@@ -80,6 +86,10 @@ export const FIVE_MIN = 5 * MINUTE;
 export const DAY = 86_400_000;
 const ALARM_MS = 10_000;
 export const SILENT_MS = 30_000;
+// Once a relay has connected, an object waits this long for it to come back before connecting to
+// the exchange itself (the relay reconnects within seconds after a deploy or a restart).
+const RELAY_GRACE_MS = 120_000;
+const RESYNC_ASK_MS = 15_000; // an empty book asks the relay for a fresh snapshot at most this often
 const SEEN_TRADES = 5_000; // trade ids kept to drop duplicates between the stream and a REST backfill
 // Order flow is read over hours to days, so storage stays small: a month of footprints, prints,
 // readings and liquidations, and a week of heatmap columns (the largest rows, ~3 KB a minute).
@@ -135,6 +145,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
   protected book = new OrderBook();
   protected ticker: { oi?: number; oiValue?: number; funding?: number; ts?: number } = {};
   private sockets = new Map<string, Socket>();
+  protected relay: { ws: WebSocket; last: number; info: Record<string, unknown> } | null = null;
+  protected relayState = "idle";
+  private relayGone = Date.now(); // when the relay was last lost (or the object started)
+  private resyncAsked = 0;
   protected seen = new Set<string>();
   private heat: [number, number, number, number[]] | null = null; // latest column of the current minute
   protected lastTradeT = 0;
@@ -222,6 +236,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
     // The current minute is persisted every alarm; pick it back up so a restart only loses
     // the seconds since then, which the REST backfill on reconnect fills in.
     this.lastTradeT = Number(this.meta("lastTradeT") ?? 0);
+    // Back from eviction with the relay still connected: take its socket again; the first frame
+    // finds the book empty and asks for a fresh one (relayNeedsBook).
+    const [relayWs] = ctx.getWebSockets("relay");
+    if (relayWs) (this.relay = { ws: relayWs, last: Date.now(), info: {} }), (this.relayState = "open");
     this.loadAlertConfig();
     // The OI watcher compares a change with the last day's, so replay the stored readings.
     for (const r of this.rows("SELECT t, oi FROM oi WHERE t >= ? ORDER BY t", Date.now() - DAY)) this.oiWatch.add(Number(r.t), Number(r.oi), 0);
@@ -312,7 +330,129 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (name === "bybit") await this.backfillTrades();
   }
 
+  // ---------- relay ----------
+
+  /** The relay's socket: one per exchange and market, replacing any earlier one. */
+  protected acceptRelay(request: Request) {
+    if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return new Response("expected a websocket", { status: 426 });
+    const [client, server] = Object.values(new WebSocketPair());
+    this.dropRelay("replaced");
+    for (const old of this.ctx.getWebSockets("relay")) old.close(1000, "replaced");
+    this.ctx.acceptWebSocket(server, ["relay"]);
+    this.relay = { ws: server, last: Date.now(), info: {} };
+    this.relayState = "open";
+    this.setMeta("relayEver", 1);
+    this.closeDirect();
+    this.book.reset();
+    // The relay reopens the exchange's streams for a new connection, so the snapshot is on its way.
+    this.resyncAsked = Date.now();
+    // The relay sends frames only to a collector that asks for them: a deploy restarts running
+    // objects a few minutes late, so one still on older code keeps getting single messages.
+    server.send(JSON.stringify({ hello: { frames: 1 } }));
+    this.onRelayOpen();
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  protected dropRelay(why: string) {
+    const relay = this.relay;
+    if (!relay) return;
+    this.relay = null;
+    this.relayState = why;
+    this.relayGone = Date.now();
+    try {
+      relay.ws.close(1000, why.slice(0, 100));
+    } catch {}
+    this.onRelayDrop(why);
+  }
+
+  protected relaySend(msg: unknown) {
+    try {
+      this.relay?.ws.send(JSON.stringify(msg));
+    } catch {}
+  }
+
+  /** True while the relay feeds this object, or may be about to again. */
+  protected relayFed() {
+    if (this.relay) return true;
+    return this.meta("relayEver") != null && Date.now() - this.relayGone < RELAY_GRACE_MS;
+  }
+
+  /** The relay sends a heartbeat every 20 s besides the exchange's own messages. */
+  protected checkRelay(now: number) {
+    if (this.relay && now - this.relay.last > SILENT_MS) {
+      this.note("gaps", "relay silent, dropping");
+      this.dropRelay("silent");
+    }
+  }
+
+  // A frame is {"b":[…]}, a second of the exchange's messages in order; the relay's heartbeat and
+  // Binance's REST replies come on their own.
+  override async webSocketMessage(ws: WebSocket, data: string | ArrayBuffer) {
+    if (ws !== this.relay?.ws) return;
+    const now = Date.now();
+    this.relay.last = now;
+    this.beforeFrame(now);
+    let m: any;
+    try {
+      m = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data));
+    } catch (err) {
+      return this.note("errors", `relay message: ${err}`);
+    }
+    for (const one of Array.isArray(m.b) ? m.b : [m]) {
+      try {
+        if (one.relay) this.relay.info = one.relay;
+        else this.onRelayItem(one);
+      } catch (err) {
+        this.note("errors", `relay message: ${err}`);
+      }
+    }
+    if (!this.book.ready) this.relayNeedsBook(now);
+  }
+
+  override async webSocketClose(ws: WebSocket, code: number) {
+    if (ws === this.relay?.ws) this.dropRelay(`closed ${code}`);
+  }
+
+  override async webSocketError(ws: WebSocket) {
+    if (ws === this.relay?.ws) this.dropRelay("error");
+  }
+
+  /** One exchange message from the relay: Bybit's topics, and OKX's liquidations. */
+  protected onRelayItem(m: any) {
+    if (m.topic) this.onBybit(m);
+    else if (m.arg?.channel === "liquidation-orders") this.saveLiqs(this.liqFeed("okx").parse(m));
+  }
+
+  /** The book is empty (a restart, a broken chain): ask the relay to reopen the streams for a snapshot. */
+  protected relayNeedsBook(now: number) {
+    if (now - this.resyncAsked < RESYNC_ASK_MS) return;
+    this.resyncAsked = now;
+    this.relaySend({ resync: 1 });
+  }
+
+  protected onRelayOpen() {
+    void this.backfillTrades();
+  }
+  protected onRelayDrop(_why: string) {}
+  protected beforeFrame(_now: number) {}
+
+  /** Closes the object's own exchange sockets once the relay feeds it. */
+  protected closeDirect() {
+    for (const [name, sock] of this.sockets) {
+      if (sock.ping) clearInterval(sock.ping);
+      this.sockets.delete(name);
+      this.status[name as "bybit" | "okx"] = "relay";
+      try {
+        sock.ws.close(1000, "relay");
+      } catch {}
+    }
+  }
+
   protected async ensureStreams() {
+    if (this.relayFed()) {
+      this.closeDirect();
+      return this.checkRelay(Date.now());
+    }
     for (const name of ["bybit", "okx"] as const) {
       const sock = this.sockets.get(name);
       if (sock && Date.now() - sock.last > SILENT_MS) {
@@ -327,7 +467,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     }
   }
 
-  private onBybit(m: any) {
+  protected onBybit(m: any) {
     if (m.topic === this.topics.trade) this.addTrades(parseTrades(m));
     else if (m.topic === this.topics.book) this.onBook(m);
     else if (m.topic === this.topics.ticker) this.onTicker(m);
@@ -377,7 +517,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
 
   // Trades missed while the socket was down: Bybit serves the latest 1,000 (about one to two
   // minutes of BTC), so longer outages leave a gap, recorded in the status.
-  private async backfillTrades() {
+  protected async backfillTrades() {
     if (!this.lastTradeT) return;
     try {
       const list: Trade[] = parseRestTrades((await bybitGet(`${REST_URL}/v5/market/recent-trade?category=linear&symbol=${this.m.symbol}&limit=1000`)).list);
@@ -532,8 +672,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
   // Each feed: [name, up, last trade]. BTC trades every second, so a quiet minute or two means the stream is down.
   protected healthFeeds(now: number): [keyof typeof HEALTH_DOWN_MS, boolean, number][] {
     return [
-      ["Bybit", this.sockets.has("bybit") && now - this.lastTradeT < HEALTH_DOWN_MS.Bybit, this.lastTradeT],
-      ["OKX", this.sockets.has("okx"), 0],
+      ["Bybit", (this.relay != null || this.sockets.has("bybit")) && now - this.lastTradeT < HEALTH_DOWN_MS.Bybit, this.lastTradeT],
+      ["OKX", this.relay != null || this.sockets.has("okx"), 0],
     ];
   }
 
@@ -1005,7 +1145,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
   }
 
   protected liveStatus(): Record<string, unknown> {
-    return { bybit: this.status.bybit, lastTrade: this.lastTradeT };
+    return { bybit: this.relay ? "relay" : this.status.bybit, lastTrade: this.lastTradeT };
   }
 
   publicStatus(): Record<string, unknown> {
@@ -1014,7 +1154,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
       boot: iso(this.status.boot),
       lastTrade: this.lastTradeT ? iso(this.lastTradeT) : null,
       bookReady: this.book.ready,
-      open: [...this.sockets.keys()],
+      open: this.relay ? ["relay"] : [...this.sockets.keys()],
+      relay: this.relay?.info ?? null,
+      relayState: this.relayState,
       oi: this.ticker.oi ?? null,
       levels: this.levelsView(Date.now()),
       archive: { last: this.meta("archiveDone"), ...this.status.archive },
@@ -1027,6 +1169,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     const url = new URL(request.url);
     const now = Date.now();
     if (url.pathname === "/wake") return new Response("ok");
+    if (url.pathname === "/relay") return this.acceptRelay(request);
     if (url.pathname === "/status") return Response.json(this.publicStatus());
     if (url.pathname === "/day") {
       const from = Date.parse(`${url.searchParams.get("d")}T00:00:00Z`);

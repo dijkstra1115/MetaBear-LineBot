@@ -9,7 +9,8 @@
 //   POST /api/orderflow/btcusdt/import             archive footprint rows (Bearer ORDERFLOW_ADMIN_TOKEN)
 //   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token);
 //                                                  ?ex=all&days=all merges all 30 days of 全市場 again
-//   GET  /api/orderflow/relay?m=eth                WebSocket from the Binance relay for one market (Bearer ORDERFLOW_RELAY_TOKEN)
+//   GET  /api/orderflow/relay?ex=okx&m=eth         WebSocket from the Tokyo relay for one exchange and market
+//                                                  (Bearer ORDERFLOW_RELAY_TOKEN); Binance without ex
 //
 // ethusdt in place of btcusdt reads the ETH collectors (markets.js; docs/ORDERFLOW-ETH.md).
 // Every market path takes ?ex=binance, okx or bingx for that exchange's collector and ?ex=all for
@@ -112,11 +113,12 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
     const token = env.ORDERFLOW_RELAY_TOKEN;
     const auth = request.headers.get("authorization") ?? "";
     if (!token || !timingSafeEqual(auth, `Bearer ${token}`)) return json({ error: "未授權" }, 401);
-    // One socket per market; the relay names it (?m=eth), BTC when it does not.
-    const binance = stubFor(env, "binance", marketOf(url.searchParams.get("m") ?? "btc"));
-    if (!binance) return json({ error: "找不到這個路徑" }, 404);
+    // One socket per exchange and market; the relay names them (?ex=okx&m=eth), Binance and BTC when it does not.
+    const ex = url.searchParams.get("ex") ?? "binance";
+    const collector = (EXCHANGES as readonly string[]).includes(ex) ? stubFor(env, ex, marketOf(url.searchParams.get("m") ?? "btc")) : null;
+    if (!collector) return json({ error: "找不到這個路徑" }, 404);
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return json({ error: "需要 WebSocket" }, 426);
-    return binance.fetch("https://collector/relay", { headers: { upgrade: "websocket" } });
+    return collector.fetch("https://collector/relay", { headers: { upgrade: "websocket" } });
   }
   const [segment, ...rest] = url.pathname.startsWith(PREFIX) ? url.pathname.slice(PREFIX.length).split("/") : [];
   const m = marketByPath(segment ?? "");

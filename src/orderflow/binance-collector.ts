@@ -6,7 +6,7 @@
 // The socket is a hibernatable one and nothing here sets a timer, so the object is only billed while
 // it handles a frame or an alarm, not for the idle time in between (docs/ORDERFLOW-RELAY-HIBERNATION.md).
 import { BinanceBook, binanceArchiveUrl, parseAggTrade, parseArchiveLine, parseKlines } from "../../public/lab/orderflow/binance.js";
-import { BACKFILL_DAYS, Collector, DAY, FIVE_MIN, HEALTH_DOWN_MS, MINUTE, SILENT_MS, type OrderflowEnv, type Trade } from "./collector";
+import { BACKFILL_DAYS, Collector, DAY, FIVE_MIN, HEALTH_DOWN_MS, MINUTE, type OrderflowEnv, type Trade } from "./collector";
 
 const REST_TIMEOUT_MS = 15_000;
 // Missed aggregate trades are fetched by id, 1,000 a page (a few minutes of BTC each). Longer
@@ -32,8 +32,6 @@ export class BinanceCollector extends Collector {
   protected override archiveTrade(line: string) {
     return parseArchiveLine(line);
   }
-  private relay: { ws: WebSocket; last: number; info: Record<string, unknown> } | null = null;
-  private relayState = "idle";
   private calls = new Map<number, Pending>();
   private nextCall = 1;
   private aggId = 0; // the newest aggregate trade id taken in
@@ -49,63 +47,30 @@ export class BinanceCollector extends Collector {
   constructor(ctx: DurableObjectState, env: OrderflowEnv) {
     super(ctx, env);
     this.aggId = Number(this.meta("aggId") ?? 0);
-    // Back from eviction with the relay still connected: take its socket again and rebuild the book.
-    const [ws] = ctx.getWebSockets("relay");
-    if (ws) {
-      this.relay = { ws, last: Date.now(), info: {} };
-      this.relayState = "open";
-      this.syncAt = Date.now();
-    }
   }
 
-  // ---------- relay connection ----------
+  // ---------- relay connection (the socket itself is Collector's) ----------
 
-  private acceptRelay(request: Request) {
-    if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return new Response("expected a websocket", { status: 426 });
-    const [client, server] = Object.values(new WebSocketPair());
-    this.dropRelay("replaced");
-    for (const old of this.ctx.getWebSockets("relay")) old.close(1000, "replaced");
-    this.ctx.acceptWebSocket(server, ["relay"]);
-    this.relay = { ws: server, last: Date.now(), info: {} };
-    this.relayState = "open";
-    this.book.reset();
+  // Binance's book comes from a REST snapshot joined to the buffered diffs, not from the relay
+  // reopening the streams.
+  protected override onRelayOpen() {
     this.syncAt = Date.now() + SYNC_DELAY_MS;
     this.syncTries = 0;
-    // The relay sends frames only to a collector that asks for them: a deploy does not restart a
-    // running object, so one still on older code keeps getting single messages until it restarts.
-    server.send(JSON.stringify({ hello: { frames: 1 } }));
-    return new Response(null, { status: 101, webSocket: client });
   }
 
-  // A frame is {"b":[…]}, a second of Binance messages in order; REST replies and the relay's
-  // heartbeat come on their own.
-  override async webSocketMessage(ws: WebSocket, data: string | ArrayBuffer) {
-    if (ws !== this.relay?.ws) return;
-    const now = Date.now();
-    this.relay.last = now;
+  protected override relayNeedsBook(now: number) {
+    if (now >= this.syncAt) void this.syncBook();
+  }
+
+  protected override beforeFrame(now: number) {
     this.expireCalls(now);
-    let m: any;
-    try {
-      m = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data));
-    } catch (err) {
-      return this.note("errors", `relay message: ${err}`);
-    }
-    for (const one of Array.isArray(m.b) ? m.b : [m]) {
-      try {
-        this.onRelay(one);
-      } catch (err) {
-        this.note("errors", `relay message: ${err}`);
-      }
-    }
-    if (!this.book.ready && now >= this.syncAt) void this.syncBook();
   }
 
-  override async webSocketClose(ws: WebSocket, code: number) {
-    if (ws === this.relay?.ws) this.dropRelay(`closed ${code}`);
-  }
-
-  override async webSocketError(ws: WebSocket) {
-    if (ws === this.relay?.ws) this.dropRelay("error");
+  protected override onRelayDrop(why: string) {
+    for (const [id, call] of this.calls) {
+      call.reject(new Error(`relay ${why}`));
+      this.calls.delete(id);
+    }
   }
 
   private expireCalls(now: number) {
@@ -116,31 +81,13 @@ export class BinanceCollector extends Collector {
       }
   }
 
-  private dropRelay(why: string) {
-    const relay = this.relay;
-    if (!relay) return;
-    this.relay = null;
-    this.relayState = why;
-    try {
-      relay.ws.close(1000, why.slice(0, 100));
-    } catch {}
-    for (const [id, call] of this.calls) {
-      call.reject(new Error(`relay ${why}`));
-      this.calls.delete(id);
-    }
-  }
-
-  private onRelay(m: any) {
+  protected override onRelayItem(m: any) {
     if (typeof m.id === "number") {
       const call = this.calls.get(m.id);
       if (!call) return;
       this.calls.delete(m.id);
       if (m.status === 200) call.resolve(JSON.parse(m.body));
       else call.reject(new Error(`HTTP ${m.status} ${String(m.body ?? "").slice(0, 120)}`));
-      return;
-    }
-    if (m.relay) {
-      if (this.relay) this.relay.info = m.relay;
       return;
     }
     const stream = String(m.stream ?? "");
@@ -254,11 +201,7 @@ export class BinanceCollector extends Collector {
     this.flushRun();
     const now = Date.now();
     this.expireCalls(now);
-    // The relay sends a heartbeat every 20 s besides Binance's own messages.
-    if (this.relay && now - this.relay.last > SILENT_MS) {
-      this.note("gaps", "relay silent, dropping");
-      this.dropRelay("silent");
-    }
+    this.checkRelay(now);
     if (!this.relay) return;
     if (!this.book.ready) {
       this.syncAt = 0;
@@ -359,13 +302,5 @@ export class BinanceCollector extends Collector {
   override publicStatus() {
     const { bybit, okx, ...rest } = super.publicStatus();
     return { ...rest, binance: this.relayState, relay: this.relay?.info ?? null, aggId: this.aggId, open: this.relay ? ["relay"] : [] };
-  }
-
-  override async fetch(request: Request): Promise<Response> {
-    if (new URL(request.url).pathname === "/relay") {
-      await this.wake();
-      return this.acceptRelay(request);
-    }
-    return super.fetch(request);
   }
 }
