@@ -124,11 +124,10 @@ const INDICATORS = [
   ["vwap", "overlay", "VWAP（日內 ±1σ、±2σ）", true],
   ["levels", "overlay", "前日高低點與價值區", false],
   // Event capsules and liquidation triangles crowd the candles; a narration card lights its own
-  // events (spotlight), and the price axis shows where liquidations wait.
+  // events (spotlight), and the liquidation map shows where liquidations wait.
   ["liqmark", "overlay", "爆倉標記 ▲▼", false],
   ["events", "overlay", "事件", false],
-  ["lmap", "overlay", "爆倉地圖（估算）", false],
-  ["liqside", "overlay", "清算價位（估算，價格軸）", true],
+  ["lmap", "overlay", "爆倉地圖（估算）", true],
   ["stats", "pane", "K 棒統計列", true],
   ["volume", "pane", "成交量", true],
   ["delta", "pane", "Delta", false],
@@ -155,6 +154,8 @@ const prefs = (() => {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     hadSavedPrefs = !!saved?.show;
     if (saved?.show) for (const id of Object.keys(out.show)) if (typeof saved.show[id] === "boolean") out.show[id] = saved.show[id];
+    // 清算價位 (axis bars, 2026-10-29) gave way to the liquidation map it summarised.
+    if (saved?.show?.liqside === true) out.show.lmap = true;
     if (Number(saved?.printMin) >= BTC_PRINT_MIN) out.printMin = Number(saved.printMin);
     if (saved?.heat && saved.heat.lo > 0 && saved.heat.hi > saved.heat.lo) out.heat = { lo: Number(saved.heat.lo), hi: Number(saved.heat.hi) };
   } catch {}
@@ -221,7 +222,7 @@ let mergedRows = []; // 1-minute rows after merging archive, collector and strea
 let mergedOi = []; // [t, OI in BTC]
 let liqMap = null;
 let liqMapAt = 0;
-let liqSide = null; // the heaviest estimated liquidation cluster above and below price (drawLiqSide)
+let liqSide = null; // the heaviest estimated liquidation cluster above and below price (liqClusters)
 let spot = null; // the narration chapter lit on the chart: { t0, t1, price, label, items } (spotlight)
 let profileStats = null; // the visible volume profile's POC (drawProfile), for the legend
 let events = []; // replay: order-flow events detected here on closed 5-minute bars
@@ -580,7 +581,7 @@ function eventsIn(b) {
 }
 
 function updateLiqMap(force) {
-  if (!on("lmap") && !on("liqside")) return;
+  if (!on("lmap")) return;
   // The model replays every interval; refreshing it every 10 s is plenty.
   if (!force && Date.now() - liqMapAt < 10_000) return;
   liqMapAt = Date.now();
@@ -730,6 +731,7 @@ function draw() {
   drawLegend(L);
   drawCrosshair(L);
   renderLegend();
+  syncPrintControls();
   penBar.hidden = penHidden();
 }
 
@@ -771,7 +773,7 @@ function drawPrice(L, from, to) {
   const yOf = (p) => top + ((hi - p) / (hi - lo)) * h;
   P.yOf = yOf;
   P.pOf = (y) => hi - ((y - top) / h) * (hi - lo);
-  liqSide = on("liqside") && liqMap && !replay ? drawLiqSide(L, P, yOf) : null;
+  liqSide = on("lmap") && liqMap && !replay ? liqClusters(L, P, yOf) : null;
 
   // grid + axis
   ctx.font = `11px ${MONO}`;
@@ -1511,31 +1513,16 @@ function drawLiqProfile(L, yOf) {
   ctx.textAlign = "left";
 }
 
-// Where estimated liquidations wait, as bars along the price axis behind its labels: shorts above
-// price (teal, forced buys), longs below (orange). Returns the heaviest $100 cluster on each side
-// for the legend, or null.
-function drawLiqSide(L, P, yOf) {
+// The heaviest estimated liquidation cluster in view on each side of price, for the legend: shorts
+// above (teal, forced buys), longs below (orange), four bins ($100) summed, in USD. A short tick
+// on the price axis marks each. Returns { up, down } (either may be null) or null.
+function liqClusters(L, P, yOf) {
   const s = liqMap.steps.at(-1);
   const last = bars.at(-1);
   if (!s || !last) return null;
   const iLo = Math.max(0, Math.floor((P.pOf(P.y + P.h) - liqMap.lo) / MAP_BIN));
   const iHi = Math.min(liqMap.bins - 1, Math.ceil((P.pOf(P.y) - liqMap.lo) / MAP_BIN));
   const at = (k) => liqMap.lo + (k + 0.5) * MAP_BIN;
-  let max = 0;
-  for (let k = iLo; k <= iHi; k++) max = Math.max(max, at(k) > last.c ? s.short[k] : s.long[k]);
-  if (!max) return null;
-  const width = L.axisW - 4;
-  const right = size.w;
-  for (let k = iLo; k <= iHi; k++) {
-    const above = at(k) > last.c;
-    const v = above ? s.short[k] : s.long[k];
-    if (v / max < 0.04) continue;
-    const y1 = yOf(liqMap.lo + (k + 1) * MAP_BIN);
-    const h = Math.max(1, yOf(liqMap.lo + k * MAP_BIN) - y1 - (yOf(liqMap.lo + k * MAP_BIN) - y1 > 3 ? 1 : 0));
-    ctx.fillStyle = `rgba(${above ? BUY_RGB : SELL_RGB},${(0.12 + 0.3 * (v / max)).toFixed(3)})`;
-    ctx.fillRect(right - (v / max) * width, y1, (v / max) * width, h);
-  }
-  // The heaviest cluster per side: four bins ($100) summed, in USD.
   const side = (above) => {
     const arr = above ? s.short : s.long;
     let best = null;
@@ -1945,11 +1932,36 @@ function drawLegend(L) {
 
 const TF_NAMES = { 1: "1m", 5: "5m", 15: "15m", 60: "1h", 240: "4h" };
 
+// 大單門檻 on sliders (the 指標 menu and the legend's 大單 row), in BTC terms like prefs.printMin;
+// steps grow by about half each time so the low end stays fine-grained.
+const PRINT_STEPS = [2, 3, 4, 5, 7, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200];
+const printLabel = () => `≥ ${sized(MK, prefs.printMin).toLocaleString("en-US")} ${UNIT}`;
+const printStep = () => PRINT_STEPS.reduce((best, v, k) => (Math.abs(Math.log(v / prefs.printMin)) < Math.abs(Math.log(PRINT_STEPS[best] / prefs.printMin)) ? k : best), 0);
+let printSaveTimer = 0;
+function setPrintMin(v) {
+  if (!Number.isFinite(v) || v === prefs.printMin) return;
+  prefs.printMin = v;
+  setLayout("custom");
+  // A slider fires on every step it passes; store once it settles.
+  clearTimeout(printSaveTimer);
+  printSaveTimer = setTimeout(savePrefs, 300);
+  redraw();
+}
+// Replays and shared links change prefs.printMin directly; sliders follow unless being dragged.
+function syncPrintControls() {
+  for (const input of document.querySelectorAll("[data-print-range]")) if (document.activeElement !== input) input.value = String(printStep());
+  for (const out of document.querySelectorAll("[data-print-label]")) out.textContent = printLabel();
+}
+
 // The main chart's indicators under the OHLC line: name, value at the focused bar, and buttons to
 // hide one or open its settings. An indicator hidden here keeps its row until the page reloads.
 const legend = { root: $("legend"), rows: new Map(), key: "" };
 const legendKept = new Set();
-const OVERLAY_SHORT = { profile: "成交量分布", heat: "熱力圖", prints: "大單", vwap: "VWAP", levels: "前日關鍵位", liqmark: "爆倉標記", events: "事件", lmap: "爆倉地圖", liqside: "清算價位" };
+// A press anywhere outside the 大單 row closes its slider.
+document.addEventListener("pointerdown", (e) => {
+  for (const row of legend.root?.querySelectorAll(".is-picking") ?? []) if (!row.contains(e.target)) row.closeSlider?.();
+});
+const OVERLAY_SHORT = { profile: "成交量分布", heat: "熱力圖", prints: "大單", vwap: "VWAP", levels: "前日關鍵位", liqmark: "爆倉標記", events: "事件", lmap: "爆倉地圖" };
 const EYE = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const GEAR = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
 
@@ -1961,10 +1973,10 @@ function legendValue(id) {
     case "heat":
       return heatScale ? [[`${fmtHeat(heatScale.lo)}–${fmtHeat(heatScale.hi)} ${UNIT}`, ""]] : [];
     case "prints":
-      return [[ui.printMin.selectedOptions[0]?.textContent ?? "", ""]];
+      return [[printLabel(), ""]];
     case "vwap":
       return b?.vwap != null ? [[fmtPrice(b.vwap), "vwap"]] : [];
-    case "liqside":
+    case "lmap":
       return [
         ...(liqSide?.up ? [[`↑ ${fmtPrice(Math.round(liqSide.up.price))} ${fmtVol(liqSide.up.usd)}`, "up"]] : []),
         ...(liqSide?.down ? [[`↓ ${fmtPrice(Math.round(liqSide.down.price))} ${fmtVol(liqSide.down.usd)}`, "down"]] : []),
@@ -1993,6 +2005,36 @@ function legendRow(id) {
   name.textContent = OVERLAY_SHORT[id] ?? id;
   const value = document.createElement("span");
   value.className = "lg-value";
+  const extra = [];
+  if (id === "prints") {
+    // The threshold is a button that opens a slider right in the row.
+    const pick = document.createElement("button");
+    pick.type = "button";
+    pick.className = "lg-pick";
+    pick.dataset.printLabel = "";
+    pick.setAttribute("aria-expanded", "false");
+    pick.setAttribute("aria-label", "調整大單門檻");
+    const range = document.createElement("input");
+    range.type = "range";
+    range.className = "lg-range";
+    range.min = "0";
+    range.max = String(PRINT_STEPS.length - 1);
+    range.step = "1";
+    range.dataset.printRange = "";
+    range.setAttribute("aria-label", "大單門檻");
+    range.hidden = true;
+    range.addEventListener("input", () => setPrintMin(PRINT_STEPS[Number(range.value)]));
+    const toggle = (open) => {
+      range.hidden = !open;
+      pick.setAttribute("aria-expanded", String(open));
+      row.classList.toggle("is-picking", open);
+      if (open) range.focus();
+    };
+    pick.addEventListener("click", () => toggle(range.hidden));
+    row.closeSlider = () => toggle(false);
+    range.addEventListener("keydown", (e) => e.key === "Escape" && toggle(false));
+    extra.push(pick, range);
+  }
   const eye = document.createElement("button");
   eye.type = "button";
   eye.className = "lg-btn";
@@ -2011,7 +2053,7 @@ function legendRow(id) {
     menu.open = true;
     menu.querySelector("summary")?.focus();
   });
-  row.append(name, value, eye, gear);
+  row.append(name, ...(extra.length ? extra : [value]), eye, gear);
   return { row, value, eye, text: "" };
 }
 
@@ -3018,7 +3060,7 @@ const indicatorBoxes = new Map();
 function indicatorChanged(id) {
   if (BOOK_INDICATORS.includes(id) && on(id)) openBook();
   if (LIQ_INDICATORS.includes(id) && on(id)) startLiq();
-  if (id === "lmap" || id === "liqside") updateLiqMap(true);
+  if (id === "lmap") updateLiqMap(true);
   if (id === "events") {
     eventsKey = "";
     updateEvents();
@@ -3042,13 +3084,9 @@ function buildIndicatorPanel() {
   document.addEventListener("pointerdown", (e) => {
     if (menu.open && !menu.contains(e.target)) menu.open = false;
   });
-  ui.printMin.value = String(prefs.printMin);
-  ui.printMin.addEventListener("change", () => {
-    prefs.printMin = Number(ui.printMin.value);
-    savePrefs();
-    setLayout("custom");
-    redraw();
-  });
+  ui.printMin.max = String(PRINT_STEPS.length - 1);
+  ui.printMin.addEventListener("input", () => setPrintMin(PRINT_STEPS[Number(ui.printMin.value)]));
+  syncPrintControls();
   // Heat colour bounds on a log scale, 0.01 to 1,000 BTC per $10 (ETH's in the same terms).
   const toBtc = (x) => 0.01 * 10 ** (Number(x) / 20);
   const lo = $("heat-lo");
@@ -4107,7 +4145,6 @@ if (MK.id !== "btc" && !CASE) {
   canvas.setAttribute("aria-label", `${UNIT} 足跡圖、CVD、未平倉量與多空比`);
 }
 // Menus written in BTC terms show this market's coin and price steps.
-for (const o of ui.printMin.options) o.textContent = `≥ ${sized(MK, Number(o.value)).toLocaleString("en-US")} ${UNIT}`;
 for (const o of ui.tick.options) if (o.value !== "auto") (o.value = String((Number(o.value) * TICK) / 10)), (o.textContent = `$${o.value}`);
 $("heat-label").textContent = `熱力圖顏色（每 $${TICK} 的掛單 ${UNIT}）`;
 

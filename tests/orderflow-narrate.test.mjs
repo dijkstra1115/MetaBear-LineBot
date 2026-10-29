@@ -77,9 +77,9 @@ test("filters keep the stories of their kinds", () => {
 });
 
 test("layouts: beginners see a quiet chart, pro is the full default set", () => {
-  const indicators = [["profile", "overlay", "", true], ["heat", "overlay", "", true], ["prints", "overlay", "", true], ["vwap", "overlay", "", true], ["levels", "overlay", "", false], ["events", "overlay", "", false], ["liqside", "overlay", "", true], ["volume", "pane", "", true], ["cvd", "pane", "", true], ["oi", "pane", "", true]];
+  const indicators = [["profile", "overlay", "", true], ["heat", "overlay", "", true], ["prints", "overlay", "", true], ["vwap", "overlay", "", true], ["levels", "overlay", "", false], ["events", "overlay", "", false], ["lmap", "overlay", "", true], ["volume", "pane", "", true], ["cvd", "pane", "", true], ["oi", "pane", "", true]];
   const b = layoutPrefs("beginner", indicators);
-  assert.deepEqual(Object.keys(b.show).filter((k) => b.show[k]), ["prints", "vwap", "liqside", "volume", "cvd"]);
+  assert.deepEqual(Object.keys(b.show).filter((k) => b.show[k]), ["prints", "vwap", "lmap", "volume", "cvd"]);
   assert.equal(b.printMin, 10);
   assert.equal(layoutPrefs("beginner", indicators, { narrow: true }).printMin, 25);
   // 全市場 sums four exchanges' prints, so its thresholds sit one step higher.
@@ -88,7 +88,7 @@ test("layouts: beginners see a quiet chart, pro is the full default set", () => 
   assert.equal(layoutPrefs("advanced", indicators, { merged: true }).printMin, 10);
   assert.equal(layoutPrefs("pro", indicators, { merged: true }).printMin, null);
   const pro = layoutPrefs("pro", indicators);
-  assert.deepEqual(Object.keys(pro.show).filter((k) => pro.show[k]), ["profile", "heat", "prints", "vwap", "liqside", "volume", "cvd", "oi"]);
+  assert.deepEqual(Object.keys(pro.show).filter((k) => pro.show[k]), ["profile", "heat", "prints", "vwap", "lmap", "volume", "cvd", "oi"]);
   assert.equal(pro.printMin, null);
   assert.equal(LAYOUTS.pro.rail, false);
 

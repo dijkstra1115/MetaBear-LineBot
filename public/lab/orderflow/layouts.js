@@ -6,10 +6,10 @@
 // thresholds sit one step higher: on 2026-10-22's 1-minute chart, Bybit at 10 BTC drew about 16
 // bubbles an hour and 全市場 at 25 BTC about 18 (docs/ORDERFLOW-MULTI-EXCHANGE.md).
 export const LAYOUTS = {
-  beginner: { label: "新手", show: ["prints", "vwap", "liqside", "volume", "cvd"], printMin: 10, phonePrintMin: 25, allPrintMin: 25, allPhonePrintMin: 50, rail: true },
+  beginner: { label: "新手", show: ["prints", "vwap", "lmap", "volume", "cvd"], printMin: 10, phonePrintMin: 25, allPrintMin: 25, allPhonePrintMin: 50, rail: true },
   advanced: {
     label: "進階",
-    show: ["profile", "heat", "prints", "vwap", "levels", "liqside", "volume", "cvd", "oi"],
+    show: ["profile", "heat", "prints", "vwap", "levels", "lmap", "volume", "cvd", "oi"],
     printMin: 5,
     phonePrintMin: 10,
     allPrintMin: 10,
