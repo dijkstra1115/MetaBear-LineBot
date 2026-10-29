@@ -20,6 +20,34 @@ export function mergePrints(list, barOf) {
   return [...out.values()].map((m) => ({ ...m, price: m.notional / m.qty }));
 }
 
+/**
+ * Stacked imbalances: runs of at least `min` adjacent price levels in one bar's footprint with an
+ * imbalance on the same side (levels sorted high to low, adjacent ones `tick` apart, flagged
+ * buyImb / sellImb). → [{ side: "buy" | "sell", lo, hi, n }], lo the lowest level's price and hi
+ * the top of the highest (its price + tick).
+ */
+export function stackedImbalances(levels, tick, min = 3) {
+  const out = [];
+  const eps = tick * 1e-6;
+  for (const side of ["buy", "sell"]) {
+    const key = side === "buy" ? "buyImb" : "sellImb";
+    let run = [];
+    const flush = () => {
+      if (run.length >= min) out.push({ side, lo: run.at(-1).p, hi: run[0].p + tick, n: run.length });
+      run = [];
+    };
+    for (const lv of levels) {
+      if (!lv[key]) flush();
+      else if (run.length && Math.abs(run.at(-1).p - lv.p - tick) > eps) {
+        flush();
+        run.push(lv);
+      } else run.push(lv);
+    }
+    flush();
+  }
+  return out;
+}
+
 /** Bubble radius for a merged total: grows with the square root, capped so a bar stays visible. */
 export const bubbleRadius = (qty) => Math.min(24, 4 + 0.9 * Math.sqrt(qty));
 
