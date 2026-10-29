@@ -16,8 +16,6 @@ import { DEFAULT_MARKET, MARKETS, marketOf, sized } from "../../public/lab/order
 import { ALERT_DEFAULTS, BAR_KINDS, alertDefaults, HEALTH_KINDS, IcebergWatch, healthStep, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
 import {
   ArchiveDay,
-  BOOK_CHUNK_MS,
-  BOOK_STEP_MS,
   OrderBook,
   PING,
   PRINT_MIN,
@@ -93,7 +91,10 @@ const RESYNC_ASK_MS = 15_000; // an empty book asks the relay for a fresh snapsh
 const SEEN_TRADES = 5_000; // trade ids kept to drop duplicates between the stream and a REST backfill
 // Order flow is read over hours to days, so storage stays small: a month of footprints, prints,
 // readings and liquidations, and a week of heatmap columns (the largest rows, ~3 KB a minute).
-export const KEEP_MS = { bars: 30 * DAY, prints: 30 * DAY, heat: 30 * DAY, book: 30 * DAY, readings: 30 * DAY, liqs: 30 * DAY, alerts: 30 * DAY };
+export const KEEP_MS = { bars: 30 * DAY, prints: 30 * DAY, heat: 30 * DAY, readings: 30 * DAY, liqs: 30 * DAY, alerts: 30 * DAY };
+// The 10-second $1 book kept from 2026-10-17 to 10-29 is no longer read; each hourly prune drops
+// this many of its rows (about 40 MB) until the table is empty, then the table itself.
+const OLD_BOOK_ROWS = 20_000;
 export const BACKFILL_DAYS = 15; // OI, long/short ratio and funding history fetched from REST
 // Daily archive import. Bybit published 10/14's file at about 01:10 UTC, so a day is first tried
 // an hour after it ends and then every 15 minutes until the file is there. A busy day (1.9 M
@@ -199,7 +200,6 @@ export class Collector extends DurableObject<OrderflowEnv> {
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS bars (t INTEGER PRIMARY KEY, src TEXT NOT NULL, row TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS heat (t INTEGER PRIMARY KEY, row TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS book (t INTEGER PRIMARY KEY, row TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, t INTEGER, kind TEXT, text TEXT, state TEXT);
       CREATE TABLE IF NOT EXISTS oi (t INTEGER PRIMARY KEY, oi REAL, oi_value REAL, taker REAL);
       CREATE TABLE IF NOT EXISTS oi_rest (t INTEGER PRIMARY KEY, oi REAL);
@@ -845,13 +845,9 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (!col) return;
     const now = Date.now();
     const minute = Math.floor(now / MINUTE) * MINUTE;
-    // One coarse column per minute (the latest snapshot in it) for long views, and the whole book
-    // at $1 every 10 s for detail. A fine row is about 2 KB, about 520 MB over 30 days.
+    // One column per minute: the latest snapshot in it.
     this.heat = [minute, ...col] as [number, number, number, number[]];
     this.sql.exec("INSERT INTO heat (t, row) VALUES (?, ?) ON CONFLICT(t) DO UPDATE SET row = excluded.row", minute, JSON.stringify(this.heat));
-    const fine = this.book.span(this.m.bookTick);
-    const slot = Math.floor(now / BOOK_STEP_MS) * BOOK_STEP_MS;
-    if (fine) this.sql.exec("INSERT OR REPLACE INTO book (t, row) VALUES (?, ?)", slot, JSON.stringify([slot, ...fine]));
   }
 
   // OI and account long/short ratio history from REST, one page per alarm, then every 5 minutes
@@ -1052,7 +1048,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
     this.sql.exec("DELETE FROM bars WHERE t < ?", now - KEEP_MS.bars);
     this.sql.exec("DELETE FROM prints WHERE t < ?", now - KEEP_MS.prints);
     this.sql.exec("DELETE FROM heat WHERE t < ?", now - KEEP_MS.heat);
-    this.sql.exec("DELETE FROM book WHERE t < ?", now - KEEP_MS.book);
+    if (this.rows("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'book'").length) {
+      this.sql.exec("DELETE FROM book WHERE t IN (SELECT t FROM book ORDER BY t LIMIT ?)", OLD_BOOK_ROWS);
+      if (!this.rows("SELECT t FROM book LIMIT 1").length) this.sql.exec("DROP TABLE book");
+    }
     this.sql.exec("DELETE FROM alerts WHERE t < ?", now - KEEP_MS.alerts);
     for (const table of ["oi", "oi_rest", "ratios", "funding"]) this.sql.exec(`DELETE FROM ${table} WHERE t < ?`, now - KEEP_MS.readings);
     this.sql.exec("DELETE FROM liqs WHERE t < ?", now - KEEP_MS.liqs);
@@ -1160,7 +1159,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       oi: this.ticker.oi ?? null,
       levels: this.levelsView(Date.now()),
       archive: { last: this.meta("archiveDone"), ...this.status.archive },
-      counts: Object.fromEntries(["bars", "prints", "heat", "book", "oi", "oi_rest", "ratios", "funding", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
+      counts: Object.fromEntries(["bars", "prints", "heat", "oi", "oi_rest", "ratios", "funding", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
     };
   }
 
@@ -1202,14 +1201,6 @@ export class Collector extends DurableObject<OrderflowEnv> {
         }
       }
       return Response.json(this.alertsView());
-    }
-    if (url.pathname === "/book") {
-      // One 30-minute chunk of fine order-book columns.
-      const from = Number(url.searchParams.get("from"));
-      const rows = this.rows("SELECT row FROM book WHERE t >= ? AND t < ? ORDER BY t", from, from + BOOK_CHUNK_MS);
-      return new Response(`{"from":${from},"step":${BOOK_STEP_MS},"tick":${this.m.bookTick},"columns":[${rows.map((r) => String(r.row)).join(",")}]}`, {
-        headers: { "content-type": "application/json; charset=utf-8" },
-      });
     }
     if (url.pathname === "/import" && request.method === "POST") {
       // Footprint rows rebuilt from Bybit's daily trade archive (scripts/orderflow-bybit-archive.mjs).

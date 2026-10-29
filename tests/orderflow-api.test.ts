@@ -94,6 +94,8 @@ test("requests outside the allowed shapes are refused before reaching the collec
   for (const since of [minute + 1, minute - 3 * DAY, minute + 5 * MINUTE, "abc"])
     assert.equal((await call(`/recent?since=${since}`)).status, 400, String(since));
   assert.equal((await call("/unknown")).status, 404);
+  // The 10-second book columns were dropped on 2026-10-29; the heatmap reads per-minute columns.
+  assert.equal((await call(`/book?from=${Math.floor(now / (30 * MINUTE)) * 30 * MINUTE}`)).status, 404);
   assert.equal((await mf.dispatchFetch("https://metabear.io/api/orderflow/dogeusdt/status")).status, 404, "markets.js lists the markets");
   assert.equal((await mf.dispatchFetch("https://metabear.io/api/orderflow/btcusdt")).status, 404);
   assert.equal((await call("/status", { method: "POST" })).status, 405);

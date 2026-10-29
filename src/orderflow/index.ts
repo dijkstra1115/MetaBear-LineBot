@@ -3,7 +3,6 @@
 //
 //   GET  /api/orderflow/btcusdt/day?d=YYYY-MM-DD   one UTC day: bars, heatmap, OI, liquidations
 //   GET  /api/orderflow/btcusdt/recent?since=ms    everything since a minute in the last 2 days
-//   GET  /api/orderflow/btcusdt/book?from=ms       fine order-book columns, one 30-minute chunk
 //   GET  /api/orderflow/btcusdt/status             collector health
 //   GET  /api/orderflow/btcusdt/events?since=ms    market events at a key level since a minute in the last 30 days
 //   POST /api/orderflow/btcusdt/import             archive footprint rows (Bearer ORDERFLOW_ADMIN_TOKEN)
@@ -18,7 +17,6 @@
 // Every viewer polls the same minute-aligned URLs, so the edge cache absorbs repeat requests
 // and the single collector object only answers each URL once per few seconds.
 import { WorkerEntrypoint } from "cloudflare:workers";
-import { BOOK_CHUNK_MS } from "../../public/lab/orderflow/bybit.js";
 import { MARKETS, marketByPath, marketOf, type Market } from "../../public/lab/orderflow/markets.js";
 import { describe } from "../../public/lab/orderflow/watch.js";
 import { mergeParts, type Part } from "./aggregate";
@@ -127,12 +125,12 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   const now = Date.now();
   const ex = url.searchParams.get("ex") ?? "bybit";
   // 全市場: the market collector when bound (its own merged minutes and events); otherwise every
-  // request is merged here and the events are Binance's. Both draw Binance's fine book.
+  // request is merged here and the events are Binance's.
   const market = ex === "all" ? stubFor(env, "all", m) : null;
   const all = ex === "all" && !market;
-  const stub = route === "/book" && ex === "all" ? stubFor(env, "binance", m) : (market ?? stubFor(env, all ? "binance" : ex, m));
+  const stub = market ?? stubFor(env, all ? "binance" : ex, m);
   if (!stub) return json({ error: "沒有這個交易所" }, 404);
-  if (ex === "all" && !["/day", "/recent", "/book", "/events", "/status", "/archive"].includes(route)) return json({ error: "全市場只能讀取" }, 400);
+  if (ex === "all" && !["/day", "/recent", "/events", "/status", "/archive"].includes(route)) return json({ error: "全市場只能讀取" }, 400);
 
   if (route === "/import" || route === "/archive") {
     if (request.method !== "POST") return json({ error: "只接受 POST" }, 405);
@@ -157,14 +155,6 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
     // A finished day only changes when an archive import lands; today keeps growing.
     const done = from + DAY <= now - 10 * MINUTE;
     return cached(request, ctx, done ? 600 : 5, () => (all ? mergedAnswer(env, m, `/day?d=${d}`, from, { day: d, updated: now }) : stub.fetch(`https://collector/day?d=${d}`)));
-  }
-
-  if (route === "/book") {
-    // Fine order-book columns (10 s, $1) in 30-minute chunks, so every viewer shares cache entries.
-    const from = Number(url.searchParams.get("from"));
-    if (!Number.isInteger(from) || from % BOOK_CHUNK_MS !== 0 || from > now || from < now - HISTORY_DAYS * DAY) return json({ error: "from 需為 30 天內、對齊 30 分鐘的毫秒時間" }, 400);
-    const done = from + BOOK_CHUNK_MS <= now - MINUTE;
-    return cached(request, ctx, done ? 3600 : 10, () => stub.fetch(`https://collector/book?from=${from}`));
   }
 
   if (route === "/recent") {

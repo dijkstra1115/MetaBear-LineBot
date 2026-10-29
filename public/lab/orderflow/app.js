@@ -4,7 +4,7 @@
 // bins; the page streams the newest minutes straight from the chosen exchange, or from all four for
 // 全市場 (prices from Binance, volume summed; docs/ORDERFLOW-MULTI-EXCHANGE.md).
 
-import { BOOK_CHUNK_MS, BOOK_STEP_MS, OrderBook, PING, PRINT_MIN as BTC_PRINT_MIN, StreamGaps, WS_URL, addTrade, applyTicker, barRow, bybitTopics, groupPrints, parseTrades } from "./bybit.js";
+import { OrderBook, PING, PRINT_MIN as BTC_PRINT_MIN, StreamGaps, WS_URL, addTrade, applyTicker, barRow, bybitTopics, groupPrints, parseTrades } from "./bybit.js";
 import { BINANCE_REST, BinanceBook, binanceStreams, parseAggTrade } from "./binance.js";
 import { BINGX_WS, BingxBook, bingxTopics, gunzipText, parseBingxTrades } from "./bingx.js";
 import { OKX_WS, OkxBook, parseOkxTrades } from "./okx.js";
@@ -210,11 +210,6 @@ const store = { bars: new Map(), metrics: new Map() };
 let server = null; // { updated, status } from the latest /recent poll
 let recentSince = 0;
 let heatCols = new Map(); // minute → [t, mid, lowBin, sizes] at $10
-// Fine book columns every 10 s at $1, fetched in 30-minute chunks for short timeframes.
-const fineCols = new Map(); // t → [t, mid, lowBin, sizes]
-const fineChunks = new Map(); // chunk start → "loading" | "done"
-const FINE_MAX_TF = 5; // minutes; longer bars use the per-minute columns
-const FINE_MAX_SPAN = 6 * 3_600_000; // load fine columns only for views this short
 let liqs = [];
 const prints = new Map(); // "t|side|price|qty" → [t, side, price, BTC]
 let printList = []; // sorted by time, rebuilt when prints change
@@ -798,7 +793,7 @@ function drawPrice(L, from, to) {
   }
 
   heatScale = null;
-  if (on("heat") && !drawFineHeat(L, from, to, yOf) && heatCols.size) drawHeat(L, from, to, yOf);
+  if (on("heat") && heatCols.size) drawHeat(L, from, to, yOf);
   syncHeatControls();
   profileStats = null;
   if (on("lmap") && liqMap) drawLiqMap(L, from, to, yOf);
@@ -944,25 +939,6 @@ function drawCandle(x, w, b, yOf, up) {
   ctx.fillRect(x, y1, w, Math.max(1, y2 - y1));
 }
 
-// Fetches the 30-minute chunks of fine columns a short view needs; the page's own stream adds
-// columns after it opened.
-function loadFine(t0, t1) {
-  for (let c = Math.floor(t0 / BOOK_CHUNK_MS) * BOOK_CHUNK_MS; c < t1; c += BOOK_CHUNK_MS) {
-    if (fineChunks.has(c) || c + BOOK_CHUNK_MS <= Date.now() - 30 * DAY || c > Date.now()) continue;
-    fineChunks.set(c, "loading");
-    fetch(api("book", `from=${c}`), FRESH)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((d) => {
-        for (const col of d.columns) if (!fineCols.has(col[0])) fineCols.set(col[0], col);
-        // The current chunk is still filling; let a later view fetch it again.
-        if (c + BOOK_CHUNK_MS <= Date.now()) fineChunks.set(c, "done");
-        else setTimeout(() => fineChunks.delete(c), 60_000);
-        redraw();
-      })
-      .catch(() => setTimeout(() => fineChunks.delete(c), 30_000));
-  }
-}
-
 // Heatmap colours run from the lower bound (faint blue) to the upper (gold) in BTC resting per $10 of
 // price, so the same colour means the same size at every zoom. Automatic: up to the visible book's
 // 98.5th percentile, from 5 % of it.
@@ -999,67 +975,10 @@ function drawHeatLegend(L) {
   ctx.font = `11px ${MONO}`;
   ctx.textBaseline = "middle";
   ctx.fillStyle = C.muted;
-  const step = heatScale.step !== TICK ? ` · 每格 $${heatScale.step}` : "";
-  ctx.fillText(`${fmtHeat(heatScale.lo)}–${fmtHeat(heatScale.hi)}+ ${UNIT} / $${TICK}${heatScale.auto ? "（自動）" : ""}${step}`, x + w + 8, y + 5);
+  ctx.fillText(`${fmtHeat(heatScale.lo)}–${fmtHeat(heatScale.hi)}+ ${UNIT} / $${TICK}${heatScale.auto ? "（自動）" : ""}`, x + w + 8, y + 5);
   ctx.restore();
 }
 const fmtHeat = (q) => (q >= 100 ? Math.round(q).toString() : q >= 10 ? q.toFixed(1) : q >= 1 ? q.toFixed(2) : q.toPrecision(2));
-
-// Book detail for 1- and 5-minute bars: a slice per 10 s inside each bar and price rows of $1,
-// merged to $2, $5 or $10 when rows would be thinner than 2 px. Returns false to fall back to the
-// per-minute columns.
-function drawFineHeat(L, from, to, yOf) {
-  const tfMs = Number(ui.tf.value) * MINUTE;
-  if (tfMs > FINE_MAX_TF * MINUTE) return false;
-  const t0 = bars[from].t;
-  const t1 = bars[to].t + tfMs;
-  if (t1 - t0 > FINE_MAX_SPAN) return false;
-  loadFine(t0, t1);
-  const pxPerDollar = Math.abs(yOf(0) - yOf(1));
-  const step = [1, 2, 5, 10].map((k) => k * BOOK_TICK).find((s) => pxPerDollar * s >= 2) ?? 10 * BOOK_TICK;
-  const cells = [];
-  for (let i = from; i <= to; i++) {
-    const b = bars[i];
-    for (let t = b.t; t < b.t + tfMs; t += BOOK_STEP_MS) {
-      const col = fineCols.get(t);
-      if (!col) continue;
-      // Merging $1 rows is the costly part; columns are immutable once stored, so do it once.
-      if (col.step !== step) {
-        const rows = new Map();
-        const [, , lowBin, sizes] = col;
-        for (let k = 0; k < sizes.length; k++) {
-          if (!sizes[k]) continue;
-          const row = Math.floor(((lowBin + k) * BOOK_TICK) / step);
-          rows.set(row, (rows.get(row) ?? 0) + sizes[k]);
-        }
-        col.step = step;
-        col.rows = rows;
-      }
-      cells.push([xOf(i, L) + ((t - b.t) / tfMs) * view.barW, col.rows]);
-    }
-  }
-  if (!cells.length) return false;
-  // Rows hold $step of price; scaled to $10 so the colour range reads the same at every zoom.
-  const toTen = TICK / step; // to one footprint bin ($10 for BTC, $0.5 for ETH)
-  const range = heatRange(cells.flatMap(([, rows]) => [...rows.values()].map((q) => q * toTen)), step);
-  const w = Math.max(1, (view.barW * BOOK_STEP_MS) / tfMs + 0.5);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, L.panes.price.y, L.plotW, L.panes.price.h);
-  ctx.clip();
-  for (const [x, rows] of cells) {
-    for (const [row, q] of rows) {
-      const fill = heatFill(q * toTen, range);
-      if (!fill) continue;
-      const y1 = yOf((row + 1) * step);
-      const y2 = yOf(row * step);
-      ctx.fillStyle = fill;
-      ctx.fillRect(x, y1, w, Math.max(1, y2 - y1));
-    }
-  }
-  ctx.restore();
-  return true;
-}
 
 function drawHeat(L, from, to, yOf) {
   // Latest resting-liquidity snapshot inside each bar, at the collector's $10 bins.
@@ -2960,9 +2879,6 @@ function snapshotBook() {
   const now = Date.now();
   const minute = Math.floor(now / 60_000) * 60_000;
   heatCols.set(minute, [minute, ...col]);
-  const slot = Math.floor(now / BOOK_STEP_MS) * BOOK_STEP_MS;
-  const fine = stream.book.span(BOOK_TICK);
-  if (fine) fineCols.set(slot, [slot, ...fine]);
   redraw();
 }
 
@@ -3121,12 +3037,6 @@ function startStreams() {
     if (staleWhileHidden) (staleWhileHidden = false), refresh(true);
     pollRecent();
   });
-  // A long-open page keeps only the recent half day of fine book columns; older chunks reload on demand.
-  setInterval(() => {
-    const keep = Date.now() - 12 * 3_600_000;
-    for (const t of fineCols.keys()) if (t < keep) fineCols.delete(t);
-    for (const c of fineChunks.keys()) if (c + BOOK_CHUNK_MS < keep) fineChunks.delete(c);
-  }, 60_000);
 }
 
 // ---------- live ----------
