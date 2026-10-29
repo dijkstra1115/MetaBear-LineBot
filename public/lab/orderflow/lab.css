@@ -1015,6 +1015,9 @@ input {
 }
 .rec .narration,
 .rec .nar-open,
+.rec .legend {
+  display: none;
+}
 @media (max-width: 1100px) {
   .narration {
     width: 320px;
@@ -1527,6 +1530,87 @@ input {
 .stage:hover .chart-tools,
 .chart-tools:focus-within {
   opacity: 1;
+}
+/* The main chart's indicator legend under the canvas-drawn OHLC line; the buttons show on hover. */
+.legend {
+  position: absolute;
+  top: 28px;
+  left: 4px;
+  z-index: 3;
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  pointer-events: none;
+}
+.lg-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  padding: 0 4px 0 6px;
+  border-radius: 4px;
+  background: rgba(5, 9, 15, 0.72);
+  pointer-events: auto;
+}
+.lg-row:hover {
+  background: rgba(16, 25, 36, 0.95);
+}
+.lg-name {
+  color: var(--muted);
+  font-family: var(--f-tc);
+}
+.lg-value {
+  display: flex;
+  gap: 8px;
+  color: var(--text);
+}
+.lg-vwap {
+  color: #c4a0ff;
+}
+.lg-up {
+  color: var(--teal);
+}
+.lg-down {
+  color: var(--sell);
+}
+.lg-row.is-off .lg-name {
+  color: var(--dim);
+  text-decoration: line-through;
+}
+.lg-btn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+}
+.lg-row:hover .lg-btn,
+.lg-row:focus-within .lg-btn,
+.lg-row.is-off .lg-btn {
+  opacity: 1;
+}
+.lg-btn:hover,
+.lg-btn:focus-visible {
+  background: var(--hover);
+  color: var(--text);
+}
+@media (hover: none) {
+  .lg-btn {
+    opacity: 1;
+  }
+}
+@media (max-width: 720px) {
+  .legend {
+    display: none;
+  }
 }
 .chart-tools button {
   min-width: 30px;

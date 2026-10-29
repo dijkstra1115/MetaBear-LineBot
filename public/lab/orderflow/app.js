@@ -122,9 +122,12 @@ const INDICATORS = [
   ["prints", "overlay", "大單泡泡", true],
   ["vwap", "overlay", "VWAP（日內 ±1σ、±2σ）", true],
   ["levels", "overlay", "前日高低點與價值區", false],
-  ["liqmark", "overlay", "爆倉標記 ▲▼", true],
-  ["events", "overlay", "事件", true],
+  // Event capsules and liquidation triangles crowd the candles; a narration card lights its own
+  // events (spotlight), and the price axis shows where liquidations wait.
+  ["liqmark", "overlay", "爆倉標記 ▲▼", false],
+  ["events", "overlay", "事件", false],
   ["lmap", "overlay", "爆倉地圖（估算）", false],
+  ["liqside", "overlay", "清算價位（估算，價格軸）", true],
   ["stats", "pane", "K 棒統計列", true],
   ["volume", "pane", "成交量", true],
   ["delta", "pane", "Delta", false],
@@ -217,6 +220,9 @@ let mergedRows = []; // 1-minute rows after merging archive, collector and strea
 let mergedOi = []; // [t, OI in BTC]
 let liqMap = null;
 let liqMapAt = 0;
+let liqSide = null; // the heaviest estimated liquidation cluster above and below price (drawLiqSide)
+let spot = null; // the narration chapter lit on the chart: { t0, t1, price, label, items } (spotlight)
+let profileStats = null; // the visible volume profile's POC (drawProfile), for the legend
 let events = []; // replay: order-flow events detected here on closed 5-minute bars
 let eventsKey = "";
 let liveEvents = []; // live: the collector's events at a key level, sorted by time (loadEvents)
@@ -573,7 +579,7 @@ function eventsIn(b) {
 }
 
 function updateLiqMap(force) {
-  if (!on("lmap")) return;
+  if (!on("lmap") && !on("liqside")) return;
   // The model replays every interval; refreshing it every 10 s is plenty.
   if (!force && Date.now() - liqMapAt < 10_000) return;
   liqMapAt = Date.now();
@@ -719,8 +725,10 @@ function draw() {
     else drawHist(L, L.panes[id], from, to);
   }
   drawTimeAxis(L, from, to);
+  drawSpot(L, from, to);
   drawLegend(L);
   drawCrosshair(L);
+  renderLegend();
 }
 
 function drawPrice(L, from, to) {
@@ -742,6 +750,11 @@ function drawPrice(L, from, to) {
       hi = Math.max(hi, p + tick);
     }
   }
+  // A spotlighted narration chapter keeps its level on screen.
+  if (spot && !replay && Math.abs(spot.price / bars[to].c - 1) < 0.02) {
+    lo = Math.min(lo, spot.price - tick);
+    hi = Math.max(hi, spot.price + tick);
+  }
   const pad = (hi - lo) * 0.06 || tick;
   lo -= pad;
   hi += pad;
@@ -756,6 +769,7 @@ function drawPrice(L, from, to) {
   const yOf = (p) => top + ((hi - p) / (hi - lo)) * h;
   P.yOf = yOf;
   P.pOf = (y) => hi - ((y - top) / h) * (hi - lo);
+  liqSide = on("liqside") && liqMap && !replay ? drawLiqSide(L, P, yOf) : null;
 
   // grid + axis
   ctx.font = `11px ${MONO}`;
@@ -775,6 +789,7 @@ function drawPrice(L, from, to) {
   heatScale = null;
   if (on("heat") && !drawFineHeat(L, from, to, yOf) && heatCols.size) drawHeat(L, from, to, yOf);
   syncHeatControls();
+  profileStats = null;
   if (on("lmap") && liqMap) drawLiqMap(L, from, to, yOf);
   if (on("lmap") && liqMap) {
     ctx.save();
@@ -1300,13 +1315,13 @@ function rampColor(v) {
 }
 
 // One capsule per bar: its event's short name, or how many; bullish below the bar, the rest above.
-function drawEvents(L, from, to, yOf) {
+function drawEvents(L, from, to, yOf, of = eventsIn) {
   ctx.font = `600 10px ${MONO}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (let i = from; i <= to; i++) {
     const b = bars[i];
-    const mark = eventMark(eventsIn(b));
+    const mark = eventMark(of(b));
     if (!mark) continue;
     const cx = xOf(i, L) + view.barW / 2;
     const color = mark.dir === "up" ? C.buy : mark.dir === "down" ? C.sell : C.gold;
@@ -1322,6 +1337,104 @@ function drawEvents(L, from, to, yOf) {
     ctx.fillText(mark.label, cx, y + 0.5);
   }
   ctx.textAlign = "left";
+}
+
+// The spotlighted chapter: everything outside its bars dims, its level gets a gold line and axis
+// tag, and its own events show as capsules even with 事件 off.
+function drawSpot(L, from, to) {
+  if (!spot || replay || evReplay) return;
+  const i0 = bars.findIndex((b) => b.end > spot.t0);
+  const i1 = bars.findLastIndex((b) => b.t <= spot.t1);
+  if (i0 < 0 || i1 < i0) return;
+  const P = L.panes.price;
+  const x0 = Math.max(0, xOf(i0, L));
+  const x1 = Math.min(L.plotW, xOf(i1, L) + view.barW);
+  // Panned away from it: no dimming of a chart that has nothing lit.
+  if (x1 <= 0 || x0 >= L.plotW) return;
+  ctx.fillStyle = "rgba(5,9,15,0.6)";
+  if (x0 > 0) ctx.fillRect(0, 0, x0, L.timeY);
+  if (x1 < L.plotW) ctx.fillRect(x1, 0, L.plotW - x1, L.timeY);
+  ctx.strokeStyle = "rgba(232,189,125,0.35)";
+  ctx.beginPath();
+  for (const x of [x0, x1]) {
+    if (x <= 0 || x >= L.plotW) continue;
+    ctx.moveTo(Math.round(x) + 0.5, 0);
+    ctx.lineTo(Math.round(x) + 0.5, L.timeY);
+  }
+  ctx.stroke();
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, P.y, L.plotW, P.h);
+  ctx.clip();
+  const y = Math.round(P.yOf(spot.price)) + 0.5;
+  ctx.strokeStyle = C.gold;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(L.plotW, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = `600 11px ${MONO}`;
+  ctx.textBaseline = "bottom";
+  // The label sits at the left edge, clear of the lit bars' capsules (unless they are there too).
+  const tw = ctx.measureText(spot.label).width;
+  const lx = x0 > tw + 30 ? 8 : Math.min(x1 + 8, L.plotW - tw - 14);
+  ctx.fillStyle = "rgba(5,9,15,0.82)";
+  ctx.fillRect(lx - 4, y - 18, tw + 8, 16);
+  ctx.fillStyle = C.gold;
+  ctx.fillText(spot.label, lx, y - 3);
+  drawEvents(L, Math.max(from, i0), Math.min(to, i1), P.yOf, (b) => spot.items.filter((e) => e.t >= b.t && e.t < b.end));
+  ctx.restore();
+  if (y > P.y && y < P.y + P.h) {
+    ctx.fillStyle = C.gold;
+    ctx.fillRect(L.plotW, y - 9, L.axisW, 18);
+    ctx.fillStyle = C.bg;
+    ctx.font = `600 11px ${MONO}`;
+    ctx.textBaseline = "middle";
+    ctx.fillText(fmtPrice(spot.price), L.plotW + 8, y);
+  }
+}
+
+// Lights a narration chapter and glides the chart to it, the stretch about centred.
+function spotlight(ch) {
+  if (!ch) {
+    spot = null;
+    redraw();
+    return;
+  }
+  const items = ch.items.map(liveEvent);
+  const t0 = Math.min(...items.map((e) => e.t));
+  const t1 = Math.max(...items.map((e) => e.t));
+  spot = { t0, t1, price: ch.anchor, label: chapterCard(ch).title, items };
+  const i0 = bars.findIndex((b) => b.end > t0);
+  const i1 = bars.findLastIndex((b) => b.t <= t1);
+  if (i0 < 0 || i1 < i0) return redraw();
+  const L = layout();
+  const span = i1 - i0 + 1;
+  // At least a few bars either side for context; never wider than half the chart.
+  const barW = Math.min(view.barW, (L.plotW * 0.5) / (span + 6));
+  view.follow = false;
+  view.yRange = null;
+  glide(i1 + 1 + (L.plotW / barW - span) / 2, barW);
+}
+
+let glideFrame = 0;
+function glide(end, barW) {
+  cancelAnimationFrame(glideFrame);
+  const from = { end: view.end, barW: view.barW };
+  const t0 = performance.now();
+  const ms = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
+  const step = (now) => {
+    const k = ms ? Math.min(1, (now - t0) / ms) : 1;
+    const e = 1 - (1 - k) ** 3;
+    view.barW = from.barW + (barW - from.barW) * e;
+    view.end = from.end + (end - from.end) * e;
+    clampView();
+    draw();
+    if (k < 1) glideFrame = requestAnimationFrame(step);
+    else redraw();
+  };
+  glideFrame = requestAnimationFrame(step);
 }
 
 function drawLiqMap(L, from, to, yOf) {
@@ -1392,6 +1505,57 @@ function drawLiqProfile(L, yOf) {
   ctx.textAlign = "right";
   ctx.fillText("預估強平分布", right, P.y + 14);
   ctx.textAlign = "left";
+}
+
+// Where estimated liquidations wait, as bars along the price axis behind its labels: shorts above
+// price (teal, forced buys), longs below (orange). Returns the heaviest $100 cluster on each side
+// for the legend, or null.
+function drawLiqSide(L, P, yOf) {
+  const s = liqMap.steps.at(-1);
+  const last = bars.at(-1);
+  if (!s || !last) return null;
+  const iLo = Math.max(0, Math.floor((P.pOf(P.y + P.h) - liqMap.lo) / MAP_BIN));
+  const iHi = Math.min(liqMap.bins - 1, Math.ceil((P.pOf(P.y) - liqMap.lo) / MAP_BIN));
+  const at = (k) => liqMap.lo + (k + 0.5) * MAP_BIN;
+  let max = 0;
+  for (let k = iLo; k <= iHi; k++) max = Math.max(max, at(k) > last.c ? s.short[k] : s.long[k]);
+  if (!max) return null;
+  const width = L.axisW - 4;
+  const right = size.w;
+  for (let k = iLo; k <= iHi; k++) {
+    const above = at(k) > last.c;
+    const v = above ? s.short[k] : s.long[k];
+    if (v / max < 0.04) continue;
+    const y1 = yOf(liqMap.lo + (k + 1) * MAP_BIN);
+    const h = Math.max(1, yOf(liqMap.lo + k * MAP_BIN) - y1 - (yOf(liqMap.lo + k * MAP_BIN) - y1 > 3 ? 1 : 0));
+    ctx.fillStyle = `rgba(${above ? BUY_RGB : SELL_RGB},${(0.12 + 0.3 * (v / max)).toFixed(3)})`;
+    ctx.fillRect(right - (v / max) * width, y1, (v / max) * width, h);
+  }
+  // The heaviest cluster per side: four bins ($100) summed, in USD.
+  const side = (above) => {
+    const arr = above ? s.short : s.long;
+    let best = null;
+    for (let k = iLo; k <= iHi - 3; k++) {
+      if (at(k) > last.c !== above || at(k + 3) > last.c !== above) continue;
+      let usd = 0;
+      for (let j = k; j < k + 4; j++) usd += arr[j] * at(j);
+      if (!best || usd > best.usd) best = { price: at(k + 1.5), usd };
+    }
+    return best && best.usd > 0 ? best : null;
+  };
+  const out = { up: side(true), down: side(false) };
+  for (const [c, rgb] of [[out.up, BUY_RGB], [out.down, SELL_RGB]]) {
+    if (!c) continue;
+    const y = Math.round(yOf(c.price)) + 0.5;
+    ctx.strokeStyle = `rgba(${rgb},0.9)`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(L.plotW + 1, y);
+    ctx.lineTo(L.plotW + 7, y);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  }
+  return out;
 }
 
 // Cumulative estimated liquidations between the last price and price p.
@@ -1469,6 +1633,7 @@ function drawProfile(L, from, to, yOf) {
     ctx.fillText(label, right - width - 6, y - 7);
     ctx.textAlign = "left";
   };
+  profileStats = { poc: rows[pocIdx][0] + tick / 2 };
   mark(rows[pocIdx][0], "rgba(232,189,125,0.75)", "POC", []);
   mark(rows[lo][0], "rgba(148,168,185,0.5)", "VAH", [4, 4]);
   mark(rows[hi][0], "rgba(148,168,185,0.5)", "VAL", [4, 4]);
@@ -1776,6 +1941,108 @@ function drawLegend(L) {
 
 const TF_NAMES = { 1: "1m", 5: "5m", 15: "15m", 60: "1h", 240: "4h" };
 
+// The main chart's indicators under the OHLC line: name, value at the focused bar, and buttons to
+// hide one or open its settings. An indicator hidden here keeps its row until the page reloads.
+const legend = { root: $("legend"), rows: new Map(), key: "" };
+const legendKept = new Set();
+const OVERLAY_SHORT = { profile: "成交量分布", heat: "熱力圖", prints: "大單", vwap: "VWAP", levels: "前日關鍵位", liqmark: "爆倉標記", events: "事件", lmap: "爆倉地圖", liqside: "清算價位" };
+const EYE = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const GEAR = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+
+function legendValue(id) {
+  const b = focusBar();
+  switch (id) {
+    case "profile":
+      return profileStats ? [[`POC ${fmtPrice(profileStats.poc)}`, ""]] : [];
+    case "heat":
+      return heatScale ? [[`${fmtHeat(heatScale.lo)}–${fmtHeat(heatScale.hi)} ${UNIT}`, ""]] : [];
+    case "prints":
+      return [[ui.printMin.selectedOptions[0]?.textContent ?? "", ""]];
+    case "vwap":
+      return b?.vwap != null ? [[fmtPrice(b.vwap), "vwap"]] : [];
+    case "liqside":
+      return [
+        ...(liqSide?.up ? [[`↑ ${fmtPrice(Math.round(liqSide.up.price))} ${fmtVol(liqSide.up.usd)}`, "up"]] : []),
+        ...(liqSide?.down ? [[`↓ ${fmtPrice(Math.round(liqSide.down.price))} ${fmtVol(liqSide.down.usd)}`, "down"]] : []),
+      ];
+    default:
+      return [];
+  }
+}
+
+function setIndicator(id, shown) {
+  prefs.show[id] = shown;
+  const box = indicatorBoxes.get(id);
+  if (box) box.checked = shown;
+  savePrefs();
+  setLayout("custom");
+  indicatorChanged(id);
+  redraw();
+}
+
+function legendRow(id) {
+  const row = document.createElement("div");
+  row.className = "lg-row";
+  row.dataset.id = id;
+  const name = document.createElement("span");
+  name.className = "lg-name";
+  name.textContent = OVERLAY_SHORT[id] ?? id;
+  const value = document.createElement("span");
+  value.className = "lg-value";
+  const eye = document.createElement("button");
+  eye.type = "button";
+  eye.className = "lg-btn";
+  eye.innerHTML = EYE;
+  eye.addEventListener("click", () => {
+    legendKept.add(id);
+    setIndicator(id, !on(id));
+  });
+  const gear = document.createElement("button");
+  gear.type = "button";
+  gear.className = "lg-btn";
+  gear.innerHTML = GEAR;
+  gear.setAttribute("aria-label", `${OVERLAY_SHORT[id] ?? id} 設定`);
+  gear.addEventListener("click", () => {
+    const menu = document.querySelector(".ind");
+    menu.open = true;
+    menu.querySelector("summary")?.focus();
+  });
+  row.append(name, value, eye, gear);
+  return { row, value, eye, text: "" };
+}
+
+function renderLegend() {
+  if (!legend.root) return;
+  const hide = !!(replay || evReplay || CASE);
+  legend.root.hidden = hide;
+  if (hide) return;
+  const ids = INDICATORS.filter(([id, where]) => where === "overlay" && (on(id) || legendKept.has(id))).map(([id]) => id);
+  const key = ids.join(",");
+  if (key !== legend.key) {
+    legend.key = key;
+    legend.rows.clear();
+    for (const id of ids) legend.rows.set(id, legendRow(id));
+    legend.root.replaceChildren(...[...legend.rows.values()].map((r) => r.row));
+  }
+  for (const [id, r] of legend.rows) {
+    const shown = on(id);
+    r.row.classList.toggle("is-off", !shown);
+    r.eye.setAttribute("aria-label", `${shown ? "隱藏" : "顯示"}${OVERLAY_SHORT[id] ?? id}`);
+    const parts = shown ? legendValue(id) : [];
+    const text = parts.map(([t, c]) => `${c}:${t}`).join("|");
+    if (text === r.text) continue;
+    r.text = text;
+    r.value.replaceChildren(
+      ...parts.map(([t, c]) => {
+        const span = document.createElement("span");
+        if (c) span.className = `lg-${c}`;
+        span.textContent = t;
+        return span;
+      }),
+    );
+  }
+}
+
 function drawCrosshair(L) {
   if (!hover || hover.i < 0 || hover.i >= bars.length) return;
   const x = Math.round(xOf(hover.i, L) + view.barW / 2) + 0.5;
@@ -2026,6 +2293,7 @@ canvas.addEventListener("pointerleave", (e) => {
 $("zoom-in").addEventListener("click", () => zoomAt(1.4, layout().plotW));
 $("zoom-out").addEventListener("click", () => zoomAt(1 / 1.4, layout().plotW));
 $("latest").addEventListener("click", () => {
+  spot = null;
   pinnedT = null;
   hover = null;
   view.follow = true;
@@ -2516,7 +2784,7 @@ const indicatorBoxes = new Map();
 function indicatorChanged(id) {
   if (BOOK_INDICATORS.includes(id) && on(id)) openBook();
   if (LIQ_INDICATORS.includes(id) && on(id)) startLiq();
-  if (id === "lmap") updateLiqMap(true);
+  if (id === "lmap" || id === "liqside") updateLiqMap(true);
   if (id === "events") {
     eventsKey = "";
     updateEvents();
@@ -2529,13 +2797,7 @@ function buildIndicatorPanel() {
     box.type = "checkbox";
     box.checked = on(id);
     indicatorBoxes.set(id, box);
-    box.addEventListener("change", () => {
-      prefs.show[id] = box.checked;
-      savePrefs();
-      setLayout("custom");
-      indicatorChanged(id);
-      redraw();
-    });
+    box.addEventListener("change", () => setIndicator(id, box.checked));
     const row = document.createElement("label");
     row.className = "check";
     row.append(box, label);
@@ -2681,7 +2943,11 @@ function setRail(open, { remember = true } = {}) {
   nar.root.hidden = !open || !!CASE;
   nar.open.hidden = open || !!CASE;
   document.body.classList.toggle("has-rail", open && !CASE);
-  if (!open) stopPreview();
+  if (!open) {
+    stopPreview();
+    narExpanded = "";
+    spot = null;
+  }
   if (open) {
     narKey = "";
     renderNarration();
@@ -2808,6 +3074,7 @@ function narCard(ch, openKey, latest) {
   if (c.kinds.length > 1 || c.count > 1) toggle.append(kinds);
   toggle.addEventListener("click", () => {
     narExpanded = expanded ? "" : c.key;
+    spotlight(expanded ? null : ch);
     renderNarration(true);
   });
   card.append(toggle);
@@ -2854,15 +3121,6 @@ function narCard(ch, openKey, latest) {
   replayBtn.type = "button";
   replayBtn.addEventListener("click", () => startEventReplay(chapterStory(ch)));
   actions.append(replayBtn);
-  const look = node("button", "", "在圖上看");
-  look.type = "button";
-  look.addEventListener("click", () => {
-    const last = ch.items.at(-1);
-    // Bar detectors stamp their bar's close; look inside the bar.
-    openBarAt(BAR_KINDS.includes(last.kind) ? last.t - 1 : last.t);
-    if (NARROW) setSheet(false);
-  });
-  actions.append(look);
   if (c.lesson) {
     const play = node("button", "", `▶ 動畫解說 ${mmss(c.lesson.duration)}`);
     play.type = "button";
@@ -3121,6 +3379,7 @@ function syncSegments() {
 }
 
 function startEventReplay(story, { autoplay = true } = {}) {
+  spot = null;
   if (CASE || !story) return;
   if (evReplay) stopEventReplay({ rebuild: false });
   const group = focusOf(story);
