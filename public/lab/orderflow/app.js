@@ -120,6 +120,7 @@ const ui = { tf: $("tf"), tick: $("tick"), mode: $("mode"), unit: $("unit"), pri
 const INDICATORS = [
   ["profile", "overlay", "成交量分布", true],
   ["heat", "overlay", "掛單熱力圖", true],
+  ["dom", "overlay", "即時掛單（價格軸）", true],
   ["prints", "overlay", "大單泡泡", true],
   ["vwap", "overlay", "VWAP（日內 ±1σ、±2σ）", true],
   ["levels", "overlay", "前日高低點與價值區", false],
@@ -144,7 +145,7 @@ const INDICATORS = [
 const PREFS_KEY = "metabear-orderflow-indicators";
 // Phones (most visitors arrive from LINE) start with fewer panes so the price chart keeps room.
 const NARROW = matchMedia("(max-width: 720px)").matches;
-const NARROW_OFF = new Set(["stats", "ratio", "levels"]);
+const NARROW_OFF = new Set(["stats", "ratio", "levels", "dom"]);
 let hadSavedPrefs = false;
 const prefs = (() => {
   // Phones show fewer, larger prints by default so 15-minute bars do not drown in bubbles.
@@ -225,6 +226,7 @@ let liqMapAt = 0;
 let liqSide = null; // the heaviest estimated liquidation cluster above and below price (liqClusters)
 let spot = null; // the narration chapter lit on the chart: { t0, t1, price, label, items } (spotlight)
 let profileStats = null; // the visible volume profile's POC (drawProfile), for the legend
+let domRows = null; // the live book as drawn on the price axis: { step, rows: Map(bin → { bid, ask }), walls } (drawDom)
 let events = []; // replay: order-flow events detected here on closed 5-minute bars
 let eventsKey = "";
 let liveEvents = []; // live: the collector's events at a key level, sorted by time (loadEvents)
@@ -774,6 +776,7 @@ function drawPrice(L, from, to) {
   P.yOf = yOf;
   P.pOf = (y) => hi - ((y - top) / h) * (hi - lo);
   liqSide = on("lmap") && liqMap && !replay ? liqClusters(L, P, yOf) : null;
+  domRows = on("dom") ? drawDom(L, P, yOf) : null;
 
   // grid + axis
   ctx.font = `11px ${MONO}`;
@@ -1513,6 +1516,71 @@ function drawLiqProfile(L, yOf) {
   ctx.textAlign = "left";
 }
 
+// 即時掛單: the live order book now, as a depth ladder on the price axis behind its labels, bids
+// (teal) below the mid and asks (orange) above, binned so each row is at least 3 px tall. It is the
+// heatmap's newest column with numbers, so it shows only while the newest bar is in view. Returns
+// the rows for the crosshair readout and the biggest wall on each side for the legend, or null.
+function drawDom(L, P, yOf) {
+  if (replay || evReplay || CASE || !stream.book?.ready || !bars.length) return null;
+  if (xOf(bars.length - 1, L) > L.plotW) return null;
+  const top = stream.book.best();
+  if (!top) return null;
+  const pLo = P.pOf(P.y + P.h);
+  const pHi = P.pOf(P.y);
+  const pxPer = P.h / (pHi - pLo);
+  const step = [1, 2, 5, 10, 25, 50, 100, 250, 500].map((k) => k * BOOK_TICK).find((s) => s * pxPer >= 3) ?? 1000 * BOOK_TICK;
+  const rows = new Map();
+  for (const [side, book] of [["bid", stream.book.bids], ["ask", stream.book.asks]])
+    for (const [p, q] of book) {
+      if (p < pLo || p > pHi) continue;
+      const bin = Math.floor(p / step);
+      const r = rows.get(bin) ?? { bid: 0, ask: 0 };
+      r[side] += q;
+      rows.set(bin, r);
+    }
+  if (!rows.size) return null;
+  let max = 0;
+  const walls = { bid: null, ask: null };
+  for (const [bin, r] of rows)
+    for (const side of ["bid", "ask"]) {
+      if (!r[side]) continue;
+      max = Math.max(max, r[side]);
+      if (!walls[side] || r[side] > walls[side].q) walls[side] = { price: (bin + 0.5) * step, q: r[side] };
+    }
+  const width = L.axisW - 4;
+  for (const [bin, r] of rows) {
+    const y1 = yOf((bin + 1) * step);
+    const h = Math.max(1, yOf(bin * step) - y1 - 1);
+    for (const side of ["bid", "ask"]) {
+      const q = r[side];
+      if (!q) continue;
+      const k = q / max;
+      const wall = walls[side] && q === walls[side].q;
+      ctx.fillStyle = `rgba(${side === "bid" ? BUY_RGB : SELL_RGB},${(wall ? 0.75 : 0.18 + 0.4 * k).toFixed(3)})`;
+      ctx.fillRect(size.w - k * width, y1, k * width, h);
+    }
+  }
+  return { step, rows, walls };
+}
+
+// The resting size at the crosshair's price, in a tag just left of the axis.
+function drawDomReadout(L, P) {
+  if (!domRows) return;
+  const p = P.pOf(hover.y);
+  const r = domRows.rows.get(Math.floor(p / domRows.step));
+  const q = r ? r.bid + r.ask : 0;
+  if (!q) return;
+  const lo = Math.floor(p / domRows.step) * domRows.step;
+  const text = `掛${r.bid >= r.ask ? "買" : "賣"} ${fmtVol(q)} ${UNIT}${domRows.step > BOOK_TICK ? `（${fmtPrice(lo)}–${fmtPrice(lo + domRows.step)}）` : ""}`;
+  ctx.font = `11px ${MONO}`;
+  const w = ctx.measureText(text).width + 12;
+  ctx.fillStyle = r.bid >= r.ask ? "rgba(18,52,50,0.95)" : "rgba(60,36,20,0.95)";
+  ctx.fillRect(L.plotW - w - 2, hover.y - 9, w, 18);
+  ctx.fillStyle = r.bid >= r.ask ? C.buy : C.sell;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, L.plotW - w + 4, hover.y);
+}
+
 // The heaviest estimated liquidation cluster in view on each side of price, for the legend: shorts
 // above (teal, forced buys), longs below (orange), four bins ($100) summed, in USD. A short tick
 // on the price axis marks each. Returns { up, down } (either may be null) or null.
@@ -1961,7 +2029,7 @@ const legendKept = new Set();
 document.addEventListener("pointerdown", (e) => {
   for (const row of legend.root?.querySelectorAll(".is-picking") ?? []) if (!row.contains(e.target)) row.closeSlider?.();
 });
-const OVERLAY_SHORT = { profile: "成交量分布", heat: "熱力圖", prints: "大單", vwap: "VWAP", levels: "前日關鍵位", liqmark: "爆倉標記", events: "事件", lmap: "爆倉地圖" };
+const OVERLAY_SHORT = { profile: "成交量分布", heat: "熱力圖", prints: "大單", vwap: "VWAP", levels: "前日關鍵位", liqmark: "爆倉標記", events: "事件", lmap: "爆倉地圖", dom: "即時掛單" };
 const EYE = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const GEAR = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
 
@@ -1976,6 +2044,11 @@ function legendValue(id) {
       return [[printLabel(), ""]];
     case "vwap":
       return b?.vwap != null ? [[fmtPrice(b.vwap), "vwap"]] : [];
+    case "dom":
+      return [
+        ...(domRows?.walls.ask ? [[`賣 ${fmtPrice(domRows.walls.ask.price)} · ${fmtVol(domRows.walls.ask.q)} ${UNIT}`, "down"]] : []),
+        ...(domRows?.walls.bid ? [[`買 ${fmtPrice(domRows.walls.bid.price)} · ${fmtVol(domRows.walls.bid.q)} ${UNIT}`, "up"]] : []),
+      ];
     case "lmap":
       return [
         ...(liqSide?.up ? [[`↑ ${fmtPrice(Math.round(liqSide.up.price))} ${fmtVol(liqSide.up.usd)}`, "up"]] : []),
@@ -2112,6 +2185,7 @@ function drawCrosshair(L) {
     ctx.font = `11px ${MONO}`;
     ctx.textBaseline = "middle";
     ctx.fillText(fmtPrice(P.pOf(hover.y)), L.plotW + 8, hover.y);
+    drawDomReadout(L, P);
   }
   // The bar's time on the time axis.
   const label = fmtTime(bars[hover.i].t);
@@ -2752,7 +2826,7 @@ function printer(ex) {
 // that draws them is on: Binance alone pushes about ten depth updates a second, and the beginner
 // layout, where most visitors from LINE land on their phones, shows neither. Turning one on opens
 // its stream (indicatorChanged); the collector's history fills the chart meanwhile.
-const BOOK_INDICATORS = ["heat", "imb"];
+const BOOK_INDICATORS = ["heat", "dom", "imb"];
 const LIQ_INDICATORS = ["liq", "liqmark"];
 const needsBook = () => BOOK_INDICATORS.some(on);
 const needsLiq = () => LIQ_INDICATORS.some(on);
