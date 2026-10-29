@@ -1,15 +1,15 @@
 // 新手／進階／專業: each layout is a set of indicators, a large-print threshold and whether the
-// narration rail starts open. Visitors can still switch any indicator in 指標; doing so makes the
-// layout "custom" (no button pressed).
+// narration rail starts open. The tool bar no longer offers them: first visits start as beginner,
+// visitors who picked one before keep it, and switching any indicator in 指標 makes it "custom".
 
 // 全市場 sums four exchanges' prints, about six times one exchange's at the same size, so its
 // thresholds sit one step higher: on 2026-10-22's 1-minute chart, Bybit at 10 BTC drew about 16
 // bubbles an hour and 全市場 at 25 BTC about 18 (docs/ORDERFLOW-MULTI-EXCHANGE.md).
 export const LAYOUTS = {
-  beginner: { label: "新手", show: ["prints", "vwap", "levels", "events", "cvd"], printMin: 10, phonePrintMin: 25, allPrintMin: 25, allPhonePrintMin: 50, rail: true },
+  beginner: { label: "新手", show: ["prints", "vwap", "liqside", "volume", "cvd"], printMin: 10, phonePrintMin: 25, allPrintMin: 25, allPhonePrintMin: 50, rail: true },
   advanced: {
     label: "進階",
-    show: ["profile", "heat", "prints", "vwap", "levels", "liqmark", "events", "volume", "cvd", "oi"],
+    show: ["profile", "heat", "prints", "vwap", "levels", "liqside", "volume", "cvd", "oi"],
     printMin: 5,
     phonePrintMin: 10,
     allPrintMin: 10,

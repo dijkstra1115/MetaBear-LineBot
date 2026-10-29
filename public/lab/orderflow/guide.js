@@ -1,5 +1,5 @@
 // First-visit guide for the lab: five short steps that point at the chart, the narration rail,
-// the chart switch, the layouts and the links to the academy and alerts. Each step lights its
+// the chart switch, the indicator menu and the links to the academy and alerts. Each step lights its
 // target and dims the rest; it shows once per browser and can be reopened from the footer.
 
 const SEEN_KEY = "mb-lab-guide-v1";
@@ -8,12 +8,12 @@ export const GUIDE_STEPS = [
   {
     target: ".stage",
     title: "這張圖在看什麼",
-    body: "每根 K 棒是一段時間的成交。圓形泡泡是大單（綠色主動買、橘色主動賣，越大量越多），三角形是爆倉。下方副圖依序是 CVD、未平倉量 OI 與多空比。",
+    body: "每根 K 棒是一段時間的成交。圓形泡泡是大單（綠色主動買、橘色主動賣，越大量越多）。右邊價格軸上的青色、橘色條是估算的清算價位：上方是空單、下方是多單。左上角列出主圖指標和數值，滑過去可以隱藏或設定。",
   },
   {
     target: "#narration",
     title: "盤面旁白",
-    body: "旁邊（手機在下方）用白話寫出剛才在關鍵位發生了什麼。點開一張卡片，可以在圖上看那根 K 棒、看動畫解說，或設成提醒。",
+    body: "旁邊（手機在下方）用白話寫出剛才在關鍵位發生了什麼。點開一張卡片，圖表會移到那一段並把它亮起來，也可以看動畫解說或設成提醒。",
   },
   {
     target: '.seg[aria-label="圖表"]',
@@ -21,9 +21,9 @@ export const GUIDE_STEPS = [
     body: "切到「足跡」再放大，就能看到每個價位的主動賣（左）與主動買（右）。亮色數字是一邊壓過另一邊三倍以上的不平衡。",
   },
   {
-    target: '.seg[aria-label="版面"]',
-    title: "新手、進階、專業",
-    body: "新手版面只留 K 線、大單、關鍵位和 CVD；進階多了成交量分布、熱力圖和 OI；專業是全部指標。每個指標也能在「指標」裡個別開關，設定會記在這個瀏覽器。",
+    target: ".ind",
+    title: "指標",
+    body: "一開始只放 K 線、大單、關鍵位和 CVD。成交量分布、熱力圖、OI 等都在「指標」裡個別開關，大單門檻也在這裡調，設定會記在這個瀏覽器。",
   },
   {
     target: ".site-links",

@@ -50,9 +50,10 @@ test("FLOW ARENA links out to the live order flow, alerts and academy", async ()
   for (const href of ["/lab/orderflow/", "/alerts/", "/orderflow/"]) assert.ok(links.includes(`href="${href}"`), href);
 });
 
-test("the homepage has an alerts section that leads to /alerts/", async () => {
+test("the homepage's live order-flow section leads to the lab and to /alerts/", async () => {
   const html = await readFile("public/index.html", "utf8");
-  const section = html.match(/<section[^>]*id="alerts"[\s\S]*?<\/section>/)?.[0] ?? "";
+  const section = html.match(/<section[^>]*id="live"[\s\S]*?<\/section>/)?.[0] ?? "";
+  assert.match(section, /href="\/lab\/orderflow\/"/);
   assert.match(section, /href="\/alerts\/"/);
   assert.match(section, /不是買賣訊號/);
 });

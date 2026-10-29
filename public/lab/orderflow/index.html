@@ -26,9 +26,6 @@
     <a class="brand" href="/" aria-label="MetaBear 首頁"><img src="/metabear-logo-transparent-64.png" width="22" height="22" alt="" /><span>MetaBear</span></a>
     <div class="symbol"><select id="mk" class="mk-pick" aria-label="交易對"><option value="btc">BTCUSDT</option><option value="eth">ETHUSDT</option></select><small>永續</small><select id="ex" class="ex-pick" aria-label="交易所"><option value="all">全市場（聚合 Binance、OKX、Bybit、BingX）</option><option value="binance">Binance</option><option value="bybit">Bybit</option><option value="okx">OKX</option><option value="bingx">BingX</option></select></div>
     <div class="tools" role="toolbar" aria-label="圖表設定">
-      <div class="seg layout" role="group" aria-label="版面">
-        <button type="button" data-layout="beginner">新手</button><button type="button" data-layout="advanced">進階</button><button type="button" data-layout="pro">專業</button>
-      </div>
       <div class="seg" role="group" aria-label="週期">
         <button type="button" data-tf="1">1m</button><button type="button" data-tf="5">5m</button><button type="button" data-tf="15">15m</button><button type="button" data-tf="60">1h</button><button type="button" data-tf="240">4h</button>
       </div>
@@ -121,6 +118,15 @@
   <div class="workspace">
   <main class="stage">
     <canvas id="chart" aria-label="BTC 足跡圖、CVD、未平倉量與多空比"></canvas>
+    <!-- The main chart's indicators with their values, as on other charting tools (renderLegend). -->
+    <div id="legend" class="legend" role="group" aria-label="主圖指標"></div>
+    <!-- 畫線工具 (drawings.js): lines stay in this browser, per market. -->
+    <div id="pen-tools" class="pen-tools" role="toolbar" aria-label="畫線工具" aria-orientation="vertical">
+      <button type="button" data-tool="cursor" aria-pressed="true" aria-label="游標（Esc）" title="游標（Esc）"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 8-6 1.6L10 19z"/></svg></button>
+      <button type="button" data-tool="h" aria-pressed="false" aria-label="水平線（Alt+H）" title="水平線（Alt+H）"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 12h18"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/></svg></button>
+      <button type="button" data-tool="t" aria-pressed="false" aria-label="趨勢線（Alt+T）" title="趨勢線（Alt+T）"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 18L18 6"/><circle cx="5" cy="19" r="2" fill="currentColor"/><circle cx="19" cy="5" r="2" fill="currentColor"/></svg></button>
+      <button id="pen-clear" type="button" aria-label="刪除選取的畫線，沒有選取時清除全部" title="刪除選取的畫線（Delete）；沒有選取時清除全部"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+    </div>
     <div class="chart-tools" role="group" aria-label="縮放">
       <button id="zoom-out" type="button" aria-label="縮小">−</button>
       <button id="zoom-in" type="button" aria-label="放大">+</button>
@@ -220,9 +226,10 @@
     <details class="help">
       <summary>使用說明與資料來源</summary>
       <p>操作：拖曳圖表可以左右、上下自由移動（上下拖曳後價格範圍會固定，雙擊價格軸或按「最新」恢復自動）；滾輪或雙指縮放；在右側價格軸上下拖曳可縮放價格；拖曳副圖之間的分隔線可以調整高度。點一下 K 棒會固定顯示它的數值。往回看時不會被拉回最新的 K 棒，捲回最右邊或按「最新」才會繼續跟著。</p>
-      <p>「分享」會產生目前畫面的連結：週期、圖表、指標和大單門檻都會帶過去；先點選一根 K 棒，對方打開時會直接看到那根。</p>
+      <p>畫線：圖表左側的工具列可以畫水平線（Alt+H）和趨勢線（Alt+T，點兩下或按住拖曳）。點一條線可以拖曳移動、拖兩端調整，按 Delete 刪除，Esc 取消。畫線依交易對存在這個瀏覽器，換週期也會留在同一個時間與價格。</p>
+    <p>「分享」會產生目前畫面的連結：週期、圖表、指標和大單門檻都會帶過去；先點選一根 K 棒，對方打開時會直接看到那根。</p>
       <p id="source"></p>
-      <p>「指標」選單可以個別開關每個指標，設定會記在這個瀏覽器。圓形泡泡是大額成交（同一張主動單的成交合計，綠色主動買、橘色主動賣）：K 線圖上同一根 K 棒、同一邊的大單合成一顆，大小看總量，數字是筆數；足跡圖上每筆一顆，畫在它成交的時間。三角形是爆倉（▼ 多單被強平、▲ 空單被強平）。VWAP 每個 UTC 日重新計算。K 棒統計列依序是成交量、Delta、Delta 占成交量的比例、K 棒內累積 Delta 的最高與最低（以每分鐘收盤取樣，1 分鐘 K 棒時等於 Delta），以及 OI 變化；K 棒夠寬時才顯示數字。滾輪縮放時間、拖曳平移；在右側價格軸上下拖曳或滾輪可縮放價格，雙擊價格軸恢復自動；切到「足跡」並放大到夠寬時顯示足跡數字（左賣右買）。亮色數字為斜向 3 倍以上的不平衡。爆倉地圖是用 OI 變化與假設的槓桿分布推算的估計值，不是交易所資料。事件標記是收集器在關鍵位偵測到的盤面現象：同一根 K 棒的事件合成一顆膠囊，一件寫事件的字（掃、吸、背、回、破、單、爆、牆、誘、冰、OI），多件寫件數；在 K 棒下方偏多、上方偏空、金色沒有方向。滑鼠停在 K 棒上會出現這根的卡片，點一下可以固定並覆盤。這些都不是買賣建議。</p>
+      <p>「指標」選單可以個別開關每個指標，設定會記在這個瀏覽器。圓形泡泡是大額成交（同一張主動單的成交合計，綠色主動買、橘色主動賣）：K 線圖上同一根 K 棒、同一邊的大單合成一顆，大小看總量，數字是筆數；足跡圖上每筆一顆，畫在它成交的時間。三角形是爆倉（▼ 多單被強平、▲ 空單被強平）。VWAP 每個 UTC 日重新計算。K 棒統計列依序是成交量、Delta、Delta 占成交量的比例、K 棒內累積 Delta 的最高與最低（以每分鐘收盤取樣，1 分鐘 K 棒時等於 Delta），以及 OI 變化；K 棒夠寬時才顯示數字。滾輪縮放時間、拖曳平移；在右側價格軸上下拖曳或滾輪可縮放價格，雙擊價格軸恢復自動；切到「足跡」並放大到夠寬時顯示足跡數字（左賣右買）。亮色數字為斜向 3 倍以上的不平衡。爆倉地圖與價格軸上的清算價位條（上方空單、下方多單）是用 OI 變化與假設的槓桿分布推算的估計值，不是交易所資料。點開一則盤面旁白，圖表會移到那一段、標出它的關鍵位和事件，其他地方變暗；按「最新」回到現在。事件標記是收集器在關鍵位偵測到的盤面現象：同一根 K 棒的事件合成一顆膠囊，一件寫事件的字（掃、吸、背、回、破、單、爆、牆、誘、冰、OI），多件寫件數；在 K 棒下方偏多、上方偏空、金色沒有方向。滑鼠停在 K 棒上會出現這根的卡片，點一下可以固定並覆盤。這些都不是買賣建議。</p>
     </details>
   </footer>
 </body>
