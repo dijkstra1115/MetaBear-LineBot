@@ -16,7 +16,7 @@ test("every guide step points at an element on the lab page and ends at the acad
     ".stage": /<main class="stage"/,
     "#narration": /<aside id="narration"/,
     '.seg[aria-label="圖表"]': /class="seg" role="group" aria-label="圖表"/,
-    '.seg[aria-label="版面"]': /class="seg layout" role="group" aria-label="版面"/,
+    ".ind": /<details class="ind">/,
     ".site-links": /<nav class="site-links"/,
   };
   for (const step of GUIDE_STEPS) assert.match(html, present[step.target] ?? /^$/, step.target);

@@ -1,5 +1,5 @@
 // First-visit guide for the lab: five short steps that point at the chart, the narration rail,
-// the chart switch, the layouts and the links to the academy and alerts. Each step lights its
+// the chart switch, the indicator menu and the links to the academy and alerts. Each step lights its
 // target and dims the rest; it shows once per browser and can be reopened from the footer.
 
 const SEEN_KEY = "mb-lab-guide-v1";
@@ -21,9 +21,9 @@ export const GUIDE_STEPS = [
     body: "切到「足跡」再放大，就能看到每個價位的主動賣（左）與主動買（右）。亮色數字是一邊壓過另一邊三倍以上的不平衡。",
   },
   {
-    target: '.seg[aria-label="版面"]',
-    title: "新手、進階、專業",
-    body: "新手版面只留 K 線、大單、關鍵位和 CVD；進階多了成交量分布、熱力圖和 OI；專業是全部指標。每個指標也能在「指標」裡個別開關，設定會記在這個瀏覽器。",
+    target: ".ind",
+    title: "指標",
+    body: "一開始只放 K 線、大單、關鍵位和 CVD。成交量分布、熱力圖、OI 等都在「指標」裡個別開關，大單門檻也在這裡調，設定會記在這個瀏覽器。",
   },
   {
     target: ".site-links",

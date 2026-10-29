@@ -68,7 +68,7 @@ input {
 .symbol {
   display: flex;
   flex: none;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   padding-right: 14px;
   border-right: 1px solid var(--line);
@@ -195,15 +195,6 @@ input {
 .seg button[aria-pressed="true"] {
   background: var(--hover);
   color: var(--teal);
-}
-.seg.layout button {
-  font-family: var(--f-tc);
-  font-size: 13px;
-}
-.seg.layout button[aria-pressed="true"] {
-  background: var(--gold);
-  color: #1d1405;
-  font-weight: 700;
 }
 .check input {
   accent-color: var(--teal);
@@ -1024,9 +1015,6 @@ input {
 }
 .rec .narration,
 .rec .nar-open,
-.rec .seg.layout {
-  display: none;
-}
 @media (max-width: 1100px) {
   .narration {
     width: 320px;

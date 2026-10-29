@@ -2,7 +2,6 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { initAll, initReveal, motionOff } from "../public/mb.js";
 import { initCaseWall } from "./case-wall.js";
-import { drawMarket } from "./market-snapshot.js";
 import { markets } from "./market-data.js";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -350,62 +349,6 @@ mm.add("(min-width: 1100px)", () => {
   return () => section.classList.remove("is-pinned");
 });
 onMotion(() => ScrollTrigger.refresh());
-
-// ---------------- market snapshot ----------------
-const marketCard = $(".market-card");
-function showMarket(key) {
-  drawMarket(key);
-  $$(".market-candle", marketCard).forEach((g, i) => g.style.setProperty("--i", String(i)));
-  marketCard.classList.remove("drawing");
-  void marketCard.offsetWidth;
-  if (!motionOff()) marketCard.classList.add("drawing");
-}
-$$("[data-market]").forEach((b) => b.addEventListener("click", () => showMarket(b.dataset.market)));
-showMarket("btc");
-
-// ---------------- risk lab ----------------
-let direction = 1;
-const form = $("#risk-form");
-function updateRisk() {
-  const margin = Number(form.elements.margin.value),
-    leverage = Number(form.elements.leverage.value),
-    change = Number(form.elements.change.value);
-  if (!form.checkValidity() || !Number.isFinite(margin)) return;
-  const notional = margin * leverage,
-    pnl = ((notional * change) / 100) * direction,
-    roi = (pnl / margin) * 100;
-  const sign = (v) =>
-    (v < 0 ? "−" : v > 0 ? "+" : "") +
-    Math.abs(v).toLocaleString("zh-TW", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  $("#leverage-value").textContent = leverage + "×";
-  $("#change-value").textContent = (change < 0 ? "−" : change > 0 ? "+" : "") + Math.abs(change) + "%";
-  $("#pnl").replaceChildren(
-    document.createTextNode(sign(pnl) + " "),
-    Object.assign(document.createElement("span"), { textContent: "USDT" }),
-  );
-  $("#pnl").className = pnl < 0 ? "negative" : "positive";
-  $("#notional").textContent = notional.toLocaleString("zh-TW") + " USDT";
-  $("#roi").textContent = sign(roi) + "%";
-  $("#direction-label").textContent = direction === 1 ? "做多 / LONG" : "做空 / SHORT";
-  $("#calculation").textContent =
-    `${margin.toLocaleString("zh-TW")} USDT × ${leverage} 倍 × ${change}%${direction < 0 ? " × (−1)" : ""} = ${sign(pnl)} USDT`;
-  $("#lab-explanation").textContent =
-    pnl <= -margin
-      ? "此簡化虧損已達或超過保證金；實際交易可能更早觸發強平。"
-      : `${direction === 1 ? "做多時價格上漲獲利、下跌虧損。" : "做空時價格下跌獲利、上漲虧損。"}相同保證金下，提高槓桿會增加名義倉位。`;
-  $("[data-margin-bar]").style.transform = `scaleX(${1 / leverage})`;
-  $("[data-notional-bar]").style.transform = "scaleX(1)";
-}
-form.addEventListener("submit", (e) => e.preventDefault());
-form.addEventListener("input", updateRisk);
-$$("[data-direction]").forEach((b) =>
-  b.addEventListener("click", () => {
-    direction = b.dataset.direction === "long" ? 1 : -1;
-    $$("[data-direction]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    updateRisk();
-  }),
-);
-updateRisk();
 
 // ---------------- ask: chat plays in when seen ----------------
 const phone = $("[data-phone]");

@@ -1,6 +1,6 @@
 // 新手／進階／專業: each layout is a set of indicators, a large-print threshold and whether the
-// narration rail starts open. Visitors can still switch any indicator in 指標; doing so makes the
-// layout "custom" (no button pressed).
+// narration rail starts open. The tool bar no longer offers them: first visits start as beginner,
+// visitors who picked one before keep it, and switching any indicator in 指標 makes it "custom".
 
 // 全市場 sums four exchanges' prints, about six times one exchange's at the same size, so its
 // thresholds sit one step higher: on 2026-10-22's 1-minute chart, Bybit at 10 BTC drew about 16

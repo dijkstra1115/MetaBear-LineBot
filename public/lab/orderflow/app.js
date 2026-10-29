@@ -173,7 +173,7 @@ function savePrefs() {
   } catch {}
 }
 
-// 新手／進階／專業 (layouts.js) and whether the narration rail is open.
+// The starting indicator set (layouts.js) and whether the narration rail is open.
 const LAYOUT_KEY = "metabear-orderflow-layout";
 const RAIL_KEY = "metabear-orderflow-rail";
 const readKey = (key) => {
@@ -2589,32 +2589,11 @@ function syncHeatControls() {
 }
 buildIndicatorPanel();
 
-const layoutButtons = [...document.querySelectorAll("[data-layout]")];
-// "custom" only marks the buttons; a named layout also sets the indicators and the rail.
+// Changing any indicator leaves the starting set for good; the next visit keeps the visitor's own.
 function setLayout(id) {
-  if (id !== "custom") {
-    const next = layoutPrefs(id, INDICATORS, { narrow: NARROW, merged: EX === "all" });
-    for (const [key, shown] of Object.entries(next.show)) {
-      if (prefs.show[key] === shown) continue;
-      prefs.show[key] = shown;
-      indicatorBoxes.get(key).checked = shown;
-      indicatorChanged(key);
-    }
-    if (next.printMin != null) {
-      prefs.printMin = next.printMin;
-      ui.printMin.value = String(next.printMin);
-    }
-    savePrefs();
-    writeKey(RAIL_KEY, null);
-    setRail(LAYOUTS[id].rail, { remember: false });
-    redraw();
-  }
   layoutId = id;
   if (!query.has("ind")) writeKey(LAYOUT_KEY, id);
-  for (const b of layoutButtons) b.setAttribute("aria-pressed", String(b.dataset.layout === id));
 }
-for (const b of layoutButtons) b.addEventListener("click", () => setLayout(b.dataset.layout));
-for (const b of layoutButtons) b.setAttribute("aria-pressed", String(b.dataset.layout === layoutId));
 
 // Timeframe and chart-type buttons set the hidden selects the chart reads.
 function bindSegment(selector, select, attr) {
