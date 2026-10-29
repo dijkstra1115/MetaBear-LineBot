@@ -327,6 +327,23 @@ input {
   color: var(--muted);
   font-size: 13px;
 }
+.ind-range {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.ind-range output,
+.lg-pick {
+  color: var(--text);
+  font-family: var(--f-mono);
+}
+.ind-range input,
+.lg-range {
+  width: 100%;
+  accent-color: var(--teal);
+}
 .ind-select select {
   min-height: 28px;
   padding: 2px 6px;
@@ -1634,6 +1651,31 @@ input {
 }
 .lg-down {
   color: var(--sell);
+}
+.lg-pick {
+  padding: 0 4px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+}
+.lg-pick::after {
+  content: " ▾";
+  color: var(--muted);
+}
+.lg-pick:hover,
+.lg-pick:focus-visible,
+.lg-pick[aria-expanded="true"] {
+  background: var(--hover);
+}
+.lg-range {
+  width: 140px;
+  height: 18px;
+  margin: 0;
+}
+.lg-range[hidden] {
+  display: none;
 }
 .lg-row.is-off .lg-name {
   color: var(--dim);
