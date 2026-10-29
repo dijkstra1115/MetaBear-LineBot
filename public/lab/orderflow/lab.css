@@ -1631,6 +1631,32 @@ input {
   background: rgba(5, 9, 15, 0.72);
   pointer-events: auto;
 }
+.lg-fold {
+  min-height: 18px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(5, 9, 15, 0.72);
+  color: var(--muted);
+  font-family: var(--f-tc);
+  font-size: 11px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.lg-fold::after {
+  content: " ▴";
+}
+.legend.is-folded .lg-fold::after {
+  content: " ▾";
+}
+.lg-fold:hover,
+.lg-fold:focus-visible {
+  color: var(--text);
+  background: rgba(16, 25, 36, 0.95);
+}
+.legend.is-folded .lg-row {
+  display: none;
+}
 .lg-row:hover {
   background: rgba(16, 25, 36, 0.95);
 }

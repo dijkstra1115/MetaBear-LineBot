@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bubbleRadius, countdown, eventMark, mergePrints } from "../public/lab/orderflow/marks.js";
+import { bubbleRadius, countdown, eventMark, mergePrints, stackedImbalances } from "../public/lab/orderflow/marks.js";
 
 test("prints merge into one bubble per bar and side, at their size-weighted price", () => {
   const bar = (t) => Math.floor(t / 900);
@@ -41,4 +41,27 @@ test("the price tag counts down the forming bar", () => {
   assert.equal(countdown(5_400), "0:06");
   assert.equal(countdown(3_725_000), "1:02:05");
   assert.equal(countdown(-5), "0:00");
+});
+
+test("stacked imbalances: three or more adjacent levels imbalanced on one side", () => {
+  // Levels high to low, $10 apart; a gap at 120 breaks the second buy run.
+  const lv = (p, flags = {}) => ({ p, buy: 1, sell: 1, buyImb: false, sellImb: false, ...flags });
+  const levels = [
+    lv(200, { sellImb: true }),
+    lv(190, { sellImb: true }),
+    lv(180, { sellImb: true }),
+    lv(170),
+    lv(160, { buyImb: true }),
+    lv(150, { buyImb: true }),
+    lv(140, { buyImb: true }),
+    lv(130, { buyImb: true }),
+    lv(110, { buyImb: true }),
+    lv(100, { buyImb: true }),
+  ];
+  assert.deepEqual(stackedImbalances(levels, 10), [
+    { side: "buy", lo: 130, hi: 170, n: 4 },
+    { side: "sell", lo: 180, hi: 210, n: 3 },
+  ]);
+  assert.deepEqual(stackedImbalances(levels, 10, 5), []);
+  assert.deepEqual(stackedImbalances([], 10), []);
 });

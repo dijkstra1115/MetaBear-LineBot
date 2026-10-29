@@ -20,7 +20,7 @@ import { SIGNALS, aggregate as aggregateSignals, detect } from "./signals.js";
 import { BAR_KINDS } from "./watch.js";
 import { maybeStartGuide, startGuide } from "./guide.js";
 import { LAYOUTS, layoutPrefs, startLayout } from "./layouts.js";
-import { bubbleRadius, countdown, eventMark, mergePrints } from "./marks.js";
+import { bubbleRadius, countdown, eventMark, mergePrints, stackedImbalances } from "./marks.js";
 import { hitDrawing, indexAt, loadDrawings, newId, saveDrawings, timeAt } from "./drawings.js";
 import { FILTERS, cardOf, detailOf, filterGroups, groupEvents, levelPriceOf, nowOf, timeOf } from "./narrate.js";
 import { chapterCard, chapterStory, chaptersOf, findChapter } from "./chapters.js";
@@ -119,8 +119,11 @@ const ui = { tf: $("tf"), tick: $("tick"), mode: $("mode"), unit: $("unit"), pri
 // [id, where, label, on by default]
 const INDICATORS = [
   ["profile", "overlay", "成交量分布", true],
+  ["dprofile", "overlay", "Delta 分布（左側）", true],
   ["heat", "overlay", "掛單熱力圖", true],
+  ["dom", "overlay", "即時掛單（價格軸）", true],
   ["prints", "overlay", "大單泡泡", true],
+  ["stack", "overlay", "連續失衡（3 格以上）", true],
   ["vwap", "overlay", "VWAP（日內 ±1σ、±2σ）", true],
   ["levels", "overlay", "前日高低點與價值區", false],
   // Event capsules and liquidation triangles crowd the candles; a narration card lights its own
@@ -144,7 +147,7 @@ const INDICATORS = [
 const PREFS_KEY = "metabear-orderflow-indicators";
 // Phones (most visitors arrive from LINE) start with fewer panes so the price chart keeps room.
 const NARROW = matchMedia("(max-width: 720px)").matches;
-const NARROW_OFF = new Set(["stats", "ratio", "levels"]);
+const NARROW_OFF = new Set(["stats", "ratio", "levels", "dom", "dprofile"]);
 let hadSavedPrefs = false;
 const prefs = (() => {
   // Phones show fewer, larger prints by default so 15-minute bars do not drown in bubbles.
@@ -225,6 +228,9 @@ let liqMapAt = 0;
 let liqSide = null; // the heaviest estimated liquidation cluster above and below price (liqClusters)
 let spot = null; // the narration chapter lit on the chart: { t0, t1, price, label, items } (spotlight)
 let profileStats = null; // the visible volume profile's POC (drawProfile), for the legend
+let stackStats = null; // untested stacked-imbalance zones in view per side (drawStacks), for the legend
+let deltaStats = null; // the visible delta profile's strongest buying and selling price (drawDeltaProfile)
+let domRows = null; // the live book as drawn on the price axis: { step, rows: Map(bin → { bid, ask }), walls } (drawDom)
 let events = []; // replay: order-flow events detected here on closed 5-minute bars
 let eventsKey = "";
 let liveEvents = []; // live: the collector's events at a key level, sorted by time (loadEvents)
@@ -774,6 +780,7 @@ function drawPrice(L, from, to) {
   P.yOf = yOf;
   P.pOf = (y) => hi - ((y - top) / h) * (hi - lo);
   liqSide = on("lmap") && liqMap && !replay ? liqClusters(L, P, yOf) : null;
+  domRows = on("dom") ? drawDom(L, P, yOf) : null;
 
   // grid + axis
   ctx.font = `11px ${MONO}`;
@@ -810,6 +817,15 @@ function drawPrice(L, from, to) {
     drawProfile(L, from, to, yOf);
     ctx.restore();
   }
+  deltaStats = null;
+  if (on("dprofile")) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, P.y, L.plotW, P.h);
+    ctx.clip();
+    deltaStats = drawDeltaProfile(L, from, to, yOf);
+    ctx.restore();
+  }
 
   const rowH = (tick / (hi - lo)) * h;
   const showCells = ui.mode.value === "footprint" && view.barW >= 14 && rowH >= 3;
@@ -822,6 +838,7 @@ function drawPrice(L, from, to) {
   ctx.rect(0, P.y, L.plotW, P.h);
   ctx.clip();
   // On candles, prints merge per bar and sit behind the candles; footprint keeps each print in time.
+  stackStats = on("stack") ? drawStacks(L, from, to, yOf, showCells) : null;
   const mergedPrints = on("prints") && !showCells;
   if (mergedPrints) drawPrints(L, from, to, yOf, true);
   for (let i = from; i <= to; i++) {
@@ -1194,6 +1211,80 @@ function crossRing(x, y, r) {
   ctx.restore();
 }
 
+// 連續失衡: three or more adjacent footprint levels in one bar imbalanced on the same side. Each
+// becomes a zone from its bar to the right until a later bar trades back into it (tested, fainter)
+// or to the chart's edge (untested in view, stronger): buyers' zones teal, sellers' orange. On footprint
+// cells a bar marks the run on its side. Zones from up to 300 bars before the view still count.
+// Returns how many untested zones are in view per side.
+function drawStacks(L, from, to, yOf, showCells) {
+  const stats = { buy: 0, sell: 0 };
+  for (let i = Math.max(0, from - 300); i <= to; i++) {
+    const b = bars[i];
+    for (const z of stackedImbalances(b.levels, tick)) {
+      // Only bars up to the view's right edge matter: past it the zone runs off the chart anyway.
+      let j = i + 1;
+      while (j <= to && !(bars[j].l < z.hi && bars[j].h > z.lo)) j++;
+      const tested = j <= to;
+      if (tested && j < from) continue;
+      const x0 = xOf(i, L);
+      const x1 = tested ? xOf(j, L) + view.barW / 2 : L.plotW;
+      if (x1 < 0) continue;
+      const y1 = yOf(z.hi);
+      const y2 = yOf(z.lo);
+      const rgb = z.side === "buy" ? BUY_RGB : SELL_RGB;
+      ctx.fillStyle = `rgba(${rgb},${tested ? 0.08 : 0.16})`;
+      ctx.fillRect(x0, y1, x1 - x0, y2 - y1);
+      ctx.fillStyle = `rgba(${rgb},${tested ? 0.45 : 0.9})`;
+      ctx.fillRect(x0, y1, 2, y2 - y1);
+      if (!tested) {
+        ctx.fillRect(x0, y1, x1 - x0, 1);
+        ctx.fillRect(x0, y2 - 1, x1 - x0, 1);
+        if (i >= from) stats[z.side]++;
+      }
+      if (showCells && i >= from) {
+        // Beside the imbalanced side of the cells: buyers on the right, sellers on the left.
+        const candleW = Math.max(3, Math.min(8, view.barW * 0.12));
+        const cellX = x0 + candleW + 3;
+        const cellW = view.barW - candleW - 5;
+        ctx.fillStyle = `rgb(${rgb})`;
+        ctx.fillRect(z.side === "buy" ? cellX + cellW + 1 : cellX - 3, y1, 2, y2 - y1);
+      }
+    }
+  }
+  return stats;
+}
+
+// Delta 分布: aggressive buying minus selling at each price over the visible bars, as bars from the
+// chart's left edge (clear of the drawing tools), teal where buyers led and orange where sellers
+// did. Returns the strongest price each way for the legend.
+function drawDeltaProfile(L, from, to, yOf) {
+  const totals = new Map();
+  for (let i = from; i <= to; i++) for (const lv of bars[i].levels) totals.set(lv.p, (totals.get(lv.p) ?? 0) + lv.buy - lv.sell);
+  if (!totals.size) return null;
+  let max = 0;
+  let buy = null;
+  let sell = null;
+  for (const [p, d] of totals) {
+    max = Math.max(max, Math.abs(d));
+    if (d > 0 && (!buy || d > buy.d)) buy = { p: p + tick / 2, d };
+    if (d < 0 && (!sell || d < sell.d)) sell = { p: p + tick / 2, d };
+  }
+  if (!max) return null;
+  const left = 44;
+  const width = Math.min(140, L.plotW * 0.16);
+  for (const [p, d] of totals) {
+    if (!d) continue;
+    const y = yOf(p + tick);
+    const h = Math.max(1, yOf(p) - y - (yOf(p) - y > 4 ? 1 : 0));
+    const k = Math.abs(d) / max;
+    ctx.fillStyle = `rgba(${d > 0 ? BUY_RGB : SELL_RGB},${(0.3 + 0.5 * k).toFixed(3)})`;
+    ctx.fillRect(left, y, k * width, h);
+  }
+  ctx.fillStyle = "rgba(148,168,185,0.35)";
+  ctx.fillRect(left - 1, 0, 1, L.panes.price.h);
+  return { buy, sell };
+}
+
 function drawVwap(L, from, to, yOf) {
   const path = (k, color, width, dash) => {
     ctx.strokeStyle = color;
@@ -1511,6 +1602,71 @@ function drawLiqProfile(L, yOf) {
   ctx.textAlign = "right";
   ctx.fillText("預估強平分布", right, P.y + 14);
   ctx.textAlign = "left";
+}
+
+// 即時掛單: the live order book now, as a depth ladder on the price axis behind its labels, bids
+// (teal) below the mid and asks (orange) above, binned so each row is at least 3 px tall. It is the
+// heatmap's newest column with numbers, so it shows only while the newest bar is in view. Returns
+// the rows for the crosshair readout and the biggest wall on each side for the legend, or null.
+function drawDom(L, P, yOf) {
+  if (replay || evReplay || CASE || !stream.book?.ready || !bars.length) return null;
+  if (xOf(bars.length - 1, L) > L.plotW) return null;
+  const top = stream.book.best();
+  if (!top) return null;
+  const pLo = P.pOf(P.y + P.h);
+  const pHi = P.pOf(P.y);
+  const pxPer = P.h / (pHi - pLo);
+  const step = [1, 2, 5, 10, 25, 50, 100, 250, 500].map((k) => k * BOOK_TICK).find((s) => s * pxPer >= 3) ?? 1000 * BOOK_TICK;
+  const rows = new Map();
+  for (const [side, book] of [["bid", stream.book.bids], ["ask", stream.book.asks]])
+    for (const [p, q] of book) {
+      if (p < pLo || p > pHi) continue;
+      const bin = Math.floor(p / step);
+      const r = rows.get(bin) ?? { bid: 0, ask: 0 };
+      r[side] += q;
+      rows.set(bin, r);
+    }
+  if (!rows.size) return null;
+  let max = 0;
+  const walls = { bid: null, ask: null };
+  for (const [bin, r] of rows)
+    for (const side of ["bid", "ask"]) {
+      if (!r[side]) continue;
+      max = Math.max(max, r[side]);
+      if (!walls[side] || r[side] > walls[side].q) walls[side] = { price: (bin + 0.5) * step, q: r[side] };
+    }
+  const width = L.axisW - 4;
+  for (const [bin, r] of rows) {
+    const y1 = yOf((bin + 1) * step);
+    const h = Math.max(1, yOf(bin * step) - y1 - 1);
+    for (const side of ["bid", "ask"]) {
+      const q = r[side];
+      if (!q) continue;
+      const k = q / max;
+      const wall = walls[side] && q === walls[side].q;
+      ctx.fillStyle = `rgba(${side === "bid" ? BUY_RGB : SELL_RGB},${(wall ? 0.75 : 0.18 + 0.4 * k).toFixed(3)})`;
+      ctx.fillRect(size.w - k * width, y1, k * width, h);
+    }
+  }
+  return { step, rows, walls };
+}
+
+// The resting size at the crosshair's price, in a tag just left of the axis.
+function drawDomReadout(L, P) {
+  if (!domRows) return;
+  const p = P.pOf(hover.y);
+  const r = domRows.rows.get(Math.floor(p / domRows.step));
+  const q = r ? r.bid + r.ask : 0;
+  if (!q) return;
+  const lo = Math.floor(p / domRows.step) * domRows.step;
+  const text = `掛${r.bid >= r.ask ? "買" : "賣"} ${fmtVol(q)} ${UNIT}${domRows.step > BOOK_TICK ? `（${fmtPrice(lo)}–${fmtPrice(lo + domRows.step)}）` : ""}`;
+  ctx.font = `11px ${MONO}`;
+  const w = ctx.measureText(text).width + 12;
+  ctx.fillStyle = r.bid >= r.ask ? "rgba(18,52,50,0.95)" : "rgba(60,36,20,0.95)";
+  ctx.fillRect(L.plotW - w - 2, hover.y - 9, w, 18);
+  ctx.fillStyle = r.bid >= r.ask ? C.buy : C.sell;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, L.plotW - w + 4, hover.y);
 }
 
 // The heaviest estimated liquidation cluster in view on each side of price, for the legend: shorts
@@ -1956,12 +2112,25 @@ function syncPrintControls() {
 // The main chart's indicators under the OHLC line: name, value at the focused bar, and buttons to
 // hide one or open its settings. An indicator hidden here keeps its row until the page reloads.
 const legend = { root: $("legend"), rows: new Map(), key: "" };
+// Folded, the legend is one button with the count, so a long list stops covering the chart.
+const FOLD_KEY = "metabear-orderflow-legend-folded";
+const legendFold = document.createElement("button");
+legendFold.type = "button";
+legendFold.className = "lg-fold";
+const setFold = (folded) => {
+  legend.root?.classList.toggle("is-folded", folded);
+  legendFold.setAttribute("aria-expanded", String(!folded));
+  legendFold.setAttribute("aria-label", folded ? "展開主圖指標" : "收合主圖指標");
+  writeKey(FOLD_KEY, folded ? "1" : null);
+};
+legendFold.addEventListener("click", () => setFold(!legend.root.classList.contains("is-folded")));
+setFold(readKey(FOLD_KEY) === "1");
 const legendKept = new Set();
 // A press anywhere outside the 大單 row closes its slider.
 document.addEventListener("pointerdown", (e) => {
   for (const row of legend.root?.querySelectorAll(".is-picking") ?? []) if (!row.contains(e.target)) row.closeSlider?.();
 });
-const OVERLAY_SHORT = { profile: "成交量分布", heat: "熱力圖", prints: "大單", vwap: "VWAP", levels: "前日關鍵位", liqmark: "爆倉標記", events: "事件", lmap: "爆倉地圖" };
+const OVERLAY_SHORT = { profile: "成交量分布", heat: "熱力圖", prints: "大單", vwap: "VWAP", levels: "前日關鍵位", liqmark: "爆倉標記", events: "事件", lmap: "爆倉地圖", dom: "即時掛單", stack: "連續失衡", dprofile: "Delta 分布" };
 const EYE = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const GEAR = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
 
@@ -1976,6 +2145,18 @@ function legendValue(id) {
       return [[printLabel(), ""]];
     case "vwap":
       return b?.vwap != null ? [[fmtPrice(b.vwap), "vwap"]] : [];
+    case "stack":
+      return stackStats ? [[`未回測 買 ${stackStats.buy} · 賣 ${stackStats.sell}`, ""]] : [];
+    case "dprofile":
+      return [
+        ...(deltaStats?.buy ? [[`買超 ${fmtPrice(deltaStats.buy.p)} ${fmtSigned(deltaStats.buy.d)}`, "up"]] : []),
+        ...(deltaStats?.sell ? [[`賣超 ${fmtPrice(deltaStats.sell.p)} ${fmtSigned(deltaStats.sell.d)}`, "down"]] : []),
+      ];
+    case "dom":
+      return [
+        ...(domRows?.walls.ask ? [[`賣 ${fmtPrice(domRows.walls.ask.price)} · ${fmtVol(domRows.walls.ask.q)} ${UNIT}`, "down"]] : []),
+        ...(domRows?.walls.bid ? [[`買 ${fmtPrice(domRows.walls.bid.price)} · ${fmtVol(domRows.walls.bid.q)} ${UNIT}`, "up"]] : []),
+      ];
     case "lmap":
       return [
         ...(liqSide?.up ? [[`↑ ${fmtPrice(Math.round(liqSide.up.price))} ${fmtVol(liqSide.up.usd)}`, "up"]] : []),
@@ -2068,7 +2249,8 @@ function renderLegend() {
     legend.key = key;
     legend.rows.clear();
     for (const id of ids) legend.rows.set(id, legendRow(id));
-    legend.root.replaceChildren(...[...legend.rows.values()].map((r) => r.row));
+    legendFold.textContent = `指標 ${ids.length}`;
+    legend.root.replaceChildren(legendFold, ...[...legend.rows.values()].map((r) => r.row));
   }
   for (const [id, r] of legend.rows) {
     const shown = on(id);
@@ -2112,6 +2294,7 @@ function drawCrosshair(L) {
     ctx.font = `11px ${MONO}`;
     ctx.textBaseline = "middle";
     ctx.fillText(fmtPrice(P.pOf(hover.y)), L.plotW + 8, hover.y);
+    drawDomReadout(L, P);
   }
   // The bar's time on the time axis.
   const label = fmtTime(bars[hover.i].t);
@@ -2752,7 +2935,7 @@ function printer(ex) {
 // that draws them is on: Binance alone pushes about ten depth updates a second, and the beginner
 // layout, where most visitors from LINE land on their phones, shows neither. Turning one on opens
 // its stream (indicatorChanged); the collector's history fills the chart meanwhile.
-const BOOK_INDICATORS = ["heat", "imb"];
+const BOOK_INDICATORS = ["heat", "dom", "imb"];
 const LIQ_INDICATORS = ["liq", "liqmark"];
 const needsBook = () => BOOK_INDICATORS.some(on);
 const needsLiq = () => LIQ_INDICATORS.some(on);
