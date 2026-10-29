@@ -9,11 +9,6 @@
 export const SYMBOL = "BTCUSDT";
 export const TICK = 10; // footprint and heatmap price bin, USD
 export const HEAT_RANGE = 0.02; // heatmap rows ±2 % around mid
-// Fine order-book columns: every 10 s at $1 over the whole 1,000-level book, kept 30 days and read
-// in 30-minute chunks (/api/orderflow/btcusdt/book). Column: [t, mid, low bin, sizes from it up].
-export const BOOK_TICK = 1;
-export const BOOK_STEP_MS = 10_000;
-export const BOOK_CHUNK_MS = 30 * 60_000;
 export const WS_URL = "wss://stream.bybit.com/v5/public/linear";
 export const REST_URL = "https://api.bybit.com";
 // 1,000 levels a side (pushed every 200 ms) reach only about ±0.25 % from mid on BTC, so
@@ -248,20 +243,6 @@ export class OrderBook {
     for (const p of this.bids.keys()) if (p > bid) bid = p;
     for (const p of this.asks.keys()) if (p < ask) ask = p;
     return { bid, ask, mid: (bid + ask) / 2 };
-  }
-
-  /** [mid, low bin, sizes] over every level held (lowest bid to highest ask), binned at `tick`. */
-  span(tick = BOOK_TICK) {
-    const top = this.best();
-    if (!top) return null;
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (const p of this.bids.keys()) if (p < lo) lo = p;
-    for (const p of this.asks.keys()) if (p > hi) hi = p;
-    const lowBin = Math.floor(lo / tick);
-    const sizes = new Array(Math.floor(hi / tick) - lowBin + 1).fill(0);
-    for (const side of [this.bids, this.asks]) for (const [p, q] of side) sizes[Math.floor(p / tick) - lowBin] += q;
-    return [round(top.mid, 1), lowBin, sizes.map((q) => round(q, 3))];
   }
 
   /** [mid, low bin, sizes] binned at `tick` over ±range, or null before the first snapshot. */
