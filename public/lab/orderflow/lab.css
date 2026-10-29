@@ -1531,6 +1531,66 @@ input {
 .chart-tools:focus-within {
   opacity: 1;
 }
+/* 畫線工具: a slim strip on the chart's left edge, like other charting tools' drawing bar. */
+.pen-tools {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(10, 16, 24, 0.88);
+  transform: translateY(-50%);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.stage:hover .pen-tools,
+.pen-tools:focus-within {
+  opacity: 1;
+}
+.pen-tools button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.pen-tools button:hover,
+.pen-tools button:focus-visible {
+  background: var(--hover);
+  color: var(--text);
+}
+.pen-tools button[aria-pressed="true"] {
+  background: rgba(138, 180, 255, 0.16);
+  color: #8ab4ff;
+}
+.pen-tools #pen-clear {
+  margin-top: 4px;
+}
+#chart.pen {
+  cursor: crosshair;
+}
+#chart.pen-hit {
+  cursor: move;
+}
+.rec .pen-tools,
+.pen-tools[hidden],
+.legend[hidden] {
+  display: none;
+}
+@media (max-width: 720px) {
+  .pen-tools {
+    display: none;
+  }
+}
 /* The main chart's indicator legend under the canvas-drawn OHLC line; the buttons show on hover. */
 .legend {
   position: absolute;

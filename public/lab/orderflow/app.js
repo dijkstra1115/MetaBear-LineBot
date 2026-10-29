@@ -21,6 +21,7 @@ import { BAR_KINDS } from "./watch.js";
 import { maybeStartGuide, startGuide } from "./guide.js";
 import { LAYOUTS, layoutPrefs, startLayout } from "./layouts.js";
 import { bubbleRadius, countdown, eventMark, mergePrints } from "./marks.js";
+import { hitDrawing, indexAt, loadDrawings, newId, saveDrawings, timeAt } from "./drawings.js";
 import { FILTERS, cardOf, detailOf, filterGroups, groupEvents, levelPriceOf, nowOf, timeOf } from "./narrate.js";
 import { chapterCard, chapterStory, chaptersOf, findChapter } from "./chapters.js";
 import { START_MS, barsPerSecond, beatAt, beatsOf, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
@@ -729,6 +730,7 @@ function draw() {
   drawLegend(L);
   drawCrosshair(L);
   renderLegend();
+  penBar.hidden = penHidden();
 }
 
 function drawPrice(L, from, to) {
@@ -877,7 +879,9 @@ function drawPrice(L, from, to) {
   if (on("liqmark")) drawLiquidations(L, from, to, yOf);
   if (on("events")) drawEvents(L, from, to, yOf);
   if (heatScale) drawHeatLegend(L);
+  drawPen(L, P);
   ctx.restore();
+  drawPenTags(L, P);
 
   // last price tag
   const last = bars[bars.length - 1];
@@ -2173,6 +2177,197 @@ let drag = null; // one-finger or mouse drag: { dy, inPrice }
 let paneDrag = null; // dragging a pane border: { id, above, startY, startH, aboveH }
 
 // The border at the top of a sub-pane, within a few pixels of y; the statistics row has a fixed height.
+// ---------- 畫線工具 (drawings.js) ----------
+
+const PEN_COLOR = "#8ab4ff";
+const PEN_RGB = "138,180,255";
+// tool: "cursor", "h" (horizontal line) or "t" (trend line); start/at: a trend line being drawn;
+// owner: the pointer a pen gesture holds, so it neither pans the chart nor pins a bar.
+const pen = { tool: "cursor", list: loadDrawings(MK.id), sel: null, start: null, at: null, drag: null, owner: null, downAt: null };
+const penBar = $("pen-tools");
+const tfMsNow = () => Number(ui.tf.value) * MINUTE;
+const penHidden = () => !!(replay || evReplay || CASE);
+const xAtT = (t, L) => L.plotW - (view.end - indexAt(bars, t, tfMsNow())) * view.barW;
+const indexAtX = (x, L) => view.end - (L.plotW - x) / view.barW;
+const tAtX = (x, L) => timeAt(bars, indexAtX(x, L), tfMsNow());
+const savePen = () => saveDrawings(MK.id, pen.list);
+
+function drawPen(L, P) {
+  if (penHidden() || !bars.length) return;
+  const handle = (x, y) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = C.bg;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  };
+  for (const d of pen.list) {
+    const sel = d.id === pen.sel;
+    ctx.strokeStyle = PEN_COLOR;
+    ctx.lineWidth = sel ? 2.2 : 1.5;
+    ctx.beginPath();
+    if (d.type === "h") {
+      const y = Math.round(P.yOf(d.p)) + 0.5;
+      ctx.moveTo(0, y);
+      ctx.lineTo(L.plotW, y);
+      ctx.stroke();
+      if (sel) handle(L.plotW / 2, y);
+    } else {
+      const ax = xAtT(d.a.t, L);
+      const ay = P.yOf(d.a.p);
+      const bx = xAtT(d.b.t, L);
+      const by = P.yOf(d.b.p);
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+      if (sel) {
+        handle(ax, ay);
+        handle(bx, by);
+      }
+    }
+  }
+  if (pen.tool === "t" && pen.start && pen.at) {
+    ctx.strokeStyle = `rgba(${PEN_RGB},0.8)`;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(xAtT(pen.start.t, L), P.yOf(pen.start.p));
+    ctx.lineTo(xAtT(pen.at.t, L), P.yOf(pen.at.p));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = PEN_COLOR;
+    handle(xAtT(pen.start.t, L), P.yOf(pen.start.p));
+  }
+  ctx.lineWidth = 1;
+}
+
+// Each horizontal line's price on the axis, as other charting tools show it.
+function drawPenTags(L, P) {
+  if (penHidden()) return;
+  ctx.font = `600 11px ${MONO}`;
+  ctx.textBaseline = "middle";
+  for (const d of pen.list) {
+    if (d.type !== "h") continue;
+    const y = P.yOf(d.p);
+    if (y < P.y + 9 || y > P.y + P.h - 9) continue;
+    ctx.fillStyle = PEN_COLOR;
+    ctx.fillRect(L.plotW, y - 9, L.axisW, 18);
+    ctx.fillStyle = C.bg;
+    ctx.fillText(fmtPrice(d.p), L.plotW + 8, y);
+  }
+}
+
+function setTool(tool) {
+  pen.tool = tool;
+  pen.start = pen.at = null;
+  for (const b of penBar.querySelectorAll("[data-tool]")) b.setAttribute("aria-pressed", String(b.dataset.tool === tool));
+  canvas.classList.toggle("pen", tool !== "cursor");
+  redraw();
+}
+
+function addDrawing(d) {
+  pen.list.push(d);
+  pen.sel = d.id;
+  savePen();
+  setTool("cursor");
+}
+
+function removeDrawing(id) {
+  pen.list = pen.list.filter((d) => d.id !== id);
+  if (pen.sel === id) pen.sel = null;
+  savePen();
+  redraw();
+}
+
+// A press on the price chart: place a line, start or finish a trend line, or pick a line to move.
+// Returns true when the pen takes the gesture.
+function penDown(e, L, x, y) {
+  if (penHidden() || !pricePane?.pOf || x > L.plotW || y >= L.panes.price.h) return false;
+  const at = { t: tAtX(x, L), p: pricePane.pOf(y) };
+  if (pen.tool === "h") {
+    addDrawing({ id: newId(), type: "h", p: at.p });
+    return true;
+  }
+  if (pen.tool === "t") {
+    if (!pen.start) {
+      pen.start = at;
+      pen.at = at;
+      pen.downAt = { x: e.clientX, y: e.clientY };
+    } else if (Math.hypot(xAtT(pen.start.t, L) - x, pricePane.yOf(pen.start.p) - y) > 4) {
+      addDrawing({ id: newId(), type: "t", a: pen.start, b: at });
+    }
+    pen.owner = e.pointerId;
+    redraw();
+    return true;
+  }
+  const hit = hitDrawing(pen.list, x, y, (t) => xAtT(t, L), pricePane.yOf);
+  if (!hit) {
+    if (pen.sel) {
+      pen.sel = null;
+      redraw();
+    }
+    return false;
+  }
+  pen.sel = hit.id;
+  pen.drag = { part: hit.part, i0: indexAtX(x, L), p0: at.p, orig: structuredClone(pen.list.find((d) => d.id === hit.id)) };
+  pen.owner = e.pointerId;
+  redraw();
+  return true;
+}
+
+// Moves the line being dragged or the trend line being drawn; true while the pen holds the pointer.
+function penMove(e, L, x, y) {
+  if (penHidden() || !pricePane?.pOf) return false;
+  if (pen.tool === "t" && pen.start) {
+    pen.at = { t: tAtX(x, L), p: pricePane.pOf(y) };
+    redraw();
+  }
+  if (pen.owner !== e.pointerId) return false;
+  const d = pen.drag && pen.list.find((q) => q.id === pen.sel);
+  if (d) {
+    const tf = tfMsNow();
+    const di = indexAtX(x, L) - pen.drag.i0;
+    const dp = pricePane.pOf(y) - pen.drag.p0;
+    const o = pen.drag.orig;
+    const shift = (q) => ({ t: timeAt(bars, indexAt(bars, q.t, tf) + di, tf), p: q.p + dp });
+    if (d.type === "h") d.p = o.p + dp;
+    else if (pen.drag.part === "a") d.a = { t: tAtX(x, L), p: pricePane.pOf(y) };
+    else if (pen.drag.part === "b") d.b = { t: tAtX(x, L), p: pricePane.pOf(y) };
+    else {
+      d.a = shift(o.a);
+      d.b = shift(o.b);
+    }
+    redraw();
+  }
+  return true;
+}
+
+// Ends a pen gesture: a dragged line is saved; a trend line pressed and dragged out ends where it
+// is released (a click instead waits for a second click).
+function penUp(e, L, x, y) {
+  if (pen.owner !== e.pointerId) return false;
+  pen.owner = null;
+  if (pen.drag) {
+    pen.drag = null;
+    savePen();
+  } else if (pen.tool === "t" && pen.start && pen.downAt && Math.hypot(e.clientX - pen.downAt.x, e.clientY - pen.downAt.y) > 8) {
+    addDrawing({ id: newId(), type: "t", a: pen.start, b: { t: tAtX(x, L), p: pricePane.pOf(y) } });
+  }
+  pen.downAt = null;
+  return true;
+}
+
+for (const b of penBar.querySelectorAll("[data-tool]")) b.addEventListener("click", () => setTool(b.dataset.tool));
+$("pen-clear").addEventListener("click", () => {
+  if (pen.sel) removeDrawing(pen.sel);
+  else if (pen.list.length && confirm(`清除 ${MK.symbol} 的 ${pen.list.length} 條畫線？`)) {
+    pen.list = [];
+    savePen();
+    redraw();
+  }
+});
+
 function borderAt(L, x, y) {
   if (x > L.plotW) return null;
   for (let k = 0; k < L.subIds.length; k++) {
@@ -2200,6 +2395,10 @@ canvas.addEventListener("pointerdown", (e) => {
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
+  if (pointers.size === 1 && penDown(e, L, x, y)) {
+    tap = null;
+    return;
+  }
   const border = pointers.size === 1 ? borderAt(L, x, y) : null;
   if (border) {
     paneDrag = { ...border, startY: e.clientY, startH: L.panes[border.id].h, aboveH: L.panes[border.above].h };
@@ -2219,6 +2418,10 @@ canvas.addEventListener("dblclick", (e) => {
 });
 canvas.addEventListener("pointermove", (e) => {
   const rect = canvas.getBoundingClientRect();
+  if (penMove(e, layout(), e.clientX - rect.left, e.clientY - rect.top)) {
+    if (e.pointerType !== "touch") hoverAt(e.clientX, e.clientY);
+    return;
+  }
   if (tap?.id === e.pointerId && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap = null;
   if (paneDrag && pointers.has(e.pointerId)) {
     const dy = e.clientY - paneDrag.startY;
@@ -2228,7 +2431,14 @@ canvas.addEventListener("pointermove", (e) => {
     redraw();
     return;
   }
-  if (!pointers.size && e.pointerType === "mouse") canvas.classList.toggle("row-resize", !!borderAt(layout(), e.clientX - rect.left, e.clientY - rect.top));
+  if (!pointers.size && e.pointerType === "mouse") {
+    const L = layout();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    canvas.classList.toggle("row-resize", !!borderAt(L, x, y));
+    const over = pen.tool === "cursor" && !penHidden() && pricePane?.pOf && x <= L.plotW && y < L.panes.price.h && hitDrawing(pen.list, x, y, (t) => xAtT(t, L), pricePane.yOf);
+    canvas.classList.toggle("pen-hit", !!over);
+  }
   if (pointers.has(e.pointerId)) {
     const last = pointers.get(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -2262,6 +2472,12 @@ canvas.addEventListener("pointermove", (e) => {
   redraw();
 });
 const release = (e) => {
+  const rect = canvas.getBoundingClientRect();
+  if (penUp(e, layout(), e.clientX - rect.left, e.clientY - rect.top)) {
+    tap = null;
+    pointers.delete(e.pointerId);
+    return;
+  }
   if (paneDrag) {
     paneDrag = null;
     savePanes();
@@ -2303,6 +2519,24 @@ $("latest").addEventListener("click", () => {
 });
 window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
+  if (!penHidden()) {
+    if ((e.key === "Delete" || e.key === "Backspace") && pen.sel) {
+      e.preventDefault();
+      removeDrawing(pen.sel);
+      return;
+    }
+    if (e.key === "Escape" && (pen.tool !== "cursor" || pen.sel)) {
+      pen.sel = null;
+      setTool("cursor");
+      return;
+    }
+    // Alt+H and Alt+T as on TradingView.
+    if (e.altKey && (e.code === "KeyH" || e.code === "KeyT")) {
+      e.preventDefault();
+      setTool(e.code === "KeyH" ? "h" : "t");
+      return;
+    }
+  }
   if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
     view.end += (e.key === "ArrowLeft" ? -10 : 10) * (14 / view.barW);
     syncFollow();
@@ -3724,7 +3958,9 @@ function renderBarCard() {
   const pi = pinnedIndex();
   const pinned = pi >= 0;
   const at = pinned ? { i: pi, y: pinnedY } : hover;
-  const show = at && at.i >= 0 && at.i < bars.length && !evReplay && !CASE && (!NARROW || pinned);
+  // A drawing tool in hand or a line being dragged needs the chart clear.
+  const drawing = !pinned && (pen.tool !== "cursor" || pen.owner != null);
+  const show = at && at.i >= 0 && at.i < bars.length && !evReplay && !CASE && !drawing && (!NARROW || pinned);
   document.body.classList.toggle("card-open", !!(show && NARROW));
   if (!show) {
     card.hidden = true;
