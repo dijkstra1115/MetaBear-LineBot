@@ -185,7 +185,7 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | GET | `/api/orderflow/btcusdt/status` | 連線狀態、最後成交時間、缺口、錯誤、各表筆數、封存檔匯入狀態（`archive`） |
 | POST | `/api/orderflow/btcusdt/import` | 封存檔匯入：`{ rows }` 是足跡；`{ prints, from, to }` 會換掉這段時間內的大單。需要 `Authorization: Bearer <ORDERFLOW_ADMIN_TOKEN>` |
 | POST | `/api/orderflow/btcusdt/archive` | 馬上嘗試待匯入的每日封存檔（略過重試等待）。權杖同上 |
-| GET | `/api/orderflow/btcusdt/book?from=<對齊 30 分鐘的毫秒>` | 30 分鐘的細掛單簿（每 10 秒一欄、$1 格距），網頁在 1、5 分 K 時使用 |
+| GET | `/api/orderflow/btcusdt/book?from=<對齊 30 分鐘的毫秒>` | 30 分鐘的細掛單簿（每 10 秒一欄、$1 格距）；網頁自 2026-10-29 起不再使用，熱力圖一律用每分鐘一欄 |
 | GET | `/api/orderflow/btcusdt/events?since=<整分鐘毫秒>` | 30 天內某分鐘之後、發生在關鍵位的市場事件（最多最新 2,000 則，舊到新）：`t`、`kind`、`price`、`side`、`level`、`dist`、`repeat`（同一關鍵位冷卻中）、`text`。不含推送狀態，不需要權杖；邊緣快取 10 秒 |
 
 `metrics` 每一列的欄位：`[讀取時間, OI (BTC), OI (USDT), 大戶持倉比, 大戶帳戶比, 全體多空比, 主動買賣比, 資金費率]`。Bybit 沒有的欄位是 `null`。
