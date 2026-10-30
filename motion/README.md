@@ -12,6 +12,7 @@
 | [academy/film/](academy/film/README.md) | 27 秒學院品牌旁白片（定稿）：連續 3D 攝影機、重繪且會動的產品介面、低音音效，16:9 60 fps | HyperFrames |
 | [flow-arena/](flow-arena/README.md) | FLOW ARENA 宣傳片：launch、gameplay、promo、trailer、surge、flagship 旗艦廣告，與排行榜精彩重播 highlights 系列 | HyperFrames；flagship 用自己的 Canvas + CPU 後製管線 |
 | [replays/](replays/) | 策略實戰覆盤片（9:16 旁白，Charon 男聲＋程式合成音效）：`2025-12-09/`（策略實戰 01，製作中，接續步驟見其 BRIEF.md）、`2026-02-06/`（第一部原型） | HyperFrames：Canvas 繪圖＋CSS 3D 攝影機 |
+| [platform/showreel/](platform/showreel/BRIEF.md) | 30 秒「實盤覆盤＋盤面旁白＋訂單流軟體」片：案例牆無剪接放大進真實盤面，先停損再止盈，兩次靜默與爆發，收在功能環繞；配樂與音效全部程式合成，16:9 60 fps | HyperFrames：實機逐格錄影 |
 | out/ | **所有完成的影片**，以及截圖、參考片與暫存（不進 Git）；見下方「成品在哪裡」 | — |
 | [audio-library/](audio-library/README.md) | **音樂、音效、人聲素材庫**：歌曲、下載音效、合成音效試做、旁白聲線試聽（只有 README 進 Git） | — |
 

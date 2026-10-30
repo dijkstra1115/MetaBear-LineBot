@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { groupEvents } from "../public/lab/orderflow/narrate.js";
-import { START_MS, TAIL_MS, barsPerSecond, beatAt, beatsOf, findStory, focusOf, outroOf, replayParams, spanOf, windowOf } from "../public/lab/orderflow/event-replay.js";
+import { START_MS, TAIL_MS, barsPerSecond, beatAt, beatsOf, findStory, fitBarW, focusOf, outroOf, replayParams, spanOf, windowOf } from "../public/lab/orderflow/event-replay.js";
 
 const MINUTE = 60_000;
 const at = (hhmm) => Date.parse(`2026-10-23T${hhmm}:00+08:00`);
@@ -22,6 +22,12 @@ for (let t = at("17:10"); t < at("18:20"); t += MINUTE) {
   rows.push([t, c - 2, c + 6, c - 6, c]);
 }
 const story = groupEvents([sweep("17:35", 81613), sweep("17:50", 81612, "up"), sweep("18:05", 81612)])[0];
+
+test("a replay keeps the chart's candle width unless the story would not fit", () => {
+  assert.equal(fitBarW(14, 1100, 50), 14);
+  assert.equal(fitBarW(64, 1100, 54), 16);
+  assert.equal(fitBarW(14, 300, 200), 4);
+});
 
 test("bar events show on their 5-minute bar, live events on their minute", () => {
   assert.deepEqual(spanOf({ kind: "sweep", t: at("18:05") }), { start: at("18:00"), end: at("18:05") });

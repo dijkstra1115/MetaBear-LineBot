@@ -38,6 +38,9 @@ export function focusOf(group) {
   return { ...group, items, first: items[0].t, earlier };
 }
 
+/** Candle width for a replay: the chart's own, unless the story would not fit in 80% of the plot. */
+export const fitBarW = (barW, plotW, minutes) => Math.max(4, Math.min(barW, (plotW * 0.8) / (minutes + 1)));
+
 /** The replay window for a story, never past `now`'s last finished minute. */
 export function windowOf(group, now) {
   const spans = group.items.map(spanOf);
