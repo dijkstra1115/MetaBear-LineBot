@@ -153,10 +153,11 @@ const SHOTS = {
       [4400, () => page.mouse.up()],
     ],
   },
-  // One narration chapter opened and replayed in the lab's own one-click replay, sped up with its
-  // own 2× button and moved to just before the first event with its own progress bar.
+  // One narration chapter opened and replayed in the lab's own one-click replay. The press also sets
+  // its own 2× button and moves its own progress bar to just before the first event, all in one
+  // frame, so the film sees one change: the same chart rewinding.
   rail: {
-    q: q({ tf: "15", mode: "candles", pm: "25" }),
+    q: q({ tf: "1", mode: "candles", pm: "25" }),
     ms: 14000,
     rail: true,
     steps: (page) => [
@@ -173,15 +174,17 @@ const SHOTS = {
         const b = await r.boundingBox();
         m.move(b.x + b.width / 2, b.y + b.height / 2, 600);
       }],
-      [3200, () => page.locator(".nar-replay").first().click()],
-      [3700, () => page.locator('.er-speed [data-speed="2"]').click()],
-      [4200, () => page.evaluate(() => {
-        const ticks = [...document.querySelectorAll("#er-ticks > *")];
-        const seek = document.getElementById("er-seek");
-        const first = ticks.length ? parseFloat(ticks[0].style.left) : 25;
-        seek.value = String(Math.max(0, first * 10 - 45));
-        seek.dispatchEvent(new Event("input", { bubbles: true }));
-      })],
+      [3200, async () => {
+        await page.locator(".nar-replay").first().click();
+        await page.evaluate(() => {
+          document.querySelector('.er-speed [data-speed="2"]').click();
+          const ticks = [...document.querySelectorAll("#er-ticks > *")];
+          const seek = document.getElementById("er-seek");
+          const first = ticks.length ? parseFloat(ticks[0].style.left) : 25;
+          seek.value = String(Math.max(0, first * 10 - 45));
+          seek.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+      }],
     ],
   },
   // Full-frame views for the feature run: a clean chart, then the view switches on half a second in.

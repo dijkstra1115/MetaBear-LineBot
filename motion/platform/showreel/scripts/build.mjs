@@ -66,9 +66,10 @@ const tiles = wall.map((w, i) => {
 
 // ---------- the screens ----------
 const screens = [
-  // The card opens at 1.1 s of the rail clip and ▶ 覆盤這段 is pressed at 3.2 s.
+  // The card opens at 1.1 s of the rail clip and ▶ 覆盤這段 is pressed at 3.2 s, where railA ends:
+  // the press is on screen, and the replay runs on from it without a jump.
   screen("railA", "rail", S.rail, S.replayBtn - S.rail, 1.2),
-  screen("railB", "rail", S.replayBtn, S.feat - S.replayBtn, 4.3, 3.3),
+  screen("railB", "rail", S.replayBtn, S.feat - S.replayBtn, 3.2, 3.3),
   ...FEATURES.map((f) => screen(f.id, f.id, f.at, f.d, f.media)),
 ];
 const names = FEATURES.map((f, i) => (f.name ? `      <div id="fname${i}" class="txt lower"><span class="nm" data-split>${f.name}</span>${f.sub ? `<span class="sub">${f.sub}</span>` : ""}</div>` : ""));
@@ -136,19 +137,18 @@ hit(TAKE.entry, "entry", { g: 1.3 });
 hit(TAKE.zoomOut - 0.2, "whoosh", { d: 0.22, g: 0.7 });
 hit(S.tp, "tp", { g: 1.1 });
 hit(S.tp, "stamp", { g: 1 });
-hit(S.rail - 0.18, "whoosh", { d: 0.36, g: 1.1 });
-hit(S.rail + 0.05, "ping");
-hit(S.replayBtn - 0.02, "tick", { f: 1600, g: 1.5 }); // ▶ 覆盤這段
-hit(S.replayBtn - 0.35, "whoosh", { d: 0.35, g: 0.5 });
-hit(S.replayBtn + 0.45, "ping", { g: 0.7 });
+// From here the cuts ride the music, so an effect only colours one; a kick or a stamp of its own on
+// every cut makes each one sound like an edit.
+hit(S.rail - 0.18, "whoosh", { d: 0.36, g: 0.5 });
+hit(S.rail, "ping", { g: 0.5 });
+hit(S.replayBtn, "tick", { f: 1600, g: 0.8 }); // ▶ 覆盤這段
+hit(S.replayBtn + 0.5, "ping", { g: 0.35 });
 FEATURES.forEach((f, i) => {
-  hit(f.at, "stamp", { g: 0.75 });
   if (i < 3) {
-    hit(f.at - 0.04, "whoosh", { d: 0.3, g: 0.95 });
-    hit(f.at + 0.5, "thud", { g: 0.85 });
-    hit(f.at + 0.5, "flip", { i, g: 0.7 });
+    hit(f.at - 0.15, "whoosh", { d: 0.3, g: 0.35 });
+    hit(f.at + 0.5, "flip", { i, g: 0.35 });
   } else {
-    hit(f.at, "flip", { i: i % 4, g: 1 });
+    hit(f.at, "flip", { i: i % 4, g: 0.4 });
   }
 });
 FLICKER.forEach((t, i) => hit(t, "thud", { g: 0.55 + i * 0.1 }));

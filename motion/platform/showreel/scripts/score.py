@@ -17,7 +17,7 @@ N = int(DUR * SR)
 rng = np.random.default_rng(20261030)
 
 # The arrangement, in seconds, from scripts/cues.mjs.
-QUIET, FULL, BREATH, TP, RAIL, BTN, FEAT, BLACK, BREATH2, RING, IMPLODE, LOGO = (CUES["S"][k] for k in ("quiet", "full", "breath", "tp", "rail", "replayBtn", "feat", "black", "breath2", "ring", "implode", "logo"))
+QUIET, FULL, BREATH, TP, RAIL, BTN, FEAT, BLACK, RING, IMPLODE, LOGO = (CUES["S"][k] for k in ("quiet", "full", "breath", "tp", "rail", "replayBtn", "feat", "black", "ring", "implode", "logo"))
 TAKE = CUES["take"]
 
 
@@ -233,7 +233,7 @@ def stop_hit():
     return s * 0.85 + n
 
 
-def target_hit(root=74):
+def target_hit(root=69):
     out = np.zeros(int(1.8 * SR))
     for k, m in enumerate((root, root + 7, root + 12)):
         b = bell(m, 1.8)
@@ -250,11 +250,29 @@ CHORDS = [(38, (0, 3, 7)), (34, (0, 4, 7)), (31, (0, 3, 7)), (33, (0, 4, 7))]  #
 
 
 def chord_at(t):
-    return CHORDS[int(t // (BAR * 2)) % 4]
+    # Each drop lands on the A, the last chord of the cycle, and resolves to Dm on the next bar line,
+    # so the drop leads somewhere; the wall has its own Dm. The cycle restarts after the second silence.
+    origin = 0 if t < QUIET else 12 if t < RING else 24
+    return CHORDS[int((t - origin) // (BAR * 2)) % 4]
 
 
 def grid(a, b, step):
     return np.arange(a, b - 1e-6, step)
+
+
+def bars_over(a, b):
+    # Whole bars of the film's grid, wherever a section starts: every pattern stays on one clock.
+    return grid(np.floor(a / BAR) * BAR, b, BAR)
+
+
+def ramp(points):
+    # A level over time, for a part that changes without being cut: ramp([(seconds, value), ...]).
+    xs, ys = zip(*points)
+    return lambda t: float(np.interp(t, xs, ys))
+
+
+def val(v, t):
+    return v(t) if callable(v) else v
 
 
 def lay_kick(a, b, gain=1.0):
@@ -263,47 +281,50 @@ def lay_kick(a, b, gain=1.0):
         kick_times.append(t)
 
 
-def lay_groove(a, b, full=True, bass_gain=1.0):
+def lay_groove(a, b, claps=1.0, bass_gain=1.0):
     # Four on the floor, clap on 2 and 4, a syncopated bass that follows the chords.
     lay_kick(a, b)
     for t in grid(a, b, BEAT):
         beat = int(round(t / BEAT))
-        if full and beat % 2 == 1:
-            add(drums, clap(), t, 0.62)
+        if beat % 2 == 1 and val(claps, t) > 0:
+            add(drums, clap(), t, 0.62 * val(claps, t))
         add(hats, hat(True), t + BEAT / 2, 0.3, 0.2)
     for t in grid(a, b, S16):
         s = int(round(t / S16))
         vel = 0.55 + 0.45 * (s % 2 == 0) + 0.12 * np.sin(s * 1.7)
         add(hats, hat(), t, 0.36 * vel, -0.25 + 0.5 * (s % 4 == 2))
     pattern = [0, 0.75, 1.5, 2.5, 3.25, 3.75]
-    for t in grid(a, b, BAR):
+    for t in bars_over(a, b):
         for p in pattern:
             at = t + p * BEAT
-            if at >= b:
+            if at < a or at >= b:
                 continue
             root, _ = chord_at(at)
             d = 0.34
             f = float(mtof(root))
             tt = tvec(d)
             body = np.sin(2 * np.pi * f * tt) + 0.35 * np.sin(4 * np.pi * f * tt)
-            add(subs, np.tanh(body * 1.5) * env_ad(len(tt), 0.004, d, 2.4), at, 0.62 * bass_gain)
+            add(subs, np.tanh(body * 1.5) * env_ad(len(tt), 0.004, d, 2.4), at, 0.62 * val(bass_gain, at))
             growl = lp(saw(f * 2, d, 18), 1100) * env_ad(len(tt), 0.003, d, 4.5)
-            add(subs, np.tanh(growl * 2.4), at, 0.2 * bass_gain)
+            add(subs, np.tanh(growl * 2.4), at, 0.2 * val(bass_gain, at))
 
 
 def lay_arp(a, b, gain=1.0, octave=0, bright=1.0):
     order = [0, 1, 2, 3, 2, 1, 3, 4]
     for t in grid(a, b, S16):
-        s = int(round((t - a) / S16))
+        s = int(round(t / S16))
+        g = val(gain, t)
+        if g <= 0:
+            continue
         root, tones = chord_at(t)
         ladder = [root + 24 + x for x in tones] + [root + 36, root + 36 + tones[1]]
-        add(arp, pluck(ladder[order[s % 8]] + 12 * octave, 0.2, bright), t, gain * (0.5 + 0.5 * (s % 4 == 0)), 0.35 * np.sin(s * 0.9))
+        add(arp, pluck(ladder[order[s % 8]] + 12 * octave, 0.2, bright), t, g * (0.5 + 0.5 * (s % 4 == 0)), 0.35 * np.sin(s * 0.9))
 
 
 def lay_pad(a, b, gain=1.0, harm=14):
     for t in grid(a - a % (BAR * 2), b, BAR * 2):
-        root, tones = chord_at(t)
         start, end = max(t, a), min(t + BAR * 2, b)
+        root, tones = chord_at(start)
         d = end - start + 0.5
         n = int(d * SR)
         env = np.minimum(np.arange(n) / (0.35 * SR), 1) * np.minimum((n - np.arange(n)) / (0.5 * SR), 1)
@@ -311,18 +332,18 @@ def lay_pad(a, b, gain=1.0, harm=14):
             add(pad, supersaw(float(mtof(root + 24 + x)), d, 5, 0.01, harm) * env[:, None], start, gain * 0.3)
 
 
-def lay_stabs(a, b, gain=1.0, pattern=(0, 0.75, 1.5, 3.0, 3.5)):
-    for t in grid(a, b, BAR):
+def lay_stabs(a, b, gain=1.0, pattern=(0, 0.75, 1.5, 2.0, 3.0, 3.5)):
+    for t in bars_over(a, b):
         for p in pattern:
             at = t + p * BEAT
-            if at >= b:
+            if at < a or at >= b:
                 continue
             root, tones = chord_at(at)
             d = 0.3
             for x in tones:
                 s = supersaw(float(mtof(root + 36 + x)), d, 5, 0.014, 20)
                 s = sweep_lp(s, 900 + 6500 * np.exp(-tvec(d) * 12), 96)
-                add(stab, s * env_ad(int(d * SR), 0.002, d, 3)[:, None], at, gain * 0.34)
+                add(stab, s * env_ad(int(d * SR), 0.002, d, 3)[:, None], at, val(gain, at) * 0.34)
 
 
 tense, heart = stem(), stem()
@@ -337,10 +358,10 @@ def beat_heart(t, g=1.0):
 def lay_lead(a, b, gain=1.0):
     # A line that climbs through whichever chord is under it, doubled an octave down.
     steps = [(0, 2), (0.75, 3), (1.5, 4), (2.0, 3), (2.75, 2), (3.5, 1)]
-    for t in grid(a, b, BAR):
+    for t in bars_over(a, b):
         for p, k in steps:
             at = t + p * BEAT
-            if at >= b:
+            if at < a or at >= b:
                 continue
             root, tones = chord_at(at)
             ladder = [root + 36 + x for x in tones] + [root + 48, root + 48 + tones[1]]
@@ -391,23 +412,34 @@ add(fx, riser(BREATH - TAKE["entry"], 11000, 1.0), TAKE["entry"])
 
 # --- III. The target. Everything, at once.
 add(fx, impact(1.35), TP, 1.15)
-add(sfx, bell(74, 3), TP, 0.42)
+add(sfx, bell(76, 3), TP, 0.42)
 add(sfx, bell(81, 3), TP, 0.22)
-lay_groove(TP, RAIL)
-lay_stabs(TP, RAIL, 1.0, (0, 0.75, 1.5))
-lay_pad(TP, RAIL, 0.9, 18)
-lay_arp(TP, RAIL, 0.36, 1, 1.0)
+# The target, 盤面旁白 and the views are one song on one clock, from here to the second silence: the
+# parts below thin out and come back by level and filter (pad_level, arp_curve, pad_curve in the
+# mix), so no cut in the picture is a cut in the music.
+lay_groove(
+    TP,
+    BLACK,
+    # The band leans back for the rail so the eye can read, and nothing ever leaves altogether.
+    claps=ramp([(TP, 1), (RAIL, 1), (13.0, 0.3), (14.5, 0.3), (FEAT, 1)]),
+    bass_gain=ramp([(TP, 1), (RAIL, 1), (13.0, 0.8), (14.5, 0.8), (FEAT, 1)]),
+)
+lay_pad(TP, BLACK, 1.0, 18)
+# The bright arp hands over to one an octave down and back, a note at a time.
+lay_arp(TP, BLACK, ramp([(TP, 0.36), (RAIL, 0.36), (13.5, 0.1), (14.5, 0.1), (FEAT, 0.34)]), 1, 1.0)
+lay_arp(TP, BLACK, ramp([(RAIL, 0), (13.0, 0.24), (15.0, 0.24), (FEAT + 0.5, 0)]), 0, 0.8)
+lay_stabs(TP, BLACK, ramp([(TP, 1), (RAIL, 1), (13.5, 0.22), (14.5, 0.22), (FEAT, 0.7)]))
 
-# --- IV. 盤面旁白: no claps, so the eye can read; the kick keeps walking.
-lay_groove(RAIL, FEAT, full=False, bass_gain=0.8)
-lay_pad(RAIL, FEAT, 0.62, 12)
-lay_arp(RAIL, FEAT, 0.26, 0, 0.6)
+# --- IV. 盤面旁白 runs into the views: a fill and a low riser call the band back before it lands.
+t = FEAT - 1.0
+gap = 0.25
+while t < FEAT - 0.01:
+    add(drums, clap(), t, 0.06 + 0.26 * (t - FEAT + 1.0) ** 2)
+    t += gap
+    gap = max(0.0625, gap * 0.86)
+add(fx, riser(1.5, 7000, 0.4), FEAT - 1.5)
 
-# --- V. The views: the full band, the stabs back, climbing toward another wall.
-lay_groove(FEAT, BLACK)
-lay_pad(FEAT, BLACK, 0.8, 18)
-lay_arp(FEAT, BLACK, 0.34, 1, 1.0)
-lay_stabs(FEAT, BLACK, 0.7, (0, 0.75, 1.5, 2.25, 3.0, 3.5))
+# --- V. The views: climbing toward another wall.
 add(fx, riser(BLACK - 19.0, 11000, 0.8), 19.0)
 t = 20.0
 gap = 0.25
@@ -417,24 +449,31 @@ while t < BLACK - 0.01:
     gap = max(0.0625, gap * 0.8)
 
 # --- VI. Second silence: a heart, a pedal, the ring winding up in the dark.
-span2 = BREATH2 - BLACK
+span2 = RING - BLACK
 tt2 = np.arange(int(span2 * SR)) / SR
 pedal = lp(supersaw(float(mtof(33)), span2, 5, 0.005, 8), 320)
 add(tense, pedal * (tt2 / span2)[:, None] ** 2.2, BLACK, 0.5)
 for t in (BLACK + 0.45, BLACK + 1.25):
     beat_heart(t, 0.34)
-add(fx, riser(BREATH2 - (BLACK + 0.8), 12000, 1.0), BLACK + 0.8)
+add(fx, riser(RING - (BLACK + 0.8), 12000, 1.0), BLACK + 0.8)
+# Nothing stops before this drop: a roll tightens all the way into it.
+t = 22.0
+gap = 0.25
+while t < RING - 0.01:
+    add(drums, clap(), t, 0.1 + 0.42 * (t - 22.0) ** 2)
+    t += gap
+    gap = max(0.0625, gap * 0.82)
 
 # --- VII. The biggest moment in the film.
 add(fx, impact(1.5), RING, 1.25)
-add(sfx, bell(74, 3), RING, 0.42)
+add(sfx, bell(76, 3), RING, 0.42)
 add(sfx, bell(81, 3), RING, 0.26)
-add(sfx, bell(86, 3), RING, 0.14)
-lay_groove(RING, IMPLODE + 0.3)
-lay_stabs(RING, IMPLODE + 0.3, 0.9, (0, 0.75, 1.5, 2.25, 3.0, 3.5))
-lay_pad(RING, IMPLODE + 0.3, 0.95, 18)
-lay_arp(RING, IMPLODE + 0.3, 0.36, 1, 1.0)
-lay_lead(RING, IMPLODE + 0.3, 1.0)
+add(sfx, bell(88, 3), RING, 0.14)
+lay_groove(RING, LOGO)
+lay_stabs(RING, LOGO, 0.9)
+lay_pad(RING, LOGO, 0.95, 18)
+lay_arp(RING, LOGO, 0.36, 1, 1.0)
+lay_lead(RING, LOGO, 1.0)
 
 # --- The end card: the last chord resolves, the three-note motif rings out.
 end_chord = DUR - LOGO + 0.5
@@ -499,24 +538,27 @@ for t in kick_times:
 duck = duck[:, None]
 
 # The opening drone opens slowly; the arp's brightness follows the song's energy.
-arp_curve = curve([(0, 450), (QUIET, 8000), (TP, 8000), (RAIL, 8000), (RAIL + 0.3, 2400), (FEAT, 3000), (FEAT + 0.1, 7000), (BLACK, 10000), (RING, 10000), (DUR, 10000)])
-pad_curve = curve([(0, 320), (QUIET, 3200), (TP, 4200), (RAIL, 3600), (RAIL + 0.3, 1000), (FEAT, 1200), (FEAT + 0.1, 3000), (BLACK, 4200), (RING, 5000), (LOGO, 5000), (DUR, 2000)])
+arp_curve = curve([(0, 450), (QUIET, 8000), (TP, 8000), (RAIL, 8000), (13.5, 2400), (14.0, 2600), (FEAT, 7000), (BLACK, 10000), (RING, 10000), (DUR, 10000)])
+pad_curve = curve([(0, 320), (QUIET, 3200), (TP, 4200), (RAIL, 3600), (13.5, 1000), (14.0, 1200), (FEAT, 3000), (BLACK, 4200), (RING, 5000), (LOGO, 5000), (DUR, 2000)])
+pad_level = np.interp(np.arange(N) / SR, [0, QUIET, TP, RAIL, 13.5, 14.0, FEAT, BLACK, RING, DUR], [1, 1, 0.9, 0.9, 0.62, 0.62, 0.8, 0.8, 0.95, 0.95])
 arp = sweep_lp(arp, arp_curve)
-pad = sweep_lp(pad, pad_curve)
+pad = sweep_lp(pad, pad_curve) * pad_level[:, None]
 
 # The band stops dead at each silence and stays out; reverb from the send keeps ringing a moment.
 band = np.ones(N)
-for a_, b_ in ((QUIET, TP), (BLACK, RING), (LOGO - 0.2, LOGO)):
+for a_, b_ in ((QUIET, TP), (BLACK, RING)):
     i_, j_ = int(a_ * SR), int(b_ * SR)
     band[i_:j_] = 0.0
     band[i_ - 96 : i_] = np.linspace(1, 0, 96)
+# The ring's implosion draws the band down into the logo instead of cutting it.
+i_, j_ = int(IMPLODE * SR), int(LOGO * SR)
+band[i_:j_] = np.linspace(1, 0, j_ - i_) ** 1.5
 band = band[:, None]
-# Total silence, nothing at all, in the breath before a drop.
+# Total silence, nothing at all, in the breath before the first drop.
 gate = np.ones(N)
-for a_, b_ in ((BREATH, TP), (BREATH2, RING)):
-    i_, j_ = int(a_ * SR), int(b_ * SR)
-    gate[i_:j_] = 0.0
-    gate[i_ - 96 : i_] = np.linspace(1, 0, 96)
+i_, j_ = int(BREATH * SR), int(TP * SR)
+gate[i_:j_] = 0.0
+gate[i_ - 96 : i_] = np.linspace(1, 0, 96)
 gate = gate[:, None]
 
 arp_wet = pingpong(arp, S16 * 3, 0.42, 5)
@@ -543,5 +585,5 @@ mix = mix / np.abs(mix).max() * 0.57  # about -14 LUFS, true peak below -3 dB
 os.makedirs("assets/audio", exist_ok=True)
 wavfile.write("assets/audio/soundtrack.wav", SR, (mix * 32767).astype(np.int16))
 rms = lambda a, b: 20 * np.log10(np.sqrt((mix[int(a * SR) : int(b * SR)] ** 2).mean()) + 1e-9)
-print("rms dB by section:", {k: round(rms(*v), 1) for k, v in {"wall": (0, 3), "tail": (3, 3.6), "quiet": (3.6, 5), "open": (5, 7.5), "stopped": (7.6, 9), "again": (9, 10), "peak": (10, 10.75), "tp": (11, 11.8), "rail": (11.8, 15.5), "feat": (15.5, 21), "black": (21.2, 22), "climb": (22, 22.75), "ring": (23, 27.4), "logo": (28, 30)}.items()})
+print("rms dB by section:", {k: round(rms(*v), 1) for k, v in {"wall": (0, 3), "tail": (3, 3.6), "quiet": (3.6, 5), "open": (5, 7.5), "stopped": (7.6, 9), "again": (9, 10), "peak": (10, 10.75), "tp": (11, 11.8), "rail": (11.8, 15.5), "feat": (15.5, 21), "black": (21.2, 22), "climb": (22, 23), "ring": (23, 27.4), "logo": (28, 30)}.items()})
 print("wrote", N / SR, "s")

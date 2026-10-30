@@ -156,15 +156,17 @@
       const A = q("scr-railA"), B = q("scr-railB");
       const RAIL = { scale: 1.55, x: -650, y: 120 };
       tl.fromTo(A, { opacity: 1, ...RAIL, x: RAIL.x + 700 }, { opacity: 1, ...RAIL, duration: 0.42, ease: "expo.out", immediateRender: false }, S.rail);
-      tl.to(A, { scale: 1.62, x: -690, y: 40, duration: 1.2, ease: "none" }, S.rail + 0.42);
-      tl.to(A, { scale: 1, x: 0, y: 0, duration: 0.38, ease: "power3.inOut" }, S.replayBtn - 0.38);
+      // The whole 1-minute chart holds still a moment before the press, so the replay reads as this chart.
+      const HOLD = 0.2;
+      tl.to(A, { scale: 1.62, x: -690, y: 40, duration: 1.2 - HOLD, ease: "none" }, S.rail + 0.42);
+      tl.to(A, { scale: 1, x: 0, y: 0, duration: 0.38, ease: "power3.inOut" }, S.replayBtn - 0.38 - HOLD);
       set(A, { opacity: 0 }, S.replayBtn);
       set(B, { opacity: 1, scale: 1, x: 0, y: 0 }, S.replayBtn);
       tl.to(B, { scale: 1.06, x: 52, y: -10, duration: S.feat - S.replayBtn, ease: "none" }, S.replayBtn);
       fadeIn("#scrim-l", S.rail, 0.25);
-      fadeOut("#scrim-l", S.replayBtn - 0.4, 0.3);
+      fadeOut("#scrim-l", S.replayBtn - 0.4 - HOLD, 0.3);
       chars(q("name-rail"), S.rail + 0.06, 0.4, 0.06);
-      fadeOut("#name-rail", S.replayBtn - 0.42, 0.18);
+      fadeOut("#name-rail", S.replayBtn - 0.42 - HOLD, 0.18);
       chars(q("name-btn"), S.replayBtn + 0.04, 0.32, 0.05);
       fadeOut("#name-btn", S.feat - 0.1, 0.1);
 
@@ -193,20 +195,22 @@
           set(n, { opacity: 0 }, f.at + f.d);
         }
       });
-      for (let k = S.feat + 2.5; k < S.black - 0.01; k += 0.5) if (k !== 17.5 && k !== 19) tl.fromTo("#picture", { scale: 1.012 }, { scale: 1, duration: 0.4, ease: "power2.out", immediateRender: false }, k);
+      for (let k = S.feat + 2.5; k < S.black - 0.01; k += 0.5) if (!FEATURES.some((f) => f.at === k)) tl.fromTo("#picture", { scale: 1.012 }, { scale: 1, duration: 0.4, ease: "power2.out", immediateRender: false }, k);
       set("#scrim-b", { opacity: 0 }, S.black);
 
       // ---------- VI. Second silence: black, one line, the ring winding up in the dark ----------
       set("#stage", { opacity: 0 }, S.black);
       chars(q("tagline"), S.black + 0.2, 0.7, 0.07, 1.04);
       set("#ring", { opacity: 0, scale: 0.56, rotationX: 9 }, S.black);
-      tl.fromTo("#tier-top", { rotationY: -70 }, { rotationY: -150, duration: S.breath2 - S.black, ease: "power1.in", immediateRender: false }, S.black);
-      tl.fromTo("#tier-bot", { rotationY: 70 }, { rotationY: 150, duration: S.breath2 - S.black, ease: "power1.in", immediateRender: false }, S.black);
+      // The ring turns the way it will after the drop and reaches the drop's speed exactly on it (a
+      // power2.in over 2 s and the power3.out below both run at 545°/s there), so it never stops.
+      tl.fromTo("#tier-top", { rotationY: -513 }, { rotationY: -150, duration: S.ring - S.black, ease: "power2.in", immediateRender: false }, S.black);
+      tl.fromTo("#tier-bot", { rotationY: 513 }, { rotationY: 150, duration: S.ring - S.black, ease: "power2.in", immediateRender: false }, S.black);
       FLICKER.forEach((t, i) => {
-        tl.fromTo("#ring", { opacity: 0.42 + i * 0.06 }, { opacity: 0.06, duration: Math.min(0.22, 0.05 + (FLICKER[i + 1] ?? S.breath2) - t), ease: "power2.out", immediateRender: false }, t);
+        tl.fromTo("#ring", { opacity: 0.42 + i * 0.06 }, { opacity: 0.06, duration: Math.min(0.22, 0.05 + (FLICKER[i + 1] ?? S.ring) - t), ease: "power2.out", immediateRender: false }, t);
       });
-      set("#ring", { opacity: 0 }, S.breath2);
-      set("#tagline", { opacity: 0 }, S.breath2);
+      tl.to("#ring", { opacity: 0.7, duration: 0.1, ease: "power2.in" }, S.ring - 0.1);
+      fadeOut("#tagline", S.ring - 0.3, 0.25);
 
       // ---------- VII. The second explosion: every view, turning ----------
       flash(S.ring, 1, 0.6);
