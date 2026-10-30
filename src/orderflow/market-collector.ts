@@ -30,6 +30,7 @@ export class MarketCollector extends Collector {
   private crossSent = new Set<number>();
   private lastBookEvent = 0;
   private lastTrades: Record<string, number> = {};
+  private lastMergeWrites: number | null = null;
 
   constructor(ctx: DurableObjectState, env: OrderflowEnv) {
     super(ctx, env);
@@ -54,20 +55,58 @@ export class MarketCollector extends Collector {
     return Object.fromEntries(answers.filter(([, part]) => part)) as Partial<Record<Exchange, Part>>;
   }
 
-  // Writes merged minutes over [from, to): bars, prints and heat are replaced, liquidations and
-  // readings added. Returns the merged answer for the watchers.
+  // Brings the stored minutes of [from, to) up to the merged answer: bars and prints that left it
+  // go, liquidations and readings only add. Cloudflare bills every row written, and this runs every
+  // alarm over minutes that have mostly not changed, so a row that already matches is left alone.
   private write(m: Merged, from: number, to: number) {
-    this.sql.exec("DELETE FROM bars WHERE t >= ? AND t < ?", from, to);
-    for (const row of m.bars) this.sql.exec("INSERT OR REPLACE INTO bars (t, src, row) VALUES (?, 'merged', ?)", row[0], JSON.stringify(row));
-    this.sql.exec("DELETE FROM prints WHERE t >= ? AND t < ?", from, to);
-    for (const [t, side, price, qty, ex] of m.prints as [number, string, number, number, string][])
-      this.sql.exec("INSERT OR IGNORE INTO prints (t, side, price, qty, src, ex) VALUES (?, ?, ?, ?, 'merged', ?)", t, side, price, qty, ex);
-    for (const [t, side, price, qty, ex] of m.liquidations as [number, string, number, number, string][]) this.sql.exec("INSERT OR IGNORE INTO liqs VALUES (?, ?, ?, ?, ?)", t, side, price, qty, ex);
-    for (const col of m.heat as [number, ...unknown[]][]) this.sql.exec("INSERT OR REPLACE INTO heat (t, row) VALUES (?, ?)", col[0], JSON.stringify(col));
-    for (const [t, oi, value, topPos, topAcc, ratio, , funding] of m.metrics) {
-      this.sql.exec("INSERT OR REPLACE INTO oi (t, oi, oi_value, taker, funding) VALUES (?, ?, ?, NULL, ?)", t, oi, value, funding);
-      this.sql.exec("INSERT OR REPLACE INTO ratios (t, ratio, top_pos, top_acc) VALUES (?, ?, ?, ?)", t, ratio, topPos, topAcc);
+    let written = 0;
+    const exec = (query: string, ...args: SqlStorageValue[]) => {
+      written += this.sql.exec(query, ...args).rowsWritten;
+    };
+
+    const bars = new Map(this.rows("SELECT t, row FROM bars WHERE t >= ? AND t < ?", from, to).map((r) => [Number(r.t), String(r.row)]));
+    for (const row of m.bars) {
+      const text = JSON.stringify(row);
+      if (bars.get(row[0]) !== text) exec("INSERT OR REPLACE INTO bars (t, src, row) VALUES (?, 'merged', ?)", row[0], text);
+      bars.delete(row[0]);
     }
+    for (const t of bars.keys()) exec("DELETE FROM bars WHERE t = ?", t);
+
+    const printKey = (t: unknown, side: unknown, price: unknown, qty: unknown) => `${t}|${side}|${price}|${qty}`;
+    const prints = new Map(this.rows("SELECT t, side, price, qty, ex FROM prints WHERE t >= ? AND t < ?", from, to).map((r) => [printKey(r.t, r.side, r.price, r.qty), r]));
+    for (const [t, side, price, qty, ex] of m.prints as [number, string, number, number, string][]) {
+      const key = printKey(t, side, price, qty);
+      const stored = prints.get(key);
+      if (!stored) exec("INSERT OR IGNORE INTO prints (t, side, price, qty, src, ex) VALUES (?, ?, ?, ?, 'merged', ?)", t, side, price, qty, ex);
+      else if (stored.ex !== ex) exec("UPDATE prints SET ex = ? WHERE t = ? AND side = ? AND price = ? AND qty = ?", ex, t, side, price, qty);
+      prints.delete(key);
+    }
+    for (const r of prints.values()) exec("DELETE FROM prints WHERE t = ? AND side = ? AND price = ? AND qty = ?", r.t, r.side, r.price, r.qty);
+
+    for (const [t, side, price, qty, ex] of m.liquidations as [number, string, number, number, string][]) exec("INSERT OR IGNORE INTO liqs VALUES (?, ?, ?, ?, ?)", t, side, price, qty, ex);
+
+    const heatCols = m.heat as [number, ...unknown[]][];
+    if (heatCols.length) {
+      const heat = new Map(this.rows("SELECT t, row FROM heat WHERE t >= ? AND t <= ?", heatCols[0][0], heatCols[heatCols.length - 1][0]).map((r) => [Number(r.t), String(r.row)]));
+      for (const col of heatCols) {
+        const text = JSON.stringify(col);
+        if (heat.get(col[0]) !== text) exec("INSERT OR REPLACE INTO heat (t, row) VALUES (?, ?)", col[0], text);
+      }
+    }
+
+    if (m.metrics.length) {
+      const range = [m.metrics[0][0], m.metrics[m.metrics.length - 1][0]] as [number, number];
+      const ois = new Map(this.rows("SELECT t, oi, oi_value, funding FROM oi WHERE t >= ? AND t <= ?", ...range).map((r) => [Number(r.t), r]));
+      const ratios = new Map(this.rows("SELECT t, ratio, top_pos, top_acc FROM ratios WHERE t >= ? AND t <= ?", ...range).map((r) => [Number(r.t), r]));
+      for (const [t, oi, value, topPos, topAcc, ratio, , funding] of m.metrics) {
+        const o = ois.get(t as number);
+        if (!o || o.oi !== oi || o.oi_value !== value || o.funding !== funding) exec("INSERT OR REPLACE INTO oi (t, oi, oi_value, taker, funding) VALUES (?, ?, ?, NULL, ?)", t, oi, value, funding);
+        const r = ratios.get(t as number);
+        if (!r || r.ratio !== ratio || r.top_pos !== topPos || r.top_acc !== topAcc) exec("INSERT OR REPLACE INTO ratios (t, ratio, top_pos, top_acc) VALUES (?, ?, ?, ?)", t, ratio, topPos, topAcc);
+      }
+    }
+
+    this.lastMergeWrites = written;
     const last = m.bars.at(-1);
     if (last) (this.lastPrice = last[4]), (this.lastTradeT = Math.max(this.lastTradeT, ...Object.values(this.lastTrades)));
   }
@@ -111,6 +150,7 @@ export class MarketCollector extends Collector {
   private async copyBookEvents(now: number) {
     const since = Math.floor(Math.max(this.lastBookEvent + 1, now - HOUR) / MINUTE) * MINUTE;
     const answer = await this.read("binance", `/events?since=${since}`);
+    const before = this.lastBookEvent;
     for (const e of answer?.events ?? []) {
       if (!BOOK_KINDS.has(e.kind) || e.t <= this.lastBookEvent) continue;
       this.sql.exec(
@@ -126,7 +166,7 @@ export class MarketCollector extends Collector {
       );
       this.lastBookEvent = Math.max(this.lastBookEvent, e.t);
     }
-    this.setMeta("lastBookEvent", this.lastBookEvent);
+    if (this.lastBookEvent !== before) this.setMeta("lastBookEvent", this.lastBookEvent);
   }
 
   // One day of history per alarm: yesterday and today once an hour (yesterday first, for the key
@@ -222,7 +262,7 @@ export class MarketCollector extends Collector {
 
   override publicStatus() {
     const { bybit, okx, open, bookReady, ...rest } = super.publicStatus();
-    return { ...rest, exchanges: this.lastTrades, mergedDays: (JSON.parse(this.meta("mergedDays") ?? "[]") as number[]).length };
+    return { ...rest, exchanges: this.lastTrades, mergedDays: (JSON.parse(this.meta("mergedDays") ?? "[]") as number[]).length, lastMergeWrites: this.lastMergeWrites };
   }
 
   override async fetch(request: Request): Promise<Response> {
