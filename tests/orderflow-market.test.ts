@@ -81,6 +81,26 @@ test("全市場 merges the exchanges' minutes and finds a 跨所同步大單 at 
   assert.equal((await post("all", { rows: [] })).status, 400);
 });
 
+test("全市場 writes only the rows that changed between merges", async () => {
+  const minute = Math.floor(Date.now() / MINUTE) * MINUTE - MINUTE;
+  const status = () => getJson("/status?ex=all");
+  const printsNow = async () => (await getJson(`/recent?ex=all&since=${minute - 5 * MINUTE}`)).prints as unknown[][];
+  const sameCount = async () => (await status()).lastMergeWrites === 0;
+
+  const t = minute + 30_000;
+  await until(sameCount, "a merge with nothing to write", 30_000);
+
+  // A print arrives: it is written, and the next merge writes nothing again.
+  assert.equal((await post("okx", { prints: [[t, "buy", 80_100, 7]], from: t, to: t + 1 })).status, 200);
+  await until(async () => (await status()).lastMergeWrites > 0, "the merge that writes the new print", 30_000);
+  assert.deepEqual((await printsNow()).find((p) => p[0] === t), [t, "buy", 80_100, 7, "okx"]);
+  await until(sameCount, "the merge after the new print", 30_000);
+
+  // A print leaves the exchange's answer: it leaves the merged minutes too.
+  assert.equal((await post("okx", { prints: [], from: t, to: t + 1 })).status, 200);
+  await until(async () => !(await printsNow()).some((p) => p[0] === t), "the print to go", 30_000);
+});
+
 test("the admin can have 全市場 merge every day again after a late backfill", async () => {
   const remerge = (query: string) => mf.dispatchFetch(`${base}/archive?ex=all${query}`, { method: "POST", headers: { authorization: `Bearer ${token}` } });
   const today = new Date(Math.floor(Date.now() / DAY) * DAY).toISOString().slice(0, 10);
