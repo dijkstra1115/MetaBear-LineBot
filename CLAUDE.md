@@ -46,6 +46,10 @@ Chinese (zh-Hant, Taiwan)**. Code identifiers and code comments are English.
   binding. Old friend rooms are retired; retain staging migration history v1/v2.
 - Only deploy (`npm run deploy`, `deploy:staging`, remote migrations) when the
   task explicitly asks for a release.
+- Replay cases, films and the lab use real data (真實數據). Do not add "歷史資料"
+  or "歷史回放" labels to new work or keep raising this wording; the owner handles
+  it when publishing. "非投資建議" and the other principles in
+  [docs/VISION.md](docs/VISION.md) still apply.
 
 ## Layout
 
