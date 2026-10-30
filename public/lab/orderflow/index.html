@@ -155,18 +155,13 @@
       <div id="bc-actions" class="bc-actions"><button id="bc-replay" class="bc-replay" type="button">▶ 覆盤這段</button><button id="bc-unpin" type="button">取消固定</button></div>
     </section>
     <!-- 一鍵覆盤 (event-replay.js): a narration story replayed bar by bar. -->
-    <div id="er-bar" class="er-bar" hidden>
-      <span class="er-badge">覆盤</span>
-      <div class="er-heading"><b id="er-title"></b><span id="er-range"></span></div>
-      <button id="er-share" class="er-ghost" type="button">分享這段覆盤</button>
-      <button id="er-exit" class="er-ghost" type="button">結束覆盤 ✕</button>
-    </div>
     <div id="er-caption" class="er-caption" aria-live="polite" hidden>
       <span id="er-kicker" class="er-kicker"></span>
       <p id="er-head" class="er-head"></p>
       <p id="er-sub" class="er-sub"></p>
     </div>
-    <div id="er-controls" class="er-controls" hidden>
+    <div id="er-controls" class="er-controls" role="group" hidden>
+      <span class="er-badge">覆盤</span>
       <button id="er-play" class="er-play" type="button" aria-label="暫停"></button>
       <div class="er-speed" role="group" aria-label="速度">
         <button type="button" data-speed="0.5">0.5×</button><button type="button" data-speed="1">1×</button><button type="button" data-speed="2">2×</button>
@@ -176,6 +171,8 @@
         <div id="er-ticks" class="er-ticks" aria-hidden="true"></div>
       </div>
       <span id="er-clock" class="er-clock"></span>
+      <button id="er-share" class="er-mini" type="button" title="分享這段覆盤">分享</button>
+      <button id="er-exit" class="er-mini" type="button" aria-label="結束覆盤" title="結束覆盤（Esc）">✕</button>
     </div>
     <section id="er-outro" class="er-outro" aria-labelledby="er-outro-title" hidden>
       <span id="er-outro-kicker" class="er-kicker"></span>

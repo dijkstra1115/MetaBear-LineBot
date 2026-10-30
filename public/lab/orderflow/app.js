@@ -24,7 +24,7 @@ import { bubbleRadius, countdown, eventMark, mergePrints, stackedImbalances } fr
 import { hitDrawing, indexAt, loadDrawings, newId, saveDrawings, timeAt } from "./drawings.js";
 import { FILTERS, cardOf, detailOf, filterGroups, groupEvents, levelPriceOf, nowOf, timeOf } from "./narrate.js";
 import { chapterCard, chapterStory, chaptersOf, findChapter } from "./chapters.js";
-import { START_MS, barsPerSecond, beatAt, beatsOf, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
+import { START_MS, barsPerSecond, beatAt, beatsOf, fitBarW, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
 
 // Cloudflare stretches the API's short max-age to hours in browsers; revalidate every request
 // (the edge cache still answers most of them).
@@ -395,11 +395,11 @@ function build() {
   }
   attachVwap(mergedRows, bars);
   dayLevels = dayLevelsOf(mergedRows);
-  if (evReplay) evReplay.startIndex = bars.findIndex((b) => b.t >= evReplay.win.from);
-  else applyLive(bars.at(-1), bars.at(-2));
+  if (!evReplay) applyLive(bars.at(-1), bars.at(-2));
   attachLiquidations(tfMs);
-  mergedOi = metricsSorted.filter((m) => m[1] != null).map((m) => [m[0], m[1]]);
-  if (stream.oi && mergedOi.length && Date.now() > mergedOi.at(-1)[0] + 30_000) mergedOi.push([Date.now(), stream.oi]);
+  // A story replay's liquidation map knows only the readings before its clock.
+  mergedOi = metricsSorted.filter((m) => m[1] != null && (!evReplay || m[0] < evReplay.cut)).map((m) => [m[0], m[1]]);
+  if (!evReplay && stream.oi && mergedOi.length && Date.now() > mergedOi.at(-1)[0] + 30_000) mergedOi.push([Date.now(), stream.oi]);
   updateLiqMap(false);
   updateEvents();
 }
@@ -692,15 +692,11 @@ function clampView() {
   const minW = 2;
   const maxW = 260;
   view.barW = Math.min(maxW, Math.max(minW, view.barW));
-  // A story replay keeps its whole window in view, the bars still to come included.
-  if (evReplay && evReplay.startIndex >= 0) {
-    view.barW = Math.max(2, (Math.max(100, size.w - 74) - 8) / (evReplay.bars + 1));
-    view.end = evReplay.startIndex + evReplay.bars + 1;
-    return;
-  }
-  // Up to half a screen of empty space past the newest bar, as on other charting tools.
+  // Up to half a screen of empty space past the newest bar, as on other charting tools; a story
+  // replay also keeps room for its bars still to come.
   const plotW = Math.max(100, size.w - 74);
-  view.end = Math.min(bars.length + Math.max(8, (plotW / view.barW) * 0.5), Math.max(5, view.end));
+  const room = Math.max(8, (plotW / view.barW) * 0.5, evReplay ? replayBarsLeft() + 1 : 0);
+  view.end = Math.min(Math.max(bars.length + room, evReplay?.holdEnd ?? 0), Math.max(5, view.end));
 }
 
 // ---------- drawing ----------
@@ -1413,6 +1409,8 @@ function drawSpot(L, from, to) {
 
 // Lights a narration chapter and glides the chart to it, the stretch about centred.
 function spotlight(ch) {
+  // A story replay holds the chart; the rail's cards still open.
+  if (evReplay) return;
   if (!ch) {
     spot = null;
     redraw();
@@ -2159,7 +2157,7 @@ function legendRow(id) {
 
 function renderLegend() {
   if (!legend.root) return;
-  const hide = !!(replay || evReplay || CASE);
+  const hide = !!(replay || CASE);
   legend.root.hidden = hide;
   if (hide) return;
   const ids = INDICATORS.filter(([id, where]) => where === "overlay" && (on(id) || legendKept.has(id))).map(([id]) => id);
@@ -2330,7 +2328,7 @@ const PEN_RGB = "138,180,255";
 const pen = { tool: "cursor", list: loadDrawings(MK.id), sel: null, start: null, at: null, drag: null, owner: null, downAt: null };
 const penBar = $("pen-tools");
 const tfMsNow = () => Number(ui.tf.value) * MINUTE;
-const penHidden = () => !!(replay || evReplay || CASE);
+const penHidden = () => !!(replay || CASE);
 const xAtT = (t, L) => L.plotW - (view.end - indexAt(bars, t, tfMsNow())) * view.barW;
 const indexAtX = (x, L) => view.end - (L.plotW - x) / view.barW;
 const tAtX = (x, L) => timeAt(bars, indexAtX(x, L), tfMsNow());
@@ -2670,6 +2668,7 @@ window.addEventListener("keydown", (e) => {
       return;
     }
     if (e.key === "Escape" && (pen.tool !== "cursor" || pen.sel)) {
+      e.preventDefault(); // cancels the pen, not a story replay
       pen.sel = null;
       setTool("cursor");
       return;
@@ -2692,6 +2691,7 @@ window.addEventListener("keydown", (e) => {
 
 function rebuild() {
   view.yRange = null;
+  if (evReplay) evReplay.holdEnd = 0;
   // A new timeframe changes every index; keep the same moment at the right edge.
   const anchorT = bars[Math.min(bars.length - 1, Math.floor(view.end))]?.t;
   build();
@@ -3068,6 +3068,11 @@ function refresh(full = true) {
 }
 
 function showLive() {
+  if (evReplay) {
+    ui.live.textContent = "覆盤中";
+    ui.live.dataset.state = "replay";
+    return showConnection("on");
+  }
   // The forming bar's countdown on the price tag ticks with this.
   if (bars.length && !document.hidden && !evReplay) redraw();
   if (Date.now() - stream.lastTrade < 5_000) {
@@ -3353,6 +3358,8 @@ nar.root.addEventListener("transitionend", (e) => e.target === nar.root && rende
 window.addEventListener("resize", () => renderNarration(true));
 
 function renderNow(groups) {
+  // A story replay's bars stop at its clock, which is not now.
+  if (evReplay) return;
   const last = bars.at(-1);
   const levels = (dayLevels.get(Math.floor(Date.now() / DAY)) ?? []).map((L) => ({ name: L.name, price: L.price }));
   const now = nowOf({ price: last?.c, vwap: last?.vwap ?? undefined, levels, groups, t: Date.now() });
@@ -3730,10 +3737,9 @@ async function startReplay() {
 // ---------- 一鍵覆盤 (event-replay.js) ----------
 
 const er = Object.fromEntries(
-  ["bar", "title", "range", "share", "exit", "caption", "kicker", "head", "sub", "controls", "play", "seek", "ticks", "clock", "outro", "outro-kicker", "outro-title", "facts", "line", "lesson", "again", "back", "cover", "start", "cover-title", "cover-range"].map((id) => [id, $(`er-${id}`)]),
+  ["share", "exit", "caption", "kicker", "head", "sub", "controls", "play", "seek", "ticks", "clock", "outro", "outro-kicker", "outro-title", "facts", "line", "lesson", "again", "back", "cover", "start", "cover-title", "cover-range"].map((id) => [id, $(`er-${id}`)]),
 );
 const ER_HOLD_MS = 1600; // a pause on each event bar so its caption can be read
-const ER_SHOW = new Set(["prints", "vwap", "levels", "events", "cvd"]);
 const CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];
 const dateOf = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric" });
 let sharedReplayDone = false;
@@ -3756,13 +3762,20 @@ function startEventReplay(story, { autoplay = true } = {}) {
     if (row) rows.push(row);
   }
   if (!rows.length) return;
-  const saved = { tf: ui.tf.value, mode: ui.mode.value, show: { ...prefs.show }, printMin: prefs.printMin, rail: railOpen, barW: view.barW, pinnedT };
+  // The replay runs on the same chart: only the timeframe changes, and only because a story is a
+  // matter of minutes. Indicators, rail and drawing tools stay as they are.
+  const saved = { tf: ui.tf.value, rail: railOpen, barW: view.barW, pinnedT };
+  cancelAnimationFrame(glideFrame);
+  // Already on 1-minute bars with the whole story in view: nothing moves, the chart only rewinds.
+  const L = layout();
+  const i0 = barIndex.get(win.from);
+  const i1 = barIndex.get(win.to - MINUTE);
+  const inPlace = ui.tf.value === "1" && i0 != null && i1 != null && xOf(i0, L) >= 0 && xOf(i1, L) + view.barW <= L.plotW;
+  const shownY = view.yRange ?? lastAuto;
   ui.tf.value = "1";
-  ui.mode.value = "candles";
   syncSegments();
-  prefs.show = Object.fromEntries(Object.keys(prefs.show).map((id) => [id, ER_SHOW.has(id)]));
-  prefs.printMin = Math.max(prefs.printMin, 10);
-  if (railOpen) setRail(false, { remember: false });
+  // Phones: the rail is a sheet over the chart.
+  if (railOpen && NARROW) setRail(false, { remember: false });
   stopPreview();
   pinnedT = null;
   hover = null;
@@ -3783,17 +3796,27 @@ function startEventReplay(story, { autoplay = true } = {}) {
     acc: 0,
     hold: 0,
     last: 0,
-    startIndex: -1,
   };
-  const hi = Math.max(...rows.map((r) => r[2]));
-  const lo = Math.min(...rows.map((r) => r[3]));
-  const pad = Math.max(10, (hi - lo) * 0.1);
-  view.yRange = { lo: lo - pad, hi: hi + pad };
-  view.follow = false;
-  view.barW = Math.max(4, (Math.max(100, size.w - 74) - 8) / (evReplay.bars + 1));
   document.body.classList.add("er-on");
-  er.title.textContent = card.title;
-  er.range.textContent = `${dateOf.format(win.from)} ${timeOf(win.from)}–${timeOf(win.to)} · 1 分 K · ${EXN} ${MK.symbol} 永續`;
+  liqMapAt = 0;
+  build();
+  view.follow = false;
+  if (inPlace) {
+    evReplay.holdEnd = view.end;
+    view.yRange = shownY;
+  } else {
+    // The story ends at the right edge with the bars before it to its left, in the chart's own scale.
+    view.barW = fitBarW(saved.barW, L.plotW, evReplay.bars);
+    view.end = bars.length + replayBarsLeft() + 1;
+    clampView();
+    const [from, to] = visibleRange(L);
+    const seen = bars.slice(from, to + 1);
+    const hi = Math.max(...rows.map((r) => r[2]), ...seen.map((b) => b.h));
+    const lo = Math.min(...rows.map((r) => r[3]), ...seen.map((b) => b.l));
+    const pad = Math.max(10, (hi - lo) * 0.06);
+    view.yRange = { lo: lo - pad, hi: hi + pad };
+  }
+  er.controls.setAttribute("aria-label", `覆盤控制：${card.title}`);
   er.ticks.replaceChildren(
     ...win.spans
       .filter((s) => s.end <= win.to)
@@ -3803,8 +3826,9 @@ function startEventReplay(story, { autoplay = true } = {}) {
         return d;
       }),
   );
-  er.bar.hidden = er.caption.hidden = er.controls.hidden = false;
+  er.caption.hidden = er.controls.hidden = false;
   er.outro.hidden = true;
+  showLive();
   for (const b of document.querySelectorAll("[data-speed]")) b.setAttribute("aria-pressed", String(b.dataset.speed === "1"));
   renderReplay();
   if (autoplay) setReplayPlaying(true);
@@ -3820,17 +3844,15 @@ function stopEventReplay({ rebuild = true } = {}) {
   const r = evReplay;
   if (!r) return;
   evReplay = null;
+  liqMapAt = 0;
   ui.tf.value = r.saved.tf;
-  ui.mode.value = r.saved.mode;
   syncSegments();
-  prefs.show = r.saved.show;
-  prefs.printMin = r.saved.printMin;
   pinnedT = r.saved.pinnedT;
   view.barW = r.saved.barW;
   view.yRange = null;
   view.follow = true;
   document.body.classList.remove("er-on");
-  er.bar.hidden = er.caption.hidden = er.controls.hidden = er.outro.hidden = er.cover.hidden = true;
+  er.caption.hidden = er.controls.hidden = er.outro.hidden = er.cover.hidden = true;
   if (query.has("replay")) history.replaceState(null, "", location.pathname);
   if (rebuild) {
     build();
@@ -3838,8 +3860,9 @@ function stopEventReplay({ rebuild = true } = {}) {
     clampView();
     redraw();
     updateReadout();
-    if (r.saved.rail) setRail(true, { remember: false });
+    showLive();
   }
+  if (r.saved.rail && !railOpen) setRail(true, { remember: false });
 }
 
 function setReplayPlaying(on) {
@@ -3856,19 +3879,31 @@ function setReplayPlaying(on) {
 
 function seekReplay(cut) {
   const r = evReplay;
-  r.cut = Math.max(r.win.from + MINUTE, Math.min(r.win.to, Math.round(cut / MINUTE) * MINUTE));
+  const next = Math.max(r.win.from + MINUTE, Math.min(r.win.to, Math.round(cut / MINUTE) * MINUTE));
+  if (next < r.cut) liqMapAt = 0; // the map has seen minutes that are in the future again
+  r.cut = next;
   r.acc = 0;
   r.hold = 0;
-  renderReplay();
+  renderReplay({ reveal: true });
   if (r.cut >= r.win.to) {
     setReplayPlaying(false);
     showReplayOutro();
   } else er.outro.hidden = true;
 }
 
-function renderReplay() {
+// Bars of the current timeframe between the replay clock and the end of the story.
+const replayBarsLeft = () => Math.ceil((evReplay.win.to - evReplay.cut) / (Number(ui.tf.value) * MINUTE));
+
+function renderReplay({ reveal = false } = {}) {
   const r = evReplay;
+  const L = layout();
+  // The chart stays put while new bars fill it; it scrolls only for a clock at the edge, and leaves
+  // alone a chart the user panned away, unless they asked for another moment with the slider.
+  const watching = xOf(bars.length - 1, L) <= L.plotW;
   build();
+  const px = xOf(bars.length, L);
+  if (reveal && (px > L.plotW - view.barW || px < 0)) view.end = bars.length + Math.min(replayBarsLeft() + 1, (L.plotW / view.barW) * 0.35);
+  else if (watching && px > L.plotW - view.barW) view.end = bars.length + 1;
   clampView();
   redraw();
   updateReadout();
@@ -4009,7 +4044,7 @@ for (const b of document.querySelectorAll("[data-speed]"))
     for (const x of document.querySelectorAll("[data-speed]")) x.setAttribute("aria-pressed", String(x === b));
   });
 window.addEventListener("keydown", (e) => {
-  if (!evReplay || e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+  if (!evReplay || e.defaultPrevented || e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
   if (e.key === "Escape") stopEventReplay();
   else if (e.key === " " && !(e.target instanceof HTMLButtonElement)) {
     e.preventDefault();
@@ -4025,7 +4060,7 @@ function drawEventReplay(L, P, yOf) {
   ctx.rect(0, P.y, L.plotW, P.h);
   ctx.clip();
   const futureFrom = xOf(bars.length, L);
-  const futureTo = Math.min(L.plotW, xOf(r.startIndex + r.bars, L));
+  const futureTo = Math.min(L.plotW, xOf(bars.length + replayBarsLeft(), L));
   ctx.fillStyle = "rgba(120,160,190,0.06)";
   for (let x = futureFrom; x < futureTo; x += Math.max(6, view.barW)) ctx.fillRect(Math.round(x), P.y, 1, P.h);
   const reached = r.win.spans.map((s, i) => [s, i]).filter(([s]) => s.end <= r.cut);
@@ -4047,7 +4082,9 @@ function drawEventReplay(L, P, yOf) {
     const xb = xAtTime(s.end - MINUTE, L);
     if (xa == null || xb == null) continue;
     const on = i === active;
-    const w = xb + view.barW - xa;
+    // Spans are in minutes, whatever timeframe the user switched to.
+    const w = xb - xa + view.barW * Math.min(1, 1 / Number(ui.tf.value));
+    if (xa + w < 0 || xa > L.plotW) continue;
     ctx.fillStyle = on ? "rgba(232,189,125,0.13)" : "rgba(232,189,125,0.05)";
     ctx.fillRect(xa, P.y, w, P.h);
     ctx.strokeStyle = on ? "rgba(232,189,125,0.55)" : "rgba(232,189,125,0.2)";
