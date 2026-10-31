@@ -1,34 +1,9 @@
       // ---------- The timeline: the screens are the real lab; this is the camera and the mood ----------
-      // Each wall tile is a real mini-chart: the bars around the trade and its box, drawn once at load.
-      WALL.forEach((w, i) => {
-        const g = document.getElementById(`tc${i}`).getContext("2d");
-        const W = 800, H = 450, x0 = 22, x1 = W - 22, y0 = 76, y1 = H - 20;
-        let lo = Math.min(w.stop, w.tp), hi = Math.max(w.stop, w.tp);
-        for (const b of w.bars) { lo = Math.min(lo, b[2]); hi = Math.max(hi, b[1]); }
-        const pad = (hi - lo) * 0.05; lo -= pad; hi += pad;
-        const X = (k) => x0 + ((k + 0.5) / w.bars.length) * (x1 - x0);
-        const Y = (p) => y1 - ((p - lo) / (hi - lo)) * (y1 - y0);
-        const bw = Math.max(3, ((x1 - x0) / w.bars.length) * 0.66);
-        const a = X(w.i0), b = X(w.i1) + bw;
-        g.fillStyle = "rgba(120,225,213,0.2)";
-        g.fillRect(a, Math.min(Y(w.entry), Y(w.tp)), b - a, Math.abs(Y(w.tp) - Y(w.entry)));
-        g.fillStyle = "rgba(240,154,90,0.22)";
-        g.fillRect(a, Math.min(Y(w.entry), Y(w.stop)), b - a, Math.abs(Y(w.stop) - Y(w.entry)));
-        g.strokeStyle = "rgba(237,242,237,0.75)";
-        g.lineWidth = 2;
-        g.beginPath(); g.moveTo(a, Y(w.entry)); g.lineTo(b, Y(w.entry)); g.stroke();
-        w.bars.forEach((c, k) => {
-          const col = c[3] >= c[0] ? "#78e1d5" : "#f09a5a", x = X(k);
-          g.strokeStyle = g.fillStyle = col;
-          g.beginPath(); g.moveTo(x, Y(c[1])); g.lineTo(x, Y(c[2])); g.stroke();
-          g.fillRect(x - bw / 2, Math.min(Y(c[0]), Y(c[3])), bw, Math.max(2, Math.abs(Y(c[3]) - Y(c[0]))));
-        });
-      });
-
-      gsap.set(".lb", { scaleY: 0 });
       const tl = gsap.timeline({ paused: true });
       const q = (id) => document.getElementById(id);
-      const set = (el, vars, at) => tl.set(el, vars, at);
+      // What is true from the first frame is set before the timeline exists: a tween starting at 0 can
+      // read its start values before a set at 0 has rendered.
+      const set = (el, vars, at) => (at <= 0 ? gsap.set(el, vars) : tl.set(el, vars, at));
       const fadeIn = (el, at, d = 0.3, from = {}) => tl.fromTo(el, { opacity: 0, ...from }, { opacity: 1, x: 0, y: 0, duration: d, ease: "power3.out", immediateRender: false }, at);
       const fadeOut = (el, at, d = 0.16) => tl.to(el, { opacity: 0, duration: d, ease: "power2.in" }, at);
       const chars = (el, at, d = 0.36, each = 0.04, scale = 1.3) => {
@@ -70,82 +45,72 @@
       };
       const whipIn = (at, dir) => tl.fromTo("#stage", { x: dir * 2400 }, { x: 0, duration: 0.3, ease: "expo.out", immediateRender: false }, at);
 
-      // ---------- I. The wall builds ----------
-      const TX = 425, TY = 0; // the tile the film enters, in world units
-      set("#wall", { opacity: 1 }, 0);
-      const world = q("world");
-      tl.fromTo(world, { x: 1912, y: 900, scale: 0.9, rotationX: 16, rotationY: -18, rotation: -3 }, { x: -60, y: 0, scale: 0.365, rotationX: 7, rotationY: -7, rotation: 0, duration: S.quiet - 0.05, ease: "power2.inOut", immediateRender: false }, 0);
-      WALL.forEach((w, i) => {
-        const at = 0.1 + (w.col + w.row) * 0.2 + (i % 3) * 0.03;
-        tl.fromTo(`#tile${i}`, { opacity: 0, rotationY: 115, z: 200 }, { opacity: 1, rotationY: 0, z: 0, duration: 0.34, ease: "expo.out", immediateRender: false }, at);
-      });
-      fadeIn("#scrim-b", 1.3, 0.3);
-      chars(q("wall-line"), 1.35, 0.34, 0.035);
-
-      // ---------- II. Sudden silence: one tile comes alive and the camera creeps in ----------
-      set("#wall-line", { opacity: 0 }, S.quiet);
-      set("#scrim-b", { opacity: 0 }, S.quiet);
-      tl.to("#wall", { filter: "saturate(0.4) brightness(0.92)", duration: 0.5, ease: "power2.out" }, S.quiet);
-      fadeIn("#vig-hard", S.quiet, 0.8);
-      tl.fromTo(".lb", { scaleY: 0 }, { scaleY: 0.62, duration: 0.7, ease: "power3.inOut", immediateRender: false }, S.quiet + 0.05);
-      tl.to(".tile:not(#tile3)", { opacity: 0.1, filter: "blur(7px)", duration: 0.4, ease: "power2.out" }, S.quiet);
-      fadeOut("#tile3 .t-at", S.quiet + 0.02, 0.2);
-      fadeOut("#tile3 .t-res", S.quiet + 0.02, 0.2);
-      fadeIn("#tv", S.quiet + 0.2, 0.5);
-      tl.to(world, { x: -TX * 0.66, y: -TY * 0.66, scale: 0.66, rotationX: 1, rotationY: -1, duration: 1.45, ease: "sine.inOut" }, S.quiet);
-      tl.to(world, { x: -TX * 2.4, y: -TY * 2.4, scale: 2.4, rotationX: 0, rotationY: 0, duration: S.full - S.quiet - 1.45, ease: "power3.in" }, S.quiet + 1.45);
-      fadeOut("#tile3 .t-edge", S.full - 0.3, 0.3);
-      fadeIn("#legal", S.full - 0.1, 0.4);
-
-      // From here the tile is the screen. k is how far past full frame the camera is.
+      // ---------- I. One stretch of the market, one chart, one take: the trades come one after another ----------
       const W_ = 2.4;
-      const cam = (k, x, y, d, at, ease = "sine.inOut", extra = {}) => tl.to(world, { x: -TX * W_ * k + x, y: -TY * W_ * k + y, scale: W_ * k, duration: d, ease, ...extra }, at);
-      const camSet = (k, x, y, at) => set(world, { x: -TX * W_ * k + x, y: -TY * W_ * k + y, scale: W_ * k }, at);
+      const world = q("world");
+      const hero = `#tile${HERO.wall}`;
+      const TX = HERO.cx, TY = HERO.cy;
+      const cam = (k, x, y, d, at, ease = "sine.inOut") => tl.to(world, { x: -TX * W_ * k + x, y: -TY * W_ * k + y, scale: W_ * k, duration: d, ease }, at);
       const right = (k) => 960 - 960 * k;
+      set("#wall", { opacity: 1 }, 0);
+      set(".tile", { opacity: 1 }, 0);
+      for (const part of [".t-at", ".t-res", ".t-edge"]) set(`${hero} ${part}`, { opacity: 0 }, 0);
+      set(`#tv${HERO.wall}`, { opacity: 1 }, 0);
+      set(world, { x: -TX * W_ * 1.03 + right(1.03), y: -TY * W_ * 1.03 + 8, scale: W_ * 1.03, rotationX: 0, rotationY: 0, rotation: 0 }, 0);
+      set("#scrim-b", { opacity: 1 }, 0);
+      set("#legal", { opacity: 1 }, 0);
+      set("#day", { opacity: 1 }, 0);
+      chars(q("wall-line"), 0.08, 0.3, 0.03);
+      fadeOut("#wall-line", 2.86, 0.14);
+      fadeOut("#scrim-b", 2.86, 0.14);
+      // Each signal draws the eye with a touch of gold around the frame; the chart does the rest.
+      for (const at of [TAKE.t1Sig, TAKE.t2Sig, TAKE.t3Sig, TAKE.t4Sig]) tl.fromTo("#hit-sig", { opacity: 0.8 }, { opacity: 0, duration: 0.4, ease: "power2.out", immediateRender: false }, at);
+      // The log of the stretch builds up in the corner: each result stays, and nothing is totalled.
+      const result = (k, at) => tl.fromTo(`#chip${k}`, { opacity: 1, scale: 2.2 }, { opacity: 1, scale: 1, duration: 0.18, ease: "back.out(2.4)", immediateRender: false }, at);
+      result(0, TAKE.t1Stop);
+      tl.fromTo("#hit-stop", { opacity: 0.9 }, { opacity: 0, duration: 0.45, ease: "power2.out", immediateRender: false }, TAKE.t1Stop);
+      shake(TAKE.t1Stop, 16, 0.28);
+      result(1, TAKE.t2Tp);
+      tl.fromTo("#hit-tp", { opacity: 0.9 }, { opacity: 0, duration: 0.45, ease: "power2.out", immediateRender: false }, TAKE.t2Tp);
+      shake(TAKE.t2Tp, 14, 0.28);
+      result(2, TAKE.stop);
+      result(3, S.tp);
+      // The chart does the zooming, on its own bars; the camera only drifts, and never cuts.
+      cam(1.07, right(1.07), 12, S.tp, 0, "none");
 
-      // The first trade opens, price sinks toward the line.
-      chars(q("cap-open"), TAKE.full, 0.3, 0.05);
-      cam(1.22, right(1.22), 24, TAKE.fpCut - 0.2 - S.full, S.full);
-      cam(1.6, right(1.6), 60, 0.2, TAKE.fpCut - 0.2, "power3.in");
+      // The third trade stops out.
+      tl.fromTo("#hit-stop", { opacity: 1 }, { opacity: 0, duration: 0.7, ease: "power2.out", immediateRender: false }, TAKE.stop);
+      tl.to("#scrim-b", { opacity: 0.6, duration: 0.08, ease: "none" }, TAKE.stop - 0.04);
+      chars(q("cap-stop"), TAKE.stop, 0.2, 0.03, 1.6);
+      shake(TAKE.stop, 16, 0.4);
+      fadeOut("#cap-stop", TAKE.entry - 0.1, 0.1);
 
-      // Into the footprint. It stops out.
-      camSet(1.12, 115, 65, TAKE.fpCut);
-      flash(TAKE.fpCut, 0.28, 0.25);
-      fadeOut("#cap-open", TAKE.fpCut - 0.12, 0.12);
-      cam(1.2, 150, 62, TAKE.entry - TAKE.fpCut, TAKE.fpCut, "none");
-      tl.fromTo("#hit-stop", { opacity: 1 }, { opacity: 0, duration: 0.9, ease: "power2.out", immediateRender: false }, TAKE.stop);
-      chars(q("cap-stop"), TAKE.stop, 0.22, 0.03, 1.6);
-      shake(TAKE.stop, 16, 0.45);
-      tl.to("#wall", { filter: "saturate(0.2) brightness(0.92)", duration: 0.35, ease: "power2.out" }, TAKE.stop);
-      fadeOut("#cap-stop", TAKE.why - 0.14, 0.14);
-      chars(q("cap-why"), TAKE.why, 0.3, 0.05);
-      fadeOut("#cap-why", TAKE.entry - 0.1, 0.1);
+      // The same line again, and everything climbs with it.
+      chars(q("cap-again"), TAKE.entry, 0.22, 0.05, 1.5);
+      fadeOut("#cap-again", S.tp - 0.1, 0.1);
+      tl.to("#scrim-b", { opacity: 1, duration: 0.1, ease: "none" }, S.tp - 0.1);
 
-      // The same line again: colour starts to come back, the frame tightens.
-      chars(q("cap-again"), TAKE.entry, 0.26, 0.05, 1.5);
-      flash(TAKE.entry, 0.16, 0.22);
-      tl.to("#wall", { filter: "saturate(0.6) brightness(0.96)", duration: S.breath - TAKE.entry, ease: "power1.in" }, TAKE.entry);
-      cam(1.5, 150, 40, 0.2, TAKE.zoomOut - 0.2, "power3.in");
-      camSet(1.26, right(1.26), 34, TAKE.zoomOut);
-      flash(TAKE.zoomOut, 0.14, 0.2);
-      cam(1.5, right(1.5), 92, S.tp - TAKE.zoomOut, TAKE.zoomOut, "power1.in");
-      tl.to(".lb", { scaleY: 0.92, duration: S.breath - TAKE.zoomOut, ease: "power2.in" }, TAKE.zoomOut);
-      fadeOut("#cap-again", S.breath - 0.1, 0.1);
-
-      // ---------- III. Target: the first explosion ----------
+      // ---------- III. Target: the drop, and the camera pulls back to every trade on the wall ----------
       flash(S.tp, 1, 0.55);
       chroma(S.tp, 26, 0.42);
       shake(S.tp, 34, 0.7);
-      set("#vig-hard", { opacity: 0 }, S.tp);
-      fadeOut("#legal", S.tp - 0.01, 0.01);
-      tl.to(".lb", { scaleY: 0, duration: 0.22, ease: "expo.out" }, S.tp);
       tl.fromTo("#wall", { filter: "saturate(1.7) brightness(1.3)" }, { filter: "saturate(1) brightness(1)", duration: 0.7, ease: "power2.out", immediateRender: false }, S.tp);
-      cam(1.05, right(1.05), 0, 0.42, S.tp, "expo.out");
       tl.fromTo("#hit-tp", { opacity: 1 }, { opacity: 0, duration: 0.8, ease: "power2.out", immediateRender: false }, S.tp);
-      fadeIn("#scrim-b", S.tp, 0.12);
       chars(q("tp-big"), S.tp + 0.02, 0.3, 0.03, 2);
-      fadeOut("#tp-big", S.rail - 0.16, 0.14);
-      fadeOut("#scrim-b", S.rail - 0.16, 0.14);
+      fadeOut("#tp-big", S.tp + 0.86, 0.14);
+      fadeOut(".chip", S.tp + 0.72, 0.14);
+      fadeOut("#day", S.tp + 0.72, 0.14);
+      fadeOut("#scrim-b", S.tp + 0.86, 0.14);
+      const BACK = 1.15;
+      tl.to(world, { x: -60, y: 0, scale: 0.365, rotationX: 7, rotationY: -7, duration: BACK, ease: "expo.out" }, S.tp + 0.03);
+      tl.to(world, { scale: 0.385, rotationY: -4, duration: S.rail - 0.18 - S.tp - 0.03 - BACK, ease: "none" }, S.tp + 0.03 + BACK);
+      for (const part of [".t-at", ".t-res", ".t-edge"]) fadeIn(`${hero} ${part}`, S.tp + 0.35, 0.2);
+      // A wave of light from the tile the camera left.
+      WALL.forEach((w, i) => {
+        const far = Math.hypot(w.col - HERO.col, w.row - HERO.row);
+        tl.fromTo(`#tile${i}`, { filter: "brightness(2.1)" }, { filter: "brightness(1)", duration: 0.55, ease: "power2.out", immediateRender: false }, S.tp + 0.08 + far * 0.07);
+      });
+      fadeOut("#legal", S.rail - 0.18, 0.12);
 
       // ---------- IV. 盤面旁白, a whip across to the rail ----------
       tl.to("#wall", { x: -2600, duration: 0.18, ease: "power3.in" }, S.rail - 0.18);
@@ -180,9 +145,9 @@
         if (i < 3) {
           whipIn(f.at, i % 2 ? -1 : 1);
           blurLand(f.at, 80, 0.26);
-          // The view switches on half a second in, on the beat: the page's own checkbox.
-          chroma(f.at + 0.5, 9, 0.2);
-          tl.fromTo("#stage", { scale: 1.03 }, { scale: 1, duration: 0.4, ease: "power2.out", immediateRender: false }, f.at + 0.5);
+          // The view switches on in step with the music: the page's own checkbox.
+          chroma(f.at + f.on, 9, 0.2);
+          tl.fromTo("#stage", { scale: 1.03 }, { scale: 1, duration: 0.4, ease: "power2.out", immediateRender: false }, f.at + f.on);
         } else {
           flash(f.at, 0.32, 0.18);
         }
@@ -202,10 +167,11 @@
       set("#stage", { opacity: 0 }, S.black);
       chars(q("tagline"), S.black + 0.2, 0.7, 0.07, 1.04);
       set("#ring", { opacity: 0, scale: 0.56, rotationX: 9 }, S.black);
-      // The ring turns the way it will after the drop and reaches the drop's speed exactly on it (a
-      // power2.in over 2 s and the power3.out below both run at 545°/s there), so it never stops.
-      tl.fromTo("#tier-top", { rotationY: -513 }, { rotationY: -150, duration: S.ring - S.black, ease: "power2.in", immediateRender: false }, S.black);
-      tl.fromTo("#tier-bot", { rotationY: 513 }, { rotationY: 150, duration: S.ring - S.black, ease: "power2.in", immediateRender: false }, S.black);
+      // The ring turns the way it will after the drop and reaches the drop's speed exactly on it: a
+      // power2.in ends at 3Δ/T and the power3.out below starts at 4Δ/T, so it never stops.
+      const SPIN = 600, WIND = ((4 * SPIN) / (S.implode - S.ring)) * ((S.ring - S.black) / 3);
+      tl.fromTo("#tier-top", { rotationY: -150 - WIND }, { rotationY: -150, duration: S.ring - S.black, ease: "power2.in", immediateRender: false }, S.black);
+      tl.fromTo("#tier-bot", { rotationY: 150 + WIND }, { rotationY: 150, duration: S.ring - S.black, ease: "power2.in", immediateRender: false }, S.black);
       FLICKER.forEach((t, i) => {
         tl.fromTo("#ring", { opacity: 0.42 + i * 0.06 }, { opacity: 0.06, duration: Math.min(0.22, 0.05 + (FLICKER[i + 1] ?? S.ring) - t), ease: "power2.out", immediateRender: false }, t);
       });
@@ -219,8 +185,8 @@
       set("#ring", { opacity: 1 }, S.ring);
       tl.fromTo("#ring", { scale: 0.56, rotationX: 9 }, { scale: 0.84, rotationX: 2, duration: 1.1, ease: "expo.out", immediateRender: false }, S.ring);
       tl.to("#ring", { scale: 0.9, rotationX: 4, duration: S.implode - S.ring - 1.1, ease: "none" }, S.ring + 1.1);
-      tl.fromTo("#tier-top", { rotationY: -150 }, { rotationY: 450, duration: S.implode - S.ring, ease: "power3.out", immediateRender: false }, S.ring);
-      tl.fromTo("#tier-bot", { rotationY: 150 }, { rotationY: -450, duration: S.implode - S.ring, ease: "power3.out", immediateRender: false }, S.ring);
+      tl.fromTo("#tier-top", { rotationY: -150 }, { rotationY: -150 + SPIN, duration: S.implode - S.ring, ease: "power3.out", immediateRender: false }, S.ring);
+      tl.fromTo("#tier-bot", { rotationY: 150 }, { rotationY: 150 - SPIN, duration: S.implode - S.ring, ease: "power3.out", immediateRender: false }, S.ring);
       set("#ring-dim", { opacity: 1 }, S.ring);
       chars(q("ring-title"), S.ring + 0.04, 0.42, 0.07, 1.9);
       for (let k = S.ring + 1; k < S.implode - 0.01; k += 0.5) tl.fromTo("#ring-view", { scale: 1.014 }, { scale: 1, duration: 0.42, ease: "power2.out", immediateRender: false }, k);
