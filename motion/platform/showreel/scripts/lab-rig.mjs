@@ -147,7 +147,7 @@ export const CURSOR = `
  * Records one shot: `steps` is a sorted list of [ms, async fn]. mouse(x,y,dur) tweens the real
  * Playwright mouse together with the visible cursor, in step with the frames.
  */
-export async function shot({ page, file, fps = 30, ms, steps = [], sockets = null, stills = [], check = false, onFrame = null }) {
+export async function shot({ page, file, fps = 30, ms, steps = [], sockets = null, stills = [], check = false, checkFrames = null, beforeFrame = null, onFrame = null }) {
   // A check run keeps only a still every half second and skips the encoder.
   const enc = check ? { write: async () => {}, close: async () => {} } : await encoder(file, fps);
   const checkEvery = Math.round(fps / 2);
@@ -176,9 +176,11 @@ export async function shot({ page, file, fps = 30, ms, steps = [], sockets = nul
     }
     moves = moves.filter((m) => now - m.t0 < m.dur);
     if (sockets) await sockets.pump();
-    await page.clock.runFor(dt);
+    await beforeFrame?.(f);
+    // The clock only takes whole milliseconds, and rounding every frame the same way drifts 2 % at 60 fps.
+    await page.clock.runFor(Math.round((f + 1) * dt) - Math.round(f * dt));
     await onFrame?.(f);
-    if (check && f % checkEvery) continue;
+    if (check && (checkFrames ? !checkFrames.includes(f) : f % checkEvery)) continue;
     const jpeg = await page.screenshot({ type: "jpeg", quality: 94 });
     await enc.write(jpeg);
     if (check || stills.includes(f)) writeFileSync(file.replace(/\.mp4$/, `-${String(f).padStart(4, "0")}.jpg`), jpeg);

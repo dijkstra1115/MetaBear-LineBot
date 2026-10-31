@@ -3,9 +3,11 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { FEATURES, RING, S } from "./cues.mjs";
-import { REPO, TAPE } from "./lab-rig.mjs";
+import { chromium } from "playwright";
+import { FEATURES, HERO, RING, S } from "./cues.mjs";
+import { TAPE } from "./lab-rig.mjs";
 import { loadPlan } from "./take-plan.mjs";
+import { centreOf, loadWall } from "./wall.mjs";
 
 const read = (f) => readFileSync(`scripts/${f}`, "utf8");
 const FF = process.env.FFMPEG || "ffmpeg";
@@ -29,39 +31,70 @@ const footage = (t) => {
 const takeStart = S.tp - footage(plan.t4.touchAt);
 const filmAt = (t) => takeStart + footage(t);
 const taipei = (s) => Date.parse(`${s}+08:00`);
+if (takeStart > 0) throw new Error("the take starts after the film does; record more footage before it");
 const TAKE = {
   start: takeStart,
+  t1Sig: filmAt(plan.t1.sig),
+  t1Fill: filmAt(plan.t1.fill),
+  t1Stop: filmAt(plan.t1.touchAt),
+  t2Sig: filmAt(plan.t2.sig),
+  t2Fill: filmAt(plan.t2.fill),
+  t2Tp: filmAt(plan.t2.touchAt),
+  t3Sig: filmAt(plan.t3.sig),
+  t4Sig: filmAt(plan.t4.sig),
   full: filmAt(plan.t3.fill),
   fpCut: filmAt(taipei("2026-09-14T21:05:00")),
   stop: filmAt(plan.t3.touchAt),
-  why: filmAt(taipei("2026-09-14T21:08:40")),
   entry: filmAt(plan.t4.fill),
   zoomOut: filmAt(taipei("2026-09-14T21:12:00")),
 };
 console.log("take", Object.fromEntries(Object.entries(TAKE).map(([k, v]) => [k, +v.toFixed(3)])));
 
 // ---------- the wall ----------
-const SEG = ["2026-09-14", "2026-09-24", "2026-08-21", "2026-08-27", "2026-08-31", "2026-08-24"];
-const seg = (id) => JSON.parse(readFileSync(join(REPO, `motion/replays/segments/assets/data/${id}.json`), "utf8"));
-const when = new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const wall = [];
-for (const id of SEG) {
-  const d = seg(id);
-  for (const t of d.trades) {
-    const a = Math.max(0, t.signal - 22);
-    wall.push({ at: when.format(t.entryT).replace(/\s+/g, " "), entry: t.entry, stop: t.stop, tp: t.tp, r: t.r, result: t.result, i0: t.signal - a, i1: t.exit - a, bars: d.bars.slice(a, Math.min(d.bars.length, t.exit + 8)).map((x) => x.slice(1, 5)) });
-  }
+const wall = loadWall();
+// Each tile is a real mini-chart: the bars around the trade and its box, baked to an image once. The
+// render does not keep what a page draws on a canvas at load unless the canvas has its own layer.
+function drawTile(w) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 800;
+  canvas.height = 450;
+  const g = canvas.getContext("2d");
+  g.fillStyle = "#0a1119";
+  g.fillRect(0, 0, 800, 450);
+  const W = 800, H = 450, x0 = 22, x1 = W - 22, y0 = 76, y1 = H - 20;
+  let lo = Math.min(w.stop, w.tp), hi = Math.max(w.stop, w.tp);
+  for (const b of w.bars) { lo = Math.min(lo, b[2]); hi = Math.max(hi, b[1]); }
+  const pad = (hi - lo) * 0.05; lo -= pad; hi += pad;
+  const X = (k) => x0 + ((k + 0.5) / w.bars.length) * (x1 - x0);
+  const Y = (p) => y1 - ((p - lo) / (hi - lo)) * (y1 - y0);
+  const bw = Math.max(3, ((x1 - x0) / w.bars.length) * 0.66);
+  const a = X(w.i0), b = X(w.i1) + bw;
+  g.fillStyle = "rgba(120,225,213,0.2)";
+  g.fillRect(a, Math.min(Y(w.entry), Y(w.tp)), b - a, Math.abs(Y(w.tp) - Y(w.entry)));
+  g.fillStyle = "rgba(240,154,90,0.22)";
+  g.fillRect(a, Math.min(Y(w.entry), Y(w.stop)), b - a, Math.abs(Y(w.stop) - Y(w.entry)));
+  g.strokeStyle = "rgba(237,242,237,0.75)";
+  g.lineWidth = 2;
+  g.beginPath(); g.moveTo(a, Y(w.entry)); g.lineTo(b, Y(w.entry)); g.stroke();
+  w.bars.forEach((c, k) => {
+    const col = c[3] >= c[0] ? "#78e1d5" : "#f09a5a", x = X(k);
+    g.strokeStyle = g.fillStyle = col;
+    g.beginPath(); g.moveTo(x, Y(c[1])); g.lineTo(x, Y(c[2])); g.stroke();
+    g.fillRect(x - bw / 2, Math.min(Y(c[0]), Y(c[3])), bw, Math.max(2, Math.abs(Y(c[3]) - Y(c[0]))));
+  });
+  return canvas.toDataURL("image/png").split(",")[1];
 }
-// The 9/14 21:09 trade (index 3) goes to the middle of the wall, where the camera can reach it.
-const cellOf = (i) => (i === 3 ? 15 : i === 15 ? 3 : i);
-wall.forEach((w, i) => {
-  w.col = cellOf(i) % 6;
-  w.row = Math.floor(cellOf(i) / 6);
-});
+mkdirSync("assets/video/wall", { recursive: true });
+const painter = await chromium.launch();
+const canvasPage = await painter.newPage();
+for (const [i, w] of wall.entries()) writeFileSync(`assets/video/wall/${i}.png`, Buffer.from(await canvasPage.evaluate(drawTile, w), "base64"));
+await painter.close();
+const hero = { ...HERO, ...centreOf(HERO.col, HERO.row) };
+
 const tiles = wall.map((w, i) => {
   const x = (w.col - 2.5) * 850 - 400, y = (w.row - 2) * 500 - 225;
-  const inside = i === 3 ? `<div id="tv">${video("dive", "dive", +takeStart.toFixed(4), +(S.rail - takeStart).toFixed(4))}</div>` : "";
-  return `            <div id="tile${i}" class="tile ${w.result}" style="left:${x}px;top:${y}px"><canvas id="tc${i}" width="800" height="450"></canvas><div class="t-at">${w.at}</div><div class="t-res ${w.result}">${w.result === "tp" ? `+${w.r}R` : "−1R"}</div>${inside}<div class="t-edge"></div></div>`;
+  const inside = i === HERO.wall ? `<div id="tv${i}" class="tv">${video("dive", "dive", 0, S.rail, +(-takeStart).toFixed(4))}</div>` : "";
+  return `            <div id="tile${i}" class="tile ${w.result}${inside ? " played" : ""}" style="left:${x}px;top:${y}px"><img src="assets/video/wall/${i}.png" alt="" />${inside}<div class="t-at">${w.at}</div><div class="t-res ${w.result}">${w.result === "tp" ? `+${w.r}R` : "−1R"}</div><div class="t-edge"></div></div>`;
 });
 
 // ---------- the screens ----------
@@ -90,12 +123,13 @@ const faces = (list, tier) =>
   });
 
 // Thuds in the dark, closing in on the drop.
-const FLICKER = [21.85, 22.2, 22.45, 22.6, 22.68];
+const FLICKER = [0.85, 1.2, 1.45, 1.6, 1.68].map((d) => S.black + d);
 
 const data = `      const S = ${JSON.stringify(S)};
       const TAKE = ${JSON.stringify(TAKE)};
-      const WALL = ${JSON.stringify(wall)};
-      const FEATURES = ${JSON.stringify(FEATURES.map(({ id, at, d, from, to, name }) => ({ id, at, d, from, to, name })))};
+      const WALL = ${JSON.stringify(wall.map(({ col, row }) => ({ col, row })))};
+      const HERO = ${JSON.stringify(hero)};
+      const FEATURES = ${JSON.stringify(FEATURES.map(({ id, at, d, on, from, to, name }) => ({ id, at, d, on, from, to, name })))};
       const FLICKER = ${JSON.stringify(FLICKER)};`;
 const html = read("template.html")
   .replaceAll("{{END}}", String(S.end))
@@ -111,32 +145,29 @@ writeFileSync("index.html", html);
 // ---------- hits ----------
 const hits = [];
 const hit = (t, k, o = {}) => hits.push({ t: Math.round(t * 1000) / 1000, k, ...o });
-// The wall's tiles
-wall.forEach((w, i) => hit(0.1 + (w.col + w.row) * 0.2 + (i % 3) * 0.03, "flip", { i: i % 4, g: 0.36, pan: (w.col - 2.5) / 3.5 }));
-// In the silence, the real trades of that minute are the only rhythm: pitch by side, level by size.
-let last = -1;
-for (const s of plan.data.slices) {
-  const t = plan.data.start + s[0] * 1000;
-  if (t < plan.pins[0][1] || t > plan.t4.touchAt) continue;
-  const c = clock.find((x) => x[1] >= t);
-  if (!c) continue;
-  const f = takeStart + c[0];
-  if (f - last < 0.03 || f >= S.breath) continue;
-  let buy = 0, sell = 0;
-  for (const [, b, a] of s[5]) (buy += b), (sell += a);
-  const size = Math.sqrt(buy + sell);
-  if (size < 2.2) continue;
-  last = f;
-  hit(f, "tick", { f: buy >= sell ? 2300 : 1400, g: Math.min(0.7, 0.07 + size / 22), pan: buy >= sell ? 0.2 : -0.2 });
-}
-hit(TAKE.fpCut - 0.2, "whoosh", { d: 0.22, g: 0.8 });
-hit(TAKE.fpCut, "thud", { g: 0.7 });
-hit(TAKE.full, "entry", { g: 0.85 });
-hit(TAKE.stop, "stop", { g: 1.15 });
-hit(TAKE.entry, "entry", { g: 1.3 });
-hit(TAKE.zoomOut - 0.2, "whoosh", { d: 0.22, g: 0.7 });
+// One take: each signal climbs its layers, each fill is a chirp, each result a note on the beat, and
+// the quiet hours a rush of air.
+hit(TAKE.t1Sig, "signal", { n: plan.t1.stack.n });
+hit(TAKE.t1Fill, "entry", { g: 0.6 });
+hit(TAKE.t1Stop, "loss");
+hit(TAKE.t2Sig, "signal", { n: plan.t2.stack.n });
+hit(TAKE.t2Fill, "entry", { g: 0.7 });
+hit(TAKE.t2Tp, "win");
+hit(TAKE.t2Tp + 0.15, "whoosh", { d: 1.5, g: 0.32 });
+hit(TAKE.t3Sig, "signal", { n: plan.t3.stack.n });
+hit(S.hero, "whoosh", { d: 1, g: 0.26 }); // the chart zooms in on its own bars
+hit(S.entry, "whoosh", { d: 1, g: 0.2 }); // and back out
+hit(TAKE.t4Sig, "signal", { n: plan.t4.stack.n, g: 1.15 });
+hit(TAKE.full, "entry", { g: 0.7 });
+hit(TAKE.stop, "stop", { g: 1.1 });
+hit(TAKE.entry, "entry", { g: 1.2 });
 hit(S.tp, "tp", { g: 1.1 });
 hit(S.tp, "stamp", { g: 1 });
+// The wall lights up outward from the tile the camera left.
+wall.forEach((w) => {
+  const far = Math.hypot(w.col - hero.col, w.row - hero.row);
+  hit(S.tp + 0.08 + far * 0.07, "flip", { i: (w.col + w.row) % 4, g: 0.24, pan: (w.col - 2.5) / 3.5 });
+});
 // From here the cuts ride the music, so an effect only colours one; a kick or a stamp of its own on
 // every cut makes each one sound like an edit.
 hit(S.rail - 0.18, "whoosh", { d: 0.36, g: 0.5 });
@@ -146,7 +177,7 @@ hit(S.replayBtn + 0.5, "ping", { g: 0.35 });
 FEATURES.forEach((f, i) => {
   if (i < 3) {
     hit(f.at - 0.15, "whoosh", { d: 0.3, g: 0.35 });
-    hit(f.at + 0.5, "flip", { i, g: 0.35 });
+    hit(f.at + f.on, "flip", { i, g: 0.35 });
   } else {
     hit(f.at, "flip", { i: i % 4, g: 0.4 });
   }

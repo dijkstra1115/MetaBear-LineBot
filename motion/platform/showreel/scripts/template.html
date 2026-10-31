@@ -19,7 +19,7 @@
       #picture { overflow: hidden; background: var(--bg); will-change: transform; }
       #stage { overflow: hidden; perspective: 2000px; }
       .screen { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; opacity: 0; background: var(--bg); will-change: transform; }
-      .screen video, .fin video, .fin img, #tv video { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+      .screen video, .fin video, .fin img, .tv video { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
       .txt { position: absolute; opacity: 0; }
       .ch { display: inline-block; will-change: transform, opacity; }
       .scrim { position: absolute; opacity: 0; pointer-events: none; }
@@ -29,7 +29,7 @@
       #wall { perspective: 2200px; overflow: hidden; opacity: 0; background: var(--bg); filter: saturate(1) brightness(1); }
       #world { position: absolute; left: 960px; top: 540px; width: 0; height: 0; transform-style: preserve-3d; will-change: transform; }
       .tile { position: absolute; width: 800px; height: 450px; opacity: 0; background: #0a1119; border-radius: 10px; overflow: hidden; backface-visibility: hidden; }
-      .tile canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+      .tile > img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
       .t-edge { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border: 5px solid; border-radius: 10px; }
       .tile.tp .t-edge { border-color: rgba(120, 225, 213, 0.85); box-shadow: inset 0 0 44px rgba(120, 225, 213, 0.18); }
       .tile.stop .t-edge { border-color: rgba(240, 154, 90, 0.85); box-shadow: inset 0 0 44px rgba(240, 154, 90, 0.18); }
@@ -37,20 +37,22 @@
       .t-res { position: absolute; right: 18px; top: 12px; font: 800 42px "JetBrains Mono", monospace; padding: 2px 18px; border-radius: 10px; color: #05090f; }
       .t-res.tp { background: var(--teal); }
       .t-res.stop { background: var(--orange); }
-      #tile3 { border-radius: 0; }
-      #tile3 .t-edge { border-radius: 0; }
-      #tv { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; }
+      /* Inset so they stay in frame while the camera is pushed in on the tile. */
+      .tile.played .t-at { left: 44px; top: 30px; font-size: 22px; font-weight: 700; color: var(--text); padding: 1px 10px; border-radius: 6px; background: rgba(5, 9, 15, 0.82); }
+      .tile.played .t-res { right: 44px; top: 30px; }
+      .tv { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; }
 
+      .chip { position: absolute; top: 40px; width: 200px; text-align: center; font: 800 72px "JetBrains Mono", monospace; padding: 4px 0; border-radius: 14px; color: #05090f; opacity: 0; }
+      .chip.tp { background: var(--teal); }
+      .chip.stop { background: var(--orange); }
+      #day { left: 64px; top: 40px; font: 700 56px "JetBrains Mono", monospace; padding: 2px 18px; border-radius: 10px; background: rgba(5, 9, 15, 0.82); }
       #wall-line { left: 84px; top: 884px; font-weight: 900; font-size: 96px; text-shadow: 0 2px 34px rgba(5, 9, 15, 1), 0 0 10px rgba(5, 9, 15, 1); }
       .lower { left: 84px; top: 880px; font-weight: 900; font-size: 112px; line-height: 1.1; white-space: nowrap; text-shadow: 0 2px 30px rgba(5, 9, 15, 1); }
       .lower .sub { font-size: 44px; font-weight: 700; color: var(--gold); margin-left: 22px; }
 
-      .lb { position: absolute; left: 0; width: 1920px; height: 170px; background: #000; pointer-events: none; }
-      #lb-top { top: 0; transform-origin: 50% 0; }
-      #lb-bot { bottom: 0; transform-origin: 50% 100%; }
-      .cap { left: 84px; top: 992px; font-weight: 800; font-size: 64px; line-height: 1; white-space: nowrap; }
+      .cap { left: 84px; top: 960px; font-weight: 900; font-size: 84px; line-height: 1; white-space: nowrap; text-shadow: 0 2px 30px rgba(5, 9, 15, 1); }
       .cap.stop { color: var(--orange); }
-      #legal { right: 64px; top: 1010px; font-weight: 500; font-size: 24px; color: #aebcc1; letter-spacing: 0.02em; }
+      #legal { right: 64px; top: 1016px; font-weight: 500; font-size: 24px; color: #c9d4d7; letter-spacing: 0.02em; text-shadow: 0 1px 10px rgba(5, 9, 15, 1), 0 0 4px rgba(5, 9, 15, 1); }
       #tp-big { left: 84px; top: 846px; font-weight: 900; font-size: 168px; line-height: 1; color: var(--teal); white-space: nowrap; text-shadow: 0 0 60px rgba(120, 225, 213, 0.6), 0 2px 30px rgba(5, 9, 15, 1); }
       #name-rail { left: 84px; top: 470px; font-weight: 900; font-size: 128px; line-height: 1.1; }
       #name-btn { left: 760px; top: 230px; font-weight: 900; font-size: 110px; line-height: 1.1; text-shadow: 0 2px 30px rgba(5, 9, 15, 1); }
@@ -73,9 +75,9 @@
       #legal-end { left: 0; top: 1000px; width: 1920px; text-align: center; font-weight: 500; font-size: 26px; color: #c9d4d7; }
 
       #hit-stop { background: radial-gradient(ellipse 70% 70% at 50% 50%, rgba(240, 90, 40, 0) 50%, rgba(240, 90, 40, 0.72) 100%); opacity: 0; pointer-events: none; }
+      #hit-sig { background: radial-gradient(ellipse 74% 74% at 50% 50%, rgba(232, 189, 125, 0) 56%, rgba(232, 189, 125, 0.42) 100%); opacity: 0; pointer-events: none; }
       #hit-tp { background: radial-gradient(ellipse 72% 72% at 50% 50%, rgba(120, 225, 213, 0) 40%, rgba(120, 225, 213, 0.6) 100%); opacity: 0; pointer-events: none; }
       #vig { background: radial-gradient(ellipse 80% 80% at 50% 50%, rgba(0, 0, 0, 0) 66%, rgba(0, 0, 0, 0.4) 100%); pointer-events: none; }
-      #vig-hard { background: radial-gradient(ellipse 66% 62% at 50% 50%, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.82) 100%); opacity: 0; pointer-events: none; }
       #grain { background: url("assets/img/grain.png"); opacity: 0.14; mix-blend-mode: overlay; pointer-events: none; }
       #flash { background: #fff; opacity: 0; pointer-events: none; }
       #black { background: #000; opacity: 0; pointer-events: none; }
@@ -118,18 +120,19 @@
         </div>
       </div>
       <div id="ring-dim" class="full"></div>
-      <div id="vig-hard" class="full"></div>
       <div id="scrim-l" class="scrim"></div>
       <div id="scrim-b" class="scrim"></div>
       <div id="hit-stop" class="full"></div>
       <div id="hit-tp" class="full"></div>
+      <div id="hit-sig" class="full"></div>
 
+      <div id="day" class="txt">9/14</div>
+      <div id="chip0" class="chip stop" style="right:712px">−1R</div>
+      <div id="chip1" class="chip tp" style="right:496px">+2R</div>
+      <div id="chip2" class="chip stop" style="right:280px">−1R</div>
+      <div id="chip3" class="chip tp" style="right:64px">+2R</div>
       <div id="wall-line" class="txt" data-split>訂單流，實盤交易紀錄。</div>
-      <div id="lb-top" class="lb"></div>
-      <div id="lb-bot" class="lb"></div>
-      <div id="cap-open" class="txt cap" data-split>開單</div>
       <div id="cap-stop" class="txt cap stop" data-split>停損 −1R</div>
-      <div id="cap-why" class="txt cap" data-split>賣單沒跟</div>
       <div id="cap-again" class="txt cap" data-split>再開一筆</div>
       <div id="legal" class="txt">每一筆都依幣安真實成交資料回放；僅供教學，非投資建議。</div>
       <div id="tp-big" class="txt" data-split>止盈 +2R</div>
