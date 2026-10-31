@@ -41,5 +41,5 @@ node scripts/build.mjs 2026-09-14
 python scripts/subset-font.py        # 改過文字後
 python scripts/sfx.py                # 一次即可
 node scripts/mix.mjs 2026-09-14
-npx --yes hyperframes@0.8.149 render -q delivery -o ../../out/segment-2026-09-14.mp4
+npx --yes hyperframes@0.8.149 render -q delivery -o ../../out/website/segment-2026-09-14.mp4
 ```

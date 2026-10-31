@@ -1,14 +1,14 @@
 // Exports the rendered stretches for the homepage case wall: a 720×1280 web encode and a poster
-// (the last frame before the end card, every trade's dot filled) per stretch into ../../out/web/,
+// (the last frame before the end card, every trade's dot filled) per stretch into ../../out/website/web/,
 // and web/case-wall-data.js with what the cards and the player show. The media are uploaded to R2
 // separately; the page reads them from MEDIA_BASE in web/case-wall.js. Cards follow SEGMENTS' order.
-// Run from this folder after rendering ../../out/segment-<id>.mp4: node scripts/export-web.mjs   (FFMPEG= to override)
+// Run from this folder after rendering ../../out/website/segment-<id>.mp4: node scripts/export-web.mjs   (FFMPEG= to override)
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { SEGMENTS } from "./segments.mjs";
 
 const FF = process.env.FFMPEG || "ffmpeg";
-const OUT = "../../out/web";
+const OUT = "../../out/website/web";
 mkdirSync(OUT, { recursive: true });
 const tpe = (ms) => new Date(ms + 8 * 3600_000).toISOString();
 // cues.mjs reads its stretch from argv, so each stretch's timing comes from its own process.
@@ -19,7 +19,7 @@ const segments = [];
 for (const [id, G] of Object.entries(SEGMENTS)) {
   const D = JSON.parse(readFileSync(`assets/data/${id}.json`, "utf8"));
   const { END, ENDCARD_AT } = timing(id);
-  const src = `../../out/segment-${id}.mp4`;
+  const src = `../../out/website/segment-${id}.mp4`;
   execFileSync(FF, ["-v", "error", "-y", "-i", src, "-vf", "scale=720:1280", "-c:v", "libx264", "-preset", "slow", "-crf", "26", "-profile:v", "high", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-c:a", "aac", "-b:a", "96k", `${OUT}/segment-${id}.mp4`]);
   execFileSync(FF, ["-v", "error", "-y", "-ss", String(ENDCARD_AT - 0.4), "-i", src, "-frames:v", "1", "-vf", "scale=540:960", "-c:v", "libwebp", "-quality", "78", `${OUT}/segment-${id}.webp`]);
   segments.push({

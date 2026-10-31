@@ -28,6 +28,8 @@
 | `academy-promo-tall-hq.mp4` | 學院宣傳片 9:16 高畫質版，46 秒 |
 | `academy-lesson-failed-auction.mp4` | 單課輸出：「掃過前低，收回才算數」（failed-auction），77 秒 1080p60 |
 | `flow-arena-launch.mp4`、`-gameplay`、`-promo`、`-trailer`、`-trailer-deep`、`-surge`、`-surge-916`、`-flagship-share`、`-highlights`、`-highlights-live` | FLOW ARENA 各版宣傳片（見 [flow-arena/README.md](flow-arena/README.md)） |
+| `website/` | 官網案例牆用的影片：6 支 `segment-*`、30 支 `trade-*` 原檔；`website/web/` 是實際上傳到 R2（media.metabear.io）的壓縮版與封面 |
+| `social/` | 曾發到社群的影片（使用者自行放入） |
 | `drafts/` | 低畫質預覽與試渲染：`academy-drop-preview`、`academy-film-preview`、`academy-film-sample` |
 | `ref/` | 參考素材：`aether.mp4`（academy-film 參考的外部品牌片）、`flagship-28-36.jpg` |
 | `stills/`、`surge-work/` | 指定秒數截圖、surge 製作過程截圖與錄影紀錄 |

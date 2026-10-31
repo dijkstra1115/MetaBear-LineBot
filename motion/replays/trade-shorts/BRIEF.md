@@ -32,6 +32,6 @@ python scripts/subset-font.py             # 改過文字後
 python scripts/sfx.py                     # 一次即可
 node scripts/build.mjs 2026-09-14-3
 node scripts/mix.mjs
-npx --yes hyperframes@0.8.149 render -q delivery -o ../../out/trade-2026-09-14-3.mp4
-node scripts/export-web.mjs               # 全部輸出後，網頁版與封面到 ../../out/web/
+npx --yes hyperframes@0.8.149 render -q delivery -o ../../out/website/trade-2026-09-14-3.mp4
+node scripts/export-web.mjs               # 全部輸出後，網頁版與封面到 ../../out/website/web/
 ```
