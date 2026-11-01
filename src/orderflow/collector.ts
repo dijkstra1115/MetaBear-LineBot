@@ -13,7 +13,7 @@ import { DurableObject } from "cloudflare:workers";
 import { LEVEL_LABELS, LevelBook, closedBarEvents, eventPrice, levelText, sessionOf, sessionStart } from "../../public/lab/orderflow/keylevels.js";
 import { liqFeeds } from "../../public/lab/orderflow/liquidations.js";
 import { DEFAULT_MARKET, MARKETS, marketOf, sized } from "../../public/lab/orderflow/markets.js";
-import { ALERT_DEFAULTS, BAR_KINDS, alertDefaults, HEALTH_KINDS, IcebergWatch, healthStep, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
+import { ALERT_DEFAULTS, alertDefaults, HEALTH_KINDS, IcebergWatch, healthStep, LiqWatch, OiWatch, SpoofWatch, WallWatch, describe, validSetting, watchPrint } from "../../public/lab/orderflow/watch.js";
 import {
   ArchiveDay,
   OrderBook,
@@ -730,9 +730,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (!fresh.length || (this.env.ORDERFLOW_ALERTS ?? "log") !== "live" || !this.env.BACKEND || !this.env.ORDERFLOW_ALERT_TOKEN) return done();
     const events = fresh.map((r) => {
       const t = Number(r.t);
-      // Bar events carry the close of their bar; the link opens the bar's last minute.
-      const at = Math.floor((BAR_KINDS.includes(String(r.kind)) ? t - 1 : t) / MINUTE) * MINUTE;
-      return { key: `of-${this.m.id === "btc" ? "" : `${this.m.id}-`}${r.id}-${t}`, t, kind: r.kind, text: r.text, at, m: this.m.id };
+      return { key: `of-${this.m.id === "btc" ? "" : `${this.m.id}-`}${r.id}-${t}`, t, kind: r.kind, text: r.text, m: this.m.id };
     });
     try {
       const res = await this.env.BACKEND.fetch("https://backend/api/internal/orderflow-alert", {

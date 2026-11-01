@@ -45,6 +45,7 @@ async function say(userId: string, text: string) {
   assert.ok(reply, "the bot replied");
   return reply.messages.map((m) => m.text ?? "").join("\n");
 }
+const buttons = (): string[] => (replies.at(-1)?.messages.at(-1).quickReply?.items ?? []).map((i: any) => i.action.label);
 const post = (body: unknown, token = alertToken) =>
   mf.dispatchFetch("https://crm.test/api/internal/orderflow-alert", {
     method: "POST",
@@ -63,7 +64,7 @@ async function settle() {
 // 12:00 in Taiwan on 2026-10-22, and 01:00 the next Taiwan day.
 const noon = Date.parse("2026-10-22T04:00:00Z");
 const night = Date.parse("2026-10-22T17:00:00Z");
-const ev = (key: string, kind: string, t = noon, m?: string) => ({ key, t, kind, text: `${kind} 測試事件｜VWAP 81,900（差 $10）`, at: Math.floor(t / 60_000) * 60_000, ...(m ? { m } : {}) });
+const ev = (key: string, kind: string, t = noon, m?: string) => ({ key, t, kind, text: `${kind} 測試事件｜VWAP 81,900（差 $10）`, ...(m ? { m } : {}) });
 
 before(async () => {
   const result = await build({ entryPoints: ["src/index.ts"], bundle: true, write: false, format: "esm", platform: "neutral", target: "es2022" });
@@ -134,8 +135,10 @@ after(async () => {
 test("only members can subscribe, with the keyword from /alerts/", async () => {
   const notYet = await say(alice, "訂閱警報 吸收,掃蕩收回 每天2則 安靜00-08");
   assert.match(notYet, /60 日內累計入金 200 USDT（不含內部轉帳）/);
-  assert.match(notYet, /還沒有提交 BingX UID/);
+  assert.match(notYet, /完成這四步就能開通/);
+  assert.deepEqual(buttons().slice(0, 2), ["開始註冊", "提交 UID"]);
   assert.equal(await db.prepare("SELECT 1 FROM orderflow_alert_subs WHERE line_user_id=?").bind(alice).first(), null);
+  assert.match(await say(alice, "開始註冊"), /bingx\.com\/invite\//, "the button opens the registration guide");
 
   assert.match(await say(alice, "訂閱警報 每天9則"), /每天最多可以選 1 到 3 則/);
 
@@ -184,9 +187,8 @@ test("events reach the subscribers who chose them, within their daily count and 
   const text = to(alice)[0].messages[0].text as string;
   assert.match(text, /^MetaBear 關鍵位提醒（BTC）\nsweep 測試事件/);
   assert.doesNotMatch(text, /&m=/, "BTC links stay as they were");
-  assert.match(text, /看當下盤面：https:\/\/crm\.test\/lab\/orderflow\/\?tf=1&at=\d+/);
   assert.match(text, /看這段覆盤：https:\/\/crm\.test\/lab\/orderflow\/\?replay=\d+&k=sweep/);
-  assert.match(text, /對應課程：https:\/\/crm\.test\/orderflow\/failed-auction/);
+  assert.equal(text.match(/https?:\/\//g)?.length, 1, "the replay is the only link");
   assert.match(text, /非投資建議/);
   const ids = (await db.prepare("SELECT id FROM orderflow_alert_deliveries WHERE line_user_id=? ORDER BY created_at").bind(alice).all<{ id: string }>()).results.map((r) => r.id);
   assert.ok(ids.includes(to(alice)[0].retryKey), "a retried push reuses its delivery id as the retry key");
@@ -222,6 +224,19 @@ test("the quota floor, the stop switch and unsubscribing hold alerts back", asyn
   );
 });
 
+test("a member who is still missing requirements gets the guide for each one", async () => {
+  const dave = "U" + "d4".repeat(16);
+  await say(dave, "選單");
+  const revision = (await db.prepare("SELECT revision FROM team_settings WHERE id=1").first<{ revision: number }>())!.revision;
+  await db.prepare("INSERT INTO exchange_accounts(line_user_id,exchange,uid) VALUES (?,'bingx','90000004')").bind(dave).run();
+  await db
+    .prepare("INSERT INTO exchange_snapshots VALUES (?,?,?,?,?,?,?)")
+    .bind(dave, "90000004", "{}", "needs_action", JSON.stringify(["kyc", "deposit"]), revision, new Date().toISOString())
+    .run();
+  assert.match(await say(dave, "訂閱警報"), /目前還差：尚未完成 KYC；60 日內符合規則的入金尚未達到門檻/);
+  assert.deepEqual(buttons().slice(0, 3), ["KYC 教學", "入金教學", "重新查詢"]);
+});
+
 test("members choose BTC, ETH or both, and ETH alerts name the coin and open ETH", async () => {
   const day4 = Date.parse("2026-10-25T04:00:00Z");
   assert.match(await say(bob, "訂閱警報 BTC,ETH 全部 每天3則"), /幣種：BTC、ETH\n事件：全部/);
@@ -231,7 +246,6 @@ test("members choose BTC, ETH or both, and ETH alerts name the coin and open ETH
   const sent = pushes.slice(before).map((p) => p.messages[0].text as string);
   const eth = sent.find((t) => t.includes("（ETH）"));
   assert.ok(eth, "the ETH alert names its coin");
-  assert.match(eth, /看當下盤面：https:\/\/crm\.test\/lab\/orderflow\/\?tf=1&at=\d+&m=eth/);
   assert.match(eth, /看這段覆盤：.*&k=sweep&m=eth/);
   assert.ok(sent.some((t) => t.startsWith("MetaBear 關鍵位提醒（BTC）")));
 
