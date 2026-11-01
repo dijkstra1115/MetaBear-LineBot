@@ -48,6 +48,10 @@ import { kindNames, marketNames, parseLineKeyword } from "../public/lab/orderflo
 
 const ALERT_TERMS =
   "LINE 關鍵位提醒開放給 MetaBear 會員：綁定 BingX 邀請碼 ZD0CQ0，並且 60 日內累計入金 200 USDT（不含內部轉帳）；已加入 VIP 群的會員可以直接開通。";
+const ALERT_STEPS =
+  "LINE 關鍵位提醒開放給 MetaBear 會員，還沒有 BingX 帳號也沒關係，完成這四步就能開通：\n1. 用邀請碼 ZD0CQ0 註冊 BingX\n2. 完成 KYC\n3. 60 日內累計入金 200 USDT（不含內部轉帳）\n4. 回覆「UID 你的數字」\n\n每一步都有圖文教學，點「開始註冊」從第一步開始；已經用這個邀請碼註冊過，點「提交 UID」。通過後再傳一次剛才的訂閱文字。";
+// The guide for each requirement a member's BingX check is still missing.
+const ALERT_GUIDES: Record<string, string> = { referral: "邀請碼教學", kyc: "KYC 教學", deposit: "入金教學" };
 function alertSettingsText(s: AlertSettings) {
   const quiet = s.quiet ? s.quiet.replace(/^(\d{2})-(\d{2})$/, "$1:00–$2:00") : "不設定";
   return `幣種：${marketNames(s.markets)}\n事件：${kindNames(s.kinds)}\n每天最多 ${s.daily} 則\n安靜時段（台灣時間）：${quiet}`;
@@ -62,16 +66,24 @@ async function alertCommand(db: D1Database, env: Env, userId: string, text: stri
   if (keyword) {
     const eligible = await alertEligibility(db, userId);
     if (!eligible.ok) {
-      let next: string;
-      if (eligible.missing === "uid") next = "你還沒有提交 BingX UID。請先回覆「UID 你的數字」，通過後再傳一次剛才的訂閱文字。";
-      else if (eligible.missing === "rules") next = `目前還差：${eligible.reasons.join("；")}。完成後回覆「重新查詢」，通過後再傳一次剛才的訂閱文字。`;
-      else {
-        if ((await getTeam(db)).automation_enabled) await enqueueSync(env, userId);
-        next = "會員資格查詢中或需要更新，已排入重新查詢。稍後回覆「我的進度」確認，通過後再傳一次剛才的訂閱文字。";
+      const webAlerts = `網頁通知不需要會員，開著網頁就收得到：${base}/alerts/`;
+      if (eligible.missing === "uid")
+        return [reply(`${ALERT_STEPS}\n\n${webAlerts}`, [command("開始註冊"), command("提交 UID"), command("人工協助"), command("選單")])];
+      if (eligible.missing === "rules") {
+        const guides = eligible.keys.flatMap((k) => (ALERT_GUIDES[k] ? [command(ALERT_GUIDES[k])] : []));
+        return [
+          reply(`${ALERT_TERMS}\n\n目前還差：${eligible.reasons.join("；")}。${guides.length ? "點下面的教學完成後，" : "完成後"}回覆「重新查詢」，通過後再傳一次剛才的訂閱文字。\n\n${webAlerts}`, [
+            ...guides,
+            command("重新查詢"),
+            command("人工協助"),
+            command("選單"),
+          ]),
+        ];
       }
+      if ((await getTeam(db)).automation_enabled) await enqueueSync(env, userId);
       return [
-        reply(`${ALERT_TERMS}\n\n${next}\n\n網頁通知不需要會員，開著網頁就收得到：${base}/alerts/`, [
-          command(eligible.missing === "uid" ? "提交 UID" : "我的進度"),
+        reply(`${ALERT_TERMS}\n\n會員資格查詢中或需要更新，已排入重新查詢。稍後回覆「我的進度」確認，通過後再傳一次剛才的訂閱文字。\n\n${webAlerts}`, [
+          command("我的進度"),
           command("人工協助"),
           command("選單"),
         ]),
@@ -81,7 +93,7 @@ async function alertCommand(db: D1Database, env: Env, userId: string, text: stri
     await audit(db, userId, "orderflow.subscribe", keyword.settings);
     return [
       reply(
-        `已開通 LINE 關鍵位提醒。\n${alertSettingsText(keyword.settings)}\n\n價格到了關鍵位、又出現你選的訂單流事件時才提醒，每則都附當下的即時盤面。提醒不是買賣訊號。\n\n要修改，到 ${page} 重新選擇後再傳一次；要取消，回覆「退訂警報」。`,
+        `已開通 LINE 關鍵位提醒。\n${alertSettingsText(keyword.settings)}\n\n價格到了關鍵位、又出現你選的訂單流事件時才提醒，每則都附這段事件的覆盤。提醒不是買賣訊號。\n\n要修改，到 ${page} 重新選擇後再傳一次；要取消，回覆「退訂警報」。`,
         [command("警報設定"), command("退訂警報"), command("選單")],
       ),
     ];
@@ -99,7 +111,7 @@ async function alertCommand(db: D1Database, env: Env, userId: string, text: stri
         sub
           ? `目前的 LINE 關鍵位提醒：\n${alertSettingsText(sub)}\n\n要修改，到 ${page} 重新選擇後再傳一次；要取消，回覆「退訂警報」。`
           : `你還沒有開通 LINE 關鍵位提醒。到 ${page} 選擇事件，按「透過 LINE 接收通知」即可。\n\n${ALERT_TERMS}`,
-        [...(sub ? [command("退訂警報")] : []), command("選單")],
+        [command(sub ? "退訂警報" : "開始註冊"), command("選單")],
       ),
     ];
   }
@@ -271,7 +283,7 @@ async function respondBase(
   if (text === "關鍵位提醒")
     return [
       reply(
-        `價格到了關鍵位、又出現你選的訂單流事件時提醒你，每則都附當下的盤面。\n到 ${base}/alerts/ 選擇事件：開著網頁就能收網頁通知，不需要會員；要在 LINE 收到，按頁面上的「透過 LINE 接收通知」。\n\n${ALERT_TERMS}`,
+        `價格到了關鍵位、又出現你選的訂單流事件時提醒你，每則都附這段事件的覆盤。\n到 ${base}/alerts/ 選擇事件：開著網頁就能收網頁通知，不需要會員；要在 LINE 收到，按頁面上的「透過 LINE 接收通知」。\n\n${ALERT_TERMS}`,
         [command("警報設定"), command("開始註冊"), command("選單")],
       ),
     ];
@@ -515,8 +527,9 @@ async function respondBase(
     if (!account)
       return [
         reply(
-          "你還沒有提交 BingX UID。請先在個人資料頁複製 UID，再回覆「UID 你的數字」，即可查詢資格。",
+          "你還沒有提交 BingX UID。請先在個人資料頁複製 UID，再回覆「UID 你的數字」，即可查詢資格。還沒有 BingX 帳號的話，點「開始註冊」。",
           [
+            command("開始註冊"),
             command("提交 UID"),
             command("入金教學"),
             command("人工協助"),

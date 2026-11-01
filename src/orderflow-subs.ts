@@ -45,9 +45,9 @@ export async function alertEligibility(db: D1Database, userId: string) {
     .bind(team.revision, userId)
     .first<{ ok: number; uid: string | null; reasons_json: string | null }>();
   if (row?.ok) return { ok: true as const };
-  if (!row?.uid) return { ok: false as const, missing: "uid" as const, reasons: [] as string[] };
+  if (!row?.uid) return { ok: false as const, missing: "uid" as const, keys: [] as string[], reasons: [] as string[] };
   const keys = row.reasons_json ? (JSON.parse(row.reasons_json) as string[]) : [];
-  return { ok: false as const, missing: keys.length ? ("rules" as const) : ("check" as const), reasons: keys.map((k) => reasons[k] ?? k) };
+  return { ok: false as const, missing: keys.length ? ("rules" as const) : ("check" as const), keys, reasons: keys.map((k) => reasons[k] ?? k) };
 }
 
 export async function getSubscription(db: D1Database, userId: string): Promise<AlertSettings | null> {

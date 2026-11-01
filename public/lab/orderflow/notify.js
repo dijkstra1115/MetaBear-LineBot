@@ -487,6 +487,12 @@ export class Notifier {
       soon.disabled = true;
       box.append(soon);
     } else {
+      // People who arrive for the alerts often have no BingX account yet: this opens the bot's guide.
+      const signup = el("a", "mb-link", "還沒有 BingX 帳號？在 LINE 開始註冊 →");
+      signup.href = lineUrl("開始註冊");
+      signup.target = "_blank";
+      signup.rel = "noopener noreferrer";
+      box.append(signup);
       const daily = el("select");
       for (let n = 1; n <= LINE_DAILY_MAX; n++) daily.append(new Option(`${n} 則`, String(n), false, n === this.settings.daily));
       daily.addEventListener("change", () => {

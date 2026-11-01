@@ -45,6 +45,7 @@ async function say(userId: string, text: string) {
   assert.ok(reply, "the bot replied");
   return reply.messages.map((m) => m.text ?? "").join("\n");
 }
+const buttons = (): string[] => (replies.at(-1)?.messages.at(-1).quickReply?.items ?? []).map((i: any) => i.action.label);
 const post = (body: unknown, token = alertToken) =>
   mf.dispatchFetch("https://crm.test/api/internal/orderflow-alert", {
     method: "POST",
@@ -134,8 +135,10 @@ after(async () => {
 test("only members can subscribe, with the keyword from /alerts/", async () => {
   const notYet = await say(alice, "訂閱警報 吸收,掃蕩收回 每天2則 安靜00-08");
   assert.match(notYet, /60 日內累計入金 200 USDT（不含內部轉帳）/);
-  assert.match(notYet, /還沒有提交 BingX UID/);
+  assert.match(notYet, /完成這四步就能開通/);
+  assert.deepEqual(buttons().slice(0, 2), ["開始註冊", "提交 UID"]);
   assert.equal(await db.prepare("SELECT 1 FROM orderflow_alert_subs WHERE line_user_id=?").bind(alice).first(), null);
+  assert.match(await say(alice, "開始註冊"), /bingx\.com\/invite\//, "the button opens the registration guide");
 
   assert.match(await say(alice, "訂閱警報 每天9則"), /每天最多可以選 1 到 3 則/);
 
@@ -219,6 +222,19 @@ test("the quota floor, the stop switch and unsubscribing hold alerts back", asyn
     pushes.slice(before).map((p) => p.to),
     [bob],
   );
+});
+
+test("a member who is still missing requirements gets the guide for each one", async () => {
+  const dave = "U" + "d4".repeat(16);
+  await say(dave, "選單");
+  const revision = (await db.prepare("SELECT revision FROM team_settings WHERE id=1").first<{ revision: number }>())!.revision;
+  await db.prepare("INSERT INTO exchange_accounts(line_user_id,exchange,uid) VALUES (?,'bingx','90000004')").bind(dave).run();
+  await db
+    .prepare("INSERT INTO exchange_snapshots VALUES (?,?,?,?,?,?,?)")
+    .bind(dave, "90000004", "{}", "needs_action", JSON.stringify(["kyc", "deposit"]), revision, new Date().toISOString())
+    .run();
+  assert.match(await say(dave, "訂閱警報"), /目前還差：尚未完成 KYC；60 日內符合規則的入金尚未達到門檻/);
+  assert.deepEqual(buttons().slice(0, 3), ["KYC 教學", "入金教學", "重新查詢"]);
 });
 
 test("members choose BTC, ETH or both, and ETH alerts name the coin and open ETH", async () => {
