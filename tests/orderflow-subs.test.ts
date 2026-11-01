@@ -63,7 +63,7 @@ async function settle() {
 // 12:00 in Taiwan on 2026-10-22, and 01:00 the next Taiwan day.
 const noon = Date.parse("2026-10-22T04:00:00Z");
 const night = Date.parse("2026-10-22T17:00:00Z");
-const ev = (key: string, kind: string, t = noon, m?: string) => ({ key, t, kind, text: `${kind} 測試事件｜VWAP 81,900（差 $10）`, at: Math.floor(t / 60_000) * 60_000, ...(m ? { m } : {}) });
+const ev = (key: string, kind: string, t = noon, m?: string) => ({ key, t, kind, text: `${kind} 測試事件｜VWAP 81,900（差 $10）`, ...(m ? { m } : {}) });
 
 before(async () => {
   const result = await build({ entryPoints: ["src/index.ts"], bundle: true, write: false, format: "esm", platform: "neutral", target: "es2022" });
@@ -184,9 +184,8 @@ test("events reach the subscribers who chose them, within their daily count and 
   const text = to(alice)[0].messages[0].text as string;
   assert.match(text, /^MetaBear 關鍵位提醒（BTC）\nsweep 測試事件/);
   assert.doesNotMatch(text, /&m=/, "BTC links stay as they were");
-  assert.match(text, /看當下盤面：https:\/\/crm\.test\/lab\/orderflow\/\?tf=1&at=\d+/);
   assert.match(text, /看這段覆盤：https:\/\/crm\.test\/lab\/orderflow\/\?replay=\d+&k=sweep/);
-  assert.match(text, /對應課程：https:\/\/crm\.test\/orderflow\/failed-auction/);
+  assert.equal(text.match(/https?:\/\//g)?.length, 1, "the replay is the only link");
   assert.match(text, /非投資建議/);
   const ids = (await db.prepare("SELECT id FROM orderflow_alert_deliveries WHERE line_user_id=? ORDER BY created_at").bind(alice).all<{ id: string }>()).results.map((r) => r.id);
   assert.ok(ids.includes(to(alice)[0].retryKey), "a retried push reuses its delivery id as the retry key");
@@ -231,7 +230,6 @@ test("members choose BTC, ETH or both, and ETH alerts name the coin and open ETH
   const sent = pushes.slice(before).map((p) => p.messages[0].text as string);
   const eth = sent.find((t) => t.includes("（ETH）"));
   assert.ok(eth, "the ETH alert names its coin");
-  assert.match(eth, /看當下盤面：https:\/\/crm\.test\/lab\/orderflow\/\?tf=1&at=\d+&m=eth/);
   assert.match(eth, /看這段覆盤：.*&k=sweep&m=eth/);
   assert.ok(sent.some((t) => t.startsWith("MetaBear 關鍵位提醒（BTC）")));
 

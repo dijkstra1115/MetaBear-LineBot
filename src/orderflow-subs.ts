@@ -12,7 +12,7 @@ import { recordOutgoing, setOutgoingStatus } from "./conversations";
 import { reasons } from "./automation";
 import { taipeiDay } from "./bingx";
 import { getTeam } from "./team";
-import { NOTIFY_KINDS, choiceOf, inQuiet, storedKinds, upgradeKinds } from "../public/lab/orderflow/notify.js";
+import { choiceOf, inQuiet, storedKinds, upgradeKinds } from "../public/lab/orderflow/notify.js";
 import { MARKETS } from "../public/lab/orderflow/markets.js";
 
 export type OrderflowAlertMessage = { kind: "orderflow-alert-delivery"; id: string };
@@ -72,7 +72,7 @@ export async function setSubscription(db: D1Database, userId: string, settings: 
     .run();
 }
 
-type IncomingEvent = { key: string; t: number; kind: string; text: string; at: number; m: string };
+type IncomingEvent = { key: string; t: number; kind: string; text: string; m: string };
 function readEvents(value: unknown): IncomingEvent[] {
   if (!Array.isArray(value) || value.length > MAX_EVENTS) throw new HttpError(400, "事件格式不正確");
   return value.map((e) => {
@@ -81,7 +81,6 @@ function readEvents(value: unknown): IncomingEvent[] {
       typeof e.key === "string" &&
       /^[\w-]{1,64}$/.test(e.key) &&
       Number.isSafeInteger(e.t) &&
-      Number.isSafeInteger(e.at) &&
       typeof e.kind === "string" &&
       choiceOf(e.kind) &&
       typeof e.text === "string" &&
@@ -90,21 +89,18 @@ function readEvents(value: unknown): IncomingEvent[] {
       (e.m === undefined || Object.hasOwn(MARKETS, e.m));
     if (!ok) throw new HttpError(400, "事件格式不正確");
     // Collectors from before ETH send no market.
-    return { key: e.key, t: e.t, kind: e.kind, text: e.text.replace(/[\r\n]+/g, " "), at: e.at, m: e.m ?? "btc" };
+    return { key: e.key, t: e.t, kind: e.kind, text: e.text.replace(/[\r\n]+/g, " "), m: e.m ?? "btc" };
   });
 }
 
 function alertBody(env: Env, e: IncomingEvent) {
   const base = env.PUBLIC_BASE_URL.replace(/\/$/, "");
-  const lesson = NOTIFY_KINDS.find((k) => k.id === choiceOf(e.kind))?.lesson;
   const market = e.m === "btc" ? "" : `&m=${e.m}`;
   return [
     `MetaBear 關鍵位提醒（${MARKETS[e.m as keyof typeof MARKETS].base}）`,
     e.text,
-    `看當下盤面：${base}/lab/orderflow/?tf=1&at=${e.at}${market}`,
     // The lab's 一鍵覆盤 of the story this event belongs to (public/lab/orderflow/event-replay.js).
     `看這段覆盤：${base}/lab/orderflow/?replay=${e.t}&k=${encodeURIComponent(e.kind)}${market}`,
-    ...(lesson ? [`對應課程：${base}/orderflow/${lesson}`] : []),
     "提醒不是買賣訊號，要不要進場請看接下來的訂單流。非投資建議。",
     "回覆「警報設定」可以修改或取消。",
   ].join("\n");
