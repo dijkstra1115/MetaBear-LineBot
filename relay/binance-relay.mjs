@@ -33,6 +33,7 @@ const HEARTBEAT_MS = 20_000;
 const SILENT_MS = 30_000; // every feed carries trades or book updates many times a minute
 const PING_MS = 20_000;
 const MAX_BACKOFF_MS = 30_000;
+const OPEN_TIMEOUT_MS = 30_000;
 const MAX_BUFFERED = 4 * 1024 * 1024; // drop instead of queueing behind a stalled Cloudflare link
 const REST_TIMEOUT_MS = 10_000;
 const FRAME_MS = 1_000; // one exchange's messages for one market are sent down together this often
@@ -75,7 +76,24 @@ function keep(name, open, onMessage, { silentMs = null, onOpen = null } = {}) {
     const ws = open();
     current = ws;
     let watchdog = null;
+    // A refused handshake (Cloudflare's 1013, a non-101 reply) can end in "error" with no "close",
+    // which once left a socket down for days, so either event schedules the retry, at most once.
+    let retried = false;
+    const retry = (why) => {
+      clearInterval(watchdog);
+      clearTimeout(opening);
+      if (retried || current !== ws) return; // replaced by restart()
+      retried = true;
+      log(`${name} ${why}, retrying in ${backoff / 1000} s`);
+      setTimeout(connect, backoff);
+      backoff = Math.min(backoff * 2, MAX_BACKOFF_MS);
+      try {
+        ws.close();
+      } catch {}
+    };
+    const opening = setTimeout(() => retry("not open after 30 s"), OPEN_TIMEOUT_MS);
     ws.addEventListener("open", () => {
+      clearTimeout(opening);
       backoff = 1_000;
       last = Date.now();
       log(`${name} open`);
@@ -92,14 +110,11 @@ function keep(name, open, onMessage, { silentMs = null, onOpen = null } = {}) {
       last = Date.now();
       onMessage(ws, e.data);
     });
-    ws.addEventListener("error", (e) => current === ws && log(`${name} error`, e.message ?? ""));
-    ws.addEventListener("close", (e) => {
-      clearInterval(watchdog);
-      if (current !== ws) return; // replaced by restart()
-      log(`${name} closed ${e.code}, retrying in ${backoff / 1000} s`);
-      setTimeout(connect, backoff);
-      backoff = Math.min(backoff * 2, MAX_BACKOFF_MS);
+    ws.addEventListener("error", (e) => {
+      if (current === ws && !retried) log(`${name} error`, e.message ?? "");
+      retry("errored");
     });
+    ws.addEventListener("close", (e) => retry(`closed ${e.code}`));
     return ws;
   };
   connect();
