@@ -209,6 +209,9 @@ let railOpen = (() => {
 const store = { bars: new Map(), metrics: new Map() };
 let server = null; // { updated, status } from the latest /recent poll
 let recentSince = 0;
+let oldestDay = Infinity; // UTC start of the oldest day fetched (loadDays, loadOlder)
+let olderLoading = false;
+let olderRetryAt = 0;
 let heatCols = new Map(); // minute → [t, mid, lowBin, sizes] at $10
 let liqs = [];
 const prints = new Map(); // "t|side|price|qty" → [t, side, price, BTC]
@@ -2266,6 +2269,7 @@ function redraw() {
     draw();
     updateReadout();
     renderBarCard();
+    loadOlder();
   });
 }
 
@@ -3126,14 +3130,39 @@ function ingest(d) {
 
 const utcDay = (t) => new Date(t).toISOString().slice(0, 10);
 
+const fetchDay = (d) => fetch(api("day", `d=${d}`), FRESH).then((res) => (res.ok ? res.json() : null), () => null);
+
 async function loadDays() {
   const today = Math.floor(Date.now() / DAY) * DAY;
   const days = [];
   for (let k = DAYS - 1; k >= 1; k--) days.push(utcDay(today - k * DAY));
-  const results = await Promise.all(days.map((d) => fetch(api("day", `d=${d}`), FRESH).then((res) => (res.ok ? res.json() : null), () => null)));
+  const results = await Promise.all(days.map(fetchDay));
   for (const d of results) if (d) ingest(d);
+  oldestDay = today - (DAYS - 1) * DAY;
   recentSince = today;
   await pollRecent();
+}
+
+// A day is 1.5 to 2.5 MB, so the page opens with DAYS and fetches older ones as the chart is panned
+// toward its oldest bar: about a screen's worth at a time, back to the 30 days the collector keeps.
+function loadOlder() {
+  if (CASE || evReplay || olderLoading || !bars.length || Date.now() < olderRetryAt) return;
+  const first = Math.floor(Date.now() / DAY) * DAY - 29 * DAY;
+  if (oldestDay <= first) return;
+  const screen = layout().plotW / view.barW;
+  if (view.end - screen > screen * 0.5) return;
+  const n = Math.min(7, (oldestDay - first) / DAY, Math.max(1, Math.ceil((screen * Number(ui.tf.value) * MINUTE) / DAY)));
+  const days = Array.from({ length: n }, (_, k) => utcDay(oldestDay - (k + 1) * DAY));
+  olderLoading = true;
+  Promise.all(days.map(fetchDay))
+    .then((results) => {
+      // All failed: offline or the collector is down, so try again later instead of on every frame.
+      if (results.every((d) => !d)) return void (olderRetryAt = Date.now() + 30_000);
+      oldestDay -= n * DAY;
+      for (const d of results) if (d) ingest(d);
+      refresh(true);
+    })
+    .finally(() => (olderLoading = false));
 }
 
 async function pollRecent() {
