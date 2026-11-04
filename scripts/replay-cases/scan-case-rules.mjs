@@ -14,10 +14,14 @@
 // 30-minute watch without one, price must move 0.3 % away before the level counts again.
 //
 //   node scripts/replay-cases/scan-case-rules.mjs [--case 9] [--r 2] [--list] [--json]
+//   node scripts/replay-cases/scan-case-rules.mjs --month 2026-10   # every trade of a Taipei month
 //
 // --json writes every trade with its outcome at --r (default 2) to
-// .data/orderflow/replay-cases/case-rule-trades.json, the input of motion/replays/segments.
-import { readFile } from "node:fs/promises";
+// .data/orderflow/replay-cases/case-rule-trades.json, the input of motion/replays/segments;
+// --out <path> writes it elsewhere (scripts/strategy-research uses that, leaving the films' input alone).
+import { readFile, access } from "node:fs/promises";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { fromArchive } from "../../public/lab/orderflow/metrics.js";
 import { buildLiqMap } from "../../public/lab/orderflow/liqmap.js";
 import { CASES } from "../../motion/replays/case-shorts/scripts/cases.mjs";
@@ -51,7 +55,10 @@ const argv = process.argv.slice(2);
 const arg = (k) => (argv.includes(`--${k}`) ? argv[argv.indexOf(`--${k}`) + 1] : undefined);
 
 const root = new URL("../../", import.meta.url);
-const sets = await Promise.all([".data/orderflow/btcusdt-oos.json", ".data/orderflow/btcusdt-90d.json"].map(async (f) => JSON.parse(await readFile(new URL(f, root), "utf8"))));
+// btcusdt-oct.json (2026-10-12 → 11-03) is optional: node scripts/orderflow-data.mjs --from 2026-10-12 --to 2026-11-03 --out .data/orderflow/btcusdt-oct.json
+const files = [".data/orderflow/btcusdt-oos.json", ".data/orderflow/btcusdt-90d.json", ".data/orderflow/btcusdt-oct.json"];
+const present = (await Promise.all(files.map((f) => access(new URL(f, root)).then(() => f, () => null)))).filter(Boolean);
+const sets = await Promise.all(present.map(async (f) => JSON.parse(await readFile(new URL(f, root), "utf8"))));
 const tick = sets[1].tick;
 const WARM = Date.parse("2026-06-20T00:00:00Z"); // the liq model accumulates from here (REPLAY-CASES)
 const seen = new Set();
@@ -236,6 +243,19 @@ function single(list, R) {
 const tally = (xs) => ({ w: xs.filter((x) => x.o.r > 0).length, l: xs.filter((x) => x.o.r < 0).length, sum: +xs.reduce((s, x) => s + x.o.r, 0).toFixed(2) });
 const line = (x) => `${tpe(x.entryT)} ${x.long ? "多" : "空"} ${x.name} ${Math.round(x.level)} 進 ${x.entry} 損 ${x.stop.toFixed(1)} (${((x.risk / x.entry) * 100).toFixed(2)}%) → ${x.o.r > 0 ? "+" : ""}${x.o.r}R${x.o.timeout ? " 逾時" : ""} ${Math.round((x.o.t - x.entryT) / MIN)}m`;
 
+if (arg("month")) {
+  // Each rule on its own, one position at a time, entries inside the Taipei month.
+  const [y, m] = arg("month").split("-").map(Number);
+  const from = Date.UTC(y, m - 1, 1) - TPE, to = Date.UTC(y, m, 1) - TPE, R = Number(arg("r") ?? 2);
+  console.log(`資料到 ${tpe(bars.at(-1).t)}（台北）`);
+  for (const rule of ["flip", "reject", "liq"]) {
+    const xs = single(trades.filter((t) => t.rule === rule), R).filter((t) => t.entryT >= from && t.entryT < to);
+    const t = tally(xs);
+    console.log(`\n${rule}：${xs.length} 筆，${t.w} 勝 ${t.l} 負，${t.sum}R`);
+    for (const x of xs) console.log(`  ${line(x)}`);
+  }
+  process.exit(0);
+}
 const pick = arg("case") ? [Number(arg("case"))] : Object.keys(RULE_OF).map(Number);
 for (const no of pick) {
   const [id, C] = Object.entries(CASES).find(([, c]) => c.no === no);
@@ -281,8 +301,9 @@ if (argv.includes("--json")) {
     return { ...t, tp: +(t.entry + (t.long ? 1 : -1) * R * risk).toFixed(1), stop: +t.stop.toFixed(1), r: R, result: o.timeout ? "timeout" : o.r > 0 ? "tp" : "stop", exitT: o.t, exitR: o.r };
   });
   const { writeFile } = await import("node:fs/promises");
-  await writeFile(new URL(".data/orderflow/replay-cases/case-rule-trades.json", root), JSON.stringify(out));
-  console.log(`case-rule-trades.json: ${out.length} trades at ${R}R`);
+  const file = arg("out") ? resolve(arg("out")) : fileURLToPath(new URL(".data/orderflow/replay-cases/case-rule-trades.json", root));
+  await writeFile(file, JSON.stringify(out));
+  console.log(`${file}: ${out.length} trades at ${R}R`);
 }
 if ("list" in Object.fromEntries(argv.map((a) => [a.replace(/^--/, ""), 1]))) {
   for (const rule of ["flip", "reject", "liq"]) {
