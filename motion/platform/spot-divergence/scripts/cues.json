@@ -1,0 +1,20 @@
+{
+  "hookMedia": 3.0,
+  "hookTp": 2.2,
+  "rewind": 2.5,
+  "context": 3.5,
+  "panes": [5.2, 7.0, 8.9, 10.6],
+  "sweep": 12.3,
+  "sell": 13.53,
+  "low": 16.3,
+  "buys": 17.37,
+  "freeze": 18.3,
+  "imbal": 19.7,
+  "box": 21.67,
+  "trade": 22.4,
+  "tradeMedia": 2.2,
+  "entry": 22.53,
+  "tp": 25.4,
+  "end": 25.9,
+  "duration": 30
+}
