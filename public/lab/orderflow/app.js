@@ -136,12 +136,12 @@ const INDICATORS = [
   ["volume", "pane", "成交量", true],
   ["delta", "pane", "Delta", false],
   ["cvd", "pane", "CVD", true],
+  // Binance spot flow right under the perpetuals' CVD tells spot buying from perp-only selling.
+  ["scvd", "pane", "現貨 CVD（Binance 現貨）", false],
   ["liq", "pane", "爆倉", true],
   ["oi", "pane", "OI", true],
   ["doi", "pane", "OI 變化", false],
   ["funding", "pane", "資金費率", false],
-  // Binance spot flow against the perpetuals' CVD tells spot buying from perp-only selling.
-  ["scvd", "pane", "現貨 CVD（Binance 現貨）", false],
   ["premium", "pane", "溢價（合約對指數）", false],
   ["ratio", "pane", "多空比", true],
   // Binance publishes top-trader ratios; Bybit has none.
@@ -681,11 +681,11 @@ const PANES = {
   volume: { label: () => `成交量 (${unitLabel()})` },
   delta: { label: () => `Delta (${unitLabel()})` },
   cvd: { label: () => "CVD", key: "cvd" },
+  scvd: { label: () => `現貨 CVD（Binance 現貨，${unitLabel()}）`, key: "spotCvd" },
   liq: { label: () => "爆倉 (USD)" },
   oi: { label: () => `OI (${unitLabel()})`, key: "oi" },
   doi: { label: () => `OI 變化 (${unitLabel()})` },
   funding: { label: () => "資金費率（每 8 小時）", key: "funding" },
-  scvd: { label: () => `現貨 CVD（Binance 現貨，${unitLabel()}）`, key: "spotCvd" },
   premium: { label: () => `溢價（${REF_EX}合約 ÷ 指數 − 1）`, key: "premium" },
   ratio: { label: () => `多空比（${REF_EX}全體帳戶）`, key: "global" },
   top: { label: () => "大戶持倉比（Binance，多 ÷ 空）", key: "topPos" },
