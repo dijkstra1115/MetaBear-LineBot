@@ -1501,6 +1501,9 @@ input {
   touch-action: none;
   cursor: crosshair;
 }
+#chart.style-hit {
+  cursor: pointer;
+}
 #chart.row-resize {
   cursor: row-resize;
 }
