@@ -19,7 +19,7 @@
 //
 // Node 22 or newer (built-in WebSocket and fetch); no packages.
 import { gunzipSync } from "node:zlib";
-import { BINANCE_REST, RELAY_PATHS, binanceStreams } from "../public/lab/orderflow/binance.js";
+import { RELAY_PATHS, binanceStreams, relayHost } from "../public/lab/orderflow/binance.js";
 import { BINGX_WS, bingxTopics } from "../public/lab/orderflow/bingx.js";
 import { PING, WS_URL, bybitTopics } from "../public/lab/orderflow/bybit.js";
 import { liqFeeds } from "../public/lab/orderflow/liquidations.js";
@@ -140,7 +140,7 @@ async function answer(ws, stats, req) {
   if (!RELAY_PATHS.test(req.get)) return reply(400, "path not allowed");
   stats.rest++;
   try {
-    const res = await fetch(BINANCE_REST + req.get, { signal: AbortSignal.timeout(REST_TIMEOUT_MS) });
+    const res = await fetch(relayHost(req.get) + req.get, { signal: AbortSignal.timeout(REST_TIMEOUT_MS) });
     reply(res.status, await res.text());
   } catch (err) {
     reply(502, String(err));

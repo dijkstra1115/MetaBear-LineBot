@@ -96,13 +96,23 @@ export class MarketCollector extends Collector {
 
     if (m.metrics.length) {
       const range = [m.metrics[0][0], m.metrics[m.metrics.length - 1][0]] as [number, number];
-      const ois = new Map(this.rows("SELECT t, oi, oi_value, funding FROM oi WHERE t >= ? AND t <= ?", ...range).map((r) => [Number(r.t), r]));
+      const ois = new Map(this.rows("SELECT t, oi, oi_value, funding, premium FROM oi WHERE t >= ? AND t <= ?", ...range).map((r) => [Number(r.t), r]));
       const ratios = new Map(this.rows("SELECT t, ratio, top_pos, top_acc FROM ratios WHERE t >= ? AND t <= ?", ...range).map((r) => [Number(r.t), r]));
-      for (const [t, oi, value, topPos, topAcc, ratio, , funding] of m.metrics) {
+      for (const [t, oi, value, topPos, topAcc, ratio, , funding, premium = null] of m.metrics) {
         const o = ois.get(t as number);
-        if (!o || o.oi !== oi || o.oi_value !== value || o.funding !== funding) exec("INSERT OR REPLACE INTO oi (t, oi, oi_value, taker, funding) VALUES (?, ?, ?, NULL, ?)", t, oi, value, funding);
+        if (!o || o.oi !== oi || o.oi_value !== value || o.funding !== funding || o.premium !== premium)
+          exec("INSERT OR REPLACE INTO oi (t, oi, oi_value, taker, funding, premium) VALUES (?, ?, ?, NULL, ?, ?)", t, oi, value, funding, premium);
         const r = ratios.get(t as number);
         if (!r || r.ratio !== ratio || r.top_pos !== topPos || r.top_acc !== topAcc) exec("INSERT OR REPLACE INTO ratios (t, ratio, top_pos, top_acc) VALUES (?, ?, ?, ?)", t, ratio, topPos, topAcc);
+      }
+    }
+
+    const spotRows = m.spot as [number, ...number[]][];
+    if (spotRows.length) {
+      const spot = new Map(this.rows("SELECT t, row FROM spot WHERE t >= ? AND t <= ?", spotRows[0][0], spotRows[spotRows.length - 1][0]).map((r) => [Number(r.t), String(r.row)]));
+      for (const row of spotRows) {
+        const text = JSON.stringify(row);
+        if (spot.get(row[0]) !== text) exec("INSERT OR REPLACE INTO spot (t, row) VALUES (?, ?)", row[0], text);
       }
     }
 

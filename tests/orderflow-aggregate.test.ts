@@ -24,11 +24,11 @@ test("全市場 bars take Binance's prices and sum every exchange's volume per p
   ]);
 });
 
-test("全市場 OI sums only the exchanges whose readings cover the period, and ratios are Binance's", () => {
-  const m = (t: number, oi: number, usd: number, ratio: number | null = null) => [t, oi, usd, ratio, null, ratio, 1.1, 0.0001];
+test("全市場 OI sums only the exchanges whose readings cover the period, and ratios and premium are Binance's", () => {
+  const m = (t: number, oi: number, usd: number, ratio: number | null = null, premium = 0.0009) => [t, oi, usd, ratio, null, ratio, 1.1, 0.0001, premium];
   const rows = mergeMetrics(
     {
-      binance: [m(T0, 100, 8_000_000, 2), m(T0 + 5 * MINUTE, 101, 8_080_000, 2.1)],
+      binance: [m(T0, 100, 8_000_000, 2, -0.0003), m(T0 + 5 * MINUTE, 101, 8_080_000, 2.1, 0.0002)],
       bybit: [m(T0, 50, 4_000_000), m(T0 + 5 * MINUTE, 49, 3_920_000)],
       // BingX started later than the period: left out instead of stepping the sum up.
       bingx: [m(T0 + 10 * MINUTE, 6, 480_000)],
@@ -36,9 +36,11 @@ test("全市場 OI sums only the exchanges whose readings cover the period, and 
     T0,
   );
   assert.deepEqual(rows, [
-    [T0, 150, 12_000_000, 2, null, 2, null, 0.0001],
-    [T0 + 5 * MINUTE, 150, 12_000_000, 2.1, null, 2.1, null, 0.0001],
+    [T0, 150, 12_000_000, 2, null, 2, null, 0.0001, -0.0003],
+    [T0 + 5 * MINUTE, 150, 12_000_000, 2.1, null, 2.1, null, 0.0001, 0.0002],
   ]);
+  const spot = [[T0, 3, 1, 240_000, 80_000]];
+  assert.deepEqual(mergeParts({ binance: { spot }, bybit: { spot: [[T0, 9, 9, 1, 1]] } }, T0).spot, spot, "spot flow is Binance's only");
 });
 
 test("全市場 liquidations come from each collector's own exchange only, and prints carry their exchange", () => {

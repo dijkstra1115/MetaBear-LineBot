@@ -261,7 +261,7 @@ export class OrderBook {
   }
 }
 
-/** Merges a tickers snapshot or delta into state; returns the fields as { oi (BTC), oiValue (USDT), funding, mark }. */
+/** Merges a tickers snapshot or delta into state; returns the fields as { oi (BTC), oiValue (USDT), funding, mark, index }. */
 export function applyTicker(state, m) {
   if (!String(m.topic).startsWith("tickers.")) return state;
   const d = m.data;
@@ -269,5 +269,6 @@ export function applyTicker(state, m) {
   if (d.openInterestValue != null) state.oiValue = Number(d.openInterestValue);
   if (d.fundingRate != null) state.funding = Number(d.fundingRate);
   if (d.markPrice != null) state.mark = Number(d.markPrice);
+  if (d.indexPrice != null) state.index = Number(d.indexPrice);
   return state;
 }

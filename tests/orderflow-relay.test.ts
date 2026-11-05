@@ -68,6 +68,11 @@ test("relayed trades and depth become Binance footprints, prints and a book; mis
     const reply = (body: unknown) => ws.send(JSON.stringify({ id: req.id, status: 200, body: JSON.stringify(body) }));
     if (req.get.startsWith("/fapi/v1/depth")) reply({ lastUpdateId: 100, bids: [["80000.0", "1"]], asks: [["80000.1", "2"]] });
     else if (req.get.startsWith("/fapi/v1/aggTrades")) reply([agg(2, t0 + 2_000, "80003.0", "1.2", false), agg(3, t0 + 2_000, "80004.0", "1.3", false)]);
+    else if (req.get.startsWith("/api/v3/klines"))
+      reply([
+        [t0 - MINUTE, "80000", "80010", "79990", "80005", "10", t0 - 1, "800000", "900", "7", "560000", "0"],
+        [t0, "80005", "80015", "80000", "80010", "4", t0 + MINUTE - 1, "320000", "300", "1", "80000", "0"],
+      ]);
   });
   // The relay sends a second of messages per frame, {"b":[…]}.
   const msg = (stream: string, data: unknown) => ({ stream, data });
@@ -99,6 +104,15 @@ test("relayed trades and depth become Binance footprints, prints and a book; mis
   assert.deepEqual(body.bars, [[t0, 80_001, 80_010, 80_001, 80_010, [[8000, 2.5, 0.5], [8001, 0, 0.25]]]], "open and close follow trade time, backfill included");
   assert.deepEqual(body.prints, [[t0 + 2_000, "buy", 80_003.5, 2.5]], "the backfilled order's two fills are one print");
   assert.deepEqual(body.liquidations, [[t0 + 4_500, "long", 79_995, 0.3, "binance"]]);
+
+  // 現貨 CVD: spot klines read through the relay, history first from 15 days back.
+  const spotAsk = asked.find((p) => p.startsWith("/api/v3/klines"));
+  assert.match(spotAsk ?? "", /^\/api\/v3\/klines\?symbol=BTCUSDT&interval=1m&limit=1000&startTime=\d+$/);
+  const spot = await until(async () => {
+    const b = (await (await mf.dispatchFetch(`${base}/btcusdt/recent?ex=binance&since=${t0 - MINUTE}`)).json()) as any;
+    return b.spot?.length ? b.spot : undefined;
+  }, "the spot minutes");
+  assert.deepEqual(spot, [[t0 - MINUTE, 7, 3, 560_000, 240_000], [t0, 1, 3, 80_000, 240_000]]);
 
   const status = (await (await mf.dispatchFetch(`${base}/btcusdt/status?ex=binance`)).json()) as any;
   assert.equal(status.bookReady, true);

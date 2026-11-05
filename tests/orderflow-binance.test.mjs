@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BinanceBook, RELAY_PATHS, parseAggTrade, parseKlines } from "../public/lab/orderflow/binance.js";
+import { BINANCE_REST, BINANCE_SPOT_REST, BinanceBook, RELAY_PATHS, parseAggTrade, parseKlines, parseSpotKlines, relayHost } from "../public/lab/orderflow/binance.js";
 import { groupPrints } from "../public/lab/orderflow/bybit.js";
 
 const T0 = Date.UTC(2026, 9, 25, 3, 0);
@@ -48,6 +48,18 @@ test("the watchers and heatmap only see the window around mid; far orders are no
 test("the relay forwards only public market-data paths", () => {
   assert.ok(RELAY_PATHS.test("/fapi/v1/aggTrades?symbol=BTCUSDT&fromId=1&limit=1000"));
   assert.ok(RELAY_PATHS.test("/futures/data/topLongShortPositionRatio?symbol=BTCUSDT&period=5m&limit=500"));
-  for (const bad of ["/fapi/v1/order?symbol=BTCUSDT", "/fapi/v2/account?x=1", "/sapi/v1/x?y", "/fapi/v1/klines?a=1#", "/fapi/v1/klines?a=%2F", "https://evil.example/fapi/v1/depth?", "/fapi/v1/../v2/account?"])
+  assert.ok(RELAY_PATHS.test("/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=3&startTime=1"));
+  assert.ok(RELAY_PATHS.test("/fapi/v1/premiumIndexKlines?symbol=BTCUSDT&interval=5m&limit=500&startTime=1&endTime=2"));
+  for (const bad of ["/fapi/v1/order?symbol=BTCUSDT", "/fapi/v2/account?x=1", "/sapi/v1/x?y", "/fapi/v1/klines?a=1#", "/fapi/v1/klines?a=%2F", "https://evil.example/fapi/v1/depth?", "/fapi/v1/../v2/account?", "/api/v3/order?symbol=BTCUSDT", "/api/v3/account?x=1"])
     assert.equal(RELAY_PATHS.test(bad), false, bad);
+  assert.equal(relayHost("/api/v3/klines?symbol=BTCUSDT"), BINANCE_SPOT_REST, "spot paths go to the spot API");
+  assert.equal(relayHost("/fapi/v1/depth?symbol=BTCUSDT"), BINANCE_REST);
+});
+
+test("spot klines become per-minute taker flow, from the API (ms) and the archive (µs) alike", () => {
+  // open time, o, h, l, c, volume, close time, quote volume, trades, taker buy base, taker buy quote, ignore
+  const api = [T0, "80000", "80010", "79990", "80005", "10.5", T0 + 59_999, "840000.4", "900", "6.25", "500000.2", "0"];
+  assert.deepEqual(parseSpotKlines([api]), [[T0, 6.25, 4.25, 500_000, 340_000]]);
+  const archive = [String(T0 * 1000), ...api.slice(1).map(String)];
+  assert.deepEqual(parseSpotKlines([archive]), [[T0, 6.25, 4.25, 500_000, 340_000]]);
 });
