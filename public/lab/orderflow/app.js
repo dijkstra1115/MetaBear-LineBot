@@ -103,6 +103,7 @@ const C = {
   buy: "#78e1d5",
   sell: "#f09a5a",
   gold: "#e8bd7d",
+  spot: "#a9b8ff", // 現貨 CVD, apart from the perpetuals' CVD line
 };
 const BUY_RGB = "120,225,213";
 const SELL_RGB = "240,154,90";
@@ -139,6 +140,9 @@ const INDICATORS = [
   ["oi", "pane", "OI", true],
   ["doi", "pane", "OI 變化", false],
   ["funding", "pane", "資金費率", false],
+  // Binance spot flow against the perpetuals' CVD tells spot buying from perp-only selling.
+  ["scvd", "pane", "現貨 CVD（Binance 現貨）", false],
+  ["premium", "pane", "溢價（合約對指數）", false],
   ["ratio", "pane", "多空比", true],
   // Binance publishes top-trader ratios; Bybit has none.
   ...(EX === "binance" || EX === "all" ? [["top", "pane", "大戶持倉比", false]] : []),
@@ -209,7 +213,7 @@ let railOpen = (() => {
 })();
 
 // Server rows by time: footprint bars (archive and collector) and reading-time metrics.
-const store = { bars: new Map(), metrics: new Map() };
+const store = { bars: new Map(), metrics: new Map(), spot: new Map() };
 let server = null; // { updated, status } from the latest /recent poll
 let recentSince = 0;
 let oldestDay = Infinity; // UTC start of the oldest day fetched (loadDays, loadOlder)
@@ -365,8 +369,39 @@ function finishBars(groups, tfMs, readingAt, cvd = 0) {
     return {
       t: b.t, end: close, partial: b.partial, maxD: b.maxD, minD: b.minD, o: b.o, h: b.h, l: b.l, c: b.c, levels, buy, sell, delta: buy - sell, cvd, poc: poc?.p,
       oi: row?.[usd() ? 2 : 1] ?? null, topPos: row?.[3] ?? null, global: row?.[5] ?? null, funding: row?.[7] ?? null,
+      premium: row?.[8] ?? null,
     };
   });
+}
+
+let spotSorted = [];
+
+// 現貨 CVD: Binance spot taker flow summed per bar, cumulative from the first bar that has any, so
+// answers without spot rows (another exchange, minutes before the collector read spot) draw no line.
+function attachSpot(list, cvd = null) {
+  if (!list.length) return;
+  const [bc, sc] = usd() ? [3, 4] : [1, 2];
+  const cut = evReplay?.cut ?? Infinity;
+  let k = 0;
+  let n = spotSorted.length;
+  while (k < n) {
+    const m = (k + n) >> 1;
+    if (spotSorted[m][0] < list[0].t) k = m + 1;
+    else n = m;
+  }
+  for (const b of list) {
+    let d = 0;
+    let any = false;
+    for (; k < spotSorted.length && spotSorted[k][0] < b.end; k++) {
+      const r = spotSorted[k];
+      if (r[0] >= cut) continue;
+      d += r[bc] - r[sc];
+      any = true;
+    }
+    if (any || cvd != null) cvd = (cvd ?? 0) + d;
+    b.spotDelta = any ? d : null;
+    b.spotCvd = cvd;
+  }
 }
 
 // The forming bar follows the live stream: OI several times a second, the predicted funding rate.
@@ -377,6 +412,7 @@ function applyLive(last, prev) {
     last.doi = prev?.oi != null ? last.oi - prev.oi : null;
   }
   if (stream.ticker.funding != null) last.funding = stream.ticker.funding;
+  if (stream.ticker.index > 0) last.premium = last.c / stream.ticker.index - 1;
 }
 
 let metricsSorted = [];
@@ -392,6 +428,8 @@ function build() {
   // The API stamps every metrics row at its reading time (metrics.js).
   metricsSorted = [...store.metrics.values()].sort((a, b) => a[0] - b[0]);
   bars = finishBars(groupBars(mergedRows, tfMs), tfMs, readingsAt(metricsSorted));
+  spotSorted = [...store.spot.values()].sort((a, b) => a[0] - b[0]);
+  attachSpot(bars);
   barIndex = new Map(bars.map((b, i) => [b.t, i]));
   for (let i = 0; i < bars.length; i++) {
     const a = bars[i - 1]?.oi;
@@ -431,6 +469,7 @@ function buildTail() {
   if (!bar) return;
   bar.doi = prev?.oi != null && bar.oi != null ? bar.oi - prev.oi : null;
   bar.imb = bookImbalance(bar);
+  attachSpot([bar], prev?.spotCvd ?? null);
   vwapTail(bar, prev, rows);
   applyLive(bar, prev);
   bar.liq = liquidationsIn(bar.t, bar.end);
@@ -646,6 +685,8 @@ const PANES = {
   oi: { label: () => `OI (${unitLabel()})`, key: "oi" },
   doi: { label: () => `OI 變化 (${unitLabel()})` },
   funding: { label: () => "資金費率（每 8 小時）", key: "funding" },
+  scvd: { label: () => `現貨 CVD（Binance 現貨，${unitLabel()}）`, key: "spotCvd" },
+  premium: { label: () => `溢價（${REF_EX}合約 ÷ 指數 − 1）`, key: "premium" },
   ratio: { label: () => `多空比（${REF_EX}全體帳戶）`, key: "global" },
   top: { label: () => "大戶持倉比（Binance，多 ÷ 空）", key: "topPos" },
   imb: { label: () => "掛單簿失衡（現價 ±0.25%，買 − 賣）" },
@@ -1778,7 +1819,7 @@ function drawSub(L, P, from, to) {
   P.yOf = yOf;
   // The crosshair reads values back from the pane's scale.
   P.vOf = (y) => hi - ((y - top) / h) * (hi - lo);
-  const base = P.key === "global" ? 1 : P.key === "funding" ? 0 : null;
+  const base = P.key === "global" ? 1 : P.key === "funding" || P.key === "premium" ? 0 : null;
   if (base != null && lo < base && hi > base) {
     const y = Math.round(yOf(base)) + 0.5;
     ctx.strokeStyle = C.grid;
@@ -1823,11 +1864,11 @@ function drawSub(L, P, from, to) {
       const y0 = Math.min(yOf(q.o), yOf(q.c));
       ctx.fillRect(Math.round(cx - w / 2 + 0.5), Math.round(y0), w, Math.max(1, Math.round(Math.abs(yOf(q.o) - yOf(q.c)))));
     }
-  } else line(P.key, P.key === "cvd" ? C.buy : C.gold, 1.6);
+  } else line(P.key, P.key === "cvd" ? C.buy : P.key === "spotCvd" ? C.spot : C.gold, 1.6);
   ctx.restore();
 
   ctx.fillStyle = C.muted;
-  const fmt = (v) => (P.key === "global" ? v.toFixed(2) : P.key === "funding" ? fmtRate(v) : P.key === "oi" ? fmtVol(v) : fmtSigned(v));
+  const fmt = (v) => (P.key === "global" ? v.toFixed(2) : P.key === "funding" || P.key === "premium" ? fmtRate(v) : P.key === "oi" ? fmtVol(v) : fmtSigned(v));
   P.fmt = fmt;
   ctx.fillText(fmt(hi - pad), L.plotW + 8, yOf(hi - pad));
   ctx.fillText(fmt(lo + pad), L.plotW + 8, yOf(lo + pad));
@@ -1971,6 +2012,10 @@ function paneValue(id, b) {
       return b.oi != null ? `${fmtVol(b.oi)}${b.doi != null ? `  ${fmtSigned(b.doi)}` : ""}` : "";
     case "doi":
       return b.doi != null ? fmtSigned(b.doi) : "";
+    case "scvd":
+      return b.spotCvd != null ? `${fmtSigned(b.spotCvd)}${b.spotDelta != null ? `  Δ ${fmtSigned(b.spotDelta)}` : ""}` : "";
+    case "premium":
+      return b.premium != null ? fmtRate(b.premium) : "";
     case "funding":
       return b.funding != null ? fmtRate(b.funding) : "";
     case "ratio":
@@ -2992,7 +3037,10 @@ function startBinance() {
         const tr = parseAggTrade(m.data);
         print(tr);
         onTrade(tr);
-      } else if (m.data?.e === "markPriceUpdate") stream.ticker.funding = Number(m.data.r);
+      } else if (m.data?.e === "markPriceUpdate") {
+        stream.ticker.funding = Number(m.data.r);
+        if (Number(m.data.i) > 0) stream.ticker.index = Number(m.data.i);
+      }
     },
   });
   let syncing = false;
@@ -3208,7 +3256,8 @@ function showConnection(state, age = 0) {
 // Returns whether anything older than the forming bar changed, which needs a full build.
 function ingest(d) {
   const tail = bars.at(-1)?.t ?? Infinity;
-  let older = d.metrics.some((m) => !store.metrics.has(m[0])) || d.liquidations.some((l) => l[0] < tail);
+  let older = d.metrics.some((m) => !store.metrics.has(m[0])) || d.liquidations.some((l) => l[0] < tail) || (d.spot ?? []).some((r) => r[0] < tail && !store.spot.has(r[0]));
+  for (const r of d.spot ?? []) store.spot.set(r[0], r);
   for (const r of d.bars) {
     if (r[0] < tail && JSON.stringify(store.bars.get(r[0])) !== JSON.stringify(r)) older = true;
     store.bars.set(r[0], r);
@@ -3737,6 +3786,8 @@ function replayFeed() {
   for (; replay.printsN < pn; replay.printsN++) addPrint(raw.prints[replay.printsN]);
   const rn = prepared.readingsUntil(player.t);
   for (; replay.readingsN < rn; replay.readingsN++) store.metrics.set(raw.metrics[replay.readingsN][0], raw.metrics[replay.readingsN]);
+  // Spot minutes count once they have closed, as the collector's would.
+  store.spot = new Map((raw.spot ?? []).filter((r) => r[0] + MINUTE <= player.t).map((r) => [r[0], r]));
   return true;
 }
 

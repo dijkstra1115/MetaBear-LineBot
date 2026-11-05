@@ -6,8 +6,8 @@
 // - Prints: all of them, each tagged with its exchange as a fifth field.
 // - Liquidations: every collector's own exchange only (Bybit's collector also records OKX's).
 // - Metrics: OI summed in BTC and USDT over the exchanges whose readings cover the whole period, so
-//   the series has no step where an exchange's history starts; ratios and funding are Binance's.
-// - Heatmap: Binance's (books differ in depth, so they are not summed).
+//   the series has no step where an exchange's history starts; ratios, funding and premium are Binance's.
+// - Heatmap and spot taker flow (現貨 CVD): Binance's (books differ in depth, so they are not summed).
 
 import { EXCHANGES, type Exchange } from "./exchanges";
 
@@ -19,7 +19,7 @@ const COVER_SLACK = 5 * 60_000;
 type Level = [number, number, number];
 type BarRow = [number, number, number, number, number, Level[]];
 type Metric = (number | null)[];
-export type Part = { bars?: BarRow[]; prints?: unknown[][]; liquidations?: unknown[][]; metrics?: Metric[]; heat?: unknown[]; status?: Record<string, unknown> };
+export type Part = { bars?: BarRow[]; prints?: unknown[][]; liquidations?: unknown[][]; metrics?: Metric[]; heat?: unknown[]; spot?: unknown[]; status?: Record<string, unknown> };
 
 const round = (v: number) => Math.round(v * 1000) / 1000;
 
@@ -66,7 +66,7 @@ export function mergeMetrics(parts: Partial<Record<Exchange, Metric[]>>, from: n
     const ref = last.binance;
     const oi = sum(1);
     const value = sum(2);
-    out.push([t, oi == null ? null : round(oi), value == null ? null : Math.round(value), ref?.[3] ?? null, ref?.[4] ?? null, ref?.[5] ?? null, null, ref?.[7] ?? null]);
+    out.push([t, oi == null ? null : round(oi), value == null ? null : Math.round(value), ref?.[3] ?? null, ref?.[4] ?? null, ref?.[5] ?? null, null, ref?.[7] ?? null, ref?.[8] ?? null]);
   }
   return out;
 }
@@ -82,5 +82,6 @@ export function mergeParts(parts: Partial<Record<Exchange, Part>>, from: number)
     liquidations: liquidations.sort(byTime),
     metrics: mergeMetrics(pick("metrics") as Partial<Record<Exchange, Metric[]>>, from),
     heat: parts.binance?.heat ?? [],
+    spot: parts.binance?.spot ?? [],
   };
 }

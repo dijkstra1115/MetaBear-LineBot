@@ -8,6 +8,9 @@ import { DEFAULT_MARKET } from "./markets.js";
 
 export const BINANCE_SYMBOL = "BTCUSDT";
 export const BINANCE_REST = "https://fapi.binance.com";
+// Spot is read only for 現貨 CVD: its 1-minute klines carry the taker-buy volume, so the collector
+// polls them instead of taking a second trade stream through the relay.
+export const BINANCE_SPOT_REST = "https://api.binance.com";
 // Binance serves trades and mark price on /market and depth on /public.
 export const binanceStreams = (m = DEFAULT_MARKET) => ({
   market: `wss://fstream.binance.com/market/stream?streams=${m.binance}@aggTrade/${m.binance}@markPrice@1s/${m.binance}@forceOrder`,
@@ -16,7 +19,9 @@ export const binanceStreams = (m = DEFAULT_MARKET) => ({
 export const BINANCE_STREAMS = binanceStreams();
 // The only REST paths the relay forwards: the public market data the collector reads, nothing else.
 export const RELAY_PATHS =
-  /^\/(fapi\/v1\/(depth|aggTrades|klines|openInterest|fundingRate)|futures\/data\/(openInterestHist|globalLongShortAccountRatio|topLongShortPositionRatio|topLongShortAccountRatio))\?[A-Za-z0-9=&.]*$/;
+  /^\/(fapi\/v1\/(depth|aggTrades|klines|premiumIndexKlines|openInterest|fundingRate)|futures\/data\/(openInterestHist|globalLongShortAccountRatio|topLongShortPositionRatio|topLongShortAccountRatio)|api\/v3\/klines)\?[A-Za-z0-9=&.]*$/;
+/** The Binance host a whitelisted relay path is fetched from. */
+export const relayHost = (path) => (path.startsWith("/api/v3/") ? BINANCE_SPOT_REST : BINANCE_REST);
 // Bybit's 1,000 levels reach about ±0.25 % from mid. Binance's diff stream also moves orders far
 // away (a 118 BTC bid at $1,000), which would read as walls, so the book the watchers and the
 // heatmap see is cut to the same window.
@@ -37,6 +42,25 @@ export function parseArchiveLine(line) {
   const t = Number(c[5]);
   if (!(t > 0)) return null;
   return { t, price: Number(c[1]), qty: Number(c[2]), sell: c[6].trim().toLowerCase() === "true" };
+}
+
+// Binance's spot archives stamp times in microseconds from 2025; the API keeps milliseconds.
+const msTime = (t) => (t > 1e14 ? Math.floor(t / 1000) : t);
+const round3 = (v) => Math.round(v * 1000) / 1000;
+
+/**
+ * Spot 1-minute klines (/api/v3/klines rows, or the spot klines archive's CSV columns) → spot rows
+ * [t, taker buy, taker sell, taker buy USDT, taker sell USDT]. Columns 5 and 7 are base and quote
+ * volume, 9 and 10 their taker-buy parts.
+ */
+export function parseSpotKlines(list) {
+  return list.map((k) => {
+    const vol = Number(k[5]);
+    const buy = Number(k[9]);
+    const quote = Number(k[7]);
+    const buyQuote = Number(k[10]);
+    return [msTime(Number(k[0])), round3(buy), round3(vol - buy), Math.round(buyQuote), Math.round(quote - buyQuote)];
+  });
 }
 
 /** /fapi/v1/klines rows → [t, open, high, low, close]. */

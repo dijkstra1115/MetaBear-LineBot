@@ -23,6 +23,9 @@ const types = {
 const apiArg = process.argv.indexOf("--api");
 const UPSTREAM = apiArg > 0 ? process.argv[apiArg + 1].replace(/\/$/, "") : "http://127.0.0.1:8792";
 const REMOTE = !UPSTREAM.startsWith("http://127.0.0.1");
+// `--port N` serves on another port, for a second preview beside one already on 8790.
+const portArg = process.argv.indexOf("--port");
+const PORT = portArg > 0 ? Number(process.argv[portArg + 1]) : 8790;
 createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://127.0.0.1:8790");
@@ -104,6 +107,6 @@ createServer(async (req, res) => {
     res.writeHead(404);
     res.end("Not found");
   }
-}).listen(8790, "127.0.0.1", () =>
-  console.log("Orderflow Academy: http://127.0.0.1:8790/orderflow/"),
+}).listen(PORT, "127.0.0.1", () =>
+  console.log(`Orderflow Academy: http://127.0.0.1:${PORT}/orderflow/`),
 );

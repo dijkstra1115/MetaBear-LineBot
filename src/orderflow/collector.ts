@@ -117,6 +117,8 @@ export type Row = Record<string, SqlStorageValue>;
 type ArchiveJob = { day: string; from: number; cursor: number; open: number; reader: ReadableStreamDefaultReader<string>; build: ArchiveDay; carry: string };
 
 const iso = (t: number) => new Date(t).toISOString();
+/** Last price over the index price, minus 1 (0.0005 = 0.05 % above spot), or null without both. */
+export const premiumOf = (price: number, index: number | undefined) => (price > 0 && index && index > 0 ? Math.round((price / index - 1) * 1e6) / 1e6 : null);
 
 // The one file in a zip archive, inflated as a stream. Sizes come from the central directory, since
 // entries may carry a data descriptor with zero sizes in their local header.
@@ -144,7 +146,8 @@ export class Collector extends DurableObject<OrderflowEnv> {
   protected sql: SqlStorage;
   protected bars = new Map<number, Bar>(); // minutes not yet closed and persisted
   protected book = new OrderBook();
-  protected ticker: { oi?: number; oiValue?: number; funding?: number; ts?: number } = {};
+  // index: the exchange's index (spot reference) price, for the premium recorded with each OI reading.
+  protected ticker: { oi?: number; oiValue?: number; funding?: number; mark?: number; index?: number; ts?: number } = {};
   private sockets = new Map<string, Socket>();
   protected relay: { ws: WebSocket; last: number; info: Record<string, unknown> } | null = null;
   protected relayState = "idle";
@@ -208,7 +211,11 @@ export class Collector extends DurableObject<OrderflowEnv> {
       CREATE TABLE IF NOT EXISTS prints (t INTEGER, side TEXT, price REAL, qty REAL, PRIMARY KEY (t, side, price, qty));
       CREATE TABLE IF NOT EXISTS funding (t INTEGER PRIMARY KEY, rate REAL);
       CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+      CREATE TABLE IF NOT EXISTS spot (t INTEGER PRIMARY KEY, row TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS premium_rest (t INTEGER PRIMARY KEY, p REAL);
     `);
+    // Added with 現貨 CVD: the perpetual's premium over the index price at each OI reading.
+    if (!this.rows("PRAGMA table_info(oi)").some((c) => c.name === "premium")) this.sql.exec("ALTER TABLE oi ADD COLUMN premium REAL");
     // Added later: live prints (grouped by Bybit's seq, exact) are kept over the archive's
     // timestamp-grouped estimates; rows from before this column are archive prints.
     if (!this.rows("PRAGMA table_info(prints)").some((c) => c.name === "src")) this.sql.exec("ALTER TABLE prints ADD COLUMN src TEXT NOT NULL DEFAULT 'archive'");
@@ -550,12 +557,13 @@ export class Collector extends DurableObject<OrderflowEnv> {
       const window = this.rows("SELECT row FROM bars WHERE t >= ? AND t < ?", t - FIVE_MIN, t).map((r) => JSON.parse(String(r.row)));
       const [buy, sell] = takerTotals(window);
       this.sql.exec(
-        "INSERT INTO oi (t, oi, oi_value, taker, funding) VALUES (?, ?, ?, ?, ?) ON CONFLICT(t) DO NOTHING",
+        "INSERT INTO oi (t, oi, oi_value, taker, funding, premium) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(t) DO NOTHING",
         t,
         this.ticker.oi,
         this.ticker.oiValue ?? null,
         sell > 0 ? Math.round((buy / sell) * 1e4) / 1e4 : null,
         this.ticker.funding ?? null,
+        premiumOf(this.lastPrice, this.ticker.index),
       );
       this.alert(this.oiWatch.add(t, this.ticker.oi, this.lastPrice));
     }
@@ -1051,7 +1059,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       if (!this.rows("SELECT t FROM book LIMIT 1").length) this.sql.exec("DROP TABLE book");
     }
     this.sql.exec("DELETE FROM alerts WHERE t < ?", now - KEEP_MS.alerts);
-    for (const table of ["oi", "oi_rest", "ratios", "funding"]) this.sql.exec(`DELETE FROM ${table} WHERE t < ?`, now - KEEP_MS.readings);
+    for (const table of ["oi", "oi_rest", "ratios", "funding", "spot", "premium_rest"]) this.sql.exec(`DELETE FROM ${table} WHERE t < ?`, now - KEEP_MS.readings);
     this.sql.exec("DELETE FROM liqs WHERE t < ?", now - KEEP_MS.liqs);
     this.setMeta("pruned", now);
   }
@@ -1100,24 +1108,28 @@ export class Collector extends DurableObject<OrderflowEnv> {
       metrics: JSON.stringify(this.metrics(from, to)),
       liquidations: JSON.stringify(this.rows("SELECT t, side, price, qty, ex FROM liqs WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => [r.t, r.side, r.price, r.qty, r.ex])),
       prints: JSON.stringify(this.rows("SELECT t, side, price, qty, ex FROM prints WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => (r.ex ? [r.t, r.side, r.price, r.qty, r.ex] : [r.t, r.side, r.price, r.qty]))),
+      // Binance spot taker flow per minute (現貨 CVD), [t, buy, sell, buy USDT, sell USDT]; only
+      // Binance's collector and 全市場 fill it.
+      spot: `[${this.rows("SELECT row FROM spot WHERE t >= ? AND t < ? ORDER BY t", from, to).map((r) => String(r.row)).join(",")}]`,
     };
   }
 
   // Reading-time rows in the lab's shape: [t, OI (BTC), OI (USDT), top-trader position ratio,
-  // top-trader account ratio, all-account ratio, taker buy/sell over [t − 5m, t), funding rate].
-  // Bybit has no top-trader ratios (Binance does). Stream readings win; REST rows fill the rest (OI
-  // valued at bar close, funding as the last settled rate).
+  // top-trader account ratio, all-account ratio, taker buy/sell over [t − 5m, t), funding rate,
+  // premium over the index price]. Bybit has no top-trader ratios (Binance does). Stream readings
+  // win; REST rows fill the rest (OI valued at bar close, funding as the last settled rate). Premium
+  // is the exchange's 5-minute premium index where it has one (Binance), else the live reading.
   protected metrics(from: number, to: number) {
-    const live = new Map(this.rows("SELECT t, oi, oi_value, taker, funding FROM oi WHERE t >= ? AND t < ?", from, to).map((r) => [Number(r.t), r]));
+    const live = new Map(this.rows("SELECT t, oi, oi_value, taker, funding, premium FROM oi WHERE t >= ? AND t < ?", from, to).map((r) => [Number(r.t), r]));
     const out = new Map<number, (number | null)[]>();
     for (const [t, r] of live)
-      out.set(t, [t, r.oi as number, r.oi_value == null ? null : Math.round(r.oi_value as number), null, null, null, (r.taker as number | null) ?? null, (r.funding as number | null) ?? null]);
+      out.set(t, [t, r.oi as number, r.oi_value == null ? null : Math.round(r.oi_value as number), null, null, null, (r.taker as number | null) ?? null, (r.funding as number | null) ?? null, (r.premium as number | null) ?? null]);
     const closes = new Map(this.rows("SELECT t, row FROM bars WHERE t >= ? AND t < ?", from - MINUTE, to).map((r) => [Number(r.t), JSON.parse(String(r.row))[4] as number]));
     for (const r of this.rows("SELECT t, oi FROM oi_rest WHERE t >= ? AND t < ?", from, to)) {
       const t = Number(r.t);
       if (out.has(t)) continue;
       const close = closes.get(t - MINUTE);
-      out.set(t, [t, r.oi as number, close ? Math.round((r.oi as number) * close) : null, null, null, null, null, null]);
+      out.set(t, [t, r.oi as number, close ? Math.round((r.oi as number) * close) : null, null, null, null, null, null, null]);
     }
     const ratios = this.rows("SELECT t, ratio, top_pos, top_acc FROM ratios WHERE t >= ? AND t < ? ORDER BY t", from - DAY, to);
     const settled = this.rows("SELECT t, rate FROM funding WHERE t >= ? AND t < ? ORDER BY t", from - DAY, to);
@@ -1132,6 +1144,10 @@ export class Collector extends DurableObject<OrderflowEnv> {
       row[5] = k >= 0 ? ((ratios[k].ratio as number | null) ?? null) : null;
       row[7] ??= f >= 0 ? (settled[f].rate as number) : null;
     }
+    const premium = new Map(this.rows("SELECT t, p FROM premium_rest WHERE t >= ? AND t < ?", from, to).map((r) => [Number(r.t), r.p as number]));
+    // The exchange's own premium index wins, so history is one series; the live last ÷ index
+    // reading covers the slots it has not published yet.
+    for (const row of rows) row[8] = premium.get(row[0] as number) ?? row[8];
     return rows;
   }
 
@@ -1157,7 +1173,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
       oi: this.ticker.oi ?? null,
       levels: this.levelsView(Date.now()),
       archive: { last: this.meta("archiveDone"), ...this.status.archive },
-      counts: Object.fromEntries(["bars", "prints", "heat", "oi", "oi_rest", "ratios", "funding", "liqs"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
+      counts: Object.fromEntries(["bars", "prints", "heat", "oi", "oi_rest", "ratios", "funding", "liqs", "spot", "premium_rest"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
     };
   }
 

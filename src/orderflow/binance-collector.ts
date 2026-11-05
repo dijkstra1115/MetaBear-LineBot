@@ -5,10 +5,13 @@
 // frame) and answers REST requests for whitelisted public paths, so every Binance call goes through it.
 // The socket is a hibernatable one and nothing here sets a timer, so the object is only billed while
 // it handles a frame or an alarm, not for the idle time in between (docs/ORDERFLOW-RELAY-HIBERNATION.md).
-import { BinanceBook, binanceArchiveUrl, parseAggTrade, parseArchiveLine, parseKlines } from "../../public/lab/orderflow/binance.js";
+import { BinanceBook, binanceArchiveUrl, parseAggTrade, parseArchiveLine, parseKlines, parseSpotKlines } from "../../public/lab/orderflow/binance.js";
 import { BACKFILL_DAYS, Collector, DAY, FIVE_MIN, HEALTH_DOWN_MS, MINUTE, type OrderflowEnv, type Trade } from "./collector";
 
 const REST_TIMEOUT_MS = 15_000;
+// Spot klines for 現貨 CVD: the forming minute is read again this often once history is caught up;
+// until then a page of 1,000 minutes per frame.
+const SPOT_POLL_MS = 10_000;
 // Missed aggregate trades are fetched by id, 1,000 a page (a few minutes of BTC each). Longer
 // outages are left to the hourly klines and recorded as a gap.
 const GAP_PAGES = 30;
@@ -43,6 +46,8 @@ export class BinanceCollector extends Collector {
   // aggTrades of one taker order share a time and side; they are held until the next one so its
   // print is summed (Bybit sends a match's fills in one message).
   private run: AggTrade[] = [];
+  private spotBusy = false;
+  private spotAt = 0; // the next spot poll is due at or after this time
 
   constructor(ctx: DurableObjectState, env: OrderflowEnv) {
     super(ctx, env);
@@ -64,6 +69,7 @@ export class BinanceCollector extends Collector {
 
   protected override beforeFrame(now: number) {
     this.expireCalls(now);
+    if (now >= this.spotAt) void this.pollSpot(now);
   }
 
   protected override onRelayDrop(why: string) {
@@ -93,7 +99,11 @@ export class BinanceCollector extends Collector {
     const stream = String(m.stream ?? "");
     if (stream.endsWith("@aggTrade")) this.onAgg(parseAggTrade(m.data));
     else if (stream.includes("@depth")) this.onDepth(m.data);
-    else if (stream.includes("@markPrice")) (this.ticker.funding = Number(m.data.r)), ((this.ticker as { mark?: number }).mark = Number(m.data.p));
+    else if (stream.includes("@markPrice")) {
+      this.ticker.funding = Number(m.data.r);
+      this.ticker.mark = Number(m.data.p);
+      if (Number(m.data.i) > 0) this.ticker.index = Number(m.data.i);
+    }
     else if (stream.endsWith("@forceOrder")) this.saveLiqs(this.liqFeed("binance").parse(m));
   }
 
@@ -147,6 +157,36 @@ export class BinanceCollector extends Collector {
       this.gaps = []; // a later trade opens a new gap; the klines cover the rest
     } finally {
       this.filling = false;
+    }
+  }
+
+  // ---------- spot (現貨 CVD) ----------
+
+  // Spot taker flow per minute from Binance's spot klines (taker-buy volume is a kline column), so
+  // no spot trade stream is needed. History goes back BACKFILL_DAYS a page at a time; after that the
+  // last three minutes are read every SPOT_POLL_MS, the forming one replaced as it grows.
+  private async pollSpot(now: number) {
+    if (this.spotBusy || !this.relay) return;
+    this.spotBusy = true;
+    this.spotAt = now + SPOT_POLL_MS;
+    try {
+      const current = Math.floor(now / MINUTE) * MINUTE;
+      const cursor = Number(this.meta("spotCursor") ?? 0) || current - BACKFILL_DAYS * DAY;
+      const behind = cursor < current - 2 * MINUTE;
+      const start = behind ? cursor : current - 2 * MINUTE;
+      const rows: number[][] = parseSpotKlines(await this.rest<any[]>(`/api/v3/klines?symbol=${this.m.symbol}&interval=1m&limit=${behind ? 1000 : 3}&startTime=${start}`));
+      for (const row of rows) this.sql.exec("INSERT OR REPLACE INTO spot (t, row) VALUES (?, ?)", row[0], JSON.stringify(row));
+      const closed = rows.filter((r) => r[0] < current).at(-1);
+      // A page that ends in a closed minute leaves the rest of the backlog for the next frame.
+      if (closed) this.setMeta("spotCursor", Math.max(cursor, closed[0] + MINUTE));
+      else if (behind) this.setMeta("spotCursor", Math.min(current, start + 1000 * MINUTE));
+      if (behind && closed) this.spotAt = 0;
+    } catch (err) {
+      this.note("errors", `binance spot klines: ${err}`);
+      // A relay from before spot was whitelisted refuses the path; do not ask every frame.
+      this.spotAt = now + FIVE_MIN;
+    } finally {
+      this.spotBusy = false;
     }
   }
 
@@ -214,7 +254,7 @@ export class BinanceCollector extends Collector {
       const ts = Number(oi.time) || now;
       this.reading(ts);
       this.ticker.oi = Number(oi.openInterest);
-      const mark = (this.ticker as { mark?: number }).mark ?? this.lastPrice;
+      const mark = this.ticker.mark ?? this.lastPrice;
       this.ticker.oiValue = mark ? this.ticker.oi * mark : undefined;
       this.ticker.ts = ts;
     } catch (err) {
@@ -232,8 +272,8 @@ export class BinanceCollector extends Collector {
     super.persistHeat();
   }
 
-  // History from Binance's 5-minute statistics (kept 30 days) and settled funding, one page per
-  // kind per alarm until caught up, then every 5 minutes.
+  // History from Binance's 5-minute statistics (kept 30 days), settled funding and the 5-minute
+  // premium index, one page per kind per alarm until caught up, then every 5 minutes.
   protected override async pollRest() {
     if (!this.relay) return;
     const now = Date.now();
@@ -243,6 +283,7 @@ export class BinanceCollector extends Collector {
       ["top_pos", "topLongShortPositionRatio"],
       ["top_acc", "topLongShortAccountRatio"],
       ["funding", "fundingRate"],
+      ["premium", "premiumIndexKlines"],
     ] as const;
     for (const [kind, path] of kinds) {
       const key = `${kind}Cursor`;
@@ -255,9 +296,17 @@ export class BinanceCollector extends Collector {
       const url =
         kind === "funding"
           ? `/fapi/v1/fundingRate?symbol=${this.m.symbol}&limit=1000&startTime=${cursor}&endTime=${end}`
-          : `/futures/data/${path}?symbol=${this.m.symbol}&period=5m&limit=500&startTime=${cursor}&endTime=${end}`;
+          : kind === "premium"
+            ? `/fapi/v1/premiumIndexKlines?symbol=${this.m.symbol}&interval=5m&limit=500&startTime=${cursor}&endTime=${end}`
+            : `/futures/data/${path}?symbol=${this.m.symbol}&period=5m&limit=500&startTime=${cursor}&endTime=${end}`;
       try {
         for (const r of await this.rest<any[]>(url)) {
+          if (kind === "premium") {
+            // A 5-minute kline's close is the premium at its end, the reading time of that slot.
+            const t = Number(r[0]) + FIVE_MIN;
+            if (t <= now) this.sql.exec("INSERT OR REPLACE INTO premium_rest (t, p) VALUES (?, ?)", t, Number(r[4]));
+            continue;
+          }
           const t = Number(r.timestamp ?? r.fundingTime);
           if (kind === "oi") this.sql.exec("INSERT OR REPLACE INTO oi_rest (t, oi) VALUES (?, ?)", t, Number(r.sumOpenInterest));
           else if (kind === "funding") this.sql.exec("INSERT OR REPLACE INTO funding (t, rate) VALUES (?, ?)", t, Number(r.fundingRate));
