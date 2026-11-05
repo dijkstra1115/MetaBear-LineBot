@@ -145,6 +145,8 @@ const INDICATORS = [
   ["imb", "pane", "掛單簿失衡", false],
 ];
 const PREFS_KEY = "metabear-orderflow-indicators";
+// Panes the viewer can draw as a line or as candles (open = previous close).
+const STYLE_PANES = ["cvd", "oi"];
 // Phones (most visitors arrive from LINE) start with fewer panes so the price chart keeps room.
 const NARROW = matchMedia("(max-width: 720px)").matches;
 const NARROW_OFF = new Set(["stats", "ratio", "levels", "dom", "dprofile"]);
@@ -152,7 +154,7 @@ let hadSavedPrefs = false;
 const prefs = (() => {
   // Phones show fewer, larger prints by default so 15-minute bars do not drown in bubbles.
   // heat: the viewer's heatmap colour range in BTC per $10 of price, or null for automatic.
-  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: EX === "all" ? (NARROW ? 50 : 25) : NARROW ? 25 : 10, heat: null };
+  const out = { show: Object.fromEntries(INDICATORS.map(([id, , , def]) => [id, def && !(NARROW && NARROW_OFF.has(id))])), printMin: EX === "all" ? (NARROW ? 50 : 25) : NARROW ? 25 : 10, heat: null, style: Object.fromEntries(STYLE_PANES.map((id) => [id, "line"])) };
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     hadSavedPrefs = !!saved?.show;
@@ -161,6 +163,7 @@ const prefs = (() => {
     if (saved?.show?.liqside === true) out.show.lmap = true;
     if (Number(saved?.printMin) >= BTC_PRINT_MIN) out.printMin = Number(saved.printMin);
     if (saved?.heat && saved.heat.lo > 0 && saved.heat.hi > saved.heat.lo) out.heat = { lo: Number(saved.heat.lo), hi: Number(saved.heat.hi) };
+    for (const id of STYLE_PANES) if (saved?.style?.[id] === "candles") out.style[id] = "candles";
   } catch {}
   // A shared view shows the sender's indicators without changing this browser's saved choice.
   if (query.has("ind")) {
@@ -719,6 +722,7 @@ function draw() {
   if (!bars.length) return;
   const L = layout();
   const [from, to] = visibleRange(L);
+  styleHits = [];
   drawPrice(L, from, to);
   for (const id of L.subIds) {
     if (id === "stats") drawStats(L, L.panes.stats, from, to);
@@ -1706,10 +1710,53 @@ function drawProfile(L, from, to, yOf) {
   mark(rows[hi][0], "rgba(148,168,185,0.5)", "VAL", [4, 4]);
 }
 
+// A bar's CVD or OI as a candle opening at the previous bar's close. CVD's wicks are the running
+// delta's extremes at minute closes; OI's are the exchange readings inside the bar.
+function paneOhlc(key, i) {
+  const b = bars[i];
+  if (key === "cvd") {
+    const o = b.cvd - b.delta;
+    const ext = (v) => (Number.isFinite(v) ? v : 0);
+    return { o, c: b.cvd, h: o + Math.max(0, b.delta, ext(b.maxD)), l: o + Math.min(0, b.delta, ext(b.minD)) };
+  }
+  if (b.oi == null) return null;
+  const o = bars[i - 1]?.oi ?? b.oi;
+  let h = Math.max(o, b.oi);
+  let l = Math.min(o, b.oi);
+  const col = usd() ? 2 : 1;
+  const until = Math.min(b.end, evReplay?.cut ?? Infinity);
+  let k = 0;
+  let n = metricsSorted.length;
+  while (k < n) {
+    const m = (k + n) >> 1;
+    if (metricsSorted[m][0] <= b.t) k = m + 1;
+    else n = m;
+  }
+  for (; k < metricsSorted.length && metricsSorted[k][0] <= until; k++) {
+    const v = metricsSorted[k][col];
+    if (v == null) continue;
+    if (v > h) h = v;
+    if (v < l) l = v;
+  }
+  return { o, c: b.oi, h, l };
+}
+
+const paneStyle = (key) => (STYLE_PANES.includes(key) ? prefs.style[key] : "line");
+let styleHits = []; // the line/candle switches drawn in pane labels: { id, x, y, w, h }
+
 function drawSub(L, P, from, to) {
+  const candles = paneStyle(P.key) === "candles";
+  const ohlc = [];
   let lo = Infinity;
   let hi = -Infinity;
   for (let i = from; i <= to; i++) {
+    if (candles) {
+      const q = (ohlc[i] = paneOhlc(P.key, i));
+      if (!q) continue;
+      lo = Math.min(lo, q.l);
+      hi = Math.max(hi, q.h);
+      continue;
+    }
     const v = bars[i][P.key];
     if (v == null) continue;
     lo = Math.min(lo, v);
@@ -1718,7 +1765,8 @@ function drawSub(L, P, from, to) {
   ctx.fillStyle = C.muted;
   ctx.font = `11px ${MONO}`;
   ctx.textBaseline = "top";
-  drawPaneLabel(P);
+  const labelEnd = drawPaneLabel(P);
+  if (STYLE_PANES.includes(P.key)) drawStyleSwitch(P, labelEnd + 10);
   ctx.textBaseline = "middle";
   if (!Number.isFinite(lo)) return;
   const pad = (hi - lo) * 0.12 || 1;
@@ -1728,20 +1776,8 @@ function drawSub(L, P, from, to) {
   const h = P.h - 28;
   const yOf = (v) => top + ((hi - v) / (hi - lo)) * h;
   P.yOf = yOf;
-
-  if (P.key === "cvd") {
-    // Per-bar delta as faint columns behind the cumulative line.
-    let maxD = 0;
-    for (let i = from; i <= to; i++) maxD = Math.max(maxD, Math.abs(bars[i].delta));
-    const mid = top + h / 2;
-    for (let i = from; i <= to; i++) {
-      const d = bars[i].delta;
-      const bh = (Math.abs(d) / (maxD || 1)) * (h / 2);
-      ctx.fillStyle = d >= 0 ? `rgba(${BUY_RGB},0.18)` : `rgba(${SELL_RGB},0.18)`;
-      const w = Math.max(1, view.barW * 0.6);
-      ctx.fillRect(xOf(i, L) + (view.barW - w) / 2, d >= 0 ? mid - bh : mid, w, bh);
-    }
-  }
+  // The crosshair reads values back from the pane's scale.
+  P.vOf = (y) => hi - ((y - top) / h) * (hi - lo);
   const base = P.key === "global" ? 1 : P.key === "funding" ? 0 : null;
   if (base != null && lo < base && hi > base) {
     const y = Math.round(yOf(base)) + 0.5;
@@ -1774,11 +1810,25 @@ function drawSub(L, P, from, to) {
   ctx.beginPath();
   ctx.rect(0, P.y, L.plotW, P.h);
   ctx.clip();
-  line(P.key, P.key === "cvd" ? C.buy : C.gold, 1.6);
+  if (candles) {
+    const w = Math.max(1, Math.round(view.barW * 0.7));
+    for (let i = from; i <= to; i++) {
+      const q = ohlc[i];
+      if (!q) continue;
+      const x = xOf(i, L);
+      const cx = Math.round(x + view.barW / 2);
+      const color = q.c >= q.o ? C.buy : C.sell;
+      ctx.fillStyle = color;
+      ctx.fillRect(cx, Math.round(yOf(q.h)), 1, Math.max(1, Math.round(yOf(q.l) - yOf(q.h))));
+      const y0 = Math.min(yOf(q.o), yOf(q.c));
+      ctx.fillRect(Math.round(cx - w / 2 + 0.5), Math.round(y0), w, Math.max(1, Math.round(Math.abs(yOf(q.o) - yOf(q.c)))));
+    }
+  } else line(P.key, P.key === "cvd" ? C.buy : C.gold, 1.6);
   ctx.restore();
 
   ctx.fillStyle = C.muted;
   const fmt = (v) => (P.key === "global" ? v.toFixed(2) : P.key === "funding" ? fmtRate(v) : P.key === "oi" ? fmtVol(v) : fmtSigned(v));
+  P.fmt = fmt;
   ctx.fillText(fmt(hi - pad), L.plotW + 8, yOf(hi - pad));
   ctx.fillText(fmt(lo + pad), L.plotW + 8, yOf(lo + pad));
   ctx.strokeStyle = C.line;
@@ -1950,6 +2000,30 @@ function drawPaneLabel(P) {
   }
   return x;
 }
+
+// A two-part switch after the pane label: 線 (curve) or K (candles).
+function drawStyleSwitch(P, x) {
+  const style = paneStyle(P.key);
+  const y = P.y + 3;
+  const h = 16;
+  ctx.font = `10px ${MONO}`;
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  [["line", "線"], ["candles", "K"]].forEach(([value, text], n) => {
+    const w = 22;
+    const bx = x + n * w;
+    const active = style === value;
+    ctx.fillStyle = active ? "rgba(120,160,190,0.28)" : "rgba(120,160,190,0.08)";
+    ctx.fillRect(bx, y, w - 1, h);
+    ctx.fillStyle = active ? C.text : C.muted;
+    ctx.fillText(text, bx + w / 2, y + h / 2 + 0.5);
+  });
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.font = `11px ${MONO}`;
+  styleHits.push({ id: P.key, x, y, w: 44, h });
+}
+const styleHitAt = (x, y) => styleHits.find((s) => x >= s.x && x <= s.x + s.w && y >= s.y && y <= s.y + s.h);
 
 // OHLC of the bar under the pointer (or the newest) at the chart's top-left, and below it only
 // what that bar has: events, large prints, liquidation estimates, missing footprint.
@@ -2201,12 +2275,22 @@ function drawCrosshair(L) {
   ctx.lineTo(x, L.timeY);
   const P = L.panes.price;
   const inPrice = hover.y > P.y && hover.y < P.y + P.h;
-  if (inPrice) {
+  // Line panes (CVD, OI, funding, ratios) read their value off the axis like the price pane.
+  const S = inPrice ? null : L.subIds.map((id) => L.panes[id]).find((Q) => Q.vOf && hover.y > Q.y && hover.y < Q.y + Q.h);
+  if (inPrice || S) {
     ctx.moveTo(0, Math.round(hover.y) + 0.5);
     ctx.lineTo(L.plotW, Math.round(hover.y) + 0.5);
   }
   ctx.stroke();
   ctx.setLineDash([]);
+  if (S) {
+    ctx.fillStyle = "#1b2a38";
+    ctx.fillRect(L.plotW, hover.y - 9, L.axisW, 18);
+    ctx.fillStyle = C.text;
+    ctx.font = `11px ${MONO}`;
+    ctx.textBaseline = "middle";
+    ctx.fillText(S.fmt(S.vOf(hover.y)), L.plotW + 8, hover.y);
+  }
   if (inPrice) {
     ctx.fillStyle = "#1b2a38";
     ctx.fillRect(L.plotW, hover.y - 9, L.axisW, 18);
@@ -2545,6 +2629,14 @@ canvas.addEventListener("pointerdown", (e) => {
     tap = null;
     return;
   }
+  const hit = pointers.size === 1 ? styleHitAt(x, y) : null;
+  if (hit) {
+    prefs.style[hit.id] = x < hit.x + hit.w / 2 ? "line" : "candles";
+    savePrefs();
+    tap = null;
+    redraw();
+    return;
+  }
   const border = pointers.size === 1 ? borderAt(L, x, y) : null;
   if (border) {
     paneDrag = { ...border, startY: e.clientY, startH: L.panes[border.id].h, aboveH: L.panes[border.above].h };
@@ -2582,6 +2674,7 @@ canvas.addEventListener("pointermove", (e) => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     canvas.classList.toggle("row-resize", !!borderAt(L, x, y));
+    canvas.classList.toggle("style-hit", !!styleHitAt(x, y));
     const over = pen.tool === "cursor" && !penHidden() && pricePane?.pOf && x <= L.plotW && y < L.panes.price.h && hitDrawing(pen.list, x, y, (t) => xAtT(t, L), pricePane.yOf);
     canvas.classList.toggle("pen-hit", !!over);
   }
