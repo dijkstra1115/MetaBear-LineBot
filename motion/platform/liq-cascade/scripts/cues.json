@@ -1,0 +1,23 @@
+{
+  "hookLow": 2.27,
+  "ask": 2.9,
+  "rewind": 3.7,
+  "build": 4.5,
+  "build430": 5.87,
+  "build440": 7.5,
+  "fp": 8.2,
+  "buy252": 10.23,
+  "through": 10.9,
+  "wave1": 12.0,
+  "panes": 13.0,
+  "paneCvd": 14.2,
+  "paneSpot": 16.0,
+  "panePrem": 17.8,
+  "after": 19.0,
+  "oiDrop": 19.93,
+  "wave2": 20.93,
+  "bounce": 21.6,
+  "chain": 24.6,
+  "end": 26.8,
+  "duration": 30
+}

@@ -3788,6 +3788,9 @@ function replayFeed() {
   for (; replay.readingsN < rn; replay.readingsN++) store.metrics.set(raw.metrics[replay.readingsN][0], raw.metrics[replay.readingsN]);
   // Spot minutes count once they have closed, as the collector's would.
   store.spot = new Map((raw.spot ?? []).filter((r) => r[0] + MINUTE <= player.t).map((r) => [r[0], r]));
+  // Liquidations ([t, side, price, qty, ex]) appear as they happen.
+  liqs = (raw.liquidations ?? []).filter((r) => r[0] < player.t);
+  liqKeys.clear();
   return true;
 }
 
