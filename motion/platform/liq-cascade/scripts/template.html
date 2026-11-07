@@ -160,7 +160,13 @@
         tl.to("#scrim-top", { opacity: 0, duration: 0.2 }, C.chain - 0.1);
 
         // ---- the hook's damage, the question, the rewind ----
-        tl.fromTo("#hit", { opacity: 0, scale: 1.4 }, { opacity: 1, scale: 1, duration: 0.22, ease: "back.out(2)" }, C.hookLow);
+        // The damage is on screen from the first frames so nobody scrolls past: the total reads at
+        // once, and the drop counts down with the price until it slams on the low.
+        tl.fromTo("#hit", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, 0.1);
+        const big = document.querySelector("#hit .big");
+        const drop = { v: 0 };
+        tl.fromTo(drop, { v: 0 }, { v: 2.1, duration: C.hookLow - 0.1, ease: "power2.in", onUpdate: () => (big.textContent = `−${drop.v.toFixed(1)}%`) }, 0.1);
+        tl.fromTo("#hit .big", { scale: 1.35 }, { scale: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, C.hookLow);
         tl.fromTo("#flash", { opacity: 0 }, { opacity: 0.5, duration: 0.05, yoyo: true, repeat: 1, ease: "power1.out" }, C.hookLow);
         tl.to("#hit", { opacity: 0, duration: 0.14 }, C.ask);
         tl.fromTo("#dim", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "power2.out" }, C.ask);
