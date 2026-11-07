@@ -2,6 +2,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { initAll, initReveal, motionOff } from "../public/mb.js";
 import { initCaseWall } from "./case-wall.js";
+import { initLiveFilm } from "./live-film.js";
 import { markets } from "./market-data.js";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -12,6 +13,7 @@ const root = document.documentElement;
 initAll();
 // The case cards are built after initAll(), so they need their own reveal pass.
 initCaseWall({ motionOff });
+initLiveFilm({ motionOff });
 initReveal($("[data-case-wall]") ?? undefined);
 
 // ---------------- motion preference ----------------

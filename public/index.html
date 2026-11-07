@@ -264,9 +264,24 @@
             <p class="mb-small" data-reveal>網頁通知免費；會員可以改用 LINE 接收。提醒不是買賣訊號。</p>
           </div>
           <div class="live-side">
-            <a class="live-shot mb-panel" href="/lab/orderflow/" data-reveal
-              ><img src="/lab/orderflow/og.png" alt="BTC 即時訂單流畫面：K 線、大單泡泡、爆倉與成交量分布" width="1200" height="630" loading="lazy" decoding="async"
-            /></a>
+            <figure class="live-film" data-reveal>
+              <div class="live-film-frame mb-panel">
+                <video
+                  data-live-film
+                  width="720"
+                  height="1280"
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  aria-label="盤面解剖短片：10/30 凌晨 BTC 9 分鐘跌 2.1%，用 OI、足跡、合約對現貨與爆倉看一場多單連環爆倉"
+                ></video>
+                <button class="live-film-sound" type="button" data-live-film-sound>🔊 開聲音看</button>
+              </div>
+              <figcaption class="mb-small">
+                <b>盤面解剖 · 10/30</b> 凌晨 9 分鐘跌 2.1%，訂單流看到的是一場多單連環爆倉。真實數據回放，僅供教學，非投資建議。
+              </figcaption>
+            </figure>
             <ol class="live-steps" data-reveal>
               <li><span class="mb-num">01</span><b>選事件</b><p>勾選想知道的訂單流事件</p></li>
               <li><span class="mb-num">02</span><b>開通知</b><p>網頁或 LINE 都收得到</p></li>
