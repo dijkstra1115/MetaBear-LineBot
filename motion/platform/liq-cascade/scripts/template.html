@@ -57,10 +57,10 @@
   <body>
     <div id="root" data-composition-id="liq-cascade" data-start="0" data-duration="{{duration}}" data-width="1080" data-height="1920">
       <!-- Footage: the real lab, recorded by scripts/shots.mjs. Videos are timed; their camera wrappers are not. -->
-      <div id="cam-hook" class="cam"><video id="v-hook" data-start="0" data-duration="{{rewind+0.15}}" data-track-index="0" src="assets/video/hook.mp4" muted playsinline></video></div>
+      <div id="cam-hook" class="cam"><video id="v-hook" data-start="0" data-media-start="{{hookM}}" data-duration="{{rewind+0.15}}" data-track-index="0" src="assets/video/hook.mp4" muted playsinline></video></div>
       <div id="cam-rewind" class="cam"><video id="v-rewind" data-start="{{rewind}}" data-duration="{{build-rewind+0.15}}" data-track-index="1" src="assets/video/rewind.mp4" muted playsinline></video></div>
       <div id="cam-build" class="cam"><video id="v-build" data-start="{{build}}" data-duration="{{fp-build+0.15}}" data-track-index="0" src="assets/video/build.mp4" muted playsinline></video></div>
-      <div id="cam-fp" class="cam"><video id="v-fp" data-start="{{fp}}" data-duration="{{panes-fp+0.15}}" data-track-index="1" src="assets/video/fp.mp4" muted playsinline></video></div>
+      <div id="cam-fp" class="cam"><video id="v-fp" data-start="{{fp}}" data-media-start="{{fpM}}" data-duration="{{panes-fp+0.15}}" data-track-index="1" src="assets/video/fp.mp4" muted playsinline></video></div>
       <div id="cam-panes" class="cam"><video id="v-panes" data-start="{{panes}}" data-duration="{{after-panes+0.15}}" data-track-index="0" src="assets/video/panes.mp4" muted playsinline></video></div>
       <div id="cam-after" class="cam"><video id="v-after" data-start="{{after}}" data-duration="{{end-after+0.3}}" data-track-index="1" src="assets/video/after.mp4" muted playsinline></video></div>
 
@@ -118,6 +118,8 @@
         cut("#cam-hook", 0, 0.12);
         tl.fromTo("#cam-hook", { scale: 1.14 }, { scale: 1.0, duration: C.hookLow, ease: "power2.in", transformOrigin: "75% 70%" }, 0);
         tl.to("#cam-hook", { y: 14, duration: 0.05, ease: "none", yoyo: true, repeat: 5 }, C.hookLow);
+        // The low holds for a bar so the cascade's total can be read; a slow push keeps it alive.
+        tl.to("#cam-hook", { scale: 1.06, duration: C.ask - C.hookLow, ease: "sine.inOut", transformOrigin: "75% 80%" }, C.hookLow + 0.3);
         cut("#cam-rewind", C.rewind, 0.1);
         tl.fromTo("#lines", { opacity: 0 }, { opacity: 1, duration: 0.1 }, C.rewind);
         tl.to("#lines", { opacity: 0, duration: 0.15 }, C.build);
@@ -171,7 +173,7 @@
         tl.to("#dim", { opacity: 1, duration: 0.3, ease: "power2.out" }, C.chain);
         tl.fromTo("#chain", { opacity: 0 }, { opacity: 1, duration: 0.2 }, C.chain);
         tl.from("#chain .title", { y: -20, opacity: 0, duration: 0.3, ease: "power2.out" }, C.chain + 0.05);
-        ["#k1", "#a1", "#k2", "#a2", "#k3", "#a3", "#k4"].forEach((id, k) => tl.from(id, { y: 30, opacity: 0, duration: 0.25, ease: k % 2 ? "power1.out" : "back.out(1.6)" }, C.chain + 0.2 + k * 0.22));
+        ["#k1", "#a1", "#k2", "#a2", "#k3", "#a3", "#k4"].forEach((id, k) => tl.from(id, { y: 30, opacity: 0, duration: 0.25, ease: k % 2 ? "power1.out" : "back.out(1.6)" }, C.chain + 0.25 + k * 0.25));
 
         // ---- the end card (the last scene, so it may fade out) ----
         tl.fromTo("#fin", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power1.out" }, C.end);

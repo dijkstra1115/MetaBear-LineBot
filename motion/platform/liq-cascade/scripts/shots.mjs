@@ -29,7 +29,7 @@ const FIRST = (view) => ({ at: at("04:20:00"), speed: 400, caption: "", ...view 
 const SHOTS = {
   hook: {
     roll: "04:38:00",
-    ms: 3600,
+    ms: 6000,
     steps: [FIRST({ tf: "1", mode: "candles", barW: 18, ind: { ...OFF, liqmark: true, liq: true } }), { at: at("04:38:00"), speed: 230 }, { at: at("04:48:30"), speed: 0.001, hold: 5000 }],
   },
   build: {
@@ -48,15 +48,15 @@ const SHOTS = {
     steps: [
       FIRST({ tf: "1", mode: "candles", barW: 18, ind: { ...OFF } }),
       // Holds freeze the clock; at speed 1 the millisecond between them passes in a millisecond.
-      { at: at("04:44:00"), speed: 1, hold: 1200 },
-      { at: at("04:44:00.001"), ind: { ...OFF, cvd: true }, hold: 1800 },
-      { at: at("04:44:00.002"), ind: { ...OFF, cvd: true, scvd: true }, hold: 1800 },
+      { at: at("04:44:00"), speed: 1, hold: 1000 },
+      { at: at("04:44:00.001"), ind: { ...OFF, cvd: true }, hold: 2000 },
+      { at: at("04:44:00.002"), ind: { ...OFF, cvd: true, scvd: true }, hold: 2000 },
       { at: at("04:44:00.003"), ind: { ...OFF, cvd: true, scvd: true, premium: true }, hold: 5000 },
     ],
   },
   after: {
     roll: "04:43:00",
-    ms: 5400,
+    ms: 6400,
     steps: [FIRST({ tf: "1", mode: "candles", barW: 18, ind: { ...OFF, oi: true, liq: true, liqmark: true } }), { at: at("04:43:00"), speed: 120 }, { at: at("04:51:00"), speed: 0.001, hold: 5000 }],
   },
 };

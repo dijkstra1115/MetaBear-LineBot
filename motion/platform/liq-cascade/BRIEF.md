@@ -7,7 +7,7 @@ destination: LINE、IG reels、shorts
 aspect: 1080x1920
 language: zh-Hant
 audience: 會看 K 線、還沒用過訂單流的台灣幣圈交易者
-length: 30s
+length: 31s
 angle: 先放崩跌和爆倉金額，問「發生什麼事？」，倒帶後依序看 OI、足跡、合約對現貨、第二波，最後一張圖講完因果鏈
 voice: none
 ---
@@ -43,7 +43,12 @@ node scripts/build.mjs            # → index.html、assets/video/rewind.mp4
 python scripts/subset-font.py
 python scripts/score.py
 npx --yes hyperframes@0.8.149 render -q delivery -f 30 -o renders/final.mp4
-ffmpeg -y -i renders/final.mp4 -i assets/audio/soundtrack.wav -map 0:v -map 1:a -c:v copy -af "alimiter=limit=0.6:level=false:attack=1:release=30" -c:a aac -b:a 320k -shortest -movflags +faststart ../../out/liq-cascade-916-v1.mp4
+ffmpeg -y -i renders/final.mp4 -i assets/audio/soundtrack.wav -map 0:v -map 1:a -c:v copy -af "alimiter=limit=0.6:level=false:attack=1:release=30" -c:a aac -b:a 320k -shortest -movflags +faststart ../../out/social/liq-cascade-916-v3.mp4
 ```
 
 正式平台的日資料只留 30 天，所以 `.tape/api-all-2026-10-29.json` 過了 11/28 就抓不到；要保留可重現性，把它複製到別處。
+
+## 修改紀錄
+
+2. 看過 v2：開場「9 分鐘 · 8,680 萬美元多單爆倉」只停 0.5 秒。v3 在觸底後多一小節，這句停到 4 秒，「發生什麼事？」和配樂的停頓移到 4 秒，後面全部順延 2 秒，片長 31 秒、結尾卡 3 秒。
+1. 看過 v1：配樂像多段拼起來、不連貫。原因是每段各自重新起拍，剪點又不在拍點上。v2 起整支片照 showreel 的做法：120 BPM、一小節 2 秒，剪點（4、8、12、18、24、26 秒）和三個重擊（2 秒觸底、10 秒第一波砸穿大買單、20 秒第二波）都落在小節線上，用 `data-media-start`（`hookM`、`fpM`）裁掉素材開頭，讓素材裡的事件剛好對到拍點；三個指標在 13、15、17 秒逐一開啟。配樂改用 showreel 的合成引擎，整首是同一首 D 小調、同一條拍子，各段只增減樂器。
