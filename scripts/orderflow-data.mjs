@@ -49,7 +49,7 @@ async function cached(kind, date) {
     if ((await stat(file)).size > 0) return readFile(file);
   } catch {}
   const res = await fetch(`${BASE}/${kind}/${SYMBOL}/${name}`);
-  if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(`${name}: HTTP ${res.status}`), { status: res.status });
   const body = Buffer.from(await res.arrayBuffer());
   await writeFile(file, body);
   return body;
@@ -103,14 +103,18 @@ function* rows(buf) {
 
 const round = (v, d = 3) => Math.round(v * 10 ** d) / 10 ** d;
 
-function addTrades(csv, bars) {
-  // agg_trade_id,price,quantity,first_trade_id,last_trade_id,transact_time,is_buyer_maker
+// aggTrades: agg_trade_id,price,quantity,first_trade_id,last_trade_id,transact_time,is_buyer_maker
+// trades:    id,price,qty,quote_qty,time,is_buyer_maker
+const AGG_COLUMNS = { time: 5, maker: 6 };
+const TRADES_COLUMNS = { time: 4, maker: 5 };
+
+function addTrades(csv, bars, { time, maker } = AGG_COLUMNS) {
   for (const r of rows(csv)) {
     const price = Number(r[1]);
     const qty = Number(r[2]);
-    const minute = Math.floor(Number(r[5]) / 60_000) * 60_000;
+    const minute = Math.floor(Number(r[time]) / 60_000) * 60_000;
     // Buyer is maker → the seller crossed the spread: aggressive sell.
-    const sell = r[6] === "true" || r[6] === "True";
+    const sell = r[maker] === "true" || r[maker] === "True";
     let bar = bars.get(minute);
     if (!bar) {
       bar = { o: price, h: price, l: price, c: price, levels: new Map() };
@@ -162,7 +166,15 @@ const spot = [];
 const funding = [];
 for (const date of dates) {
   process.stdout.write(`${date} aggTrades… `);
-  addTrades(unzipSingle(await cached("aggTrades", date)), bars);
+  try {
+    addTrades(unzipSingle(await cached("aggTrades", date)), bars);
+  } catch (err) {
+    if (err.status !== 404) throw err;
+    // Binance never published BTCUSDT aggTrades for 2026-10-28. The raw trades archive has the
+    // same price, size, time and side per fill, which is all the footprint uses.
+    process.stdout.write("missing, trades… ");
+    addTrades(unzipSingle(await cached("trades", date)), bars, TRADES_COLUMNS);
+  }
   process.stdout.write("metrics… ");
   addMetrics(unzipSingle(await cached("metrics", date)).toString("latin1"), metrics);
   process.stdout.write("premium… ");
