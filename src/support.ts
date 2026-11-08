@@ -1,4 +1,5 @@
 import { now } from "./db";
+import { linePush } from "./line-push";
 
 const NOTIFICATION_LEASE_MS = 60_000;
 
@@ -206,32 +207,19 @@ export async function processSupportNotification(
       .first<{ line_user_id: string }>();
     if (!admin || env.LINE_DELIVERY_MODE !== "live")
       throw new Error("Admin LINE channel unavailable");
-    const response = await fetch("https://api.line.me/v2/bot/message/push", {
-      method: "POST",
-      redirect: "manual",
-      signal: AbortSignal.timeout(10000),
-      headers: {
-        Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-        "X-Line-Retry-Key": support.notification_key,
-      },
-      body: JSON.stringify({
-        to: admin.line_user_id,
-        messages: [
-          {
-            type: "text",
-            text: "MetaBear 有新的人工協助需求。請開啟客戶工作台，在「需協助」名單中認領並查看 LINE 對話。",
-          },
-        ],
-      }),
-    });
-    const accepted =
-      response.ok ||
-      (response.status === 409 &&
-        response.headers.has("x-line-accepted-request-id"));
-    await response.body?.cancel();
-    if (!accepted)
-      throw new Error(`LINE support notification HTTP ${response.status}`);
+    const sent = await linePush(
+      env,
+      admin.line_user_id,
+      [
+        {
+          type: "text",
+          text: "MetaBear 有新的人工協助需求。請開啟客戶工作台，在「需協助」名單中認領並查看 LINE 對話。",
+        },
+      ],
+      support.notification_key,
+    );
+    if (sent.outcome !== "accepted")
+      throw new Error(`LINE support notification HTTP ${sent.status}`);
     await env.DB.prepare(
       `UPDATE support_cases SET notification_status='sent',updated_at=?,notification_lease_until=0,notification_lease_token=''
        WHERE id=? AND notification_status='processing' AND notification_lease_token=?`,

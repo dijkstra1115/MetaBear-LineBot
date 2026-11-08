@@ -186,7 +186,7 @@ Worker metabear-orderflow（src/orderflow/index.ts）── metabear.io/api/orde
 | --- | --- | --- |
 | GET | `/api/orderflow/btcusdt/day?d=YYYY-MM-DD` | 一個 UTC 日的 `bars`、`prints`、`heat`、`metrics`、`liquidations`（最近 30 天） |
 | GET | `/api/orderflow/btcusdt/recent?since=<整分鐘毫秒>` | 最近兩天內某分鐘之後的全部資料，加上收集器狀態 |
-| GET | `/api/orderflow/btcusdt/status` | 連線狀態、最後成交時間、缺口、錯誤、各表筆數、封存檔匯入狀態（`archive`） |
+| GET | `/api/orderflow/btcusdt/status` | 連線狀態、最後成交時間、缺口、錯誤、封存檔匯入狀態（`archive`）。各表筆數要加 `?counts=1` 並帶 `ORDERFLOW_ADMIN_TOKEN`：`COUNT(*)` 會讀遍每張表，計入 DO rows read |
 | POST | `/api/orderflow/btcusdt/import` | 封存檔匯入：`{ rows }` 是足跡；`{ prints, from, to }` 會換掉這段時間內的大單。需要 `Authorization: Bearer <ORDERFLOW_ADMIN_TOKEN>` |
 | POST | `/api/orderflow/btcusdt/archive` | 馬上嘗試待匯入的每日封存檔（略過重試等待）。權杖同上 |
 | GET | `/api/orderflow/btcusdt/events?since=<整分鐘毫秒>` | 30 天內某分鐘之後、發生在關鍵位的市場事件（最多最新 2,000 則，舊到新）：`t`、`kind`、`price`、`side`、`level`、`dist`、`repeat`（同一關鍵位冷卻中）、`text`。不含推送狀態，不需要權杖；邊緣快取 10 秒 |

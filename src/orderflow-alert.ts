@@ -3,22 +3,16 @@
 // shared secret: POST /api/internal/orderflow-alert, Authorization: Bearer ORDERFLOW_ALERT_TOKEN,
 // with { text, key } for the admin's merged message or { events } for members' alerts
 // (orderflow-subs.ts).
-import { HttpError, json, readJson } from "./http";
+import { HttpError, json, readJson, sameSecret } from "./http";
+import { linePush } from "./line-push";
 import { enqueueOrderflowEvents } from "./orderflow-subs";
 
 type AlertEnv = Env & { ORDERFLOW_ALERT_TOKEN?: string };
 
-function sameSecret(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 export async function orderflowAlert(request: Request, env: AlertEnv): Promise<Response> {
   if (request.method !== "POST") throw new HttpError(405, "只接受 POST");
   const token = env.ORDERFLOW_ALERT_TOKEN;
-  if (!token || !sameSecret(request.headers.get("authorization") ?? "", `Bearer ${token}`)) throw new HttpError(401, "未授權");
+  if (!token || !(await sameSecret(request.headers.get("authorization") ?? "", `Bearer ${token}`))) throw new HttpError(401, "未授權");
   const body = await readJson(request, 64_000);
   if (body.events !== undefined) return json(await enqueueOrderflowEvents(env, body.events));
   const text = typeof body.text === "string" ? body.text.trim().slice(0, 4_000) : "";
@@ -34,21 +28,9 @@ export async function orderflowAlert(request: Request, env: AlertEnv): Promise<R
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`orderflow:${key}`)));
   const hex = [...digest.slice(0, 16)].map((b) => b.toString(16).padStart(2, "0")).join("");
   const retryKey = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
-  const response = await fetch("https://api.line.me/v2/bot/message/push", {
-    method: "POST",
-    redirect: "manual",
-    signal: AbortSignal.timeout(10_000),
-    headers: {
-      Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-      "X-Line-Retry-Key": retryKey,
-    },
-    body: JSON.stringify({ to: admin.line_user_id, messages: [{ type: "text", text }] }),
-  });
-  const accepted = response.ok || (response.status === 409 && response.headers.has("x-line-accepted-request-id"));
-  await response.body?.cancel();
-  if (!accepted) {
-    console.error(JSON.stringify({ event: "orderflow_alert_failed", status: response.status }));
+  const sent = await linePush(env, admin.line_user_id, [{ type: "text", text }], retryKey);
+  if (sent.outcome !== "accepted") {
+    console.error(JSON.stringify({ event: "orderflow_alert_failed", status: sent.status }));
     throw new HttpError(502, "LINE 推播失敗");
   }
   return json({ sent: true });

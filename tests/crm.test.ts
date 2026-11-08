@@ -666,6 +666,35 @@ test("only explicit subscriptions enter campaign audience; unsubscribe and unfol
   await webhook([stale]);
   assert.equal((await audience()).total, 0);
 });
+test("a question overtaken by a newer menu tap is still answered; a late command does not undo a newer one", async () => {
+  const erin = "U" + "e5".repeat(16);
+  const question = event("槓桿是什麼", erin);
+  const tap = event("選單", erin);
+  await webhook([tap]);
+  await webhook([question]);
+  assert.ok(
+    calls.some((c) => c.replyToken === question.replyToken),
+    "the late question got its answer",
+  );
+  const subscribe = event("訂閱通知", erin);
+  const unsubscribe = event("退訂", erin);
+  await webhook([unsubscribe]);
+  await webhook([subscribe]);
+  const row = await db
+    .prepare("SELECT marketing_consent FROM customers WHERE line_user_id=?")
+    .bind(erin)
+    .first<{ marketing_consent: number }>();
+  assert.equal(row?.marketing_consent, 0);
+});
+test("one malformed event does not drop the valid events delivered with it", async () => {
+  const erin = "U" + "e5".repeat(16);
+  const good = event("選單", erin);
+  const { webhookEventId: _, ...broken } = event("選單", erin);
+  const response = await webhook([broken, good], undefined, false);
+  assert.equal(response.status, 200);
+  await waitForEvent(good.webhookEventId);
+  assert.ok(calls.some((c) => c.replyToken === good.replyToken));
+});
 test("concept teaching allows leverage/stop loss and draft saving never sends messages", async () => {
   await webhook([event("槓桿是什麼")]);
   const leverage = calls.at(-1)?.messages[0] as any;

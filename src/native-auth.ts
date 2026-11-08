@@ -1,4 +1,5 @@
 import { HttpError, json, readJson } from "./http";
+import { linePush } from "./line-push";
 
 declare global {
   interface Env {
@@ -235,27 +236,18 @@ export async function authRoute(request: Request, env: Env): Promise<Response> {
       throw new HttpError(409, "登入綁定已更新，請重新索取驗證碼");
     try {
       if (viaLine) {
-        const sent = await fetch("https://api.line.me/v2/bot/message/push", {
-          method: "POST",
-          redirect: "manual",
-          signal: AbortSignal.timeout(10000),
-          headers: {
-            Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`,
-            "Content-Type": "application/json",
-            "X-Line-Retry-Key": crypto.randomUUID(),
-          },
-          body: JSON.stringify({
-            to: channel!.line_user_id,
-            messages: [
-              {
-                type: "text",
-                text: `MetaBear 工作台登入驗證碼：${code}\n\n請回到發起登入的瀏覽器輸入，10 分鐘內有效。請勿轉傳此驗證碼。\n若不是你本人操作，請忽略這則訊息。`,
-              },
-            ],
-          }),
-        });
-        await sent.body?.cancel();
-        if (!sent.ok) throw new Error("OTP delivery failed");
+        const sent = await linePush(
+          env,
+          channel!.line_user_id,
+          [
+            {
+              type: "text",
+              text: `MetaBear 工作台登入驗證碼：${code}\n\n請回到發起登入的瀏覽器輸入，10 分鐘內有效。請勿轉傳此驗證碼。\n若不是你本人操作，請忽略這則訊息。`,
+            },
+          ],
+          crypto.randomUUID(),
+        );
+        if (sent.outcome !== "accepted") throw new Error("OTP delivery failed");
       } else
         await env.AUTH_EMAIL!.send({
           from: { email: env.AUTH_EMAIL_FROM!, name: "MetaBear" },
@@ -295,12 +287,12 @@ export async function authRoute(request: Request, env: Env): Promise<Response> {
   )
     .bind(idHash, now())
     .first<{ email: string }>();
-  if (
-    !attempt ||
-    typeof body.code !== "string" ||
-    !/^\d{6}$/.test(body.code) ||
-    !(await resolveStaffRole(env, attempt.email))
-  )
+  // Resolved once: the session's role is the one checked here, never a default.
+  const role =
+    attempt && typeof body.code === "string" && /^\d{6}$/.test(body.code)
+      ? await resolveStaffRole(env, attempt.email)
+      : null;
+  if (!attempt || !role)
     throw new HttpError(401, "驗證碼錯誤、已過期或嘗試過多，請重新索取");
   const token = randomToken();
   const tokenHash = await hash(token);
@@ -324,7 +316,6 @@ export async function authRoute(request: Request, env: Env): Promise<Response> {
     await env.DB.prepare("DELETE FROM auth_sessions WHERE token_hash=?")
       .bind(await hash(previous))
       .run();
-  const role = (await resolveStaffRole(env, attempt.email)) || "admin";
   const response = json({ ok: true, role });
   response.headers.append("Set-Cookie", cookie(SESSION, token, SESSION_TTL));
   response.headers.append("Set-Cookie", cookie(CHALLENGE, "", 0));

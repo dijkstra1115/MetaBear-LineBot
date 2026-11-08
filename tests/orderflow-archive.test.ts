@@ -88,7 +88,7 @@ after(async () => {
 const call = (path: string, init?: RequestInit) => mf.dispatchFetch(base + path, init);
 const admin = (path: string, body?: unknown) =>
   call(path, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
-const status = async () => ((await (await call("/status")).json()) as any);
+const status = async () => ((await (await call("/status?counts=1", { headers: { authorization: `Bearer ${token}` } })).json()) as any);
 
 async function until(check: (s: any) => boolean, what: string) {
   for (let i = 0; i < 100; i++) {

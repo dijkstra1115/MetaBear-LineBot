@@ -9,6 +9,7 @@ import { HttpError, json, readJson } from "./http";
 import { audit, now } from "./db";
 import { lineQuota, reservedLineMessages } from "./campaigns";
 import { recordOutgoing, setOutgoingStatus } from "./conversations";
+import { linePush } from "./line-push";
 import { reasons } from "./automation";
 import { taipeiDay } from "./bingx";
 import { getTeam } from "./team";
@@ -135,14 +136,27 @@ export async function enqueueOrderflowEvents(env: Env, value: unknown) {
       .all<{ line_user_id: string; n: number }>();
     for (const c of counts.results) used.set(`${c.line_user_id}|${day}`, c.n);
   }
+  // A collector retries a batch whose answer it missed. Deliveries it already created are in the
+  // counts above; skip them here so they do not take the place of the batch's new events.
+  const keys = [...new Set(events.map((e) => e.key))];
+  const queued = new Set(
+    (
+      await env.DB.prepare(`SELECT event_key,line_user_id FROM orderflow_alert_deliveries WHERE event_key IN (${keys.map(() => "?").join(",")})`)
+        .bind(...keys)
+        .all<{ event_key: string; line_user_id: string }>()
+    ).results.map((r) => `${r.event_key}|${r.line_user_id}`),
+  );
   const rows: { id: string; key: string; user: string; kind: string; body: string; day: string; market: string }[] = [];
   for (const e of events) {
     const choice = choiceOf(e.kind);
     const day = taipeiDay(e.t);
     for (const s of subs) {
       if (!choice || !upgradeKinds(s.kinds.split(",")).includes(choice) || !s.markets.split(",").includes(e.m) || inQuiet(s.quiet, taipeiHour(e.t))) continue;
+      const pair = `${e.key}|${s.line_user_id}`;
+      if (queued.has(pair)) continue;
       const key = `${s.line_user_id}|${day}`;
       if ((used.get(key) ?? 0) >= s.daily) continue;
+      queued.add(pair);
       used.set(key, (used.get(key) ?? 0) + 1);
       rows.push({ id: crypto.randomUUID(), key: e.key, user: s.line_user_id, kind: e.kind, body: alertBody(env, e), day, market: e.m });
     }
@@ -204,17 +218,10 @@ export async function processOrderflowDelivery(message: OrderflowAlertMessage, e
       return await finish("skipped", "已退訂、封鎖或不再符合會員資格");
     const messages = [{ type: "text" as const, text: delivery.body }];
     await recordOutgoing(env, delivery.line_user_id, "orderflow:" + delivery.id, messages);
-    const response = await fetch("https://api.line.me/v2/bot/message/push", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`, "Content-Type": "application/json", "X-Line-Retry-Key": delivery.id },
-      body: JSON.stringify({ to: delivery.line_user_id, messages }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    const accepted = response.ok || (response.status === 409 && response.headers.has("x-line-accepted-request-id"));
-    await response.body?.cancel();
-    if (accepted) return await finish("accepted", "LINE 已接受，未提供個別送達或已讀保證");
-    if (response.status === 429 || response.status >= 500) throw new Error("LineRetry");
-    await finish("failed", `LINE 拒絕請求（HTTP ${response.status}），請核對帳戶額度或設定`);
+    const sent = await linePush(env, delivery.line_user_id, messages, delivery.id);
+    if (sent.outcome === "accepted") return await finish("accepted", "LINE 已接受，未提供個別送達或已讀保證");
+    if (sent.outcome === "retry") throw new Error("LineRetry");
+    await finish("failed", `LINE 拒絕請求（HTTP ${sent.status}），請核對帳戶額度或設定`);
   } catch (error) {
     await setOutgoingStatus(env, "orderflow:" + delivery.id, "unconfirmed");
     await env.DB.prepare("UPDATE orderflow_alert_deliveries SET status='pending',lease_until=NULL WHERE id=? AND status='sending'").bind(delivery.id).run();

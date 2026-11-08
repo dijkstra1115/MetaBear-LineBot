@@ -3,7 +3,7 @@
 //
 //   GET  /api/orderflow/btcusdt/day?d=YYYY-MM-DD   one UTC day: bars, heatmap, OI, liquidations
 //   GET  /api/orderflow/btcusdt/recent?since=ms    everything since a minute in the last 2 days
-//   GET  /api/orderflow/btcusdt/status             collector health
+//   GET  /api/orderflow/btcusdt/status             collector health (?counts=1 adds rows per table; admin token)
 //   GET  /api/orderflow/btcusdt/events?since=ms    market events at a key level since a minute in the last 30 days
 //   POST /api/orderflow/btcusdt/import             archive footprint rows (Bearer ORDERFLOW_ADMIN_TOKEN)
 //   POST /api/orderflow/btcusdt/archive            try the pending daily archive import now (same token);
@@ -19,6 +19,7 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { MARKETS, marketByPath, marketOf, type Market } from "../../public/lab/orderflow/markets.js";
 import { describe } from "../../public/lab/orderflow/watch.js";
+import { sameSecret } from "../http";
 import { mergeParts, type Part } from "./aggregate";
 import { BinanceCollector } from "./binance-collector";
 import { BingxCollector } from "./bingx-collector";
@@ -85,16 +86,16 @@ async function mergedAnswer(env: OrderflowEnv, m: Market, path: string, from: nu
   });
 }
 
-function timingSafeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
+const hasToken = async (request: Request, token: string | undefined) =>
+  !!token && (await sameSecret(request.headers.get("authorization") ?? "", `Bearer ${token}`));
 
-async function cached(request: Request, ctx: ExecutionContext, maxAge: number, load: () => Promise<Response>) {
+// The cache key holds only what a route reads, so a parameter added to the URL cannot send every
+// request past the edge cache to the collector.
+async function cached(url: URL, params: Record<string, string>, ctx: ExecutionContext, maxAge: number, load: () => Promise<Response>) {
   const cache = (globalThis as unknown as { caches?: { default: Cache } }).caches?.default;
-  const key = new Request(request.url, { method: "GET" });
+  const canonical = new URL(url.origin + url.pathname);
+  for (const [k, v] of Object.entries(params)) canonical.searchParams.set(k, v);
+  const key = new Request(canonical, { method: "GET" });
   const hit = await cache?.match(key);
   if (hit) return hit;
   const res = await load();
@@ -108,9 +109,7 @@ async function cached(request: Request, ctx: ExecutionContext, maxAge: number, l
 export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === "/api/orderflow/relay") {
-    const token = env.ORDERFLOW_RELAY_TOKEN;
-    const auth = request.headers.get("authorization") ?? "";
-    if (!token || !timingSafeEqual(auth, `Bearer ${token}`)) return json({ error: "未授權" }, 401);
+    if (!(await hasToken(request, env.ORDERFLOW_RELAY_TOKEN))) return json({ error: "未授權" }, 401);
     // One socket per exchange and market; the relay names them (?ex=okx&m=eth), Binance and BTC when it does not.
     const ex = url.searchParams.get("ex") ?? "binance";
     const collector = (EXCHANGES as readonly string[]).includes(ex) ? stubFor(env, ex, marketOf(url.searchParams.get("m") ?? "btc")) : null;
@@ -134,16 +133,17 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
 
   if (route === "/import" || route === "/archive") {
     if (request.method !== "POST") return json({ error: "只接受 POST" }, 405);
-    const token = env.ORDERFLOW_ADMIN_TOKEN;
-    const auth = request.headers.get("authorization") ?? "";
-    if (!token || !timingSafeEqual(auth, `Bearer ${token}`)) return json({ error: "未授權" }, 401);
+    if (!(await hasToken(request, env.ORDERFLOW_ADMIN_TOKEN))) return json({ error: "未授權" }, 401);
     if (route === "/archive") return json(await (await stub.fetch(`https://collector/archive${url.search}`, { method: "POST" })).json());
     return stub.fetch("https://collector/import", { method: "POST", body: request.body, headers: { "content-type": "application/json" } });
   }
   if (request.method !== "GET") return json({ error: "只接受 GET" }, 405);
 
   if (route === "/status") {
-    if (!all) return json(await (await stub.fetch("https://collector/status")).json());
+    // Row counts read every table in full; only the admin token gets them (?counts=1).
+    const counts = url.searchParams.get("counts") === "1";
+    if (counts && !(await hasToken(request, env.ORDERFLOW_ADMIN_TOKEN))) return json({ error: "未授權" }, 401);
+    if (!all) return json(await (await stub.fetch(`https://collector/status${counts ? "?counts=1" : ""}`)).json());
     const list = await Promise.all(EXCHANGES.map(async (name) => [name, await stubFor(env, name, m)?.fetch("https://collector/status").then((r) => r.json(), () => null)] as const));
     return json(Object.fromEntries(list.map(([name, st]) => [name, st && { lastTrade: (st as { lastTrade?: unknown }).lastTrade, errors: ((st as { errors?: unknown[] }).errors ?? []).length }])));
   }
@@ -154,20 +154,20 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
     if (!Number.isFinite(from) || from > now || from < now - HISTORY_DAYS * DAY) return json({ error: "日期格式錯誤或超出範圍" }, 400);
     // A finished day only changes when an archive import lands; today keeps growing.
     const done = from + DAY <= now - 10 * MINUTE;
-    return cached(request, ctx, done ? 600 : 5, () => (all ? mergedAnswer(env, m, `/day?d=${d}`, from, { day: d, updated: now }) : stub.fetch(`https://collector/day?d=${d}`)));
+    return cached(url, { ex, d }, ctx, done ? 600 : 5, () => (all ? mergedAnswer(env, m, `/day?d=${d}`, from, { day: d, updated: now }) : stub.fetch(`https://collector/day?d=${d}`)));
   }
 
   if (route === "/recent") {
     const since = Number(url.searchParams.get("since"));
     if (!Number.isInteger(since) || since % MINUTE !== 0 || since < now - 2 * DAY || since > now) return json({ error: "since 需為最近兩天內的整分鐘毫秒時間" }, 400);
-    return cached(request, ctx, 3, () => (all ? mergedAnswer(env, m, `/recent?since=${since}`, since, { since, updated: now }) : stub.fetch(`https://collector/recent?since=${since}`)));
+    return cached(url, { ex, since: String(since) }, ctx, 3, () => (all ? mergedAnswer(env, m, `/recent?since=${since}`, since, { since, updated: now }) : stub.fetch(`https://collector/recent?since=${since}`)));
   }
 
   if (route === "/events") {
     // The lab asks from the hour its data starts, so viewers share cache entries.
     const since = Number(url.searchParams.get("since"));
     if (!Number.isInteger(since) || since % MINUTE !== 0 || since < now - HISTORY_DAYS * DAY || since > now) return json({ error: "since 需為 30 天內的整分鐘毫秒時間" }, 400);
-    return cached(request, ctx, 10, () => stub.fetch(`https://collector/events?since=${since}`));
+    return cached(url, { ex, since: String(since) }, ctx, 10, () => stub.fetch(`https://collector/events?since=${since}`));
   }
 
   return json({ error: "找不到這個路徑" }, 404);

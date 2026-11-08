@@ -118,3 +118,26 @@ test("ETH has its own collector, named for its market, with ETH's price bins", a
   assert.equal(btc.symbol, "BTCUSDT");
   assert.ok(!btc.bars.some((b: number[]) => b[1] === 2311));
 });
+
+test("parameters a route does not read share its edge cache entry", async () => {
+  // A day no other test reads.
+  const from = Math.floor(Date.now() / DAY) * DAY - 6 * DAY;
+  const d = new Date(from).toISOString().slice(0, 10);
+  const bars = async (query: string) => ((await (await call(`/day?${query}`)).json()) as any).bars;
+  assert.deepEqual(await bars(`d=${d}`), []);
+  assert.equal((await importRows([row(from, 80_000)])).status, 200);
+  // The finished day is answered from the cache until it expires, whatever else the URL carries.
+  assert.deepEqual(await bars(`d=${d}`), []);
+  assert.deepEqual(await bars(`d=${d}&_=${Date.now()}`), [], "an extra parameter does not skip the cache");
+  assert.deepEqual(await bars(`d=${d}&ex=bybit`), [], "the default exchange named or not");
+});
+
+test("row counts, which read every table in full, need the admin token", async () => {
+  const open = (await (await call("/status")).json()) as any;
+  assert.equal("counts" in open, false, "the public status counts nothing");
+  assert.equal((await call("/status?counts=1")).status, 401);
+  assert.equal((await call("/status?counts=1", { headers: { authorization: "Bearer wrong" } })).status, 401);
+  const counted = (await (await call("/status?counts=1", { headers: { authorization: `Bearer ${token}` } })).json()) as any;
+  assert.equal(typeof counted.counts.bars, "number");
+  assert.equal(typeof counted.counts.prints, "number");
+});

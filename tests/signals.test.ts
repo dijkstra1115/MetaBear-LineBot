@@ -449,3 +449,28 @@ test("unsubscribed users are excluded before send; in-flight deliveries are skip
     429,
   );
 });
+
+test("a send rejected before delivery does not use up the analyst's hourly allowance", async () => {
+  await db
+    .prepare(
+      "INSERT INTO auth_rate_limits(bucket,count,reset_at) VALUES (?,?,?) ON CONFLICT(bucket) DO UPDATE SET count=excluded.count,reset_at=excluded.reset_at",
+    )
+    .bind("signal-hour:" + owner, 7, Math.floor(Date.now() / 1000) + 3600)
+    .run();
+  const response = await call("/api/desk/signals", "POST", {
+    categoryId: "ETH",
+    direction: "long",
+    leverage: "3x",
+    entry: "1",
+    takeProfit: "2",
+    stopLoss: "0.5",
+    confirmCount: 99,
+  });
+  // Rejected on the audience (none joined, or the count no longer matches).
+  assert.equal(response.status, 400);
+  const bucket = await db
+    .prepare("SELECT count FROM auth_rate_limits WHERE bucket=?")
+    .bind("signal-hour:" + owner)
+    .first<{ count: number }>();
+  assert.equal(bucket?.count, 7);
+});
