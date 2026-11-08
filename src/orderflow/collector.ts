@@ -1181,8 +1181,13 @@ export class Collector extends DurableObject<OrderflowEnv> {
       oi: this.ticker.oi ?? null,
       levels: this.levelsView(Date.now()),
       archive: { last: this.meta("archiveDone"), ...this.status.archive },
-      counts: Object.fromEntries(["bars", "prints", "heat", "oi", "oi_rest", "ratios", "funding", "liqs", "spot", "premium_rest"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)])),
     };
+  }
+
+  // COUNT(*) reads every row of every table (millions of prints), billed as rows read, so the
+  // counts come only when asked for (the Worker requires the admin token).
+  protected tableCounts() {
+    return Object.fromEntries(["bars", "prints", "heat", "oi", "oi_rest", "ratios", "funding", "liqs", "spot", "premium_rest"].map((t) => [t, Number(this.rows(`SELECT COUNT(*) AS n FROM ${t}`)[0].n)]));
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -1191,7 +1196,7 @@ export class Collector extends DurableObject<OrderflowEnv> {
     const now = Date.now();
     if (url.pathname === "/wake") return new Response("ok");
     if (url.pathname === "/relay") return this.acceptRelay(request);
-    if (url.pathname === "/status") return Response.json(this.publicStatus());
+    if (url.pathname === "/status") return Response.json(url.searchParams.get("counts") === "1" ? { ...this.publicStatus(), counts: this.tableCounts() } : this.publicStatus());
     if (url.pathname === "/day") {
       const from = Date.parse(`${url.searchParams.get("d")}T00:00:00Z`);
       return this.respond(this.series(from, from + DAY), { day: url.searchParams.get("d"), updated: now });

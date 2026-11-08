@@ -6,6 +6,7 @@ import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 // The Binance collector driven through its relay socket, with this test playing the relay:
 // it forwards stream messages and answers the collector's REST requests.
 const relayToken = "test-relay-token-not-a-live-credential";
+const adminToken = "test-orderflow-admin-token-not-a-live-credential";
 const MINUTE = 60_000;
 const base = "https://metabear.io/api/orderflow";
 let mf: Miniflare;
@@ -26,7 +27,7 @@ before(async () => {
       script: result.outputFiles[0].text,
       compatibilityDate: "2026-09-11",
       durableObjects: { COLLECTOR: { className: "Collector", useSQLite: true }, BINANCE: { className: "BinanceCollector", useSQLite: true } },
-      bindings: { ORDERFLOW_RELAY_TOKEN: relayToken, ORDERFLOW_STREAMS: "off" },
+      bindings: { ORDERFLOW_RELAY_TOKEN: relayToken, ORDERFLOW_ADMIN_TOKEN: adminToken, ORDERFLOW_STREAMS: "off" },
       outboundService: async () => new Response("not found", { status: 404 }),
     }),
   );
@@ -146,7 +147,7 @@ test("Bybit's collector takes its streams from the relay too, OKX liquidations i
   // /status is not cached; /recent is (per minute-aligned URL), so it is read once the frame is in,
   // with a different since than the Binance test above.
   const status = await until(async () => {
-    const s = (await (await mf.dispatchFetch(`${base}/btcusdt/status`)).json()) as any;
+    const s = (await (await mf.dispatchFetch(`${base}/btcusdt/status?counts=1`, { headers: { authorization: `Bearer ${adminToken}` } })).json()) as any;
     return s.counts?.liqs && s.lastTrade ? s : undefined;
   }, "Bybit's relayed trade and OKX's liquidation");
   const body = (await (await mf.dispatchFetch(`${base}/btcusdt/recent?since=${t0 - MINUTE}`)).json()) as any;
