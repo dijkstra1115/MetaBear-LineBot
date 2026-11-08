@@ -1,0 +1,8 @@
+.tape/
+assets/video/
+assets/audio/
+renders/
+scripts/.chars.txt
+.hyperframes/
+.thumbnails/
+snapshots/

@@ -1,0 +1,53 @@
+{
+  "voice": { "provider": "elevenlabs", "id": "nPczCjzI2devNBz1zQrb", "name": "Brian", "model": "eleven_v3" },
+  "chunks": [
+    { "id": 0, "lines": [
+      { "n": 1, "en": "Three point seven R, and price never even came close to my stop.", "zh": "3.7R，價格連停損的邊都沒碰到。" },
+      { "n": 1.5, "en": "So how did I see this coming? Let me take you back.", "zh": "我是怎麼看出來的？倒回去看。" }
+    ] },
+    { "id": 1, "lines": [
+      { "n": 2, "en": "Okay, look at this. Price is just sitting on the POC.", "zh": "好，你們看，價格就一直黏在 POC 這邊。" },
+      { "n": 3, "en": "Looks fine, right? But I'm already thinking short.", "zh": "看起來沒事對吧？但我已經在想空了。" }
+    ] },
+    { "id": 2, "lines": [
+      { "n": 4, "en": "Here's why. Fifteen-minute chart, every high is a bit lower than the one before.", "zh": "為什麼？看 15 分 K，每個高點都比前一個再低一點。" }
+    ] },
+    { "id": 3, "lines": [
+      { "n": 5, "en": "Futures CVD? Flat, maybe even ticking up a little.", "zh": "合約 CVD 呢？大致持平，甚至還有一點往上。" },
+      { "n": 6, "en": "But spot CVD keeps dropping. Spot is selling.", "zh": "但現貨 CVD 一直往下掉，現貨在賣。" }
+    ] },
+    { "id": 4, "lines": [
+      { "n": 7, "en": "So spot's walking out, and futures are the only thing holding this up.", "zh": "所以現貨在跑，價格只剩合約在撐。" },
+      { "n": 8, "en": "That's a red flag. But it's not a trade yet.", "zh": "這是警訊，但還不能進場。" }
+    ] },
+    { "id": 5, "lines": [
+      { "n": 9, "en": "Eight thirty. Boom. Someone market-sells about 190 bitcoin.", "zh": "20:30，碰！有人一口氣市價砸了大概 190 顆。" },
+      { "n": 10, "en": "We drop right out of the value area, and CVD just dives.", "zh": "價格直接跌出價值區，CVD 也跟著往下栽。" }
+    ] },
+    { "id": 6, "lines": [
+      { "n": 11, "en": "Okay. Now I make the plan, before I touch anything.", "zh": "好，現在先把計畫想好，還不要動手。" },
+      { "n": 12, "en": "My volume profile on screen, about the last day, has the value area low at 79,855.", "zh": "我畫面上大概一天的成交量分布，價值區下緣（VAL）在 79,855。" },
+      { "n": 13, "en": "If price comes back up there, I'm shorting it.", "zh": "價格如果彈回那裡，我就空。" }
+    ] },
+    { "id": 7, "lines": [
+      { "n": 14, "en": "Stop goes above the POC, 80,400.", "zh": "停損放在上方成交最密集的價位（POC）上面，80,400。" },
+      { "n": 15, "en": "Target? The next POC down, 77,800.", "zh": "目標？下面那個 POC，77,800。" }
+    ] },
+    { "id": 8, "lines": [
+      { "n": 16, "en": "Now we wait.", "zh": "接下來就是等。" },
+      { "n": 17, "en": "One candle. Two. Three. Four. Nothing comes back up.", "zh": "一根、兩根、三根、四根，都沒彈上來。" },
+      { "n": 18, "en": "And CVD stays pinned at the lows. Nobody's buying it back. Sellers are still in control.", "zh": "而且 CVD 一直壓在低檔，沒人買回來，賣方還是佔上風。" }
+    ] },
+    { "id": 9, "lines": [
+      { "n": 19, "en": "Nine forty-five, there it is. Price tags 79,850, and the selling kicks back in.", "zh": "21:45，來了。價格碰到 79,850，賣壓又回來了。" },
+      { "n": 20, "en": "Short.", "zh": "空。" }
+    ] },
+    { "id": 10, "lines": [
+      { "n": 21, "en": "It never even gets close to my stop.", "zh": "價格連停損的邊都沒碰到。" },
+      { "n": 22, "en": "Eleven oh one, we hit 77,800. That's about three point seven R.", "zh": "23:01，打到 77,800，大概 3.7R。" }
+    ] },
+    { "id": 11, "claim": true, "lines": [
+      { "n": 23, "en": "So, the divergence is the warning. The break is the signal. The retest is your entry.", "zh": "所以，分歧是警訊，破位是訊號，回測才是你的進場點。" }
+    ] }
+  ]
+}
