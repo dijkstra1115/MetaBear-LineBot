@@ -21,7 +21,7 @@ import { BAR_KINDS } from "./watch.js";
 import { maybeStartGuide, startGuide } from "./guide.js";
 import { LAYOUTS, layoutPrefs, startLayout } from "./layouts.js";
 import { bubbleRadius, countdown, eventMark, mergePrints, stackedImbalances } from "./marks.js";
-import { hitDrawing, indexAt, loadDrawings, newId, saveDrawings, timeAt } from "./drawings.js";
+import { hitDrawing, indexAt, loadDrawings, newId, rangeOf, rangeProfile, saveDrawings, timeAt } from "./drawings.js";
 import { FILTERS, cardOf, detailOf, filterGroups, groupEvents, levelPriceOf, nowOf, timeOf } from "./narrate.js";
 import { chapterCard, chapterStory, chaptersOf, findChapter } from "./chapters.js";
 import { START_MS, barsPerSecond, beatAt, beatsOf, fitBarW, focusOf, outroOf, replayParams, windowOf } from "./event-replay.js";
@@ -865,6 +865,12 @@ function drawPrice(L, from, to) {
     deltaStats = drawDeltaProfile(L, from, to, yOf);
     ctx.restore();
   }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, P.y, L.plotW, P.h);
+  ctx.clip();
+  drawRanges(L, P);
+  ctx.restore();
 
   const rowH = (tick / (hi - lo)) * h;
   const showCells = ui.mode.value === "footprint" && view.barW >= 14 && rowH >= 3;
@@ -2456,8 +2462,9 @@ let paneDrag = null; // dragging a pane border: { id, above, startY, startH, abo
 
 const PEN_COLOR = "#8ab4ff";
 const PEN_RGB = "138,180,255";
-// tool: "cursor", "h" (horizontal line) or "t" (trend line); start/at: a trend line being drawn;
-// owner: the pointer a pen gesture holds, so it neither pans the chart nor pins a bar.
+// tool: "cursor", "h" (horizontal line), "t" (trend line) or "r" (fixed-range volume profile);
+// start/at: a trend line or range being drawn; owner: the pointer a pen gesture holds, so it
+// neither pans the chart nor pins a bar.
 const pen = { tool: "cursor", list: loadDrawings(MK.id), sel: null, start: null, at: null, drag: null, owner: null, downAt: null };
 const penBar = $("pen-tools");
 const tfMsNow = () => Number(ui.tf.value) * MINUTE;
@@ -2466,6 +2473,107 @@ const xAtT = (t, L) => L.plotW - (view.end - indexAt(bars, t, tfMsNow())) * view
 const indexAtX = (x, L) => view.end - (L.plotW - x) / view.barW;
 const tAtX = (x, L) => timeAt(bars, indexAtX(x, L), tfMsNow());
 const savePen = () => saveDrawings(MK.id, pen.list);
+
+// A fixed range's profile is recomputed only when its bars, the timeframe or the row size change,
+// or while it still covers the forming bar.
+const rangeCache = new Map(); // id → { key, bars, first, prof }
+function profileOfRange(d) {
+  if (!bars.length) return null;
+  const tf = tfMsNow();
+  const live = d.b.t > bars[bars.length - 1].t;
+  const key = `${d.a.t}|${d.b.t}|${tick}|${tf}|${bars.length}`;
+  const hit = rangeCache.get(d.id);
+  if (!live && hit && hit.key === key && hit.bars === bars && hit.first === bars[0]) return hit.prof;
+  const prof = rangeProfile(bars, d.a.t, d.b.t, tf);
+  if (d.id) rangeCache.set(d.id, { key, bars, first: bars[0], prof });
+  return prof;
+}
+// POC, VAH and VAL as prices: the middle of each row, as the visible profile marks them.
+const rangeLevels = (prof) => (prof ? { poc: prof.poc + tick / 2, vah: prof.vah + tick / 2, val: prof.val + tick / 2 } : null);
+const levelsOfRange = (d) => {
+  const v = rangeLevels(profileOfRange(d));
+  return v ? [v.poc, v.vah, v.val] : null;
+};
+const hitPen = (L, x, y) => hitDrawing(pen.list, x, y, (t) => xAtT(t, L), pricePane.yOf, levelsOfRange);
+
+// 固定區間成交量分布: each range is shaded, its profile grows rightward from its first bar, and its
+// POC, VAH and VAL run on to the chart's right edge, where later bars come back to test them.
+function drawRanges(L, P) {
+  if (penHidden() || !bars.length) return;
+  const list = pen.list.filter((d) => d.type === "r");
+  if (pen.tool === "r" && pen.start && pen.at) list.push({ id: "", type: "r", ...rangeOf(pen.start.t, pen.at.t, tfMsNow()) });
+  for (const d of list) {
+    const ax = xAtT(d.a.t, L);
+    const bx = xAtT(d.b.t, L);
+    if (ax > L.plotW) continue;
+    const sel = d.id === pen.sel || !d.id;
+    ctx.fillStyle = `rgba(${PEN_RGB},${sel ? 0.08 : 0.045})`;
+    ctx.fillRect(ax, P.y, bx - ax, P.h);
+    ctx.strokeStyle = `rgba(${PEN_RGB},${sel ? 0.9 : 0.45})`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash(sel ? [] : [3, 4]);
+    for (const x of [ax, bx]) {
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x) + 0.5, P.y);
+      ctx.lineTo(Math.round(x) + 0.5, P.y + P.h);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    const prof = profileOfRange(d);
+    ctx.font = `10px ${MONO}`;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillStyle = PEN_COLOR;
+    const span = `${fmtTime(d.a.t)} – ${fmtTime(d.b.t)}`;
+    const note = prof ? ` · ${prof.bars} 根${prof.partial ? "（前段未載入）" : ""}` : " · 沒有已載入的 K 棒";
+    // At the foot of the band: the top-left of the chart holds the legend.
+    ctx.fillText(span + note, Math.max(ax, 0) + 5, P.y + P.h - 10);
+    if (!prof) continue;
+    const v = rangeLevels(prof);
+    let max = 0;
+    for (const [, b, s] of prof.rows) max = Math.max(max, b + s);
+    const width = Math.min(220, Math.max(48, (bx - ax) * 0.5));
+    for (const [p, b, s] of prof.rows) {
+      const y = P.yOf(p + tick);
+      const h = Math.max(1, P.yOf(p) - y - (P.yOf(p) - y > 4 ? 1 : 0));
+      const inVA = p >= prof.val && p <= prof.vah;
+      const wb = (b / max) * width;
+      const ws = (s / max) * width;
+      ctx.fillStyle = `rgba(${BUY_RGB},${inVA ? 0.36 : 0.16})`;
+      ctx.fillRect(ax + 1, y, wb, h);
+      ctx.fillStyle = `rgba(${SELL_RGB},${inVA ? 0.36 : 0.16})`;
+      ctx.fillRect(ax + 1 + wb, y, ws, h);
+    }
+    const line = (p, color, label, dash) => {
+      const y = Math.round(P.yOf(p)) + 0.5;
+      ctx.setLineDash(dash);
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(Math.max(ax, 0), y);
+      ctx.lineTo(L.plotW, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = color;
+      const text = `${label} ${fmtPrice(p)}`;
+      ctx.fillText(text, Math.min(Math.max(bx, ax + width, 0) + 6, L.plotW - ctx.measureText(text).width - 6), y - 7);
+    };
+    line(v.poc, C.gold, "POC", []);
+    line(v.vah, `rgba(${PEN_RGB},0.85)`, "VAH", [5, 4]);
+    line(v.val, `rgba(${PEN_RGB},0.85)`, "VAL", [5, 4]);
+    if (sel && d.id) {
+      ctx.strokeStyle = PEN_COLOR;
+      for (const x of [ax, bx]) {
+        ctx.beginPath();
+        ctx.arc(x, P.y + P.h / 2, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = C.bg;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      ctx.lineWidth = 1;
+    }
+  }
+}
 
 function drawPen(L, P) {
   if (penHidden() || !bars.length) return;
@@ -2478,6 +2586,7 @@ function drawPen(L, P) {
     ctx.stroke();
   };
   for (const d of pen.list) {
+    if (d.type === "r") continue; // drawn behind the candles by drawRanges
     const sel = d.id === pen.sel;
     ctx.strokeStyle = PEN_COLOR;
     ctx.lineWidth = sel ? 2.2 : 1.5;
@@ -2517,19 +2626,27 @@ function drawPen(L, P) {
   ctx.lineWidth = 1;
 }
 
-// Each horizontal line's price on the axis, as other charting tools show it.
+// Each horizontal line's and range level's price on the axis, as other charting tools show it.
 function drawPenTags(L, P) {
   if (penHidden()) return;
   ctx.font = `600 11px ${MONO}`;
   ctx.textBaseline = "middle";
-  for (const d of pen.list) {
-    if (d.type !== "h") continue;
-    const y = P.yOf(d.p);
-    if (y < P.y + 9 || y > P.y + P.h - 9) continue;
-    ctx.fillStyle = PEN_COLOR;
+  const tag = (p, color) => {
+    const y = P.yOf(p);
+    if (y < P.y + 9 || y > P.y + P.h - 9) return;
+    ctx.fillStyle = color;
     ctx.fillRect(L.plotW, y - 9, L.axisW, 18);
     ctx.fillStyle = C.bg;
-    ctx.fillText(fmtPrice(d.p), L.plotW + 8, y);
+    ctx.fillText(fmtPrice(p), L.plotW + 8, y);
+  };
+  for (const d of pen.list) {
+    if (d.type === "h") tag(d.p, PEN_COLOR);
+    if (d.type !== "r" || xAtT(d.a.t, L) > L.plotW) continue;
+    const v = rangeLevels(profileOfRange(d));
+    if (!v) continue;
+    tag(v.vah, PEN_COLOR);
+    tag(v.val, PEN_COLOR);
+    tag(v.poc, C.gold);
   }
 }
 
@@ -2564,11 +2681,14 @@ function penDown(e, L, x, y) {
     addDrawing({ id: newId(), type: "h", p: at.p });
     return true;
   }
-  if (pen.tool === "t") {
+  if (pen.tool === "t" || pen.tool === "r") {
     if (!pen.start) {
       pen.start = at;
       pen.at = at;
       pen.downAt = { x: e.clientX, y: e.clientY };
+    } else if (pen.tool === "r") {
+      // A second click on the same bar makes a one-bar range.
+      addDrawing({ id: newId(), type: "r", ...rangeOf(pen.start.t, at.t, tfMsNow()) });
     } else if (Math.hypot(xAtT(pen.start.t, L) - x, pricePane.yOf(pen.start.p) - y) > 4) {
       addDrawing({ id: newId(), type: "t", a: pen.start, b: at });
     }
@@ -2576,7 +2696,7 @@ function penDown(e, L, x, y) {
     redraw();
     return true;
   }
-  const hit = hitDrawing(pen.list, x, y, (t) => xAtT(t, L), pricePane.yOf);
+  const hit = hitPen(L, x, y);
   if (!hit) {
     if (pen.sel) {
       pen.sel = null;
@@ -2585,7 +2705,7 @@ function penDown(e, L, x, y) {
     return false;
   }
   pen.sel = hit.id;
-  pen.drag = { part: hit.part, i0: indexAtX(x, L), p0: at.p, orig: structuredClone(pen.list.find((d) => d.id === hit.id)) };
+  pen.drag = { part: hit.part, i0: indexAtX(x, L), t0: at.t, p0: at.p, orig: structuredClone(pen.list.find((d) => d.id === hit.id)) };
   pen.owner = e.pointerId;
   redraw();
   return true;
@@ -2594,7 +2714,7 @@ function penDown(e, L, x, y) {
 // Moves the line being dragged or the trend line being drawn; true while the pen holds the pointer.
 function penMove(e, L, x, y) {
   if (penHidden() || !pricePane?.pOf) return false;
-  if (pen.tool === "t" && pen.start) {
+  if ((pen.tool === "t" || pen.tool === "r") && pen.start) {
     pen.at = { t: tAtX(x, L), p: pricePane.pOf(y) };
     redraw();
   }
@@ -2606,7 +2726,17 @@ function penMove(e, L, x, y) {
     const dp = pricePane.pOf(y) - pen.drag.p0;
     const o = pen.drag.orig;
     const shift = (q) => ({ t: timeAt(bars, indexAt(bars, q.t, tf) + di, tf), p: q.p + dp });
-    if (d.type === "h") d.p = o.p + dp;
+    if (d.type === "r") {
+      // Ranges move by whole bars and never turn inside out.
+      const t = tAtX(x, L);
+      if (pen.drag.part === "a") d.a = { t: Math.min(rangeOf(t, t, tf).a.t, o.b.t - tf) };
+      else if (pen.drag.part === "b") d.b = { t: Math.max(rangeOf(t, t, tf).b.t, o.a.t + tf) };
+      else {
+        const dt = Math.round((t - pen.drag.t0) / tf) * tf;
+        d.a = { t: o.a.t + dt };
+        d.b = { t: o.b.t + dt };
+      }
+    } else if (d.type === "h") d.p = o.p + dp;
     else if (pen.drag.part === "a") d.a = { t: tAtX(x, L), p: pricePane.pOf(y) };
     else if (pen.drag.part === "b") d.b = { t: tAtX(x, L), p: pricePane.pOf(y) };
     else {
@@ -2628,6 +2758,8 @@ function penUp(e, L, x, y) {
     savePen();
   } else if (pen.tool === "t" && pen.start && pen.downAt && Math.hypot(e.clientX - pen.downAt.x, e.clientY - pen.downAt.y) > 8) {
     addDrawing({ id: newId(), type: "t", a: pen.start, b: { t: tAtX(x, L), p: pricePane.pOf(y) } });
+  } else if (pen.tool === "r" && pen.start && pen.downAt && Math.abs(e.clientX - pen.downAt.x) > 8) {
+    addDrawing({ id: newId(), type: "r", ...rangeOf(pen.start.t, tAtX(x, L), tfMsNow()) });
   }
   pen.downAt = null;
   return true;
@@ -2720,7 +2852,7 @@ canvas.addEventListener("pointermove", (e) => {
     const y = e.clientY - rect.top;
     canvas.classList.toggle("row-resize", !!borderAt(L, x, y));
     canvas.classList.toggle("style-hit", !!styleHitAt(x, y));
-    const over = pen.tool === "cursor" && !penHidden() && pricePane?.pOf && x <= L.plotW && y < L.panes.price.h && hitDrawing(pen.list, x, y, (t) => xAtT(t, L), pricePane.yOf);
+    const over = pen.tool === "cursor" && !penHidden() && pricePane?.pOf && x <= L.plotW && y < L.panes.price.h && hitPen(L, x, y);
     canvas.classList.toggle("pen-hit", !!over);
   }
   if (pointers.has(e.pointerId)) {
@@ -3287,13 +3419,17 @@ async function loadDays() {
 
 // A day is 1.5 to 2.5 MB, so the page opens with DAYS and fetches older ones as the chart is panned
 // toward its oldest bar: about a screen's worth at a time, back to the 30 days the collector keeps.
+// A fixed-range profile that starts before the loaded days pulls them in too, so its numbers do
+// not depend on how far the chart has been panned.
 function loadOlder() {
   if (CASE || evReplay || olderLoading || !bars.length || Date.now() < olderRetryAt) return;
   const first = Math.floor(Date.now() / DAY) * DAY - 29 * DAY;
   if (oldestDay <= first) return;
   const screen = layout().plotW / view.barW;
-  if (view.end - screen > screen * 0.5) return;
-  const n = Math.min(7, (oldestDay - first) / DAY, Math.max(1, Math.ceil((screen * Number(ui.tf.value) * MINUTE) / DAY)));
+  const rangeFrom = penHidden() ? Infinity : Math.min(...pen.list.filter((d) => d.type === "r" && d.a.t < oldestDay && d.b.t > first).map((d) => d.a.t));
+  const rangeDays = Number.isFinite(rangeFrom) ? Math.ceil((oldestDay - Math.max(rangeFrom, first)) / DAY) : 0;
+  if (view.end - screen > screen * 0.5 && !rangeDays) return;
+  const n = Math.min(7, (oldestDay - first) / DAY, Math.max(1, rangeDays, Math.ceil((screen * Number(ui.tf.value) * MINUTE) / DAY)));
   const days = Array.from({ length: n }, (_, k) => utcDay(oldestDay - (k + 1) * DAY));
   olderLoading = true;
   Promise.all(days.map(fetchDay))
