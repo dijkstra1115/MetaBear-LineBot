@@ -234,6 +234,14 @@ export class Collector extends DurableObject<OrderflowEnv> {
     if (!this.rows("PRAGMA table_info(prints)").some((c) => c.name === "ex")) this.sql.exec("ALTER TABLE prints ADD COLUMN ex TEXT");
     // Added with Binance: top-trader position and account ratios (Bybit has none, so they stay null).
     if (!this.rows("PRAGMA table_info(ratios)").some((c) => c.name === "top_pos")) this.sql.exec("ALTER TABLE ratios ADD COLUMN top_pos REAL; ALTER TABLE ratios ADD COLUMN top_acc REAL");
+    // Every alarm looks for unsent alerts and the events feed and prune filter on time. Without
+    // these each of those scanned the whole 30-day table, billed as rows read (BTC Bybit read
+    // ~70k rows per alarm by 2026-11, and it grew as the table filled). Partial indexes stay tiny.
+    this.sql.exec(`
+      CREATE INDEX IF NOT EXISTS alerts_t ON alerts (t);
+      CREATE INDEX IF NOT EXISTS alerts_fanout ON alerts (id) WHERE fanout = 0;
+      CREATE INDEX IF NOT EXISTS alerts_pending ON alerts (id) WHERE state = 'pending';
+    `);
     const named = Object.values(MARKETS).find((m) => m.symbol === ctx.id.name);
     const stored = this.meta("market");
     this.m = named ?? marketOf(stored ?? "btc");
