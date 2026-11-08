@@ -1,0 +1,11 @@
+# HyperFrames render outputs and caches
+renders/
+snapshots/
+.thumbnails/
+.hyperframes/
+.waveform-cache/
+check.log
+scripts/.chars.txt
+# The licensed song and downloaded sound effects stay local (motion/audio-library)
+assets/audio/*.mp3
+assets/audio/sfx/
