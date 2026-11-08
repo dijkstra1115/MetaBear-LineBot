@@ -253,3 +253,18 @@ test("members choose BTC, ETH or both, and ETH alerts name the coin and open ETH
   assert.match(await say(bob, "訂閱警報 全部 每天3則"), /幣種：BTC\n/);
   assert.deepEqual(await (await post({ events: [ev("e2", "sweep", day4, "eth")] })).json(), { queued: 0, dropped: 0 });
 });
+
+test("a batch the collector sends again does not spend the daily count on events already queued", async () => {
+  const day5 = Date.parse("2026-10-26T04:00:00Z");
+  const before = pushes.length;
+  // bob: BTC, every type, three a day.
+  assert.deepEqual(await (await post({ events: [ev("r1", "sweep", day5)] })).json(), { queued: 1, dropped: 0 });
+  await settle();
+  // The answer was lost, so the collector sends r1 again with what came after it.
+  assert.deepEqual(
+    await (await post({ events: [ev("r1", "sweep", day5), ev("r2", "sweep", day5 + 60_000), ev("r3", "sweep", day5 + 120_000), ev("r4", "sweep", day5 + 180_000)] })).json(),
+    { queued: 2, dropped: 0 },
+  );
+  await settle();
+  assert.equal(pushes.slice(before).filter((p) => p.to === bob).length, 3);
+});

@@ -2,6 +2,7 @@ import { HttpError, json, readJson, textField } from "./http";
 import { recordOutgoing, setOutgoingStatus } from "./conversations";
 import { now } from "./db";
 import { audienceQuery } from "./audience";
+import { linePush } from "./line-push";
 
 export type CampaignMessage = { kind: "campaign-delivery"; id: string };
 type Run = {
@@ -269,37 +270,27 @@ export async function processCampaign(message: CampaignMessage, env: Env) {
       await finish("skipped", "已退訂、封鎖或不再符合原篩選條件");
       return;
     }
+    const messages = [{ type: "text" as const, text: run.body }];
     await recordOutgoing(
       env,
       delivery.line_user_id,
       "campaign:" + delivery.id,
-      [{ type: "text", text: run.body }],
+      messages,
     );
-    const response = await fetch(apiBase + "/push", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-        "X-Line-Retry-Key": delivery.id,
-      },
-      body: JSON.stringify({
-        to: delivery.line_user_id,
-        messages: [{ type: "text", text: run.body }],
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-    if (
-      response.ok ||
-      (response.status === 409 &&
-        response.headers.has("x-line-accepted-request-id"))
-    ) {
+    const sent = await linePush(
+      env,
+      delivery.line_user_id,
+      messages,
+      delivery.id,
+    );
+    if (sent.outcome === "accepted") {
       await finish("accepted", "LINE 已接受，未提供個別送達或已讀保證");
       return;
     }
-    if (response.status >= 500) throw new Error("LineUnavailable");
+    if (sent.outcome === "retry") throw new Error("LineRetry");
     await finish(
       "failed",
-      `LINE 拒絕請求（HTTP ${response.status}），請核對帳戶額度或設定`,
+      `LINE 拒絕請求（HTTP ${sent.status}），請核對帳戶額度或設定`,
     );
   } catch (error) {
     await setOutgoingStatus(env, "campaign:" + delivery.id, "unconfirmed");

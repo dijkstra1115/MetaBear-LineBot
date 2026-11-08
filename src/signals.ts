@@ -2,6 +2,7 @@ import { choice, HttpError, json, readJson, textField } from "./http";
 import { recordOutgoing, setOutgoingStatus } from "./conversations";
 import { audit, now } from "./db";
 import { lineQuota, reservedLineMessages } from "./campaigns";
+import { linePush } from "./line-push";
 import { rateLimit } from "./native-auth";
 import { staffIdentity, type AdminIdentity } from "./auth";
 import {
@@ -46,7 +47,6 @@ const MAX_AUDIENCE = 500;
 const HOUR_LIMIT = 8;
 const DAY_LIMIT = 24;
 const IMAGE_MAX = 800_000;
-const apiBase = "https://api.line.me/v2/bot/message";
 const uuid =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -331,20 +331,6 @@ async function createSignal(
     throw new HttpError(400, "目前環境無法附加報單圖片");
   if (typeof data.confirmCount !== "number" || data.confirmCount < 1)
     throw new HttpError(400, "請先確認訂閱人數後再送出");
-  await rateLimit(
-    env.DB,
-    "signal-hour:" + identity.email,
-    HOUR_LIMIT,
-    3600,
-    "這小時的報單次數已用完，請稍後再試",
-  );
-  await rateLimit(
-    env.DB,
-    "signal-day:" + identity.email,
-    DAY_LIMIT,
-    86400,
-    "今天的報單次數已用完，請明天再試",
-  );
   const rows = await audienceRows(env, categoryId);
   if (!rows.length)
     throw new HttpError(400, "目前沒有已入群且訂閱此品項的用戶");
@@ -361,6 +347,21 @@ async function createSignal(
     quota.remaining - reserved < rows.length
   )
     throw new HttpError(409, "LINE 本月可用額度不足，請稍後再試或聯絡管理員");
+  // Counted only once the signal will really go out, so a rejected send costs no allowance.
+  await rateLimit(
+    env.DB,
+    "signal-hour:" + identity.email,
+    HOUR_LIMIT,
+    3600,
+    "這小時的報單次數已用完，請稍後再試",
+  );
+  await rateLimit(
+    env.DB,
+    "signal-day:" + identity.email,
+    DAY_LIMIT,
+    86400,
+    "今天的報單次數已用完，請明天再試",
+  );
   const id = crypto.randomUUID();
   const imageId = image ? crypto.randomUUID() : null;
   const created = now();
@@ -511,31 +512,20 @@ export async function processSignal(message: SignalMessage, env: Env) {
     await recordOutgoing(env, delivery.line_user_id, "signal:" + delivery.id, [
       messages[0],
     ]);
-    const response = await fetch(apiBase + "/push", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-        "X-Line-Retry-Key": delivery.id,
-      },
-      body: JSON.stringify({
-        to: delivery.line_user_id,
-        messages,
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-    if (
-      response.ok ||
-      (response.status === 409 &&
-        response.headers.has("x-line-accepted-request-id"))
-    ) {
+    const sent = await linePush(
+      env,
+      delivery.line_user_id,
+      messages,
+      delivery.id,
+    );
+    if (sent.outcome === "accepted") {
       await finish("accepted", "LINE 已接受，未提供個別送達或已讀保證");
       return;
     }
-    if (response.status >= 500) throw new Error("LineUnavailable");
+    if (sent.outcome === "retry") throw new Error("LineRetry");
     await finish(
       "failed",
-      `LINE 拒絕請求（HTTP ${response.status}），請核對帳戶額度或設定`,
+      `LINE 拒絕請求（HTTP ${sent.status}），請核對帳戶額度或設定`,
     );
   } catch (error) {
     await setOutgoingStatus(env, "signal:" + delivery.id, "unconfirmed");

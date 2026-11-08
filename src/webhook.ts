@@ -85,13 +85,19 @@ export async function webhook(
       !/^U[a-f0-9]{32}$/i.test(event.source.userId ?? "")
     )
       continue;
+    // One malformed event is dropped on its own; failing the whole request would lose the
+    // valid events delivered with it.
     if (
       !event.webhookEventId ||
       typeof event.webhookEventId !== "string" ||
       event.webhookEventId.length > 100 ||
       !Number.isFinite(event.timestamp)
-    )
-      throw new HttpError(400, "Missing event identity");
+    ) {
+      console.error(
+        JSON.stringify({ event: "webhook.event.invalid", type: event.type }),
+      );
+      continue;
+    }
     accepted.push(event);
   }
   const immediate: LineEvent[] = [];
@@ -168,7 +174,16 @@ export async function processLineEvent(event: LineEvent, env: Env) {
       const c = await ensureCustomer(env.DB, userId);
       if (event.type !== "unfollow")
         await prefetchDisplayName(env, userId);
-      if (event.timestamp >= c.last_event_at) {
+      const latest = event.timestamp >= c.last_event_at;
+      // A late event must not undo newer state (follow, consent, subscriptions), so stale
+      // commands stay skipped. A queued question overtaken by an immediate menu tap is not a
+      // command and still gets its answer, unless the user has blocked the account since.
+      const lateQuestion =
+        !latest &&
+        c.blocked === 0 &&
+        (event.type === "message" || event.type === "postback") &&
+        !isImmediateCommand(eventCommandText(event) ?? "");
+      if (latest)
         await env.DB.prepare(
           "UPDATE customers SET blocked=?, last_event_at=?, updated_at=? WHERE line_user_id=? AND last_event_at <= ?",
         )
@@ -180,6 +195,7 @@ export async function processLineEvent(event: LineEvent, env: Env) {
             event.timestamp,
           )
           .run();
+      if (latest || lateQuestion) {
         if (event.type === "unsend") {
           // The transcript tombstone is recorded even for out-of-order events.
         } else if (event.type === "unfollow") {

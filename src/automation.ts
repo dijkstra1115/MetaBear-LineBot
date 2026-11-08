@@ -14,6 +14,7 @@ import {
 import { depositRule, getTeam, validateTeam, type Team } from "./team";
 import { audit, now } from "./db";
 import { HttpError, json, readJson, textField } from "./http";
+import { linePush } from "./line-push";
 
 export type CrmMessage = { kind: "crm-sync" | "vip-delivery"; id: string };
 type Job = {
@@ -596,39 +597,25 @@ export async function processVip(message: CrmMessage, env: Env) {
     )
       .bind(now(), delivery.id)
       .run();
-    await recordOutgoing(env, delivery.line_user_id, "vip:" + delivery.id, [
-      { type: "text", text: delivery.body },
-    ]);
-    const response = await fetch("https://api.line.me/v2/bot/message/push", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-        "X-Line-Retry-Key": delivery.id,
-      },
-      body: JSON.stringify({
-        to: delivery.line_user_id,
-        messages: [{ type: "text", text: delivery.body }],
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-    const accepted =
-      response.ok ||
-      (response.status === 409 &&
-        response.headers.has("x-line-accepted-request-id"));
-    await response.body?.cancel();
-    if (accepted) {
+    const messages = [{ type: "text" as const, text: delivery.body }];
+    await recordOutgoing(env, delivery.line_user_id, "vip:" + delivery.id, messages);
+    const sent = await linePush(
+      env,
+      delivery.line_user_id,
+      messages,
+      delivery.id,
+    );
+    if (sent.outcome === "accepted") {
       await finish("accepted", "LINE 已接受；不代表已讀或已加入社群");
       await audit(env.DB, delivery.line_user_id, "vip.accepted", {
         deliveryId: delivery.id,
       });
       return;
     }
-    if (response.status === 429 || response.status >= 500)
-      throw new Error("LineRetry");
+    if (sent.outcome === "retry") throw new Error("LineRetry");
     await finish(
       "failed",
-      `LINE HTTP ${response.status}，請核對帳號額度或設定`,
+      `LINE HTTP ${sent.status}，請核對帳號額度或設定`,
     );
   } catch {
     await setOutgoingStatus(env, "vip:" + delivery.id, "unconfirmed");

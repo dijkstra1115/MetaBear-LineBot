@@ -81,15 +81,30 @@ export async function authorized(
 ): Promise<boolean> {
   if (!token || token.length < 32 || token.startsWith("replace-with-"))
     return false;
-  const provided = request.headers.get("Authorization") ?? "";
-  const [expectedHash, actualHash] = await Promise.all([
-    crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(`Bearer ${token}`),
+  return sameSecret(
+    request.headers.get("Authorization") ?? "",
+    `Bearer ${token}`,
+  );
+}
+// Compares SHA-256 digests, which always have the same length, so the time
+// taken reveals neither the secret nor its length. Plain Web Crypto, so it
+// also runs outside Workers (Node tests).
+export async function sameSecret(
+  provided: string,
+  expected: string,
+): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all(
+    [provided, expected].map(
+      async (value) =>
+        new Uint8Array(
+          await crypto.subtle.digest("SHA-256", encoder.encode(value)),
+        ),
     ),
-    crypto.subtle.digest("SHA-256", new TextEncoder().encode(provided)),
-  ]);
-  return crypto.subtle.timingSafeEqual(expectedHash, actualHash);
+  );
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
 }
 export function textField(value: unknown, max: number, fallback = ""): string {
   if (value === undefined) return fallback;
