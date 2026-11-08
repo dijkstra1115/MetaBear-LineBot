@@ -4,15 +4,18 @@ import {
   RANKED_VERSION,
   SETTLED_SEASON_VERSION,
   checkActions,
+  replayRanked,
 } from "../public/arena/engine/ranked.js";
 import { HttpError, json, readBody } from "./http";
 
-// FLOW ARENA ranked leaderboard. Replaying a game to verify it needs about a second and a half of
-// CPU, more than the Workers free plan allows per request, so a score is accepted after shape and
-// plausibility checks and stored with its seed and action log; a later job on a paid plan can
-// replay the logs and mark scores as verified (or remove them).
+// FLOW ARENA ranked leaderboard. The engine is deterministic, so every upload is replayed from its
+// seed and action log (1.5 to 2.5 s of CPU, within the Workers paid plan's 30 s) and the replayed
+// result is what gets stored and ranked, marked verified; the pnl a page claims is never trusted.
+// verified: 1 replayed here, 0 uploaded before replays (still ranked), -1 not replayed (never ranked).
 export interface ArenaEnv {
   ARENA_DB?: D1Database;
+  /** Optional secret that keys the hash of the uploader's address (hashClient). */
+  ARENA_IP_KEY?: string;
 }
 
 const NAME_MAX = 18;
@@ -35,6 +38,7 @@ type ScoreRow = {
 export async function handleArenaScores(
   request: Request,
   env: ArenaEnv,
+  replay: typeof replayRanked = replayRanked,
 ): Promise<Response> {
   const db = env.ARENA_DB;
   if (!db) return json({ error: "排行榜尚未啟用" }, 503);
@@ -48,7 +52,7 @@ export async function handleArenaScores(
     if (!request.headers.get("Content-Type")?.includes("application/json"))
       throw new HttpError(415, "需要 JSON");
     const score = parseScore(await readBody(request, BODY_LIMIT));
-    const ipHash = await hashClient(request);
+    const ipHash = await hashClient(request, env.ARENA_IP_KEY);
     const recent = await db
       .prepare(
         "SELECT COUNT(*) AS n FROM arena_scores WHERE ip_hash = ? AND created_at > datetime('now', '-1 hour')",
@@ -57,26 +61,30 @@ export async function handleArenaScores(
       .first<{ n: number }>();
     if ((recent?.n ?? 0) >= HOURLY_UPLOADS)
       throw new HttpError(429, "上傳太頻繁，請稍後再試");
+    // Hashes only have to count the last hour's uploads, and refused uploads are kept only for that.
+    await db.batch([
+      db.prepare("DELETE FROM arena_scores WHERE verified < 0 AND created_at <= datetime('now', '-1 hour')"),
+      db.prepare("UPDATE arena_scores SET ip_hash = '' WHERE ip_hash <> '' AND created_at <= datetime('now', '-1 hour')"),
+    ]);
+    // Stored unranked (verified -1) before the replay, so one that fails or runs out of CPU still
+    // counts toward the hourly limit.
     const inserted = await db
       .prepare(
-        "INSERT INTO arena_scores (name, pnl, seed, turns, version, stats, actions, ip_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+        "INSERT INTO arena_scores (name, pnl, seed, turns, version, stats, actions, ip_hash, verified) VALUES (?, 0, ?, ?, ?, '{}', ?, ?, -1) RETURNING id",
       )
-      .bind(
-        score.name,
-        score.pnl,
-        score.seed,
-        score.turns,
-        score.version,
-        JSON.stringify(score.stats),
-        JSON.stringify(score.actions),
-        ipHash,
-      )
+      .bind(score.name, score.seed, score.turns, score.version, JSON.stringify(score.actions), ipHash)
       .first<{ id: number }>();
+    if (!inserted) throw new Error("Score insert returned no id");
+    const result = replayScore(score, replay);
+    await db
+      .prepare("UPDATE arena_scores SET pnl = ?, stats = ?, verified = 1 WHERE id = ?")
+      .bind(result.pnl, JSON.stringify(result.stats), inserted.id)
+      .run();
     const better = await db
-      .prepare("SELECT COUNT(*) AS n FROM arena_scores WHERE version >= ? AND pnl > ?")
-      .bind(SETTLED_SEASON_VERSION, score.pnl)
+      .prepare("SELECT COUNT(*) AS n FROM arena_scores WHERE version >= ? AND verified >= 0 AND pnl > ?")
+      .bind(SETTLED_SEASON_VERSION, result.pnl)
       .first<{ n: number }>();
-    return json({ id: inserted?.id, rank: (better?.n ?? 0) + 1, season: "current" }, 201);
+    return json({ id: inserted.id, rank: (better?.n ?? 0) + 1, season: "current" }, 201);
   } catch (error) {
     if (error instanceof HttpError) return json({ error: error.message }, error.status);
     throw error;
@@ -86,7 +94,7 @@ export async function handleArenaScores(
 async function topScores(db: D1Database, season: "current" | "legacy") {
   const { results } = await db
     .prepare(
-      `SELECT id, name, pnl, seed, turns, verified, created_at, json_extract(stats, '$.recalculatedFrom') AS source_score_id FROM arena_scores WHERE version ${season === "legacy" ? "<" : ">="} ? ORDER BY pnl DESC, id ASC LIMIT ?`,
+      `SELECT id, name, pnl, seed, turns, verified, created_at, json_extract(stats, '$.recalculatedFrom') AS source_score_id FROM arena_scores WHERE version ${season === "legacy" ? "<" : ">="} ? AND verified >= 0 ORDER BY pnl DESC, id ASC LIMIT ?`,
     )
     .bind(SETTLED_SEASON_VERSION, BOARD_SIZE)
     .all<ScoreRow>();
@@ -124,11 +132,8 @@ export function parseScore(text: string) {
   const actions = body.actions;
   const problem = checkActions(actions, RANKED_TURNS);
   if (problem) throw new HttpError(400, problem);
-  const list = actions as { op: string }[];
+  const list = actions as { t: number; op: string; args?: Record<string, unknown> }[];
   if (list.length > MAX_ACTIONS) throw new HttpError(400, "操作太多");
-  // Only orders change the result; without any, the only honest outcome is zero.
-  const traded = list.some((action) => action.op === "enqueue" || action.op === "execute");
-  if (!traded && pnl !== 0) throw new HttpError(400, "沒有交易卻有損益");
   return {
     version: RANKED_VERSION,
     turns: RANKED_TURNS,
@@ -152,7 +157,8 @@ export function cleanName(value: unknown): string {
   return name;
 }
 
-function pickStats(value: unknown) {
+// The stats a score keeps; scripts/arena-verify-scores.ts stores old scores' replays the same way.
+export function pickStats(value: unknown) {
   const stats = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   const number = (key: string) =>
     typeof stats[key] === "number" && Number.isFinite(stats[key]) ? (stats[key] as number) : 0;
@@ -165,13 +171,37 @@ function pickStats(value: unknown) {
   };
 }
 
-// A salted hash of the client address, only to slow down repeated uploads.
-async function hashClient(request: Request): Promise<string> {
-  const ip = request.headers.get("CF-Connecting-IP") ?? "local";
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(`flow-arena:${ip}`),
-  );
+// The score is the replay's, whatever the page claimed. A page on another JavaScript engine can
+// round a float differently and end elsewhere; the log keeps those apart from forged claims.
+function replayScore(score: ReturnType<typeof parseScore>, replay: typeof replayRanked) {
+  let result: ReturnType<typeof replayRanked>;
+  try {
+    result = replay({ seed: score.seed, actions: score.actions, turns: score.turns });
+  } catch (error) {
+    const unsettled = error instanceof Error && error.message.includes("平倉");
+    if (!unsettled)
+      console.error(
+        JSON.stringify({ event: "arena.replay.failed", errorType: error instanceof Error ? error.name : "Unknown" }),
+      );
+    throw new HttpError(400, unsettled ? (error as Error).message : "操作紀錄無法重播，請重新整理後再玩");
+  }
+  if (result.pnl !== score.pnl)
+    console.log(JSON.stringify({ event: "arena.score.replayed", claimed: score.pnl, replayed: result.pnl }));
+  return { pnl: result.pnl, stats: pickStats(result) };
+}
+
+// A hash of the client address, only to slow down repeated uploads, and cleared once the hour it
+// counts has passed. With ARENA_IP_KEY set it is keyed, so a copy of the table cannot be reversed
+// by hashing every IPv4 address.
+async function hashClient(request: Request, key?: string): Promise<string> {
+  const ip = new TextEncoder().encode(`flow-arena:${request.headers.get("CF-Connecting-IP") ?? "local"}`);
+  const digest = key
+    ? await crypto.subtle.sign(
+        "HMAC",
+        await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]),
+        ip,
+      )
+    : await crypto.subtle.digest("SHA-256", ip);
   return [...new Uint8Array(digest).slice(0, 12)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");

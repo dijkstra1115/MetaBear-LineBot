@@ -8,6 +8,8 @@ BINGX_API_KEY=
 
 BINGX_SECRET_KEY=
 
+# FLOW ARENA leaderboard (production and staging): keys the hash of an uploader's address; optional.
+ARENA_IP_KEY=
 # Order-flow Worker (wrangler.orderflow.jsonc): archive import token.
 ORDERFLOW_ADMIN_TOKEN=replace-with-a-random-token-at-least-32-characters
 # Shared by the CRM backend and the order-flow Worker: the collector's alerts reach the admin's LINE.
