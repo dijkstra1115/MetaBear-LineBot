@@ -11,6 +11,22 @@ const root = "public/orderflow/";
 const escape = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
+// A lesson's real-trade film. lesson-page.js sets the sources, so a local preview plays the copy in
+// public/media/films/ instead of requesting media.metabear.io before the film is uploaded there.
+function tradeSection(trade) {
+  if (!trade) return "";
+  return `
+      <section class="lesson-trade" aria-labelledby="lesson-trade-title">
+        <div class="lesson-trade-copy">
+          <small>REAL TRADE · 實盤示範 · ${escape(trade.date)}</small>
+          <h3 id="lesson-trade-title">${escape(trade.title)}</h3>
+          <p>${escape(trade.text)}</p>
+          <span>${durationLabel(trade.duration)} · 英文旁白、中英字幕 · 真實數據，非投資建議</span>
+        </div>
+        <video class="lesson-trade-film" data-trade-film="${escape(trade.film)}" width="1920" height="1080" controls playsinline preload="none" aria-label="${escape(trade.date)} 實盤示範：${escape(trade.title)}"></video>
+      </section>`;
+}
+
 export function motionPage(course, lesson) {
   const k = kinds[course.kind];
   const kind = k.label;
@@ -83,7 +99,7 @@ export function motionPage(course, lesson) {
         data-lesson="${course.id}"
         aria-label="${escape(course.title)} 動態課程"
       ></section>
-      <p class="motion-note">${escape(lesson.footer ?? "教學用合成行情，數字僅供理解機制。")}</p>
+      <p class="motion-note">${escape(lesson.footer ?? "教學用合成行情，數字僅供理解機制。")}</p>${tradeSection(course.trade)}
       <nav class="lesson-pager" aria-label="上一課與下一課">
         ${pagerLink(order[at - 1], "prev")}
         ${pagerLink(order[at + 1], "next")}

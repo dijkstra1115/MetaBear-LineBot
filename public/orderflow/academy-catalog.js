@@ -321,6 +321,14 @@ export const courses = [
     format: "motion",
     href: "./support-resistance.html",
     prerequisites: ["volume-profile", "heatmap", "stop-orders", "breakout-volume", "failed-auction"],
+    // A real trade that follows the lesson's flip case, shown below the lesson (media.metabear.io/films/).
+    trade: {
+      film: "live-trade-01",
+      date: "11/05",
+      title: "跌破 VAL，回測才空",
+      text: "這堂課的翻轉情境，拿一筆真實的 BTC 空單從頭走一次：現貨 CVD 往下、合約 CVD 持平是警訊；20:30 一筆大單砸破 VAL 是訊號；等價格回到 79,850 才進場，停損放在上方 POC 80,400，目標是下方 POC 77,800。",
+      duration: 121,
+    },
   },
   {
     id: "trend-pullback",
