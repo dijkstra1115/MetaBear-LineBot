@@ -9,49 +9,31 @@ import { BUSINESS, STEPS, LESSONS } from "./content";
 import { HttpError, json } from "./http";
 import type { LineEvent } from "./types";
 import { adminIdentity, staffIdentity } from "./auth";
-import { authRoute, cleanupAuth } from "./native-auth";
-import { cleanupConversations } from "./conversations";
+import { authRoute } from "./native-auth";
+import { runCron } from "./cron";
 import {
-  dispatchCrm,
   processSync,
   processVip,
   type CrmMessage,
 } from "./automation";
 import { getTeam, personalize } from "./team";
+import { installRichMenu, type MenuInstallMessage } from "./line-rich-menu";
+import { processCampaign, type CampaignMessage } from "./campaigns";
 import {
-  ensureRichMenu,
-  installRichMenu,
-  type MenuInstallMessage,
-} from "./line-rich-menu";
-import {
-  processCampaign,
-  dispatchCampaigns,
-  type CampaignMessage,
-} from "./campaigns";
-import {
-  dispatchSupportNotifications,
   processSupportNotification,
   type SupportNotificationMessage,
 } from "./support";
 import {
   deskApi,
-  dispatchSignals,
   processSignal,
   signalMedia,
   type SignalMessage,
 } from "./signals";
-import { dispatchOrderflowAlerts, processOrderflowDelivery, type OrderflowAlertMessage } from "./orderflow-subs";
+import { processOrderflowDelivery, type OrderflowAlertMessage } from "./orderflow-subs";
 
 export default {
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
-    await dispatchCampaigns(env);
-    await dispatchSignals(env);
-    await dispatchOrderflowAlerts(env);
-    await dispatchCrm(env);
-    await dispatchSupportNotifications(env);
-    await cleanupAuth(env);
-    await cleanupConversations(env);
-    await ensureRichMenu(env);
+    await runCron(env);
   },
   async queue(
     batch: MessageBatch<
