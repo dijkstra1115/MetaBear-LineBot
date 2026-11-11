@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1080, height=1920">
+    <title>The coin that pays +5% and still bankrupts you</title>
+    <script src="lib/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #040907; }
+      #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-bmdg" id="root" data-composition-id="main" data-start="0" data-duration="111.478" data-width="1080" data-height="1920">
+      <div data-hf-id="hf-btjh" id="world" data-composition-id="world" data-composition-src="compositions/world.html" data-start="0" data-duration="111.478" data-track-index="1" data-track-kind="graphics" data-width="1080" data-height="1920" style="z-index: 1"></div>
+      <div data-hf-id="hf-p5ki" id="share" data-composition-id="share" data-composition-src="compositions/share.html" data-start="101.83" data-duration="9.648" data-track-index="2" data-track-kind="graphics" data-width="1080" data-height="1920" style="z-index: 2"></div>
+      <div data-hf-id="hf-zj46" id="captions" data-composition-id="captions" data-composition-src="compositions/captions.html" data-start="0" data-duration="111.478" data-track-index="3" data-track-kind="captions" data-width="1080" data-height="1920" style="z-index: 3"></div>
+      <audio data-hf-id="hf-1nrq" id="soundtrack" class="clip" src="assets/audio/soundtrack.wav" data-start="0" data-duration="111.478" data-track-index="4" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.set({}, {}, 111.478);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

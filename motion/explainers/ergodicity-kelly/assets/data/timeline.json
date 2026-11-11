@@ -1,0 +1,1920 @@
+{
+ "duration": 111.478,
+ "chunks": [
+  {
+   "id": 1,
+   "scene": "hook",
+   "start": 0.35,
+   "end": 7.853,
+   "lines": [
+    {
+     "start": 0.35,
+     "end": 3.259,
+     "zh": "這枚硬幣，每丟一次平均讓你賺 5%。",
+     "tokens": [
+      {
+       "text": "This",
+       "key": false,
+       "start": 0.35,
+       "end": 0.568
+      },
+      {
+       "text": "coin",
+       "key": false,
+       "start": 0.626,
+       "end": 0.859
+      },
+      {
+       "text": "pays",
+       "key": false,
+       "start": 0.903,
+       "end": 1.077
+      },
+      {
+       "text": "you",
+       "key": false,
+       "start": 1.114,
+       "end": 1.223
+      },
+      {
+       "text": "+5%",
+       "key": false,
+       "start": 1.266,
+       "end": 1.805
+      },
+      {
+       "text": "per",
+       "key": false,
+       "start": 1.841,
+       "end": 1.95
+      },
+      {
+       "text": "flip,",
+       "key": false,
+       "start": 2.023,
+       "end": 2.532
+      },
+      {
+       "text": "on",
+       "key": true,
+       "start": 2.58,
+       "end": 2.677
+      },
+      {
+       "text": "average.",
+       "key": true,
+       "start": 2.732,
+       "end": 3.259
+      }
+     ]
+    },
+    {
+     "start": 3.405,
+     "end": 5.95,
+     "zh": "但只要你每次都全押，",
+     "tokens": [
+      {
+       "text": "Bet",
+       "key": false,
+       "start": 3.405,
+       "end": 3.841
+      },
+      {
+       "text": "everything",
+       "key": false,
+       "start": 3.874,
+       "end": 4.205
+      },
+      {
+       "text": "on",
+       "key": false,
+       "start": 4.253,
+       "end": 4.35
+      },
+      {
+       "text": "it,",
+       "key": false,
+       "start": 4.398,
+       "end": 4.786
+      },
+      {
+       "text": "every",
+       "key": false,
+       "start": 4.835,
+       "end": 5.077
+      },
+      {
+       "text": "time,",
+       "key": false,
+       "start": 5.165,
+       "end": 5.95
+      }
+     ]
+    },
+    {
+     "start": 5.986,
+     "end": 7.841,
+     "zh": "你幾乎一定會輸到歸零。",
+     "tokens": [
+      {
+       "text": "and",
+       "key": false,
+       "start": 5.986,
+       "end": 6.095
+      },
+      {
+       "text": "it",
+       "key": false,
+       "start": 6.12,
+       "end": 6.168
+      },
+      {
+       "text": "will",
+       "key": false,
+       "start": 6.212,
+       "end": 6.386
+      },
+      {
+       "text": "almost",
+       "key": false,
+       "start": 6.438,
+       "end": 6.75
+      },
+      {
+       "text": "certainly",
+       "key": false,
+       "start": 6.786,
+       "end": 7.114
+      },
+      {
+       "text": "wipe",
+       "key": true,
+       "start": 7.172,
+       "end": 7.405
+      },
+      {
+       "text": "you",
+       "key": false,
+       "start": 7.441,
+       "end": 7.55
+      },
+      {
+       "text": "out.",
+       "key": true,
+       "start": 7.605,
+       "end": 7.841
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "scene": "split",
+   "start": 8.303,
+   "end": 16.381,
+   "lines": [
+    {
+     "start": 8.303,
+     "end": 10.34,
+     "zh": "那期望值到底在騙誰？",
+     "tokens": [
+      {
+       "text": "So",
+       "key": false,
+       "start": 8.303,
+       "end": 8.449
+      },
+      {
+       "text": "who",
+       "key": false,
+       "start": 8.522,
+       "end": 8.74
+      },
+      {
+       "text": "is",
+       "key": false,
+       "start": 8.788,
+       "end": 8.885
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 8.922,
+       "end": 9.031
+      },
+      {
+       "text": "average",
+       "key": false,
+       "start": 9.094,
+       "end": 9.54
+      },
+      {
+       "text": "lying",
+       "key": true,
+       "start": 9.612,
+       "end": 9.976
+      },
+      {
+       "text": "to?",
+       "key": false,
+       "start": 10.073,
+       "end": 10.34
+      }
+     ]
+    },
+    {
+     "start": 10.485,
+     "end": 13.031,
+     "zh": "誰都沒騙。它說的根本不是你。",
+     "tokens": [
+      {
+       "text": "Nobody.",
+       "key": false,
+       "start": 10.485,
+       "end": 11.359
+      },
+      {
+       "text": "It's",
+       "key": false,
+       "start": 11.552,
+       "end": 12.012
+      },
+      {
+       "text": "just",
+       "key": false,
+       "start": 12.042,
+       "end": 12.158
+      },
+      {
+       "text": "not",
+       "key": false,
+       "start": 12.212,
+       "end": 12.376
+      },
+      {
+       "text": "about",
+       "key": false,
+       "start": 12.412,
+       "end": 12.594
+      },
+      {
+       "text": "you.",
+       "key": true,
+       "start": 12.667,
+       "end": 13.031
+      }
+     ]
+    },
+    {
+     "start": 13.152,
+     "end": 16.376,
+     "zh": "而是一千個平行宇宙的你，加起來。",
+     "tokens": [
+      {
+       "text": "It's",
+       "key": false,
+       "start": 13.152,
+       "end": 13.467
+      },
+      {
+       "text": "about",
+       "key": false,
+       "start": 13.492,
+       "end": 13.612
+      },
+      {
+       "text": "a",
+       "key": false,
+       "start": 13.685,
+       "end": 13.758
+      },
+      {
+       "text": "thousand",
+       "key": true,
+       "start": 13.806,
+       "end": 14.194
+      },
+      {
+       "text": "parallel",
+       "key": false,
+       "start": 14.251,
+       "end": 14.703
+      },
+      {
+       "text": "yous,",
+       "key": false,
+       "start": 14.794,
+       "end": 15.212
+      },
+      {
+       "text": "added",
+       "key": false,
+       "start": 15.322,
+       "end": 15.867
+      },
+      {
+       "text": "together.",
+       "key": false,
+       "start": 15.915,
+       "end": 16.376
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "scene": "pair",
+   "start": 16.931,
+   "end": 29.815,
+   "lines": [
+    {
+     "start": 16.931,
+     "end": 18.167,
+     "zh": "你帶 100 元坐下。",
+     "tokens": [
+      {
+       "text": "You",
+       "key": false,
+       "start": 16.931,
+       "end": 17.004
+      },
+      {
+       "text": "start",
+       "key": false,
+       "start": 17.04,
+       "end": 17.222
+      },
+      {
+       "text": "with",
+       "key": false,
+       "start": 17.251,
+       "end": 17.367
+      },
+      {
+       "text": "$100.",
+       "key": false,
+       "start": 17.404,
+       "end": 18.167
+      }
+     ]
+    },
+    {
+     "start": 18.288,
+     "end": 22.604,
+     "zh": "正面 +50%，反面 −40%。",
+     "tokens": [
+      {
+       "text": "Heads:",
+       "key": false,
+       "start": 18.288,
+       "end": 18.967
+      },
+      {
+       "text": "+50%.",
+       "key": false,
+       "start": 19.069,
+       "end": 20.276
+      },
+      {
+       "text": "Tails:",
+       "key": false,
+       "start": 20.567,
+       "end": 21.549
+      },
+      {
+       "text": "−40%.",
+       "key": false,
+       "start": 21.604,
+       "end": 22.604
+      }
+     ]
+    },
+    {
+     "start": 22.695,
+     "end": 26.567,
+     "zh": "贏一次：150。輸一次：90。",
+     "tokens": [
+      {
+       "text": "Win",
+       "key": false,
+       "start": 22.695,
+       "end": 22.967
+      },
+      {
+       "text": "once:",
+       "key": false,
+       "start": 23.055,
+       "end": 23.695
+      },
+      {
+       "text": "150.",
+       "key": false,
+       "start": 23.749,
+       "end": 24.422
+      },
+      {
+       "text": "Lose",
+       "key": false,
+       "start": 24.553,
+       "end": 25.076
+      },
+      {
+       "text": "once:",
+       "key": false,
+       "start": 25.149,
+       "end": 25.804
+      },
+      {
+       "text": "90.",
+       "key": true,
+       "start": 25.866,
+       "end": 26.567
+      }
+     ]
+    },
+    {
+     "start": 26.649,
+     "end": 29.804,
+     "zh": "一勝一敗，你反而少了 10%。",
+     "tokens": [
+      {
+       "text": "One",
+       "key": false,
+       "start": 26.649,
+       "end": 26.895
+      },
+      {
+       "text": "win,",
+       "key": false,
+       "start": 26.985,
+       "end": 27.549
+      },
+      {
+       "text": "one",
+       "key": false,
+       "start": 27.604,
+       "end": 27.767
+      },
+      {
+       "text": "loss,",
+       "key": false,
+       "start": 27.84,
+       "end": 28.204
+      },
+      {
+       "text": "and",
+       "key": false,
+       "start": 28.276,
+       "end": 28.495
+      },
+      {
+       "text": "you're",
+       "key": false,
+       "start": 28.513,
+       "end": 28.64
+      },
+      {
+       "text": "down",
+       "key": true,
+       "start": 28.698,
+       "end": 28.931
+      },
+      {
+       "text": "10%.",
+       "key": false,
+       "start": 29.022,
+       "end": 29.804
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "scene": "gap",
+   "start": 30.165,
+   "end": 40.942,
+   "lines": [
+    {
+     "start": 30.165,
+     "end": 34.747,
+     "zh": "跌掉 40% 之後，要漲 67% 才回得來。",
+     "tokens": [
+      {
+       "text": "After",
+       "key": false,
+       "start": 30.165,
+       "end": 30.383
+      },
+      {
+       "text": "a",
+       "key": false,
+       "start": 30.492,
+       "end": 30.601
+      },
+      {
+       "text": "40%",
+       "key": false,
+       "start": 30.638,
+       "end": 31.256
+      },
+      {
+       "text": "drop,",
+       "key": false,
+       "start": 31.329,
+       "end": 31.983
+      },
+      {
+       "text": "you",
+       "key": false,
+       "start": 32.001,
+       "end": 32.056
+      },
+      {
+       "text": "need",
+       "key": false,
+       "start": 32.1,
+       "end": 32.274
+      },
+      {
+       "text": "67%",
+       "key": true,
+       "start": 32.347,
+       "end": 33.438
+      },
+      {
+       "text": "just",
+       "key": false,
+       "start": 33.496,
+       "end": 33.729
+      },
+      {
+       "text": "to",
+       "key": false,
+       "start": 33.753,
+       "end": 33.801
+      },
+      {
+       "text": "get",
+       "key": false,
+       "start": 33.856,
+       "end": 34.02
+      },
+      {
+       "text": "back.",
+       "key": false,
+       "start": 34.092,
+       "end": 34.747
+      }
+     ]
+    },
+    {
+     "start": 34.838,
+     "end": 37.001,
+     "zh": "硬幣最多只給你 50%。",
+     "tokens": [
+      {
+       "text": "The",
+       "key": false,
+       "start": 34.838,
+       "end": 35.111
+      },
+      {
+       "text": "coin",
+       "key": false,
+       "start": 35.169,
+       "end": 35.401
+      },
+      {
+       "text": "only",
+       "key": false,
+       "start": 35.445,
+       "end": 35.62
+      },
+      {
+       "text": "gives",
+       "key": false,
+       "start": 35.656,
+       "end": 35.838
+      },
+      {
+       "text": "you",
+       "key": false,
+       "start": 35.856,
+       "end": 35.911
+      },
+      {
+       "text": "50.",
+       "key": false,
+       "start": 35.995,
+       "end": 37.001
+      }
+     ]
+    },
+    {
+     "start": 37.05,
+     "end": 39.547,
+     "zh": "所以平均每把 +5%，",
+     "tokens": [
+      {
+       "text": "So",
+       "key": false,
+       "start": 37.05,
+       "end": 37.147
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 37.165,
+       "end": 37.22
+      },
+      {
+       "text": "average",
+       "key": false,
+       "start": 37.265,
+       "end": 37.583
+      },
+      {
+       "text": "gains",
+       "key": false,
+       "start": 37.681,
+       "end": 38.165
+      },
+      {
+       "text": "5%",
+       "key": false,
+       "start": 38.267,
+       "end": 39.038
+      },
+      {
+       "text": "a",
+       "key": false,
+       "start": 39.074,
+       "end": 39.111
+      },
+      {
+       "text": "flip.",
+       "key": false,
+       "start": 39.183,
+       "end": 39.547
+      }
+     ]
+    },
+    {
+     "start": 39.674,
+     "end": 40.929,
+     "zh": "你卻每把 −5%。",
+     "tokens": [
+      {
+       "text": "You",
+       "key": true,
+       "start": 39.674,
+       "end": 40.056
+      },
+      {
+       "text": "lose",
+       "key": false,
+       "start": 40.114,
+       "end": 40.347
+      },
+      {
+       "text": "five.",
+       "key": false,
+       "start": 40.434,
+       "end": 40.929
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "scene": "crowd",
+   "start": 41.642,
+   "end": 49.658,
+   "lines": [
+    {
+     "start": 41.642,
+     "end": 44.042,
+     "zh": "現在讓一千個你，各丟 100 次。",
+     "tokens": [
+      {
+       "text": "Now",
+       "key": false,
+       "start": 41.642,
+       "end": 41.715
+      },
+      {
+       "text": "let",
+       "key": false,
+       "start": 41.751,
+       "end": 41.86
+      },
+      {
+       "text": "1,000",
+       "key": false,
+       "start": 41.933,
+       "end": 42.442
+      },
+      {
+       "text": "of",
+       "key": false,
+       "start": 42.467,
+       "end": 42.515
+      },
+      {
+       "text": "you",
+       "key": false,
+       "start": 42.551,
+       "end": 42.66
+      },
+      {
+       "text": "flip",
+       "key": false,
+       "start": 42.733,
+       "end": 43.024
+      },
+      {
+       "text": "100",
+       "key": false,
+       "start": 43.097,
+       "end": 43.388
+      },
+      {
+       "text": "times.",
+       "key": false,
+       "start": 43.485,
+       "end": 44.042
+      }
+     ]
+    },
+    {
+     "start": 44.169,
+     "end": 46.66,
+     "zh": "全體平均衝破一萬元。",
+     "tokens": [
+      {
+       "text": "The",
+       "key": false,
+       "start": 44.169,
+       "end": 44.551
+      },
+      {
+       "text": "average",
+       "key": false,
+       "start": 44.615,
+       "end": 45.06
+      },
+      {
+       "text": "shoots",
+       "key": false,
+       "start": 45.102,
+       "end": 45.351
+      },
+      {
+       "text": "past",
+       "key": false,
+       "start": 45.409,
+       "end": 45.642
+      },
+      {
+       "text": "$10,000.",
+       "key": true,
+       "start": 45.679,
+       "end": 46.66
+      }
+     ]
+    },
+    {
+     "start": 46.788,
+     "end": 49.642,
+     "zh": "但正中間的那個人，只剩 5 毛錢。",
+     "tokens": [
+      {
+       "text": "But",
+       "key": false,
+       "start": 46.788,
+       "end": 47.169
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 47.188,
+       "end": 47.242
+      },
+      {
+       "text": "person",
+       "key": false,
+       "start": 47.305,
+       "end": 47.679
+      },
+      {
+       "text": "in",
+       "key": false,
+       "start": 47.703,
+       "end": 47.751
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 47.788,
+       "end": 47.897
+      },
+      {
+       "text": "middle",
+       "key": false,
+       "start": 47.939,
+       "end": 48.188
+      },
+      {
+       "text": "has",
+       "key": false,
+       "start": 48.279,
+       "end": 48.551
+      },
+      {
+       "text": "52¢.",
+       "key": true,
+       "start": 48.599,
+       "end": 49.642
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "scene": "tower",
+   "start": 50.208,
+   "end": 57.087,
+   "lines": [
+    {
+     "start": 50.208,
+     "end": 52.754,
+     "zh": "錢去哪了？在這一個人身上。",
+     "tokens": [
+      {
+       "text": "So",
+       "key": false,
+       "start": 50.208,
+       "end": 50.281
+      },
+      {
+       "text": "where",
+       "key": false,
+       "start": 50.306,
+       "end": 50.427
+      },
+      {
+       "text": "did",
+       "key": false,
+       "start": 50.463,
+       "end": 50.572
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 50.59,
+       "end": 50.645
+      },
+      {
+       "text": "money",
+       "key": false,
+       "start": 50.681,
+       "end": 50.863
+      },
+      {
+       "text": "go?",
+       "key": false,
+       "start": 50.96,
+       "end": 51.227
+      },
+      {
+       "text": "To",
+       "key": false,
+       "start": 51.42,
+       "end": 51.808
+      },
+      {
+       "text": "this",
+       "key": true,
+       "start": 51.852,
+       "end": 52.027
+      },
+      {
+       "text": "one.",
+       "key": false,
+       "start": 52.099,
+       "end": 52.754
+      }
+     ]
+    },
+    {
+     "start": 53.077,
+     "end": 54.531,
+     "zh": "750 萬。",
+     "tokens": [
+      {
+       "text": "$7.5 million.",
+       "key": true,
+       "start": 53.077,
+       "end": 54.531
+      }
+     ]
+    },
+    {
+     "start": 54.656,
+     "end": 57.077,
+     "zh": "全部財富的 73%。",
+     "tokens": [
+      {
+       "text": "73%",
+       "key": false,
+       "start": 54.656,
+       "end": 56.204
+      },
+      {
+       "text": "of",
+       "key": false,
+       "start": 56.277,
+       "end": 56.422
+      },
+      {
+       "text": "all",
+       "key": false,
+       "start": 56.458,
+       "end": 56.567
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 56.604,
+       "end": 56.713
+      },
+      {
+       "text": "money.",
+       "key": false,
+       "start": 56.761,
+       "end": 57.077
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "scene": "paths",
+   "start": 57.837,
+   "end": 68.616,
+   "lines": [
+    {
+     "start": 57.837,
+     "end": 60.383,
+     "zh": "所有人的平均，叫「集合平均」。",
+     "tokens": [
+      {
+       "text": "Everyone's",
+       "key": false,
+       "start": 57.837,
+       "end": 58.274
+      },
+      {
+       "text": "average",
+       "key": false,
+       "start": 58.337,
+       "end": 58.783
+      },
+      {
+       "text": "is",
+       "key": false,
+       "start": 58.856,
+       "end": 59.001
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 59.019,
+       "end": 59.074
+      },
+      {
+       "text": "ensemble",
+       "key": true,
+       "start": 59.138,
+       "end": 59.656
+      },
+      {
+       "text": "average.",
+       "key": true,
+       "start": 59.71,
+       "end": 60.383
+      }
+     ]
+    },
+    {
+     "start": 60.441,
+     "end": 62.492,
+     "zh": "你一個人走下去的路，叫「時間平均」。",
+     "tokens": [
+      {
+       "text": "Your",
+       "key": false,
+       "start": 60.441,
+       "end": 60.674
+      },
+      {
+       "text": "one",
+       "key": false,
+       "start": 60.747,
+       "end": 60.965
+      },
+      {
+       "text": "path",
+       "key": false,
+       "start": 61.052,
+       "end": 61.401
+      },
+      {
+       "text": "is",
+       "key": false,
+       "start": 61.474,
+       "end": 61.619
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 61.637,
+       "end": 61.692
+      },
+      {
+       "text": "time",
+       "key": true,
+       "start": 61.75,
+       "end": 61.983
+      },
+      {
+       "text": "average.",
+       "key": true,
+       "start": 62.037,
+       "end": 62.492
+      }
+     ]
+    },
+    {
+     "start": 62.608,
+     "end": 66.056,
+     "zh": "兩者相等叫「遍歷」。這個遊戲不是。",
+     "tokens": [
+      {
+       "text": "When",
+       "key": false,
+       "start": 62.608,
+       "end": 63.074
+      },
+      {
+       "text": "they",
+       "key": false,
+       "start": 63.103,
+       "end": 63.219
+      },
+      {
+       "text": "match,",
+       "key": false,
+       "start": 63.304,
+       "end": 63.874
+      },
+      {
+       "text": "a",
+       "key": false,
+       "start": 63.91,
+       "end": 63.947
+      },
+      {
+       "text": "game",
+       "key": false,
+       "start": 64.005,
+       "end": 64.237
+      },
+      {
+       "text": "is",
+       "key": false,
+       "start": 64.262,
+       "end": 64.31
+      },
+      {
+       "text": "ergodic.",
+       "key": true,
+       "start": 64.383,
+       "end": 64.965
+      },
+      {
+       "text": "This",
+       "key": false,
+       "start": 65.067,
+       "end": 65.474
+      },
+      {
+       "text": "one",
+       "key": false,
+       "start": 65.51,
+       "end": 65.619
+      },
+      {
+       "text": "isn't.",
+       "key": false,
+       "start": 65.674,
+       "end": 66.056
+      }
+     ]
+    },
+    {
+     "start": 66.183,
+     "end": 68.601,
+     "zh": "而你，只活在其中一個宇宙。",
+     "tokens": [
+      {
+       "text": "And",
+       "key": false,
+       "start": 66.183,
+       "end": 66.565
+      },
+      {
+       "text": "you",
+       "key": false,
+       "start": 66.601,
+       "end": 66.71
+      },
+      {
+       "text": "only",
+       "key": false,
+       "start": 66.797,
+       "end": 67.147
+      },
+      {
+       "text": "live",
+       "key": false,
+       "start": 67.219,
+       "end": 67.51
+      },
+      {
+       "text": "in",
+       "key": false,
+       "start": 67.607,
+       "end": 67.801
+      },
+      {
+       "text": "one",
+       "key": true,
+       "start": 67.837,
+       "end": 67.947
+      },
+      {
+       "text": "universe.",
+       "key": false,
+       "start": 68.011,
+       "end": 68.601
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "scene": "kelly",
+   "start": 69.466,
+   "end": 81.771,
+   "lines": [
+    {
+     "start": 69.466,
+     "end": 72.157,
+     "zh": "解法不是少玩，是少押。",
+     "tokens": [
+      {
+       "text": "So",
+       "key": false,
+       "start": 69.466,
+       "end": 69.611
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 69.648,
+       "end": 69.757
+      },
+      {
+       "text": "fix",
+       "key": false,
+       "start": 69.811,
+       "end": 69.975
+      },
+      {
+       "text": "isn't",
+       "key": false,
+       "start": 70.029,
+       "end": 70.266
+      },
+      {
+       "text": "to",
+       "key": false,
+       "start": 70.29,
+       "end": 70.338
+      },
+      {
+       "text": "play",
+       "key": false,
+       "start": 70.382,
+       "end": 70.557
+      },
+      {
+       "text": "less.",
+       "key": false,
+       "start": 70.629,
+       "end": 70.993
+      },
+      {
+       "text": "It's",
+       "key": false,
+       "start": 71.114,
+       "end": 71.429
+      },
+      {
+       "text": "to",
+       "key": false,
+       "start": 71.454,
+       "end": 71.502
+      },
+      {
+       "text": "bet",
+       "key": true,
+       "start": 71.575,
+       "end": 71.793
+      },
+      {
+       "text": "less.",
+       "key": true,
+       "start": 71.851,
+       "end": 72.157
+      }
+     ]
+    },
+    {
+     "start": 72.32,
+     "end": 75.284,
+     "zh": "全押：每把縮水 5%。",
+     "tokens": [
+      {
+       "text": "Bet",
+       "key": false,
+       "start": 72.32,
+       "end": 72.811
+      },
+      {
+       "text": "it",
+       "key": false,
+       "start": 72.836,
+       "end": 72.884
+      },
+      {
+       "text": "all:",
+       "key": false,
+       "start": 72.957,
+       "end": 73.538
+      },
+      {
+       "text": "you",
+       "key": false,
+       "start": 73.575,
+       "end": 73.684
+      },
+      {
+       "text": "shrink",
+       "key": false,
+       "start": 73.736,
+       "end": 74.048
+      },
+      {
+       "text": "5%",
+       "key": false,
+       "start": 74.12,
+       "end": 74.775
+      },
+      {
+       "text": "a",
+       "key": false,
+       "start": 74.811,
+       "end": 74.848
+      },
+      {
+       "text": "flip.",
+       "key": false,
+       "start": 74.92,
+       "end": 75.284
+      }
+     ]
+    },
+    {
+     "start": 75.429,
+     "end": 77.793,
+     "zh": "押一半：原地踏步。",
+     "tokens": [
+      {
+       "text": "Bet",
+       "key": false,
+       "start": 75.429,
+       "end": 75.866
+      },
+      {
+       "text": "half:",
+       "key": false,
+       "start": 75.968,
+       "end": 76.666
+      },
+      {
+       "text": "you",
+       "key": false,
+       "start": 76.702,
+       "end": 76.811
+      },
+      {
+       "text": "go",
+       "key": false,
+       "start": 76.859,
+       "end": 76.957
+      },
+      {
+       "text": "nowhere.",
+       "key": true,
+       "start": 77.02,
+       "end": 77.793
+      }
+     ]
+    },
+    {
+     "start": 77.875,
+     "end": 80.157,
+     "zh": "押四分之一：曲線來到最高點。",
+     "tokens": [
+      {
+       "text": "Bet",
+       "key": false,
+       "start": 77.875,
+       "end": 78.12
+      },
+      {
+       "text": "a",
+       "key": false,
+       "start": 78.248,
+       "end": 78.375
+      },
+      {
+       "text": "quarter:",
+       "key": false,
+       "start": 78.407,
+       "end": 78.92
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 78.938,
+       "end": 78.993
+      },
+      {
+       "text": "curve",
+       "key": false,
+       "start": 79.054,
+       "end": 79.357
+      },
+      {
+       "text": "peaks.",
+       "key": true,
+       "start": 79.429,
+       "end": 80.157
+      }
+     ]
+    },
+    {
+     "start": 80.229,
+     "end": 81.757,
+     "zh": "這就是凱利公式。",
+     "tokens": [
+      {
+       "text": "That's",
+       "key": false,
+       "start": 80.229,
+       "end": 80.593
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 80.629,
+       "end": 80.738
+      },
+      {
+       "text": "Kelly",
+       "key": true,
+       "start": 80.787,
+       "end": 81.029
+      },
+      {
+       "text": "criterion.",
+       "key": true,
+       "start": 81.095,
+       "end": 81.757
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "scene": "rerun",
+   "start": 82.521,
+   "end": 97.044,
+   "lines": [
+    {
+     "start": 82.521,
+     "end": 85.649,
+     "zh": "同樣一千個人、同樣的正反面，只押 25%。",
+     "tokens": [
+      {
+       "text": "Same",
+       "key": false,
+       "start": 82.521,
+       "end": 82.74
+      },
+      {
+       "text": "thousand",
+       "key": false,
+       "start": 82.78,
+       "end": 83.103
+      },
+      {
+       "text": "people,",
+       "key": false,
+       "start": 83.155,
+       "end": 83.758
+      },
+      {
+       "text": "same",
+       "key": false,
+       "start": 83.83,
+       "end": 84.121
+      },
+      {
+       "text": "flips,",
+       "key": false,
+       "start": 84.194,
+       "end": 84.776
+      },
+      {
+       "text": "betting",
+       "key": false,
+       "start": 84.812,
+       "end": 85.067
+      },
+      {
+       "text": "a",
+       "key": false,
+       "start": 85.103,
+       "end": 85.14
+      },
+      {
+       "text": "quarter.",
+       "key": false,
+       "start": 85.185,
+       "end": 85.649
+      }
+     ]
+    },
+    {
+     "start": 85.926,
+     "end": 89.435,
+     "zh": "正中間的人，現在有 186 元。",
+     "tokens": [
+      {
+       "text": "The",
+       "key": false,
+       "start": 85.926,
+       "end": 86.308
+      },
+      {
+       "text": "middle",
+       "key": false,
+       "start": 86.339,
+       "end": 86.526
+      },
+      {
+       "text": "person",
+       "key": false,
+       "start": 86.599,
+       "end": 87.035
+      },
+      {
+       "text": "now",
+       "key": false,
+       "start": 87.071,
+       "end": 87.18
+      },
+      {
+       "text": "has",
+       "key": false,
+       "start": 87.235,
+       "end": 87.399
+      },
+      {
+       "text": "$186.",
+       "key": true,
+       "start": 87.471,
+       "end": 89.435
+      }
+     ]
+    },
+    {
+     "start": 89.483,
+     "end": 91.108,
+     "zh": "七成的人最後是賺的。",
+     "tokens": [
+      {
+       "text": "Seven",
+       "key": false,
+       "start": 89.483,
+       "end": 89.726
+      },
+      {
+       "text": "in",
+       "key": false,
+       "start": 89.799,
+       "end": 89.944
+      },
+      {
+       "text": "ten",
+       "key": false,
+       "start": 90.035,
+       "end": 90.308
+      },
+      {
+       "text": "finish",
+       "key": false,
+       "start": 90.35,
+       "end": 90.599
+      },
+      {
+       "text": "ahead.",
+       "key": true,
+       "start": 90.66,
+       "end": 91.108
+      }
+     ]
+    },
+    {
+     "start": 91.217,
+     "end": 93.435,
+     "zh": "全體平均？只剩 364 元。",
+     "tokens": [
+      {
+       "text": "The",
+       "key": false,
+       "start": 91.217,
+       "end": 91.544
+      },
+      {
+       "text": "average?",
+       "key": false,
+       "start": 91.599,
+       "end": 91.981
+      },
+      {
+       "text": "Just",
+       "key": false,
+       "start": 92.082,
+       "end": 92.49
+      },
+      {
+       "text": "$364.",
+       "key": false,
+       "start": 92.526,
+       "end": 93.435
+      }
+     ]
+    },
+    {
+     "start": 93.756,
+     "end": 97.053,
+     "zh": "凱利讓平均變難看，卻讓你變有錢。",
+     "tokens": [
+      {
+       "text": "Kelly",
+       "key": false,
+       "start": 93.756,
+       "end": 94.362
+      },
+      {
+       "text": "makes",
+       "key": false,
+       "start": 94.399,
+       "end": 94.58
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 94.599,
+       "end": 94.653
+      },
+      {
+       "text": "average",
+       "key": false,
+       "start": 94.708,
+       "end": 95.09
+      },
+      {
+       "text": "look",
+       "key": false,
+       "start": 95.133,
+       "end": 95.308
+      },
+      {
+       "text": "worse,",
+       "key": true,
+       "start": 95.369,
+       "end": 95.926
+      },
+      {
+       "text": "and",
+       "key": false,
+       "start": 95.99,
+       "end": 96.18
+      },
+      {
+       "text": "makes",
+       "key": false,
+       "start": 96.217,
+       "end": 96.399
+      },
+      {
+       "text": "you",
+       "key": true,
+       "start": 96.417,
+       "end": 96.471
+      },
+      {
+       "text": "richer.",
+       "key": false,
+       "start": 96.523,
+       "end": 97.053
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "scene": "coda",
+   "start": 97.944,
+   "end": 101.43,
+   "lines": [
+    {
+     "start": 97.944,
+     "end": 99.108,
+     "zh": "硬幣從頭到尾都沒變。",
+     "tokens": [
+      {
+       "text": "The",
+       "key": false,
+       "start": 97.944,
+       "end": 98.017
+      },
+      {
+       "text": "coin",
+       "key": false,
+       "start": 98.075,
+       "end": 98.308
+      },
+      {
+       "text": "never",
+       "key": false,
+       "start": 98.344,
+       "end": 98.526
+      },
+      {
+       "text": "changed.",
+       "key": false,
+       "start": 98.589,
+       "end": 99.108
+      }
+     ]
+    },
+    {
+     "start": 99.238,
+     "end": 101.435,
+     "zh": "變的，只有你把多少押了上去。",
+     "tokens": [
+      {
+       "text": "Only",
+       "key": false,
+       "start": 99.238,
+       "end": 99.762
+      },
+      {
+       "text": "how",
+       "key": false,
+       "start": 99.817,
+       "end": 99.98
+      },
+      {
+       "text": "much",
+       "key": false,
+       "start": 100.024,
+       "end": 100.198
+      },
+      {
+       "text": "of",
+       "key": false,
+       "start": 100.223,
+       "end": 100.271
+      },
+      {
+       "text": "yourself",
+       "key": true,
+       "start": 100.319,
+       "end": 100.708
+      },
+      {
+       "text": "you",
+       "key": false,
+       "start": 100.744,
+       "end": 100.853
+      },
+      {
+       "text": "put",
+       "key": false,
+       "start": 100.908,
+       "end": 101.071
+      },
+      {
+       "text": "on",
+       "key": false,
+       "start": 101.119,
+       "end": 101.217
+      },
+      {
+       "text": "it.",
+       "key": false,
+       "start": 101.265,
+       "end": 101.435
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "scene": "share",
+   "start": 102.03,
+   "end": 108.878,
+   "lines": [
+    {
+     "start": 102.03,
+     "end": 104.503,
+     "zh": "追蹤我，然後把這支傳給那個總說",
+     "tokens": [
+      {
+       "text": "Follow,",
+       "key": false,
+       "start": 102.03,
+       "end": 102.685
+      },
+      {
+       "text": "and",
+       "key": false,
+       "start": 102.721,
+       "end": 102.83
+      },
+      {
+       "text": "send",
+       "key": false,
+       "start": 102.889,
+       "end": 103.121
+      },
+      {
+       "text": "this",
+       "key": false,
+       "start": 103.15,
+       "end": 103.267
+      },
+      {
+       "text": "to",
+       "key": false,
+       "start": 103.315,
+       "end": 103.412
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 103.43,
+       "end": 103.485
+      },
+      {
+       "text": "friend",
+       "key": false,
+       "start": 103.527,
+       "end": 103.776
+      },
+      {
+       "text": "who",
+       "key": false,
+       "start": 103.812,
+       "end": 103.921
+      },
+      {
+       "text": "says,",
+       "key": false,
+       "start": 104.009,
+       "end": 104.503
+      }
+     ]
+    },
+    {
+     "start": 104.721,
+     "end": 107.194,
+     "zh": "「期望值是正的啊」",
+     "tokens": [
+      {
+       "text": "“but",
+       "key": false,
+       "start": 104.721,
+       "end": 105.012
+      },
+      {
+       "text": "the",
+       "key": false,
+       "start": 105.049,
+       "end": 105.158
+      },
+      {
+       "text": "expected",
+       "key": false,
+       "start": 105.222,
+       "end": 105.74
+      },
+      {
+       "text": "value",
+       "key": false,
+       "start": 105.8,
+       "end": 106.103
+      },
+      {
+       "text": "is",
+       "key": false,
+       "start": 106.151,
+       "end": 106.249
+      },
+      {
+       "text": "positive,”",
+       "key": true,
+       "start": 106.313,
+       "end": 107.194
+      }
+     ]
+    },
+    {
+     "start": 107.23,
+     "end": 108.867,
+     "zh": "然後就直接全押的朋友。",
+     "tokens": [
+      {
+       "text": "right",
+       "key": false,
+       "start": 107.23,
+       "end": 107.412
+      },
+      {
+       "text": "before",
+       "key": false,
+       "start": 107.454,
+       "end": 107.703
+      },
+      {
+       "text": "going",
+       "key": false,
+       "start": 107.751,
+       "end": 107.994
+      },
+      {
+       "text": "all",
+       "key": true,
+       "start": 108.03,
+       "end": 108.14
+      },
+      {
+       "text": "in.",
+       "key": true,
+       "start": 108.237,
+       "end": 108.867
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

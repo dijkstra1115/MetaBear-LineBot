@@ -1,0 +1,16 @@
+renders/
+snapshots/
+.hyperframes/
+.thumbnails/
+.waveform-cache/
+check.log
+scripts/.chars.txt
+# Audio is rebuilt by scripts/timeline.py and scripts/score.py. The downloaded effects can't be
+# redistributed; the narration takes (ElevenLabs, credits to re-record) are kept as MP3 + alignment.
+assets/audio/*
+!assets/audio/vo/
+assets/audio/vo/*
+!assets/audio/vo/*.mp3
+!assets/audio/vo/*.align.json
+# The repo-wide lib/ rule would drop the vendored GSAP the film loads offline.
+!lib/

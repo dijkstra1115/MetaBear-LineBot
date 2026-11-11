@@ -1,0 +1,81 @@
+<template>
+  <style>
+    @font-face { font-family: "Montserrat"; src: url("assets/fonts/montserrat-latin-700-normal.woff2") format("woff2"); font-weight: 700; }
+    @font-face { font-family: "Montserrat"; src: url("assets/fonts/montserrat-latin-800-normal.woff2") format("woff2"); font-weight: 800; }
+    @font-face { font-family: "League Gothic"; src: url("assets/fonts/league-gothic-latin-400-normal.woff2") format("woff2"); font-weight: 400; }
+    @font-face { font-family: "Noto Sans TC Sub"; src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; pointer-events: none; font-family: Montserrat, sans-serif; color: #f1e8d2; }
+    #sh-sheet { position: absolute; left: 70px; top: 700px; width: 940px; height: 600px; border-radius: 34px; background: #f3ecdc; color: #13231c; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45); overflow: hidden; }
+    #sh-grab { position: absolute; left: 430px; top: 18px; width: 80px; height: 8px; border-radius: 4px; background: rgba(19, 35, 28, 0.2); }
+    #sh-head { position: absolute; left: 40px; top: 52px; right: 40px; height: 170px; display: flex; gap: 28px; align-items: center; }
+    #sh-thumb { width: 118px; height: 170px; border-radius: 16px; background: #1f5c45; position: relative; flex: none; overflow: hidden; }
+    #sh-thumb .coin { position: absolute; left: 22px; top: 48px; width: 74px; height: 74px; border-radius: 50%; background: radial-gradient(circle at 38% 34%, #f3cf7a, #c38d34 70%); display: flex; align-items: center; justify-content: center; font-family: "League Gothic", sans-serif; font-size: 34px; color: #6a4614; }
+    #sh-title { flex: 1; font-weight: 800; font-size: 34px; line-height: 1.18; }
+    #sh-title small { display: block; margin-top: 10px; font-weight: 700; font-size: 28px; color: rgba(19, 35, 28, 0.6); }
+    #sh-follow { flex: none; width: 200px; height: 74px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 30px; position: relative; }
+    #sh-follow .a, #sh-follow .b { position: absolute; inset: 0; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+    #sh-follow .a { background: #13231c; color: #f3ecdc; }
+    #sh-follow .b { background: transparent; border: 3px solid rgba(19, 35, 28, 0.35); color: #13231c; opacity: 0; }
+    #sh-to { position: absolute; left: 40px; top: 250px; font-weight: 800; font-size: 28px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(19, 35, 28, 0.55); }
+    #sh-people { position: absolute; left: 40px; right: 40px; top: 296px; display: flex; justify-content: space-between; }
+    .p { width: 190px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; }
+    .av { width: 128px; height: 128px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 46px; color: #f3ecdc; position: relative; }
+    .nm { font-weight: 700; font-size: 30px; }
+    #sh-ring { position: absolute; left: 25px; top: -9px; width: 140px; height: 140px; border-radius: 50%; border: 6px solid #e8b44c; opacity: 0; }
+    #sh-check { position: absolute; left: 124px; top: 86px; width: 48px; height: 48px; border-radius: 50%; background: #e8b44c; border: 4px solid #f3ecdc; opacity: 0; }
+    #sh-check::after { content: ""; position: absolute; left: 13px; top: 7px; width: 10px; height: 20px; border-right: 5px solid #13231c; border-bottom: 5px solid #13231c; transform: rotate(45deg); }
+    #sh-send { position: absolute; left: 40px; right: 40px; bottom: 40px; height: 92px; border-radius: 18px; background: #13231c; color: #f3ecdc; font-weight: 800; font-size: 34px; letter-spacing: 0.06em; }
+    #sh-send .a, #sh-send .b { position: absolute; inset: 0; border-radius: 18px; display: flex; align-items: center; justify-content: center; }
+    #sh-send .b { background: #e8b44c; color: #13231c; opacity: 0; }
+    #sh-quote { position: absolute; left: 336px; top: 838px; padding: 22px 30px; border-radius: 22px; background: #13231c; color: #f3ecdc; font-weight: 800; font-size: 34px; white-space: nowrap; box-shadow: 0 16px 30px rgba(0, 0, 0, 0.35); }
+    #sh-quote::after { content: ""; position: absolute; left: 92px; bottom: -18px; border-top: 20px solid #13231c; border-left: 16px solid transparent; border-right: 16px solid transparent; }
+    #sh-quote small { display: block; margin-top: 6px; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 500; font-size: 30px; color: rgba(243, 236, 220, 0.72); }
+    #sh-note { position: absolute; left: 0; width: 1080px; top: 636px; text-align: center; font-weight: 700; font-size: 28px; letter-spacing: 0.1em; color: rgba(241, 232, 210, 0.78); }
+    #sh-note span { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 500; letter-spacing: 0.08em; }
+  </style>
+  <div data-hf-id="hf-w13h" id="root" data-composition-id="share" data-start="0" data-duration="9.648" data-width="1080" data-height="1920">
+    <div data-hf-id="hf-ag0y" id="sh-sheet" data-layout-allow-overlap="" class="clip" data-start="0" data-duration="9.648" data-track-index="0">
+      <div data-hf-id="hf-zurn" id="sh-grab"></div>
+      <div data-hf-id="hf-jccb" id="sh-head">
+        <div data-hf-id="hf-bowr" id="sh-thumb"><div data-hf-id="hf-nsn2" class="coin">×1.5</div></div>
+        <div data-hf-id="hf-hpre" id="sh-title">The coin that pays +5% and still bankrupts you<small data-hf-id="hf-taw8">Ergodicity &amp; the Kelly criterion</small></div>
+        <div data-hf-id="hf-6bqu" id="sh-follow" data-layout-allow-overlap=""><div data-hf-id="hf-adxw" class="a" data-layout-allow-overlap="">Follow</div><div data-hf-id="hf-pyzz" class="b" data-layout-allow-overlap="">Following</div></div>
+      </div>
+      <div data-hf-id="hf-02zt" id="sh-to">Send to</div>
+      <div data-hf-id="hf-l9y0" id="sh-people">
+        <div data-hf-id="hf-uty0" class="p"><div data-hf-id="hf-g0lb" class="av" style="background: #4f625a">A</div><div data-hf-id="hf-k08v" class="nm">Alex</div></div>
+        <div data-hf-id="hf-buae" class="p" id="sh-jordan"><div data-hf-id="hf-k2l1" class="av" style="background: #b8372c">J</div><div data-hf-id="hf-fvrd" class="nm">Jordan</div><div data-hf-id="hf-rht3" id="sh-ring"></div><div data-hf-id="hf-0j93" id="sh-check"></div></div>
+        <div data-hf-id="hf-4r5c" class="p"><div data-hf-id="hf-f5s0" class="av" style="background: #47546e">S</div><div data-hf-id="hf-uxpq" class="nm">Sam</div></div>
+        <div data-hf-id="hf-3k89" class="p"><div data-hf-id="hf-in1k" class="av" style="background: #6e5236">M</div><div data-hf-id="hf-fcy4" class="nm">Mia</div></div>
+      </div>
+      <div data-hf-id="hf-f4oj" id="sh-send" data-layout-allow-overlap=""><div data-hf-id="hf-t8ff" class="a" data-layout-allow-overlap="">Send</div><div data-hf-id="hf-wnmv" class="b" data-layout-allow-overlap="">Sent ✓</div></div>
+    </div>
+    <div data-hf-id="hf-c82b" id="sh-quote" data-layout-allow-occlusion="" data-layout-allow-overlap="" class="clip" data-start="0" data-duration="9.648" data-track-index="1">“but the EV is positive”<small data-hf-id="hf-43gh">「期望值是正的啊」</small></div>
+    <div data-hf-id="hf-tg9m" id="sh-note" class="clip" data-start="0" data-duration="9.648" data-track-index="2">Not investment advice · <span data-hf-id="hf-z7e7">非投資建議</span></div>
+  </div>
+  <script src="assets/data/timeline.js"></script>
+  <script src="assets/js/beats.js"></script>
+  <script>
+    (function () {
+      const B = window.BEATS;
+      const T0 = B.share - 0.2; // this scene's host starts here
+      const at = (x) => x - T0;
+      const tl = gsap.timeline({ paused: true });
+      // The sheet rises from below the frame and settles (spring ~0.8).
+      tl.fromTo("#sh-sheet", { y: 1300 }, { y: 0, duration: 0.7, ease: "expo.out" }, 0);
+      tl.fromTo("#sh-follow .b", { opacity: 0 }, { opacity: 1, duration: 0.18 }, at(B.share + 0.35));
+      tl.fromTo("#sh-follow .a", { opacity: 1 }, { opacity: 0, duration: 0.18 }, at(B.share + 0.35));
+      tl.fromTo("#sh-follow", { scale: 1 }, { scale: 0.93, duration: 0.08, yoyo: true, repeat: 1, ease: "power2.inOut" }, at(B.share + 0.3));
+      tl.fromTo("#sh-ring", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.6)" }, at(B.friend));
+      tl.fromTo("#sh-check", { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, at(B.friend + 0.12));
+      tl.fromTo("#sh-quote", { opacity: 0, y: 30, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "expo.out" }, at(B.positive - 1.2));
+      tl.to("#sh-quote", { opacity: 0, duration: 0.2, ease: "power2.in" }, at(B.allIn - 0.25));
+      tl.fromTo("#sh-send", { scale: 1 }, { scale: 0.96, duration: 0.08, yoyo: true, repeat: 1, ease: "power2.inOut" }, at(B.allIn - 0.05));
+      tl.fromTo("#sh-send .b", { opacity: 0 }, { opacity: 1, duration: 0.16 }, at(B.allIn + 0.05));
+      tl.fromTo("#sh-note", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.4, ease: "power2.out" }, at(B.allIn + 0.5));
+      tl.set({}, {}, 9.648);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["share"] = tl;
+    })();
+  </script>
+</template>

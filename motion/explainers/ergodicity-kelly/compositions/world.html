@@ -1,0 +1,140 @@
+<template>
+  <style>
+    @font-face { font-family: "League Gothic"; src: url("assets/fonts/league-gothic-latin-400-normal.woff2") format("woff2"); font-weight: 400; }
+    @font-face { font-family: "Montserrat"; src: url("assets/fonts/montserrat-latin-600-normal.woff2") format("woff2"); font-weight: 600; }
+    @font-face { font-family: "Montserrat"; src: url("assets/fonts/montserrat-latin-700-normal.woff2") format("woff2"); font-weight: 700; }
+    @font-face { font-family: "Montserrat"; src: url("assets/fonts/montserrat-latin-800-normal.woff2") format("woff2"); font-weight: 800; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: #040907; }
+    #world-canvas { position: absolute; inset: 0; width: 1080px; height: 1920px; display: block; }
+    #world-ui { position: absolute; inset: 0; pointer-events: none; color: #f1e8d2; font-family: Montserrat, sans-serif; }
+    #world-ui > * { position: absolute; left: 0; top: 0; visibility: hidden; opacity: 0; will-change: transform, opacity, filter; }
+    .cap { font-weight: 800; font-size: 30px; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; line-height: 1; }
+    .num { font-family: "League Gothic", sans-serif; font-weight: 400; line-height: 0.86; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; white-space: nowrap; }
+    .gold { color: #e8b44c; }
+    .red { color: #f0604a; }
+    .dim { opacity: 0.72; }
+    /* Labels on things: vertical (v) with the line down to the point, side (l / r) with the line level. */
+    .lbl .lbl-in { display: flex; align-items: center; }
+    .lbl.v .lbl-in { flex-direction: column; transform: translate(-50%, -100%); }
+    .lbl.l .lbl-in { flex-direction: row; transform: translate(-100%, -50%); }
+    .lbl.r .lbl-in { flex-direction: row; transform: translate(0, -50%); }
+    .lead { background: currentColor; flex: none; }
+    .lbl.v .lead { width: 3px; height: 60px; margin-top: 12px; }
+    .lbl.l .lead { height: 3px; width: 60px; margin-left: 16px; }
+    .lbl.r .lead { height: 3px; width: 60px; margin-right: 16px; }
+    .plate { padding: 10px 16px 9px; background: rgba(4, 12, 9, 0.62); border-radius: 6px; }
+    .slab { background: rgba(4, 11, 8, 0.72); border-radius: 26px; padding: 26px 34px 30px; }
+    /* Fixed screen-space pieces. */
+    .row { width: 1080px; display: flex; justify-content: center; align-items: baseline; gap: 28px; }
+    .stackc { width: 1080px; display: flex; flex-direction: column; align-items: center; }
+    #o-heads, #o-heads2 { transform: translate(64px, 840px); }
+    #o-tails, #o-tails2 { transform: translate(796px, 840px); }
+    .rule { width: 220px; display: flex; flex-direction: column; gap: 10px; }
+    #o-tails .rule, #o-tails2 .rule { align-items: flex-end; }
+    .rule .num { font-size: 118px; }
+    #o-rule-h { transform: translate(64px, 1010px); }
+    #o-rule-t { transform: translate(796px, 1010px); }
+    #o-rule-t .rule { align-items: flex-end; }
+    .sidec { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .sidec .num { font-size: 104px; }
+    #o-ev { transform: translate(0, 560px); }
+    #o-ev .num { font-size: 170px; }
+    #o-hook { transform: translate(0, 560px); }
+    #o-hook-num { font-size: 270px; }
+    #o-avgdef { transform: translate(0, 1170px); }
+    #o-avgdef .cap { font-size: 38px; }
+    #o-avg5 { transform: translate(0, 555px); }
+    #o-you5 { transform: translate(0, 830px); }
+    #o-avg5 .num, #o-you5 .num { font-size: 250px; }
+    #o-crowd, #o-crowd2 { transform: translate(0, 560px); }
+    .duo { width: 960px; margin: 0 60px; display: flex; justify-content: center; gap: 40px; background: rgba(4, 11, 8, 0.72); border-radius: 26px; padding: 24px 0 28px; }
+    .duo > div { display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 420px; }
+    .duo .num { font-size: 168px; }
+    .flipc { width: 1080px; text-align: center; margin-bottom: 18px; font-size: 30px; color: rgba(241, 232, 210, 0.9); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85); }
+    #o-poorer { transform: translate(0, 1215px); }
+    #o-ahead { transform: translate(0, 1215px); }
+    #o-tower { transform: translate(0, 590px); }
+    #o-tower .stackc { width: 820px; margin: 0 130px; }
+    #o-tower-num { font-size: 220px; }
+    #o-share73 { transform: translate(60px, 880px); width: 960px; }
+    .bar { position: relative; width: 892px; height: 34px; background: rgba(241, 232, 210, 0.22); border-radius: 3px; overflow: hidden; margin: 18px 0 16px; }
+    #o-bar-fill { position: absolute; inset: 0; background: #e8b44c; transform-origin: 0 50%; transform: scaleX(0); }
+    .barl { width: 892px; display: flex; justify-content: space-between; }
+    #o-was { font-size: 70px; position: relative; display: inline-block; margin-bottom: 8px; }
+    #o-was::after { content: ""; position: absolute; left: -6px; right: -6px; top: 46%; height: 7px; background: #d9483b; }
+    #o-compare { transform: translate(60px, 590px); width: 960px; padding: 40px 0 0; background: rgba(4, 11, 8, 0.74); border-radius: 26px; }
+    .cmp { width: 960px; display: grid; grid-template-columns: 210px 330px 80px 300px; align-items: center; justify-content: center; margin-bottom: 44px; }
+    .cmp .num { font-size: 150px; text-align: right; }
+    .cmp .arrow { width: 54px; height: 6px; background: currentColor; position: relative; justify-self: center; }
+    .cmp .arrow::after { content: ""; position: absolute; right: -4px; top: -13px; border-left: 26px solid currentColor; border-top: 16px solid transparent; border-bottom: 16px solid transparent; }
+    .cmp > .cap { text-align: left; padding-left: 40px; }
+  </style>
+  <div data-hf-id="hf-lpup" id="root" data-composition-id="world" data-start="0" data-duration="111.478" data-width="1080" data-height="1920">
+    <canvas data-hf-id="hf-kh1v" id="world-canvas" width="1080" height="1920"></canvas>
+    <div data-hf-id="hf-6lsu" id="world-ui">
+      <!-- 1. Hook -->
+      <div data-hf-id="hf-bsfi" id="o-heads"><div data-hf-id="hf-a46i" class="rule"><span data-hf-id="hf-qrju" class="cap">Heads</span><span data-hf-id="hf-16im" class="num gold">×1.5</span></div></div>
+      <div data-hf-id="hf-4uym" id="o-tails"><div data-hf-id="hf-ya9a" class="rule"><span data-hf-id="hf-9lcq" class="cap">Tails</span><span data-hf-id="hf-25bh" class="num red">×0.6</span></div></div>
+      <div data-hf-id="hf-x988" id="o-ev"><div data-hf-id="hf-vw6j" class="stackc"><span data-hf-id="hf-k0ai" class="num">+5%</span><span data-hf-id="hf-s4ar" class="cap">a flip, on average</span></div></div>
+      <div data-hf-id="hf-bemw" id="o-hook"><div data-hf-id="hf-09sb" class="stackc"><span data-hf-id="hf-2btf" id="o-hook-flip" class="cap dim">FLIP 0 / 100</span><span data-hf-id="hf-jkzs" id="o-hook-num" class="num" style="margin-top: 22px">$100</span></div></div>
+      <!-- 2. Split -->
+      <div data-hf-id="hf-cwdd" id="o-you" class="lbl v gold"><div data-hf-id="hf-fx2a" class="lbl-in"><span data-hf-id="hf-rzfm" class="cap plate">You</span><div data-hf-id="hf-wnrm" class="lead"></div></div></div>
+      <div data-hf-id="hf-54lk" id="o-avgdef"><div data-hf-id="hf-zvha" class="stackc"><span data-hf-id="hf-4yxv" class="cap plate">The average = all of you ÷ 1,000</span></div></div>
+      <!-- 3–4. Pair and gap -->
+      <div data-hf-id="hf-01pz" id="o-val" class="lbl v"><div data-hf-id="hf-6fwm" class="lbl-in"><span data-hf-id="hf-5b0k" id="o-val-num" class="num" style="font-size: 120px">$100</span><div data-hf-id="hf-8lg6" class="lead"></div></div></div>
+      <div data-hf-id="hf-wkjq" id="o-start" class="lbl r"><div data-hf-id="hf-6u7n" class="lbl-in"><div data-hf-id="hf-8zr7" class="lead"></div><span data-hf-id="hf-80vg" class="cap plate">Start $100</span></div></div>
+      <div data-hf-id="hf-mpbo" id="o-rule-h"><div data-hf-id="hf-yokb" class="rule"><span data-hf-id="hf-83oe" class="cap">Heads</span><span data-hf-id="hf-83nw" class="num gold">+50%</span></div></div>
+      <div data-hf-id="hf-btq0" id="o-rule-t"><div data-hf-id="hf-z2vc" class="rule"><span data-hf-id="hf-1bwe" class="cap">Tails</span><span data-hf-id="hf-qbo3" class="num red">−40%</span></div></div>
+      <div data-hf-id="hf-v67d" id="o-down" class="lbl l red"><div data-hf-id="hf-78io" class="lbl-in"><div data-hf-id="hf-ivf4" class="sidec"><span data-hf-id="hf-voix" class="num">−10%</span></div><div data-hf-id="hf-9e28" class="lead"></div></div></div>
+      <div data-hf-id="hf-r6u5" id="o-67" class="lbl l"><div data-hf-id="hf-4gdh" class="lbl-in"><div data-hf-id="hf-i4q0" class="sidec"><span data-hf-id="hf-yq7u" class="num">+67%</span><span data-hf-id="hf-gl1x" class="cap">to get back</span></div><div data-hf-id="hf-6lx1" class="lead"></div></div></div>
+      <div data-hf-id="hf-52wr" id="o-50" class="lbl r gold"><div data-hf-id="hf-4uoi" class="lbl-in"><div data-hf-id="hf-7082" class="lead"></div><div data-hf-id="hf-jr98" class="sidec" style="align-items: flex-start"><span data-hf-id="hf-qhcs" class="num">+50%</span><span data-hf-id="hf-b5dx" class="cap">the coin gives</span></div></div></div>
+      <div data-hf-id="hf-ubcs" id="o-avg5"><div data-hf-id="hf-zh69" class="stackc"><span data-hf-id="hf-xe72" class="num">+5%</span><span data-hf-id="hf-tsz7" class="cap">The average, a flip</span></div></div>
+      <div data-hf-id="hf-kxyb" id="o-you5"><div data-hf-id="hf-z2v8" class="stackc"><span data-hf-id="hf-41we" class="num red">−5%</span><span data-hf-id="hf-j9wb" class="cap red">You, a flip</span></div></div>
+      <!-- 5. Crowd -->
+      <div data-hf-id="hf-3870" id="o-crowd">
+        <div data-hf-id="hf-vkw0" id="o-flip" class="cap flipc dim">FLIP 0 / 100</div>
+        <div data-hf-id="hf-y4bg" class="duo">
+          <div data-hf-id="hf-yeow"><span data-hf-id="hf-76vx" class="cap">The average</span><span data-hf-id="hf-wbc7" id="o-avg-num" class="num">$100</span></div>
+          <div data-hf-id="hf-h3h5" id="o-mid"><span data-hf-id="hf-ldwx" class="cap gold">The middle · you</span><span data-hf-id="hf-wuc9" id="o-mid-num" class="num">$100</span></div>
+        </div>
+      </div>
+      <div data-hf-id="hf-v8vk" id="o-poorer"><div data-hf-id="hf-yok7" class="stackc"><span data-hf-id="hf-qb9h" class="cap plate"><span data-hf-id="hf-aq01" class="red">870</span> of 1,000 lost money</span></div></div>
+      <!-- 6. Tower -->
+      <div data-hf-id="hf-9qz8" id="o-tower"><div data-hf-id="hf-frf9" class="stackc slab"><span data-hf-id="hf-klm0" class="cap dim">One player</span><span data-hf-id="hf-al0e" id="o-tower-num" class="num" style="margin-top: 18px">$110</span></div></div>
+      <div data-hf-id="hf-q26l" id="o-share73" class="slab">
+        <div data-hf-id="hf-wy09" class="barl"><span data-hf-id="hf-4tdn" class="cap gold">This one · 73%</span><span data-hf-id="hf-wvsm" class="cap dim">Everyone else · 27%</span></div>
+        <div data-hf-id="hf-ufsv" class="bar"><div data-hf-id="hf-rheq" id="o-bar-fill"></div></div>
+        <div data-hf-id="hf-idf3" class="cap dim">Of all the money on the table</div>
+      </div>
+      <!-- 9. Rerun -->
+      <div data-hf-id="hf-eyty" id="o-crowd2">
+        <div data-hf-id="hf-ljq2" id="o-flip2" class="cap flipc dim">FLIP 0 / 100 · BETTING 25%</div>
+        <div data-hf-id="hf-folw" class="duo">
+          <div data-hf-id="hf-hsub" id="o-avg2"><span data-hf-id="hf-icv1" id="o-was" class="num dim">$10,257</span><span data-hf-id="hf-gfqp" class="cap">The average</span><span data-hf-id="hf-3rbz" id="o-avg2-num" class="num">$100</span></div>
+          <div data-hf-id="hf-g5yp" id="o-mid2"><span data-hf-id="hf-61et" class="cap gold">The middle · you</span><span data-hf-id="hf-pirt" id="o-mid2-num" class="num gold">$100</span></div>
+        </div>
+      </div>
+      <div data-hf-id="hf-xyto" id="o-ahead"><div data-hf-id="hf-ya96" class="stackc"><span data-hf-id="hf-gjw1" class="cap plate"><span data-hf-id="hf-dvum" class="gold">702</span> of 1,000 finish ahead</span></div></div>
+      <div data-hf-id="hf-jvrm" id="o-compare">
+        <div data-hf-id="hf-s0ul" class="cmp" id="o-cmp-avg"><span data-hf-id="hf-crsq" class="cap">Average</span><span data-hf-id="hf-ulh4" class="num dim">$10,257</span><span data-hf-id="hf-3zg4" class="arrow"></span><span data-hf-id="hf-bkks" class="num">$364</span></div>
+        <div data-hf-id="hf-fywo" class="cmp" id="o-cmp-you"><span data-hf-id="hf-0vb2" class="cap gold">You</span><span data-hf-id="hf-1s0f" class="num red">$0.52</span><span data-hf-id="hf-qbxa" class="arrow gold"></span><span data-hf-id="hf-lhm2" class="num gold">$186</span></div>
+      </div>
+      <!-- 8 / 10. Bet size -->
+      <div data-hf-id="hf-ndlh" id="o-bet25k" class="lbl v gold"><div data-hf-id="hf-58zj" class="lbl-in"><span data-hf-id="hf-2lcq" class="cap plate">Bet 25%</span><div data-hf-id="hf-7ej3" class="lead"></div></div></div>
+      <div data-hf-id="hf-yyca" id="o-bet25" class="lbl v gold"><div data-hf-id="hf-5nak" class="lbl-in"><span data-hf-id="hf-po72" class="cap plate">Bet 25%</span><div data-hf-id="hf-7su4" class="lead"></div></div></div>
+      <div data-hf-id="hf-ensw" id="o-heads2"><div data-hf-id="hf-waq5" class="rule"><span data-hf-id="hf-8hzf" class="cap">Heads</span><span data-hf-id="hf-t63m" class="num gold">×1.5</span></div></div>
+      <div data-hf-id="hf-v58w" id="o-tails2"><div data-hf-id="hf-wp16" class="rule"><span data-hf-id="hf-1q7f" class="cap">Tails</span><span data-hf-id="hf-ntwh" class="num red">×0.6</span></div></div>
+    </div>
+  </div>
+  <script src="assets/data/timeline.js"></script>
+  <script src="assets/data/sim.js"></script>
+  <script src="assets/js/model.js"></script>
+  <script src="assets/js/beats.js"></script>
+  <script src="assets/js/world.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const worldTl = gsap.timeline({ paused: true });
+    worldTl.set({}, {}, 111.478);
+    window.__timelines["world"] = worldTl;
+  </script>
+</template>
