@@ -77,8 +77,10 @@
 }
 .rate-controls button:disabled,
 .rate-inputs input:disabled {
-  opacity: 0.5;
-  cursor: default;
+  border-color: var(--line);
+  background: var(--bg-3);
+  color: var(--dim);
+  cursor: not-allowed;
 }
 .rate-controls button:focus-visible,
 .rate-inputs input:focus-visible {
@@ -538,8 +540,10 @@
   color: var(--text-2);
 }
 .viewer-nav button:disabled {
-  opacity: 0.3;
-  cursor: default;
+  border-color: var(--line);
+  background: transparent;
+  color: var(--dim);
+  cursor: not-allowed;
 }
 @media (max-width: 760px) {
   .learn-main {
