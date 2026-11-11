@@ -1,0 +1,67 @@
+{
+  "voice": { "name": "Brian", "id": "nPczCjzI2devNBz1zQrb", "model": "eleven_v3" },
+  "notes": "en is the caption text. {shown|spoken} shows the first part on screen and sends the second to TTS; *word* is a highlighted keyword. zh is the subtitle line under it.",
+  "chunks": [
+    { "id": 1, "scene": "hook", "lines": [
+      { "en": "This coin pays you {+5%|five percent} per flip, *on average*.", "zh": "這枚硬幣，每丟一次平均讓你賺 5%。" },
+      { "en": "Bet everything on it, every time,", "zh": "但只要你每次都全押，" },
+      { "en": "and it will almost certainly *wipe you out*.", "zh": "你幾乎一定會輸到歸零。" }
+    ]},
+    { "id": 2, "scene": "split", "lines": [
+      { "en": "So who is the average *lying* to?", "zh": "那期望值到底在騙誰？" },
+      { "en": "Nobody. It's just not about *you*.", "zh": "誰都沒騙。它說的根本不是你。" },
+      { "en": "It's about a *thousand* parallel yous, added together.", "zh": "而是一千個平行宇宙的你，加起來。" }
+    ]},
+    { "id": 3, "scene": "pair", "lines": [
+      { "en": "You start with {$100|a hundred dollars}.", "zh": "你帶 100 元坐下。" },
+      { "en": "Heads: {+50%|plus fifty percent}. Tails: {−40%|minus forty}.", "zh": "正面 +50%，反面 −40%。" },
+      { "en": "Win once: {150|one-fifty}. Lose once: *{90|ninety}*.", "zh": "贏一次：150。輸一次：90。" },
+      { "en": "One win, one loss, and you're *down* {10%|ten percent}.", "zh": "一勝一敗，你反而少了 10%。" }
+    ]},
+    { "id": 4, "scene": "gap", "lines": [
+      { "en": "After a {40%|forty percent} drop, you need *{67%|sixty-seven percent}* just to get back.", "zh": "跌掉 40% 之後，要漲 67% 才回得來。" },
+      { "en": "The coin only gives you {50|fifty}.", "zh": "硬幣最多只給你 50%。" },
+      { "en": "So the average gains {5%|five percent} a flip.", "zh": "所以平均每把 +5%，" },
+      { "en": "*You* lose five.", "zh": "你卻每把 −5%。" }
+    ]},
+    { "id": 5, "scene": "crowd", "lines": [
+      { "en": "Now let {1,000|a thousand} of you flip {100|a hundred} times.", "zh": "現在讓一千個你，各丟 100 次。" },
+      { "en": "The average shoots past *{$10,000|ten thousand dollars}*.", "zh": "全體平均衝破一萬元。" },
+      { "en": "But the person in the middle has *{52¢|fifty-two cents}*.", "zh": "但正中間的那個人，只剩 5 毛錢。" }
+    ]},
+    { "id": 6, "scene": "tower", "lines": [
+      { "en": "So where did the money go? To *this* one.", "zh": "錢去哪了？在這一個人身上。" },
+      { "en": "*{$7.5 million|Seven and a half million}*.", "zh": "750 萬。" },
+      { "en": "{73%|Seventy-three percent} of all the money.", "zh": "全部財富的 73%。" }
+    ]},
+    { "id": 7, "scene": "paths", "lines": [
+      { "en": "Everyone's average is the *ensemble average*.", "zh": "所有人的平均，叫「集合平均」。" },
+      { "en": "Your one path is the *time average*.", "zh": "你一個人走下去的路，叫「時間平均」。" },
+      { "en": "When they match, a game is *ergodic*. This one isn't.", "zh": "兩者相等叫「遍歷」。這個遊戲不是。" },
+      { "en": "And you only live in *one* universe.", "zh": "而你，只活在其中一個宇宙。" }
+    ]},
+    { "id": 8, "scene": "kelly", "lines": [
+      { "en": "So the fix isn't to play less. It's to *bet less*.", "zh": "解法不是少玩，是少押。" },
+      { "en": "Bet it all: you shrink {5%|five percent} a flip.", "zh": "全押：每把縮水 5%。" },
+      { "en": "Bet half: you go *nowhere*.", "zh": "押一半：原地踏步。" },
+      { "en": "Bet a quarter: the curve *peaks*.", "zh": "押四分之一：曲線來到最高點。" },
+      { "en": "That's the *Kelly criterion*.", "zh": "這就是凱利公式。" }
+    ]},
+    { "id": 9, "scene": "rerun", "lines": [
+      { "en": "Same thousand people, same flips, betting a quarter.", "zh": "同樣一千個人、同樣的正反面，只押 25%。" },
+      { "en": "The middle person now has *{$186|a hundred and eighty-six dollars}*.", "zh": "正中間的人，現在有 186 元。" },
+      { "en": "Seven in ten finish *ahead*.", "zh": "七成的人最後是賺的。" },
+      { "en": "The average? Just {$364|three sixty-four}.", "zh": "全體平均？只剩 364 元。" },
+      { "en": "Kelly makes the average look *worse*, and makes *you* richer.", "zh": "凱利讓平均變難看，卻讓你變有錢。" }
+    ]},
+    { "id": 10, "scene": "coda", "lines": [
+      { "en": "The coin never changed.", "zh": "硬幣從頭到尾都沒變。" },
+      { "en": "Only how much of *yourself* you put on it.", "zh": "變的，只有你把多少押了上去。" }
+    ]},
+    { "id": 11, "scene": "share", "lines": [
+      { "en": "Follow, and send this to the friend who says,", "zh": "追蹤我，然後把這支傳給那個總說" },
+      { "en": "“but the expected value is *positive*,”", "zh": "「期望值是正的啊」" },
+      { "en": "right before going *all in*.", "zh": "然後就直接全押的朋友。" }
+    ]}
+  ]
+}

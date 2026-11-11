@@ -13,6 +13,7 @@
 | [flow-arena/](flow-arena/README.md) | FLOW ARENA 宣傳片：launch、gameplay、promo、trailer、surge、flagship 旗艦廣告，與排行榜精彩重播 highlights 系列 | HyperFrames；flagship 用自己的 Canvas + CPU 後製管線 |
 | [replays/](replays/) | 策略實戰覆盤片（9:16 旁白，Charon 男聲＋程式合成音效）：`2025-12-09/`（策略實戰 01，製作中，接續步驟見其 BRIEF.md）、`2026-02-06/`（第一部原型） | HyperFrames：Canvas 繪圖＋CSS 3D 攝影機 |
 | [platform/showreel/](platform/showreel/BRIEF.md) | 30 秒「實盤覆盤＋盤面旁白＋訂單流軟體」片：同一段行情一鏡到底連開四筆，止盈爆發時拉遠成整面案例牆，收在功能環繞；配樂與音效全部程式合成，16:9 60 fps | HyperFrames：實機逐格錄影 |
+| [explainers/ergodicity-kelly/](explainers/ergodicity-kelly/README.md) | 111 秒科普短片「遍歷性悖論與凱利公式」：英文旁白（ElevenLabs Brian）＋中英字幕，檯燈下的賭桌、硬幣與 1,000 疊籌碼（真實比例），9:16 | HyperFrames：Three.js 連續 3D 世界＋程式合成配樂 |
 | out/ | **所有完成的影片**，以及截圖、參考片與暫存（不進 Git）；見下方「成品在哪裡」 | — |
 | [audio-library/](audio-library/README.md) | **音樂、音效、人聲素材庫**：歌曲、下載音效、合成音效試做、旁白聲線試聽（只有 README 進 Git） | — |
 
