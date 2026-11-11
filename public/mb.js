@@ -43,7 +43,7 @@ export function initHeader() {
       menu.focus();
     }
   });
-  matchMedia("(min-width: 861px)").addEventListener("change", (e) => e.matches && setMenu(false));
+  matchMedia("(min-width: 961px)").addEventListener("change", (e) => e.matches && setMenu(false));
 }
 
 export function initReveal(root = doc) {

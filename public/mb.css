@@ -13,7 +13,7 @@
   --text: #edf2ed;
   --text-2: #c4d0d6;
   --muted: #94a8b9;
-  --dim: #5f7486;
+  --dim: #73899c;
   --teal: #78e1d5;
   --teal-2: #3fb8ab;
   --teal-ink: #062521;
@@ -442,7 +442,7 @@ p {
   display: block;
   margin-top: -4px;
   font-family: var(--f-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.24em;
   color: var(--dim);
@@ -460,6 +460,7 @@ p {
   color: var(--text-2);
   font-size: 15px;
   font-weight: 600;
+  white-space: nowrap;
   transition:
     color 0.3s,
     background 0.3s;
@@ -471,6 +472,26 @@ p {
 }
 .mb-nav .mb-btn {
   margin-left: 10px;
+  white-space: nowrap;
+}
+/* Between the burger breakpoint and a full-width bar, five Chinese labels plus
+   the LINE button do not fit at 15px; tighten them before they wrap. */
+@media (min-width: 961px) and (max-width: 1180px) {
+  .mb-header {
+    gap: 16px;
+  }
+  .mb-nav a:not(.mb-btn) {
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  .mb-nav .mb-btn {
+    margin-left: 6px;
+  }
+}
+@media (min-width: 961px) and (max-width: 1080px) {
+  .mb-brand small {
+    display: none;
+  }
 }
 .mb-menu {
   display: none;
@@ -517,7 +538,7 @@ p {
 .mb-menu[aria-expanded="true"] span::after {
   transform: rotate(-45deg);
 }
-@media (max-width: 860px) {
+@media (max-width: 960px) {
   .mb-menu {
     display: grid;
     place-items: center;
