@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { gzipSync } from "node:zlib";
-import { BingxBook, gunzipText, parseBingxKlines, parseBingxTrades } from "../public/lab/orderflow/bingx.js";
+import { BingxBook, bingxKlineWindows, gunzipText, parseBingxKlines, parseBingxTrades } from "../public/lab/orderflow/bingx.js";
 import { ArchiveDay, parseArchiveLine } from "../public/lab/orderflow/bybit.js";
 import { OkxBook, missingRanges, okxArchiveUrl, parseOkxArchiveLine, parseOkxCandles, parseOkxTrades } from "../public/lab/orderflow/okx.js";
 
@@ -27,6 +27,21 @@ test("the OKX book chains updates on seqId and asks for a new snapshot when one 
   assert.deepEqual(book.applyOkx(msg("update", 11, 10, [["80000", "0", "0", "0"]])), [["bid", 80_000, 1, 0]]);
   assert.equal(book.applyOkx(msg("update", 13, 12, [])), "resync");
   assert.equal(book.ready, false);
+});
+
+test("BingX kline fill asks only for missing minutes, nearby gaps sharing one request of at most 1000", () => {
+  const M = 60_000;
+  const from = T0 - 2880 * M;
+  const all = new Set();
+  for (let t = from; t <= T0; t += M) all.add(t);
+  assert.deepEqual(bingxKlineWindows(missingRanges(all, from, T0)), [], "no gaps, no requests");
+  const scattered = new Set(all);
+  for (const k of [5, 40, 300, 998, 1500]) scattered.delete(from + k * M);
+  assert.deepEqual(bingxKlineWindows(missingRanges(scattered, from, T0)), [[from + 5 * M, from + 998 * M], [from + 1500 * M, from + 1500 * M]]);
+  // A run longer than one request is split; the next gap joins the last request while it fits.
+  const windows = bingxKlineWindows([[from, from + 1499 * M], [from + 1600 * M, from + 1610 * M], [from + 2700 * M, from + 2710 * M]]);
+  assert.deepEqual(windows, [[from, from + 999 * M], [from + 1000 * M, from + 1610 * M], [from + 2700 * M, from + 2710 * M]]);
+  assert.deepEqual(bingxKlineWindows([[from, T0]]).length, 3, "two days missing is still three requests");
 });
 
 test("BingX frames are gunzipped, trades read the buyer-maker flag, and each depth push reads as a diff", async () => {

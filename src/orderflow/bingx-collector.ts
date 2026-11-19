@@ -1,11 +1,13 @@
 // BingX BTC-USDT perpetual collector (docs/ORDERFLOW-MULTI-EXCHANGE.md): trades and the top-100 book
 // from BingX's gzipped WebSocket; open interest and funding read over REST every alarm, since BingX
 // streams neither. BingX publishes no trade archive, no long/short ratios and no liquidations.
-import { BINGX_REST, BINGX_WS, BingxBook, bingxTopics, gunzipText, parseBingxKlines, parseBingxTrades } from "../../public/lab/orderflow/bingx.js";
+import { BINGX_REST, BINGX_WS, BingxBook, bingxKlineWindows, bingxTopics, gunzipText, parseBingxKlines, parseBingxTrades } from "../../public/lab/orderflow/bingx.js";
+import { missingRanges } from "../../public/lab/orderflow/okx.js";
 import { BACKFILL_DAYS, DAY, MINUTE, type Trade } from "./collector";
 import { DirectCollector } from "./direct-collector";
 
 const HOUR = 3_600_000;
+const KLINE_RETRY_MS = 15 * MINUTE; // BingX's kline window is 900000 ms
 
 export class BingxCollector extends DirectCollector {
   protected override book = new BingxBook();
@@ -93,19 +95,24 @@ export class BingxCollector extends DirectCollector {
     }
   }
 
+  // Minutes the collector never saw get 1-minute klines, and only those: BingX allows 10 kline
+  // requests per 15 minutes per IP (109429) and Cloudflare's outbound IPs are shared, so asking for
+  // two days every hour, then again every alarm once refused, kept the window full. A refusal waits
+  // out the 15 minutes.
   protected override async fillKlines() {
     const now = Date.now();
-    if (now - Number(this.meta("klinesFilled") ?? 0) < HOUR) return;
+    if (now - Number(this.meta("klinesFilled") ?? 0) < HOUR || now < Number(this.meta("klinesRetryAt") ?? 0)) return;
     const end = Math.floor(now / MINUTE) * MINUTE - 2 * MINUTE;
+    const have = new Set(this.rows("SELECT t FROM bars WHERE t >= ? AND t <= ?", end - 2 * DAY, end).map((r) => Number(r.t)));
     try {
-      for (let start = end - 2 * DAY; start < end; start += 1000 * MINUTE) {
-        const stop = Math.min(end, start + 999 * MINUTE);
+      for (const [start, stop] of bingxKlineWindows(missingRanges(have, end - 2 * DAY, end))) {
         const list = parseBingxKlines(await this.get(`/openApi/swap/v3/quote/klines?symbol=${this.m.bingx}&interval=1m&startTime=${start}&endTime=${stop}&limit=1000`));
         for (const [t, o, h, l, c] of list) this.sql.exec("INSERT OR IGNORE INTO bars (t, src, row) VALUES (?, 'kline', ?)", t, JSON.stringify([t, o, h, l, c, []]));
       }
       this.setMeta("klinesFilled", now);
     } catch (err) {
       this.note("errors", `bingx kline fill: ${err}`);
+      this.setMeta("klinesRetryAt", now + KLINE_RETRY_MS);
     }
   }
 

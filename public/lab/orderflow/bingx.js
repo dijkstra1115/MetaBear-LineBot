@@ -32,6 +32,25 @@ export function parseBingxKlines(list) {
   return list.map((k) => [Number(k.time), Number(k.open), Number(k.high), Number(k.low), Number(k.close)]);
 }
 
+/**
+ * The fewest [start, stop] kline requests of at most `limit` minutes covering every missing minute
+ * in `gaps` (sorted [first, last] minute runs): nearby gaps share one request.
+ */
+export function bingxKlineWindows(gaps, limit = 1000) {
+  const span = (limit - 1) * 60_000;
+  const out = [];
+  for (const [from, to] of gaps) {
+    let t = from;
+    const last = out.at(-1);
+    if (last && t <= last[0] + span) {
+      last[1] = Math.min(to, last[0] + span);
+      t = last[1] + 60_000;
+    }
+    for (; t <= to; t += limit * 60_000) out.push([t, Math.min(to, t + span)]);
+  }
+  return out;
+}
+
 /** The top 100 levels, replaced whole every 500 ms; each load reports what changed, like a diff. */
 export class BingxBook extends OrderBook {
   /** depth data { bids, asks } → "snapshot" the first time, then the changed levels [side, price, before, after]. */
