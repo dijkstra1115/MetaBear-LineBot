@@ -60,7 +60,7 @@ export async function requestSupport(
   const created = result[0].meta.changes === 1 && support.id === id;
   if (created) {
     try {
-      await env.CAMPAIGN_EVENTS.send({ kind: "support-notification", id });
+      await env.NOTIFY_EVENTS.send({ kind: "support-notification", id });
     } catch (error) {
       console.warn(
         JSON.stringify({
@@ -165,7 +165,7 @@ export async function dispatchSupportNotifications(env: Env) {
     .bind(Date.now())
     .all<{ id: string }>();
   for (const row of rows.results)
-    await env.CAMPAIGN_EVENTS.send({
+    await env.NOTIFY_EVENTS.send({
       kind: "support-notification",
       id: row.id,
     });

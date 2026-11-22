@@ -75,9 +75,10 @@ before(async () => {
       compatibilityDate: "2026-09-11",
       compatibilityFlags: ["nodejs_compat"],
       d1Databases: ["DB"],
-      queueProducers: { LINE_EVENTS: "test-line-events", CAMPAIGN_EVENTS: "test-campaigns" },
+      queueProducers: { LINE_EVENTS: "test-line-events", CAMPAIGN_EVENTS: "test-campaigns", NOTIFY_EVENTS: "test-notifications" },
       queueConsumers: {
         "test-campaigns": { maxBatchSize: 1, maxBatchTimeout: 0, maxRetries: 5, retryDelay: 0 },
+        "test-notifications": { maxBatchSize: 10, maxBatchTimeout: 0, maxRetries: 5, retryDelay: 0 },
         "test-line-events": { maxBatchSize: 1, maxBatchTimeout: 0, maxRetries: 5, retryDelay: 0 },
       },
       bindings: {

@@ -186,7 +186,10 @@ Not committed: `pages/dist/`, `dist/backend/`, `motion/out/`, `.wrangler/`,
   `signal-delivery`, `support-notification`, `line-menu-install`,
   `orderflow-alert-delivery`); bare LINE
   events have none. Adding a kind means updating the union types and the
-  dispatcher in `index.ts`. The 5-minute cron runs dispatchers and cleanups in
+  dispatcher in `index.ts`. Signals, order-flow alerts and support notifications
+  go to `NOTIFY_EVENTS` (parallel consumers); BingX syncs, VIP invites,
+  campaigns and the rich menu stay on the serialized `CAMPAIGN_EVENTS`. One
+  dispatcher serves every queue. The 5-minute cron runs dispatchers and cleanups in
   `scheduled()`.
 - **LINE sends** must respect `env.LINE_DELIVERY_MODE !== "live"` guards so dev
   and tests never message real users. The admin "conversation test" only works

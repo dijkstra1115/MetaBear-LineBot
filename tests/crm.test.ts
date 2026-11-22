@@ -149,10 +149,17 @@ before(async () => {
       queueProducers: {
         LINE_EVENTS: "test-line-events",
         CAMPAIGN_EVENTS: "test-campaigns",
+        NOTIFY_EVENTS: "test-notifications",
       },
       queueConsumers: {
         "test-campaigns": {
           maxBatchSize: 1,
+          maxBatchTimeout: 0,
+          maxRetries: 5,
+          retryDelay: 0,
+        },
+        "test-notifications": {
+          maxBatchSize: 10,
           maxBatchTimeout: 0,
           maxRetries: 5,
           retryDelay: 0,

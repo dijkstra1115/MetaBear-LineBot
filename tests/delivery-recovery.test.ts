@@ -17,6 +17,18 @@ let pushes: string[] = [];
 let pushResponse: () => Promise<Response>;
 const originalFetch = globalThis.fetch;
 const stamp = () => new Date().toISOString();
+// Time-sensitive kinds must not wait behind BingX syncs and campaigns on CAMPAIGN_EVENTS.
+const NOTIFY_KINDS = ["signal-delivery", "support-notification", "orderflow-alert-delivery"];
+const recorder = (binding: "CAMPAIGN_EVENTS" | "NOTIFY_EVENTS") => {
+  const record = (body: { kind: string; id: string }) => {
+    assert.equal(binding, NOTIFY_KINDS.includes(body.kind) ? "NOTIFY_EVENTS" : "CAMPAIGN_EVENTS", body.kind);
+    queued.push(body);
+  };
+  return {
+    send: async (body: { kind: string; id: string }) => record(body),
+    sendBatch: async (items: { body: { kind: string; id: string } }[]) => items.forEach((i) => record(i.body)),
+  };
+};
 
 before(async () => {
   mf = new Miniflare(
@@ -47,14 +59,8 @@ before(async () => {
     ADMIN_EMAIL: "owner@example.test",
     LINE_DELIVERY_MODE: "live",
     LINE_CHANNEL_ACCESS_TOKEN: "test",
-    CAMPAIGN_EVENTS: {
-      send: async (body: { kind: string; id: string }) => {
-        queued.push(body);
-      },
-      sendBatch: async (items: { body: { kind: string; id: string } }[]) => {
-        queued.push(...items.map((i) => i.body));
-      },
-    },
+    CAMPAIGN_EVENTS: recorder("CAMPAIGN_EVENTS"),
+    NOTIFY_EVENTS: recorder("NOTIFY_EVENTS"),
   } as unknown as Env;
   await db
     .prepare(

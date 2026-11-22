@@ -33,6 +33,10 @@
     "producers": [
       { "binding": "LINE_EVENTS", "queue": "metabear-line-events" },
       { "binding": "CAMPAIGN_EVENTS", "queue": "metabear-campaigns" },
+      // Signals, order-flow alerts and support notifications. Kept off CAMPAIGN_EVENTS so they never
+      // wait behind serialized BingX syncs or a campaign send; every delivery claims its row first,
+      // so parallel consumers are safe.
+      { "binding": "NOTIFY_EVENTS", "queue": "metabear-notifications" },
     ],
     "consumers": [
       {
@@ -43,6 +47,15 @@
         "dead_letter_queue": "metabear-campaigns-dead",
         "max_concurrency": 1,
         "retry_delay": 5,
+      },
+      {
+        "queue": "metabear-notifications",
+        "max_batch_size": 10,
+        "max_batch_timeout": 1,
+        "max_retries": 5,
+        "dead_letter_queue": "metabear-notifications-dead",
+        "max_concurrency": 10,
+        "retry_delay": 2,
       },
       {
         "queue": "metabear-line-events",
@@ -139,6 +152,11 @@
             "binding": "CAMPAIGN_EVENTS",
             "queue": "metabear-campaigns-staging",
           },
+          // Created after the -staging names; create it and its dead-letter queue before deploying.
+          {
+            "binding": "NOTIFY_EVENTS",
+            "queue": "metabear-backend-notifications",
+          },
         ],
         "consumers": [
           {
@@ -149,6 +167,15 @@
             "dead_letter_queue": "metabear-campaigns-dead-staging",
             "max_concurrency": 1,
             "retry_delay": 5,
+          },
+          {
+            "queue": "metabear-backend-notifications",
+            "max_batch_size": 10,
+            "max_batch_timeout": 1,
+            "max_retries": 5,
+            "dead_letter_queue": "metabear-backend-notifications-dead",
+            "max_concurrency": 10,
+            "retry_delay": 2,
           },
           {
             "queue": "metabear-line-events-staging",

@@ -423,7 +423,7 @@ export async function dispatchSignals(env: Env, signalId?: string) {
     .bind(now(), ...(signalId ? [signalId] : []))
     .all<{ id: string }>();
   for (let i = 0; i < rows.results.length; i += 100)
-    await env.CAMPAIGN_EVENTS.sendBatch(
+    await env.NOTIFY_EVENTS.sendBatch(
       rows.results.slice(i, i + 100).map((r) => ({
         body: { kind: "signal-delivery" as const, id: r.id },
       })),

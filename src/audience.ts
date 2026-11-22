@@ -1,5 +1,5 @@
 import { choice, HttpError } from "./http";
-import { customerSelect, currentMonth } from "./db";
+import { apiMonthVolume, customerSelect, currentMonth } from "./db";
 const stages = [
   "new",
   "registering",
@@ -16,9 +16,15 @@ export function validMonth(month: string) {
   return month;
 }
 
+// One page of 50 customers, newest first. It pages on the bare customer columns first, so the
+// per-customer volume and support lookups run for the rows shown, not for every match before the sort.
+export const customerPage = (sql: string) =>
+  `${customerSelect} WHERE c.line_user_id IN (SELECT line_user_id FROM (${sql}) ORDER BY updated_at DESC, line_user_id LIMIT 50 OFFSET ?) ORDER BY c.updated_at DESC, c.line_user_id`;
+
 export function audienceQuery(params: URLSearchParams, campaigns = false) {
   const month = validMonth(params.get("month") || currentMonth());
-  const values: (string | number)[] = [month,month];
+  // customerSelect binds the month as ?1.
+  const values: (string | number)[] = [month];
   const clauses: string[] = [];
   if (campaigns) clauses.push("c.marketing_consent=1", "c.blocked=0");
   const q = params.get("q")?.trim();
@@ -66,7 +72,7 @@ export function audienceQuery(params: URLSearchParams, campaigns = false) {
       const amount = Number(value);
       if (!Number.isFinite(amount) || amount < 0 || amount > 1e12)
         throw new HttpError(400, "交易量範圍不正確");
-      clauses.push(`COALESCE(am.volume,v.volume_usdt) ${key === "min" ? ">=" : "<="} ?`);
+      clauses.push(`COALESCE(${apiMonthVolume},v.volume_usdt) ${key === "min" ? ">=" : "<="} ?`);
       values.push(amount);
     }
   if (min && max && Number(min) > Number(max))
