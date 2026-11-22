@@ -435,14 +435,14 @@ async function respondBase(
       ]),
     ];
   }
-  if (
-    /^UID(?:\s*[:：]|\s+\d|\s*$)/i.test(text) ||
-    /(?:我的|BingX).*UID\s*[:：]?\s*\d{4,30}\s*$/i.test(text)
-  ) {
-    const uid = text.replace(
-      /^(?:我的\s*|BingX\s*)?UID\s*(?:是|[:：])?\s*/i,
-      "",
-    );
+  // One pattern both recognises and extracts, so every accepted wording yields its digits:
+  // "UID 123", "UID：123", "我的UID是123", "我的 BingX UID：123". A question such as "UID 要在哪裡找？"
+  // or "UID是什麼" is not a registration.
+  const uidCommand = text.match(
+    /^(?:我的\s*)?(?:BingX\s*(?:的\s*)?)?UID\s*(?:[:：]\s*(.*)|(?:是\s*)?(\d.*))?$/i,
+  );
+  if (uidCommand) {
+    const uid = (uidCommand[1] ?? uidCommand[2] ?? "").trim();
     if (!/^\d{4,30}$/.test(uid))
       return [
         reply(

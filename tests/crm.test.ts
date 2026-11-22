@@ -879,6 +879,19 @@ test("bare digits ask before registering a BingX UID", async () => {
   assert.equal((await getCustomer(user)).account.uid, "12345678");
 });
 
+test("every accepted UID wording registers its digits, and UID questions do not", async () => {
+  const uids = ["31415926", "27182818", "16180339", "14142135"];
+  for (const [i, text] of ["我的UID是31415926", "我的 BingX UID：27182818", "BingX UID 16180339", "uid14142135"].entries()) {
+    const user = "U" + crypto.randomUUID().replaceAll("-", "");
+    await webhook([event(text, user)]);
+    assert.equal((await getCustomer(user)).account?.uid, uids[i], text);
+  }
+  const asker = "U" + crypto.randomUUID().replaceAll("-", "");
+  await webhook([event("UID是什麼", asker)]);
+  assert.doesNotMatch(String(calls.at(-1)!.messages[0].text), /UID 請保留原始數字/);
+  assert.equal((await getCustomer(asker)).account, null);
+});
+
 test("stickers get a short menu reply and teaching images do not auto-create support", async () => {
   const user = "U" + crypto.randomUUID().replaceAll("-", "");
   const media = (type: string) => ({
