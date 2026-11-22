@@ -2,6 +2,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
+import { audienceQuery, customerPage } from "../src/audience";
 
 // Queries run on every reply or by the 5-minute cron (migrations/0019_hot_query_indexes.sql). D1 bills
 // every row read, and these tables only grow, so none of them may scan its table.
@@ -31,6 +32,27 @@ before(async () => {
   await db.batch(sql.split(";").map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s)));
 });
 after(async () => { await mf?.dispose(); });
+
+const explain = async (sql: string, values: unknown[]) =>
+  (await db.prepare("EXPLAIN QUERY PLAN " + sql).bind(...values).all<{ detail: string }>()).results.map((r) => r.detail);
+
+// processCampaign checks every recipient again before its push, up to 500 per send. The customer list
+// pages over every customer, so its volume and last-trade lookups may only touch the 50 rows shown.
+test("campaign and customer list queries never scan daily_metrics", async () => {
+  for (const filters of [{}, { min: "100", max: "5000" }, { inactive: "7", q: "1234" }]) {
+    const query = audienceQuery(new URLSearchParams({ ...filters, month: "2026-11" }), true);
+    const recipient = await explain(query.sql + " AND c.line_user_id=?", [...query.values, "U0"]);
+    assert.deepEqual(recipient.filter((d) => /^(SCAN|MATERIALIZE) /.test(d)), [], recipient.join(" | "));
+    for (const [name, sql, values] of [
+      ["count", `SELECT count(*) AS total FROM (${query.sql})`, query.values],
+      ["page", customerPage(query.sql), [...query.values, 0]],
+      ["preview", query.sql + " ORDER BY c.line_user_id LIMIT ?", [...query.values, 501]],
+    ] as const) {
+      const plan = await explain(sql, [...values]);
+      assert.deepEqual(plan.filter((d) => /^SCAN (dm|daily_metrics)\b|^MATERIALIZE /.test(d)), [], `${name}: ${plan.join(" | ")}`);
+    }
+  }
+});
 
 test("queries run on every reply or every cron use an index", async () => {
   for (const [name, sql] of Object.entries(HOT)) {

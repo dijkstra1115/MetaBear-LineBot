@@ -1,10 +1,10 @@
 import { choice, HttpError, json, readJson, textField } from "./http";
-import { customerSelect, ensureCustomer, now, currentMonth } from "./db";
+import { ensureCustomer, now, currentMonth } from "./db";
 import { respond } from "./bot";
 import { BUSINESS, STEPS, LESSONS } from "./content";
 import type { Customer, Account } from "./types";
 import { adminIdentity } from "./auth";
-import { audienceQuery, validMonth } from "./audience";
+import { audienceQuery, customerPage, validMonth } from "./audience";
 import { campaignApi } from "./campaigns";
 import { automationApi, eligibleSnapshot, enqueueSync } from "./automation";
 import { getTeam, personalize } from "./team";
@@ -136,9 +136,7 @@ export async function admin(request: Request, env: Env): Promise<Response> {
     )
       .bind(...query.values)
       .first<{ total: number }>();
-    const rows = await env.DB.prepare(
-      `${query.sql} ORDER BY c.updated_at DESC, c.line_user_id LIMIT 50 OFFSET ?`,
-    )
+    const rows = await env.DB.prepare(customerPage(query.sql))
       .bind(...query.values, (page - 1) * 50)
       .all();
     return json({
