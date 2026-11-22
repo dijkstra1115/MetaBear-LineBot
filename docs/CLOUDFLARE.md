@@ -7,7 +7,7 @@
 - Workers Static Assets：CSS 3D / GSAP 首頁、圖文教學與 CRM。
 - Worker：LINE webhook、OpenAI 教學選擇、CRM API、Access JWT 驗證與推播。
 - D1：客戶／UID／月交易量／訂閱／操作紀錄／教學上下文／去重／草稿／推播與逐人結果。
-- LINE Queue：簽章驗證後持久入隊，HTTP 200 先回覆，消費者完成 AI 與原生圖文回覆。
+- LINE Queue：簽章驗證後持久入隊，HTTP 200 先回覆，消費者完成 AI 與原生圖文回覆。LINE 拒絕回覆（例如 400 reply token 失效）就直接結束，只有 429 與 5xx 會重試。重試用完進入死信佇列 `metabear-line-events-dead-staging`，由 Worker 記錄 `queue.dead_letter` 並把那則回覆標為失敗。
 - Campaign Queue：BingX 同步、VIP 邀請、活動推播與圖文選單，單一消費者依序處理，避免推播排隊影響 LINE 問答。
 - Notify Queue（`NOTIFY_EVENTS`）：報單、關鍵位提醒與客服通知，可並行處理，不必排在 BingX 同步或活動推播後面。每筆投遞先原子領取自己的資料列，重複的佇列訊息不會重送。正式環境的佇列 `metabear-backend-notifications` 與死信佇列 `metabear-backend-notifications-dead` 要在部署前建立：
 

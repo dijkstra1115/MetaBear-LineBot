@@ -37,6 +37,8 @@ after(async () => {
 const post = (ex: string, body: unknown) =>
   mf.dispatchFetch(`${base}/import?ex=${ex}`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) });
 const getJson = async (path: string) => (await (await mf.dispatchFetch(base + path)).json()) as any;
+// The public status is edge-cached for 5 s; polling needs the live, token-authenticated one.
+const liveStatus = async () => (await (await mf.dispatchFetch(base + "/status?ex=all", { headers: { authorization: `Bearer ${token}` } })).json()) as any;
 async function until<T>(check: () => Promise<T | undefined | false>, what: string, ms = 15_000): Promise<T> {
   for (const end = Date.now() + ms; Date.now() < end; await new Promise((r) => setTimeout(r, 200))) {
     const v = await check();
@@ -59,7 +61,7 @@ test("全市場 merges the exchanges' minutes and finds a 跨所同步大單 at 
     assert.equal((await post(ex, { prints: [[t, "sell", 80_000, 12]], from: minute, to: minute + MINUTE })).status, 200);
   }
 
-  await getJson("/status?ex=all"); // wakes the 全市場 collector
+  await liveStatus(); // wakes the 全市場 collector
   const recent = await until(async () => {
     const r = await getJson(`/recent?ex=all&since=${minute}`);
     return r.bars?.length && r.prints?.length === 3 ? r : undefined;
@@ -83,7 +85,7 @@ test("全市場 merges the exchanges' minutes and finds a 跨所同步大單 at 
 
 test("全市場 writes only the rows that changed between merges", async () => {
   const minute = Math.floor(Date.now() / MINUTE) * MINUTE - MINUTE;
-  const status = () => getJson("/status?ex=all");
+  const status = () => liveStatus();
   const printsNow = async () => (await getJson(`/recent?ex=all&since=${minute - 5 * MINUTE}`)).prints as unknown[][];
   const sameCount = async () => (await status()).lastMergeWrites === 0;
 
@@ -110,6 +112,6 @@ test("the admin can have 全市場 merge every day again after a late backfill",
   assert.equal(all.length, 30);
   assert.equal(all.at(-1), today);
   const yesterday = Math.floor(Date.now() / DAY) * DAY - DAY;
-  await until(async () => (await getJson("/status?ex=all")).mergedDays >= 1, "the re-merge to start");
+  await until(async () => (await liveStatus()).mergedDays >= 1, "the re-merge to start");
   assert.ok((await getJson(`/recent?ex=all&since=${yesterday}`)).bars?.length, "history merged again");
 });

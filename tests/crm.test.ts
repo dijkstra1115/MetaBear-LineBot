@@ -55,7 +55,8 @@ const bob = "Ubbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 let mf: Miniflare, db: Awaited<ReturnType<Miniflare["getD1Database"]>>;
 let clock = Date.now(),
   calls: { replyToken: string; messages: Record<string, unknown>[] }[] = [],
-  failOnce = false;
+  failOnce = false,
+  rejectOnce = false;
 let aiMode: "normal" | "invalid" | "unavailable" = "normal";
 let aiGate: Promise<void> | undefined;
 let aiCalls = 0;
@@ -286,6 +287,10 @@ before(async () => {
         if (failOnce) {
           failOnce = false;
           return new Response("{}", { status: 503 });
+        }
+        if (rejectOnce) {
+          rejectOnce = false;
+          return new Response("{}", { status: 400 });
         }
         calls.push((await request.json()) as (typeof calls)[number]);
         return new Response("{}", { status: 200 });
@@ -738,6 +743,19 @@ test("transient LINE failures retry stored replies without repeating subscriptio
   assert.equal(after?.n, (before?.n ?? 0) + 1);
   assert.equal(calls.length, sentBefore + 1);
 });
+test("a rejected reply token ends the event instead of retrying into the dead-letter queue", async () => {
+  rejectOnce = true;
+  const e = event("選單");
+  const sentBefore = calls.length;
+  assert.equal((await webhook([e])).status, 200);
+  assert.equal(rejectOnce, false, "LINE was asked once");
+  assert.equal(calls.length, sentBefore, "no retry reached LINE");
+  const statuses = await db
+    .prepare("SELECT DISTINCT delivery_status AS s FROM conversation_messages WHERE event_id=? AND direction='bot'")
+    .bind(e.webhookEventId)
+    .all<{ s: string }>();
+  assert.deepEqual(statuses.results.map((r) => r.s), ["failed"]);
+});
 test("concurrent duplicate requests produce a single reply", async () => {
   const e = event("選單");
   const n = calls.length;
@@ -877,6 +895,19 @@ test("bare digits ask before registering a BingX UID", async () => {
   assert.equal((await getCustomer(user)).account, null);
   await webhook([event("UID 12345678", user)]);
   assert.equal((await getCustomer(user)).account.uid, "12345678");
+});
+
+test("every accepted UID wording registers its digits, and UID questions do not", async () => {
+  const uids = ["31415926", "27182818", "16180339", "14142135"];
+  for (const [i, text] of ["我的UID是31415926", "我的 BingX UID：27182818", "BingX UID 16180339", "uid14142135"].entries()) {
+    const user = "U" + crypto.randomUUID().replaceAll("-", "");
+    await webhook([event(text, user)]);
+    assert.equal((await getCustomer(user)).account?.uid, uids[i], text);
+  }
+  const asker = "U" + crypto.randomUUID().replaceAll("-", "");
+  await webhook([event("UID是什麼", asker)]);
+  assert.doesNotMatch(String(calls.at(-1)!.messages[0].text), /UID 請保留原始數字/);
+  assert.equal((await getCustomer(asker)).account, null);
 });
 
 test("stickers get a short menu reply and teaching images do not auto-create support", async () => {

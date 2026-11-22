@@ -100,3 +100,16 @@ test("an upload whose replay fails is never ranked but still counts toward the h
   const board = (await (await handleArenaScores(request(), env)).json()) as any;
   assert.equal(board.scores.some((s: any) => s.name === "refused"), false);
 });
+
+test("parallel uploads from one address cannot pass the hourly limit together", async () => {
+  const env = { ARENA_DB: db as unknown as D1Database };
+  const upload = () => handleArenaScores(new Request(request(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "198.51.100.77" },
+    body: JSON.stringify({ ...score(), name: "burst" }),
+  }), env, () => { throw new Error("skip the replay"); });
+  const statuses = (await Promise.all(Array.from({ length: 30 }, upload))).map((r) => r.status);
+  assert.equal(statuses.filter((s) => s !== 429).length, 20, statuses.join(","));
+  const stored = await db.prepare("SELECT COUNT(*) AS n FROM arena_scores WHERE name = 'burst'").first<{ n: number }>();
+  assert.equal(stored?.n, 20);
+});

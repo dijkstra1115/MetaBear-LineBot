@@ -115,7 +115,7 @@ test("relayed trades and depth become Binance footprints, prints and a book; mis
   }, "the spot minutes");
   assert.deepEqual(spot, [[t0 - MINUTE, 7, 3, 560_000, 240_000], [t0, 1, 3, 80_000, 240_000]]);
 
-  const status = (await (await mf.dispatchFetch(`${base}/btcusdt/status?ex=binance`)).json()) as any;
+  const status = (await (await mf.dispatchFetch(`${base}/btcusdt/status?ex=binance`, { headers: { authorization: `Bearer ${adminToken}` } })).json()) as any;
   assert.equal(status.bookReady, true);
   assert.equal(status.aggId, 5);
   assert.equal(status.bybit, undefined);
@@ -144,7 +144,7 @@ test("Bybit's collector takes its streams from the relay too, OKX liquidations i
       ],
     }),
   );
-  // /status is not cached; /recent is (per minute-aligned URL), so it is read once the frame is in,
+  // The token-authenticated /status is live; /recent is cached (per minute-aligned URL), so it is read once the frame is in,
   // with a different since than the Binance test above.
   const status = await until(async () => {
     const s = (await (await mf.dispatchFetch(`${base}/btcusdt/status?counts=1`, { headers: { authorization: `Bearer ${adminToken}` } })).json()) as any;

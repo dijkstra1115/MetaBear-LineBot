@@ -53,10 +53,12 @@ export async function handleArenaScores(
       throw new HttpError(415, "需要 JSON");
     const score = parseScore(await readBody(request, BODY_LIMIT));
     const ipHash = await hashClient(request, env.ARENA_IP_KEY);
+    const recentUploads =
+      "(SELECT COUNT(*) FROM arena_scores WHERE ip_hash = ? AND created_at > datetime('now', '-1 hour'))";
+    // Cheap early refusal; the insert below re-checks in the same statement, so parallel uploads
+    // cannot all pass this check before any of them is stored.
     const recent = await db
-      .prepare(
-        "SELECT COUNT(*) AS n FROM arena_scores WHERE ip_hash = ? AND created_at > datetime('now', '-1 hour')",
-      )
+      .prepare(`SELECT ${recentUploads} AS n`)
       .bind(ipHash)
       .first<{ n: number }>();
     if ((recent?.n ?? 0) >= HOURLY_UPLOADS)
@@ -70,11 +72,12 @@ export async function handleArenaScores(
     // counts toward the hourly limit.
     const inserted = await db
       .prepare(
-        "INSERT INTO arena_scores (name, pnl, seed, turns, version, stats, actions, ip_hash, verified) VALUES (?, 0, ?, ?, ?, '{}', ?, ?, -1) RETURNING id",
+        `INSERT INTO arena_scores (name, pnl, seed, turns, version, stats, actions, ip_hash, verified)
+          SELECT ?, 0, ?, ?, ?, '{}', ?, ?, -1 WHERE ${recentUploads} < ? RETURNING id`,
       )
-      .bind(score.name, score.seed, score.turns, score.version, JSON.stringify(score.actions), ipHash)
+      .bind(score.name, score.seed, score.turns, score.version, JSON.stringify(score.actions), ipHash, ipHash, HOURLY_UPLOADS)
       .first<{ id: number }>();
-    if (!inserted) throw new Error("Score insert returned no id");
+    if (!inserted) throw new HttpError(429, "上傳太頻繁，請稍後再試");
     const result = replayScore(score, replay);
     await db
       .prepare("UPDATE arena_scores SET pnl = ?, stats = ?, verified = 1 WHERE id = ?")

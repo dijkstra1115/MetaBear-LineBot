@@ -45,6 +45,18 @@ Worker 改名後的網址為 `https://metabear-backend.style78432.workers.dev`�
 
 build watch paths 的 Include 已設為 `pages/*`、`public/*`、`web/*`、`scripts/build-site.mjs`、`scripts/build-pages.mjs`、`scripts/build-academy.mjs`、`scripts/build-motion-pages.mjs`、`scripts/deployment-layout.mjs`、`src/lesson-audio.ts`、`package.json`、`package-lock.json`。Cloudflare 的 `*` 在這裡包含子資料夾。`src/` 的一般業務後端修改不需重建網站；網站內容修改 push 到 main 後會自動建置與發布。若新增建置依賴，要同步調整 watch paths。後端仍獨立部署，不自動觸發資料庫 migration。
 
+## 共用模組與部署順序
+
+後端（`src/backend.ts`）與訂單流 Worker（`src/orderflow/index.ts`）會打包 `public/` 裡的模組，例如 LINE 訂閱關鍵字（`public/lab/orderflow/notify.js`）、市場清單（`markets.js`）、排行榜重播引擎（`public/arena/engine/`）和收集器的解析器。Pages 一推 main 就發布，Worker 要手動部署；如果先推 main，網站會跑比 Worker 新的共用程式碼。例如新關鍵字舊後端看不懂，或 `RANKED_VERSION` 升級後成績上傳全部被拒。
+
+所以改到這些模組時，先部署對應的 Worker，再推 main。`npm run deploy` 與 `npm run orderflow:deploy` 會記下這次打包的 `public/` 檔案指紋，分別由 `/health` 與 `/api/orderflow/version` 回報。推 main 前執行：
+
+```powershell
+npm run check:deployed
+```
+
+它比對本機與線上的指紋，列出落後的 Worker；有落後時結束碼為 1。
+
 ## 本機驗證
 
 需要 Node.js 22+；本機 PATH 目前是 Node 20，請使用 Node 22+ 或 Codex 提供的 bundled runtime。

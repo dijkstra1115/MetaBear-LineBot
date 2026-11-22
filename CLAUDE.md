@@ -153,6 +153,10 @@ Not committed: `pages/dist/`, `dist/backend/`, `motion/out/`, `.wrangler/`,
 - **Worker** `metabear-backend` (`env.production` in `wrangler.jsonc`, entry
   `src/backend.ts`) deploys manually with `npm run deploy`. Its assets are only
   the staff/login files in `dist/backend/`.
+- Both Workers bundle modules from `public/` (LINE keywords, markets, the arena
+  engine, collector parsers). When a change touches them, deploy the Worker
+  before pushing `main`; `npm run check:deployed` compares the fingerprint each
+  deploy records with the checkout and names any Worker that is behind.
 - `scripts/deployment-layout.mjs` is the single list that keeps three things in
   sync: backend asset files, assets stripped from the Pages export, and Worker
   route paths. When adding an admin/desk/login asset or a backend route, update
