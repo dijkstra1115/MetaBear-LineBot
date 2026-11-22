@@ -67,7 +67,11 @@ test("production routes cover every private asset and preserve existing backend 
   assert.equal(production.assets.directory, "./dist/backend");
   assert.equal(production.d1_databases[0].database_id, "60f13265-4f4d-4086-9851-ed027c968ee6");
   assert.equal(production.name, "metabear-backend");
-  assert.ok(production.queues.consumers.length === 2 && production.triggers.crons.length === 1);
+  assert.deepEqual(
+    Array.from(production.queues.consumers, (c: { queue: string }) => c.queue).sort(),
+    ["metabear-backend-notifications", "metabear-campaigns-staging", "metabear-line-events-staging"],
+  );
+  assert.equal(production.triggers.crons.length, 1);
   const patterns = production.routes.filter((route: { custom_domain?: boolean }) => !route.custom_domain).map((route: { pattern: string }) => route.pattern.replace("metabear.io", ""));
   assert.deepEqual(Array.from(patterns), backendRoutePaths);
   for (const file of privateAssets)

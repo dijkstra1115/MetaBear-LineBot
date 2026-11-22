@@ -189,7 +189,7 @@ export async function enqueueOrderflowEvents(env: Env, value: unknown) {
   );
   const fresh = rows.filter((_, i) => results[i].meta.changes);
   for (let i = 0; i < fresh.length; i += 100)
-    await env.CAMPAIGN_EVENTS.sendBatch(fresh.slice(i, i + 100).map((r) => ({ body: { kind: "orderflow-alert-delivery" as const, id: r.id } })));
+    await env.NOTIFY_EVENTS.sendBatch(fresh.slice(i, i + 100).map((r) => ({ body: { kind: "orderflow-alert-delivery" as const, id: r.id } })));
   return { queued: fresh.length, dropped };
 }
 
@@ -241,7 +241,7 @@ export async function dispatchOrderflowAlerts(env: Env) {
     .bind(now())
     .all<{ id: string }>();
   for (let i = 0; i < rows.results.length; i += 100)
-    await env.CAMPAIGN_EVENTS.sendBatch(rows.results.slice(i, i + 100).map((r) => ({ body: { kind: "orderflow-alert-delivery" as const, id: r.id } })));
+    await env.NOTIFY_EVENTS.sendBatch(rows.results.slice(i, i + 100).map((r) => ({ body: { kind: "orderflow-alert-delivery" as const, id: r.id } })));
 }
 
 // Admin view and emergency stop. The switch is its own column outside the versioned team settings,

@@ -8,7 +8,13 @@
 - Worker：LINE webhook、OpenAI 教學選擇、CRM API、Access JWT 驗證與推播。
 - D1：客戶／UID／月交易量／訂閱／操作紀錄／教學上下文／去重／草稿／推播與逐人結果。
 - LINE Queue：簽章驗證後持久入隊，HTTP 200 先回覆，消費者完成 AI 與原生圖文回覆。
-- Campaign Queue：獨立消費者，避免推播排隊影響 LINE 問答。
+- Campaign Queue：BingX 同步、VIP 邀請、活動推播與圖文選單，單一消費者依序處理，避免推播排隊影響 LINE 問答。
+- Notify Queue（`NOTIFY_EVENTS`）：報單、關鍵位提醒與客服通知，可並行處理，不必排在 BingX 同步或活動推播後面。每筆投遞先原子領取自己的資料列，重複的佇列訊息不會重送。正式環境的佇列 `metabear-backend-notifications` 與死信佇列 `metabear-backend-notifications-dead` 要在部署前建立：
+
+  ```powershell
+  npx wrangler queues create metabear-backend-notifications
+  npx wrangler queues create metabear-backend-notifications-dead
+  ```
 - Cron 每 5 分鐘：恢復已確認推播中尚未排入佇列或處理鎖逾時的項目。
 - Access：僅指定 email OTP；Worker 再驗證 JWT 與跨站防護。
 
