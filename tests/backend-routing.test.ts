@@ -69,7 +69,7 @@ test("production routes cover every private asset and preserve existing backend 
   assert.equal(production.name, "metabear-backend");
   assert.deepEqual(
     Array.from(production.queues.consumers, (c: { queue: string }) => c.queue).sort(),
-    ["metabear-backend-notifications", "metabear-campaigns-staging", "metabear-line-events-staging"],
+    ["metabear-backend-notifications", "metabear-campaigns-staging", "metabear-line-events-dead-staging", "metabear-line-events-staging"],
   );
   assert.equal(production.triggers.crons.length, 1);
   const patterns = production.routes.filter((route: { custom_domain?: boolean }) => !route.custom_domain).map((route: { pattern: string }) => route.pattern.replace("metabear.io", ""));

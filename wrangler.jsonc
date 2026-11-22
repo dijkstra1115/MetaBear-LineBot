@@ -66,6 +66,13 @@
         "max_concurrency": 5,
         "retry_delay": 2,
       },
+      // LINE events that ran out of retries: logged and marked failed (src/index.ts, deadLetters).
+      {
+        "queue": "metabear-line-events-dead",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 1,
+      },
     ],
   },
   "triggers": { "crons": ["*/5 * * * *"] },
@@ -185,6 +192,12 @@
             "dead_letter_queue": "metabear-line-events-dead-staging",
             "max_concurrency": 5,
             "retry_delay": 2,
+          },
+          {
+            "queue": "metabear-line-events-dead-staging",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 1,
           },
         ],
       },

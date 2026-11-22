@@ -5,6 +5,7 @@ import { isLessonAudio, serveLessonAudio } from "./lesson-audio";
 import { siteSecurityHeaders } from "./site-security";
 import { getRate } from "./rates";
 import { webhook, processLineEvent } from "./webhook";
+import { setOutgoingStatus } from "./conversations";
 import { BUSINESS, STEPS, LESSONS } from "./content";
 import { HttpError, json } from "./http";
 import type { LineEvent } from "./types";
@@ -31,6 +32,33 @@ import {
 } from "./signals";
 import { processOrderflowDelivery, type OrderflowAlertMessage } from "./orderflow-subs";
 
+const isDeadLetterQueue = (queue: string) => /-dead(?:-|$)/.test(queue);
+
+// Events that ran out of retries. Without a consumer they vanish from the dead-letter queue after
+// four days unseen; this logs each one and marks the unsent reply failed in the conversation log.
+async function deadLetters(
+  batch: MessageBatch<LineEvent | { kind: string; id: string }>,
+  env: Env,
+): Promise<void> {
+  for (const message of batch.messages) {
+    const body = message.body;
+    const eventId = "webhookEventId" in body ? body.webhookEventId : body.id;
+    console.error(
+      JSON.stringify({
+        event: "queue.dead_letter",
+        queue: batch.queue,
+        kind: "kind" in body ? body.kind : "line-event",
+        eventId,
+      }),
+    );
+    try {
+      if ("webhookEventId" in body) await setOutgoingStatus(env, eventId, "failed");
+    } finally {
+      message.ack();
+    }
+  }
+}
+
 export default {
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
     await runCron(env);
@@ -47,6 +75,7 @@ export default {
     >,
     env: Env,
   ): Promise<void> {
+    if (isDeadLetterQueue(batch.queue)) return deadLetters(batch, env);
     for (const message of batch.messages) {
       try {
         if ("kind" in message.body && message.body.kind === "line-menu-install")

@@ -55,7 +55,8 @@ const bob = "Ubbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 let mf: Miniflare, db: Awaited<ReturnType<Miniflare["getD1Database"]>>;
 let clock = Date.now(),
   calls: { replyToken: string; messages: Record<string, unknown>[] }[] = [],
-  failOnce = false;
+  failOnce = false,
+  rejectOnce = false;
 let aiMode: "normal" | "invalid" | "unavailable" = "normal";
 let aiGate: Promise<void> | undefined;
 let aiCalls = 0;
@@ -286,6 +287,10 @@ before(async () => {
         if (failOnce) {
           failOnce = false;
           return new Response("{}", { status: 503 });
+        }
+        if (rejectOnce) {
+          rejectOnce = false;
+          return new Response("{}", { status: 400 });
         }
         calls.push((await request.json()) as (typeof calls)[number]);
         return new Response("{}", { status: 200 });
@@ -737,6 +742,19 @@ test("transient LINE failures retry stored replies without repeating subscriptio
     .first<{ n: number }>();
   assert.equal(after?.n, (before?.n ?? 0) + 1);
   assert.equal(calls.length, sentBefore + 1);
+});
+test("a rejected reply token ends the event instead of retrying into the dead-letter queue", async () => {
+  rejectOnce = true;
+  const e = event("選單");
+  const sentBefore = calls.length;
+  assert.equal((await webhook([e])).status, 200);
+  assert.equal(rejectOnce, false, "LINE was asked once");
+  assert.equal(calls.length, sentBefore, "no retry reached LINE");
+  const statuses = await db
+    .prepare("SELECT DISTINCT delivery_status AS s FROM conversation_messages WHERE event_id=? AND direction='bot'")
+    .bind(e.webhookEventId)
+    .all<{ s: string }>();
+  assert.deepEqual(statuses.results.map((r) => r.s), ["failed"]);
 });
 test("concurrent duplicate requests produce a single reply", async () => {
   const e = event("選單");

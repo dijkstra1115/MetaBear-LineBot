@@ -285,3 +285,38 @@ test("cron queues the rich menu install once per menu name", async () => {
   await ensureRichMenu({ ...env, LINE_DELIVERY_MODE: "disabled" } as Env);
   assert.equal(sent.length, 1);
 });
+
+test("dead-lettered LINE events are logged, marked failed and acknowledged", async () => {
+  const { default: worker } = await import("../src/index");
+  const updates: unknown[][] = [];
+  const env = {
+    DB: {
+      prepare: (sql: string) => ({
+        bind: (...args: unknown[]) => ({
+          run: async () => {
+            assert.match(sql, /^UPDATE conversation_messages SET delivery_status=\?/);
+            updates.push(args);
+          },
+        }),
+      }),
+    },
+  } as unknown as Env;
+  let acked = 0;
+  let retried = 0;
+  const message = (body: unknown) => ({ body, attempts: 6, ack: () => void acked++, retry: () => void retried++ });
+  const logged: string[] = [];
+  const original = console.error;
+  console.error = (line: string) => void logged.push(line);
+  try {
+    await worker.queue({
+      queue: "metabear-line-events-dead-staging",
+      messages: [message({ webhookEventId: "evt-1", type: "message", source: { type: "user", userId: "U1" } })],
+    } as never, env);
+  } finally {
+    console.error = original;
+  }
+  assert.deepEqual(updates, [["failed", "evt-1"]]);
+  assert.equal(acked, 1);
+  assert.equal(retried, 0);
+  assert.deepEqual(JSON.parse(logged[0]), { event: "queue.dead_letter", queue: "metabear-line-events-dead-staging", kind: "line-event", eventId: "evt-1" });
+});

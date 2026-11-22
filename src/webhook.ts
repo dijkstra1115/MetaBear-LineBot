@@ -273,7 +273,10 @@ export async function processLineEvent(event: LineEvent, env: Env) {
       );
       await setOutgoingStatus(env, id, response.ok ? "accepted" : "failed");
       await response.body?.cancel();
-      if (!response.ok) throw new Error(`LINE reply HTTP ${response.status}`);
+      // A reply token is single-use and expires, so a rejection such as 400 "Invalid reply token"
+      // fails the same way on every retry. Only rate limits and LINE outages are worth retrying.
+      if (!response.ok && (response.status === 429 || response.status >= 500))
+        throw new Error(`LINE reply HTTP ${response.status}`);
     } else await setOutgoingStatus(env, id, "not_sent");
     await env.DB.prepare(
       "UPDATE webhook_events SET status='done', messages_json=NULL WHERE event_id=?",
