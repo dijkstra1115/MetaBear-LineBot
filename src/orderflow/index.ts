@@ -142,10 +142,16 @@ export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: 
   if (route === "/status") {
     // Row counts read every table in full; only the admin token gets them (?counts=1).
     const counts = url.searchParams.get("counts") === "1";
-    if (counts && !(await hasToken(request, env.ORDERFLOW_ADMIN_TOKEN))) return json({ error: "未授權" }, 401);
-    if (!all) return json(await (await stub.fetch(`https://collector/status${counts ? "?counts=1" : ""}`)).json());
-    const list = await Promise.all(EXCHANGES.map(async (name) => [name, await stubFor(env, name, m)?.fetch("https://collector/status").then((r) => r.json(), () => null)] as const));
-    return json(Object.fromEntries(list.map(([name, st]) => [name, st && { lastTrade: (st as { lastTrade?: unknown }).lastTrade, errors: ((st as { errors?: unknown[] }).errors ?? []).length }])));
+    const operator = await hasToken(request, env.ORDERFLOW_ADMIN_TOKEN);
+    if (counts && !operator) return json({ error: "未授權" }, 401);
+    const load = async () => {
+      if (!all) return json(await (await stub.fetch(`https://collector/status${counts ? "?counts=1" : ""}`)).json());
+      const list = await Promise.all(EXCHANGES.map(async (name) => [name, await stubFor(env, name, m)?.fetch("https://collector/status").then((r) => r.json(), () => null)] as const));
+      return json(Object.fromEntries(list.map(([name, st]) => [name, st && { lastTrade: (st as { lastTrade?: unknown }).lastTrade, errors: ((st as { errors?: unknown[] }).errors ?? []).length }])));
+    };
+    // Every status read wakes the collector. The public one is shared from the edge cache for a few
+    // seconds so polling it cannot keep a collector busy; with the admin token it is always live.
+    return operator ? load() : cached(url, { ex }, ctx, 5, load);
   }
 
   if (route === "/day") {

@@ -133,8 +133,12 @@ test("parameters a route does not read share its edge cache entry", async () => 
 });
 
 test("row counts, which read every table in full, need the admin token", async () => {
-  const open = (await (await call("/status")).json()) as any;
+  const publicStatus = await call("/status");
+  assert.match(publicStatus.headers.get("cache-control") ?? "", /public, max-age=5/, "the public status is shared from the edge cache");
+  const open = (await publicStatus.json()) as any;
   assert.equal("counts" in open, false, "the public status counts nothing");
+  const live = await call("/status", { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(live.headers.get("cache-control"), "no-store", "the operator status is live");
   assert.equal((await call("/status?counts=1")).status, 401);
   assert.equal((await call("/status?counts=1", { headers: { authorization: "Bearer wrong" } })).status, 401);
   const counted = (await (await call("/status?counts=1", { headers: { authorization: `Bearer ${token}` } })).json()) as any;
