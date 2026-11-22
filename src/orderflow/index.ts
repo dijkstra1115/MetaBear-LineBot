@@ -108,6 +108,8 @@ async function cached(url: URL, params: Record<string, string>, ctx: ExecutionCo
 
 export async function handleOrderflow(request: Request, env: OrderflowEnv, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
+  // Fingerprint of the public/ modules this deploy bundled (scripts/shared-modules.mjs).
+  if (url.pathname === "/api/orderflow/version") return json({ sharedModules: env.SHARED_MODULES ?? null });
   if (url.pathname === "/api/orderflow/relay") {
     if (!(await hasToken(request, env.ORDERFLOW_RELAY_TOKEN))) return json({ error: "未授權" }, 401);
     // One socket per exchange and market; the relay names them (?ex=okx&m=eth), Binance and BTC when it does not.

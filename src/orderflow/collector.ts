@@ -36,6 +36,8 @@ import {
 } from "../../public/lab/orderflow/bybit.js";
 
 export interface OrderflowEnv {
+  /** Set by scripts/shared-modules.mjs at deploy: which public/ modules this Worker bundled. */
+  SHARED_MODULES?: string;
   COLLECTOR: DurableObjectNamespace<Collector>;
   // Binance's collector (src/orderflow/binance-collector.ts), fed by the Tokyo relay.
   BINANCE?: DurableObjectNamespace<Collector>;

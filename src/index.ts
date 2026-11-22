@@ -131,7 +131,12 @@ export default {
       if (url.pathname.startsWith("/auth/"))
         return await authRoute(request, env);
       if (url.pathname === "/health")
-        return json({ status: "ok", service: "metabear-line-crm" });
+        return json({
+          status: "ok",
+          service: "metabear-line-crm",
+          // Fingerprint of the public/ modules this deploy bundled (scripts/shared-modules.mjs).
+          sharedModules: (env as { SHARED_MODULES?: string }).SHARED_MODULES ?? null,
+        });
       if (url.pathname === "/webhook/line") {
         if (request.method !== "POST")
           return new Response("Method not allowed", {
