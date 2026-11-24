@@ -1,12 +1,13 @@
 # 科普短片爆款手冊
 
-這裡存放兩支爆款參考片的拆解，以及從中整理出的製作規則。做新的 9:16 科普片（[explainers/](../)）之前先讀這頁。[ergodicity-kelly](../ergodicity-kelly/README.md) 就是依這兩支片做的，第 8 節是它和參考片的對照。
+這裡存放爆款參考片的拆解，以及從中整理出的製作規則。做新的 9:16 科普片（[explainers/](../)）之前先讀這頁。[ergodicity-kelly](../ergodicity-kelly/README.md) 就是依這兩支片做的，第 8 節是它和參考片的對照。
 
 | 位置 | 內容 | 進 Git |
 | --- | --- | --- |
 | 本頁 | 公式、數字、檢查表 | 是 |
 | [breakdowns/viral1-touchscreen.md](breakdowns/viral1-touchscreen.md) | 觸控螢幕片，逐段拆解 | 是 |
 | [breakdowns/viral2-keyboard.md](breakdowns/viral2-keyboard.md) | iPhone 鍵盤片，逐段拆解 | 是 |
+| [breakdowns/viral3-nasdaq100.md](breakdowns/viral3-nasdaq100.md) | 納指100 回放片（無旁白、跟配樂走的數據回放），逐段拆解 | 是 |
 | [scripts/analyze.py](scripts/analyze.py) | 量測工具：逐字稿、語速、硬切、響度、畫面動態、接觸表 | 是 |
 | `motion/out/ref/viral/*.mp4` | 參考片原檔 | 否 |
 | `motion/out/ref/viral/<片名>/` | 量測報告 `report.txt`、逐字稿、接觸表 | 否 |
@@ -160,3 +161,13 @@
    第一次使用要先執行 `npx hyperframes models install parakeet`（約 640 MB）。
 3. 看 `out/ref/viral/<片名>/hook_01.jpg`（前 8 秒，每秒 3 格）和 `sheet_*.jpg`（每秒 1 格），對照 `report.txt` 的逐句時間。
 4. 照現有格式寫 `breakdowns/<片名>.md`，再把新數字補進第 2 節。新片推翻舊規則時，直接改本頁。
+
+## 13. 另一種型：無旁白的數據回放（viral3）
+
+viral3 不解釋機制，而是把一段真實行情重播一次。第 1–12 節的旁白規則不適用，改用這幾條（[best-days](../best-days/README.md) 照此製作）：
+
+- **從最戲劇的一天切入，再倒帶回起點**：先給結果（大漲、大跌、多久回本），再「回到 1950」開始重播。
+- **配樂就是時鐘**：先量出 BPM 與段落（`npx hyperframes audio <曲>`），事件日放在重拍上，間奏放慢、drop 時爆發。
+- **固定 HUD＋右上清單＋3D 地板**：價格、日期、比較框一直在左上；右上累積主角清單；地板給整段歷史的質感。
+- **一個事件只給一個大數字和一行字**，2–4 秒換下一個；崩跌用閃電，大漲用光柱或火花，顏色紅漲綠跌。
+- **收尾換成一張能截圖的結論**：表格或變形後的圖，加上資料來源與「非投資建議」。

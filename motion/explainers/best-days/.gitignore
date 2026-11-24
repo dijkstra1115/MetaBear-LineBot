@@ -1,0 +1,12 @@
+renders/
+snapshots/
+.hyperframes/
+.thumbnails/
+.waveform-cache/
+check.log
+scripts/.chars.txt
+# The song is owner-supplied (motion/audio-library/music/barrete.mp3) and the mix is rebuilt by scripts/audio.sh.
+assets/audio/*
+# The repo-wide lib/ rule would drop the vendored GSAP the film loads offline.
+!lib/
+renders-*.log

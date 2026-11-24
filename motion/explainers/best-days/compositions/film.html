@@ -1,0 +1,184 @@
+<template>
+  <style>
+    @font-face { font-family: "Barlow Condensed"; src: url("assets/fonts/barlow-condensed-latin-500-normal.woff2") format("woff2"); font-weight: 500; }
+    @font-face { font-family: "Barlow Condensed"; src: url("assets/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); font-weight: 700; }
+    @font-face { font-family: "Noto Sans TC Sub"; src: url("assets/fonts/NotoSansTC-sub.ttf") format("truetype"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: #040506; --up: #ff3b4a; --dn: #1fe08f; --gold: #ffc94d; --ink: #f2f4f5; --mute: #8a9095; }
+    #stage { position: absolute; inset: 0; transform-origin: 700px 1000px; --ca: 1px; }
+    #stage canvas, #fx { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; display: block; }
+    #fx { pointer-events: none; }
+    .num { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 0.9; white-space: nowrap; }
+    .zh { font-family: "Noto Sans TC Sub", sans-serif; }
+
+    /* 3D rig: the company wall and the chart plane share one lens */
+    .lens { position: absolute; inset: 0; perspective: 1500px; perspective-origin: 540px 1000px; }
+    #wall-wrap { -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 860px, #000 1220px, #000 100%); mask-image: linear-gradient(to bottom, transparent 0, transparent 860px, #000 1220px, #000 100%); }
+    #wall { position: absolute; left: -210px; top: 700px; width: 1500px; height: 1500px; transform-origin: 750px 750px; }
+    #chart-plane { position: absolute; inset: 0; transform-origin: 760px 1200px; }
+    #chart-plane canvas { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; display: block; }
+    .co { position: absolute; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 59, 74, var(--a, 0)); overflow: hidden; color: var(--ink); }
+    .co.neg { background: rgba(31, 224, 143, var(--a, 0)); }
+    .co.na { background: rgba(255, 255, 255, 0.03); }
+    .ci { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+    .cw { font-family: "Barlow Condensed", sans-serif; font-weight: 700; letter-spacing: 0.02em; line-height: 0.95; white-space: nowrap; color: rgba(242, 244, 245, 0.92); }
+    .cz { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 500; color: rgba(242, 244, 245, 0.55); white-space: nowrap; }
+    .cp { font-family: "Barlow Condensed", sans-serif; font-weight: 700; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .co.pos .cp { color: #ffd0d4; }
+    .co.neg .cp { color: #c9ffe6; }
+    .co.na .cw, .co.na .cp { color: rgba(242, 244, 245, 0.22); }
+    #hud-wall { margin-top: 10px; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 500; font-size: 24px; color: rgba(242, 244, 245, 0.55); white-space: nowrap; }
+
+    /* top-left ticker */
+    #hud { position: absolute; left: 100px; top: 300px; color: var(--ink); }
+    #hud-head { display: flex; align-items: baseline; gap: 12px; font-size: 30px; }
+    #hud-head b { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 700; }
+    #hud-head span { font-family: "Barlow Condensed", sans-serif; font-weight: 500; color: var(--mute); font-size: 28px; }
+    #hud-head i { font-style: normal; color: rgba(255, 255, 255, 0.25); }
+    #hud-row { display: flex; align-items: center; gap: 22px; margin-top: 8px; }
+    #hud-price { font-size: 136px; color: var(--up); text-shadow: 0 0 28px rgba(255, 59, 74, 0.55), calc(var(--ca) * -1) 0 rgba(255, 0, 60, 0.6), var(--ca) 0 rgba(0, 220, 255, 0.5); }
+    #hud.down #hud-price { color: var(--dn); text-shadow: 0 0 28px rgba(31, 224, 143, 0.5), calc(var(--ca) * -1) 0 rgba(255, 0, 60, 0.5), var(--ca) 0 rgba(0, 220, 255, 0.55); }
+    #hud-pill { display: flex; flex-direction: column; gap: 6px; }
+    #hud-ref { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 500; font-size: 26px; color: rgba(242, 244, 245, 0.75); white-space: nowrap; }
+    #hud-pct { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 46px; color: var(--up); background: rgba(255, 59, 74, 0.16); border: 1px solid rgba(255, 59, 74, 0.4); border-radius: 6px; padding: 2px 14px 0; white-space: nowrap; }
+    #hud.down #hud-pct { color: var(--dn); background: rgba(31, 224, 143, 0.14); border-color: rgba(31, 224, 143, 0.4); }
+    #hud-date { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 64px; margin-top: 2px; letter-spacing: 0.01em; }
+
+    /* right-hand list of the top days as they arrive */
+    #panel { position: absolute; left: 516px; top: 604px; width: 440px; color: var(--ink); }
+    .ph { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.16); padding-bottom: 8px; }
+    .pt { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 700; font-size: 30px; }
+    .ps { font-family: "Barlow Condensed", sans-serif; font-weight: 500; font-size: 26px; color: var(--mute); }
+    #panel-count { --f: 0; margin-top: 10px; font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 66px; color: var(--gold); text-shadow: 0 0 calc(12px + 40px * var(--f)) rgba(255, 201, 77, calc(0.35 + 0.6 * var(--f))); }
+    #panel-note { height: 36px; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 700; font-size: 28px; color: var(--gold); white-space: nowrap; }
+    #rows { position: relative; height: 240px; margin-top: 6px; }
+    .row { --f: 0; position: absolute; left: 0; top: 0; width: 440px; height: 50px; display: grid; grid-template-columns: 62px 116px 106px 1fr; align-items: center; border-radius: 6px; background: rgba(255, 59, 74, calc(0.08 + 0.35 * var(--f))); opacity: 0; }
+    .rk { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 30px; color: var(--gold); padding-left: 10px; }
+    .rd { font-family: "Barlow Condensed", sans-serif; font-weight: 500; font-size: 30px; }
+    .rr { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 34px; color: var(--up); }
+    .rdd { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 500; font-size: 26px; color: var(--dn); text-align: right; padding-right: 10px; white-space: nowrap; }
+
+    /* big strike labels */
+    .lab { --blur: 0px; isolation: isolate; position: absolute; left: 470px; top: 900px; display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; transform-origin: 0 50%; filter: blur(var(--blur)); text-shadow: 0 4px 24px rgba(0, 0, 0, 0.9); }
+    .lab::before { content: ""; position: absolute; left: -120px; right: -120px; top: -30px; bottom: -40px; background: radial-gradient(closest-side, rgba(2, 4, 5, 0.62), rgba(2, 4, 5, 0)); z-index: -1; }
+    .lb-big { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 168px; line-height: 0.88; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .lab.up .lb-big { color: var(--up); text-shadow: 0 0 40px rgba(255, 59, 74, 0.7), calc(var(--ca) * -1.5) 0 rgba(255, 0, 60, 0.7), calc(var(--ca) * 1.5) 0 rgba(0, 220, 255, 0.6); }
+    .lab.dn .lb-big { color: var(--dn); text-shadow: 0 0 40px rgba(31, 224, 143, 0.6), calc(var(--ca) * -1.5) 0 rgba(255, 0, 60, 0.6), calc(var(--ca) * 1.5) 0 rgba(0, 220, 255, 0.6); }
+    .lb-sub { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 700; font-size: 38px; color: var(--ink); white-space: nowrap; }
+    .lb-pill { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 700; font-size: 30px; white-space: nowrap; padding: 4px 16px; border-radius: 6px; background: rgba(31, 224, 143, 0.14); border: 1px solid rgba(31, 224, 143, 0.45); color: var(--dn); }
+    .lab.dn .lb-pill { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.25); color: var(--ink); }
+    .lb-ctx { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 900; font-size: 40px; color: var(--gold); white-space: nowrap; text-shadow: 0 0 22px rgba(255, 201, 77, 0.45), 0 4px 20px rgba(0, 0, 0, 0.9); }
+    .lb-ctx:empty, .lb-pill:empty { display: none; }
+
+    /* annotation pinned to a point on the line */
+    #mark { position: absolute; left: 0; top: 0; opacity: 0; color: var(--ink); }
+    .mk-dot { position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--gold); box-shadow: 0 0 16px rgba(255, 201, 77, 0.8); }
+    .mk-line { position: absolute; left: -1px; top: -96px; width: 2px; height: 86px; background: linear-gradient(to top, var(--gold), rgba(255, 201, 77, 0)); }
+    .mk-box { position: absolute; right: -2px; top: -150px; display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+    .mk-t { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 700; font-size: 28px; color: var(--gold); }
+    .mk-v { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 34px; }
+    #mark.below .mk-line { top: 10px; background: linear-gradient(to bottom, var(--gold), rgba(255, 201, 77, 0)); }
+    #mark.below .mk-box { top: 100px; }
+
+    /* bear-market stamp */
+    #stamp { position: absolute; left: 100px; top: 616px; opacity: 0; transform-origin: 0 50%; display: flex; flex-direction: column; align-items: flex-start; }
+    .st-t { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 900; font-size: 64px; letter-spacing: 0.12em; color: var(--dn); border: 5px solid var(--dn); border-radius: 10px; padding: 0 20px 4px 28px; text-shadow: 0 0 24px rgba(31, 224, 143, 0.6); box-shadow: 0 0 30px rgba(31, 224, 143, 0.35); }
+    .st-d { margin-top: 8px; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 700; font-size: 26px; color: rgba(242, 244, 245, 0.85); }
+
+    /* question, rewind, conclusions, final */
+    .line { --blur: 0px; position: absolute; left: 0; width: 1080px; text-align: center; color: var(--ink); opacity: 0; filter: blur(var(--blur)); text-shadow: 0 4px 26px rgba(0, 0, 0, 0.95); }
+    #q1 { top: 596px; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 900; font-size: 66px; }
+    #q2 { top: 682px; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 900; font-size: 66px; color: var(--gold); }
+    #rw { position: absolute; left: 0; top: 840px; width: 1080px; display: flex; flex-direction: column; align-items: center; opacity: 0; }
+    #rw-tag { display: flex; align-items: center; gap: 14px; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 700; font-size: 34px; color: var(--ink); letter-spacing: 0.2em; }
+    .tri { width: 0; height: 0; border-top: 16px solid transparent; border-bottom: 16px solid transparent; border-right: 24px solid var(--ink); margin-right: -10px; }
+    #rw-year { margin-top: 14px; font-family: "Barlow Condensed", "Noto Sans TC Sub", sans-serif; font-weight: 700; font-size: 190px; line-height: 1; color: var(--ink); text-shadow: calc(var(--ca) * -2) 0 rgba(255, 0, 60, 0.8), calc(var(--ca) * 2) 0 rgba(0, 220, 255, 0.7), 0 0 40px rgba(255, 255, 255, 0.35); }
+    #rw-year.land { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 900; font-size: 150px; }
+    .stat { --blur: 0px; position: absolute; left: 0; top: 330px; width: 1080px; display: flex; flex-direction: column; align-items: center; opacity: 0; filter: blur(var(--blur)); }
+    .stat .num { font-size: 250px; color: var(--gold); text-shadow: 0 0 60px rgba(255, 201, 77, 0.5); }
+    .stat .s-l { margin-top: 16px; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 900; font-size: 62px; color: var(--ink); }
+    .stat .s-s { margin-top: 18px; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 500; font-size: 32px; color: rgba(242, 244, 245, 0.72); }
+    .stat .s-s b { color: var(--gold); font-weight: 700; }
+    #final { --blur: 0px; position: absolute; left: 0; top: 380px; width: 1080px; display: flex; flex-direction: column; align-items: center; opacity: 0; filter: blur(var(--blur)); }
+    .f1 { font-family: "Noto Sans TC Sub", sans-serif; font-weight: 900; font-size: 80px; color: var(--ink); line-height: 1.25; text-align: center; }
+    .f1 em { font-style: normal; color: var(--gold); }
+    .brand { margin-top: 56px; display: flex; align-items: center; gap: 22px; }
+    .brand img { width: 120px; height: 120px; }
+    .brand span { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 64px; color: var(--ink); letter-spacing: 0.02em; }
+    .fine { position: absolute; left: 0; top: 1236px; width: 1080px; text-align: center; font-family: "Noto Sans TC Sub", sans-serif; font-weight: 500; font-size: 24px; line-height: 1.55; color: rgba(242, 244, 245, 0.6); }
+  </style>
+  <div id="root" data-composition-id="film" data-start="0" data-duration="97.5" data-width="1080" data-height="1920">
+    <div id="stage" data-layout-allow-overlap>
+      <canvas id="bg" width="1080" height="1920"></canvas>
+      <div id="wall-wrap" class="lens" data-layout-ignore><div id="wall"></div></div>
+      <div id="chart-lens" class="lens">
+        <div id="chart-plane">
+          <canvas id="chart" width="1080" height="1920"></canvas>
+          <div id="mark"><div class="mk-dot"></div><div class="mk-line"></div><div class="mk-box"><span class="mk-t"></span><span class="mk-v"></span></div></div>
+        </div>
+      </div>
+
+      <div id="hud">
+        <div id="hud-head"><b>標普500</b><span>S&amp;P 500 Index</span><i>|</i><span>MetaBear</span></div>
+        <div id="hud-row">
+          <div id="hud-price" class="num">0.00</div>
+          <div id="hud-pill"><div id="hud-ref"></div><div id="hud-pct"></div></div>
+        </div>
+        <div id="hud-date"></div>
+        <div id="hud-wall"></div>
+      </div>
+
+      <div id="panel">
+        <div class="ph"><span class="pt">前 20 大單日漲幅</span><span class="ps">1950–2026</span></div>
+        <div id="panel-count">00 / 20</div>
+        <div id="panel-note"></div>
+        <div id="rows">
+          <div class="row" id="row0"><span class="rk"></span><span class="rd"></span><span class="rr"></span><span class="rdd"></span></div>
+          <div class="row" id="row1"><span class="rk"></span><span class="rd"></span><span class="rr"></span><span class="rdd"></span></div>
+          <div class="row" id="row2"><span class="rk"></span><span class="rd"></span><span class="rr"></span><span class="rdd"></span></div>
+          <div class="row" id="row3"><span class="rk"></span><span class="rd"></span><span class="rr"></span><span class="rdd"></span></div>
+        </div>
+      </div>
+
+      <div id="stamp"><div class="st-t">熊市</div><div class="st-d"></div></div>
+
+      <div id="labB" class="lab"><div class="lb-big"></div><div class="lb-sub"></div><div class="lb-pill"></div><div class="lb-ctx"></div></div>
+      <div id="labA" class="lab"><div class="lb-big"></div><div class="lb-sub"></div><div class="lb-pill"></div><div class="lb-ctx"></div></div>
+
+      <div id="q1" class="line">標普500 漲最多的 20 天</div>
+      <div id="q2" class="line">都藏在什麼時候？</div>
+      <div id="rw"><div id="rw-tag"><span class="tri"></span><span class="tri"></span><span>倒帶</span></div><div id="rw-year">2025</div></div>
+
+      <div id="stat1" class="stat">
+        <div id="s1n" class="num">0 / 20</div>
+        <div class="s-l">都在 200 日均線之下</div>
+        <div class="s-s">所有交易日裡，只有 <b id="s1base">28%</b> 在 200 日線下</div>
+      </div>
+      <div id="stat2" class="stat">
+        <div id="s2n" class="num">0 / 20</div>
+        <div class="s-l">距高點跌超過 20%</div>
+        <div class="s-s">唯一的例外：<b id="s2ex">2025.04.09</b>，距高點 <span id="s2dd">−18.9%</span></div>
+      </div>
+      <div id="stat3" class="stat">
+        <div id="s3n" class="num">0 / 20</div>
+        <div class="s-l">兩週內就有一次大崩跌</div>
+        <div class="s-s">前後 14 天內，出現過 1950 年以來<b>前 20 大跌幅</b></div>
+      </div>
+      <div id="final">
+        <div class="f1">最大的漲幅<br>都出現在<em>最恐慌</em>的時候</div>
+        <div class="brand"><img src="assets/img/badge.png" alt=""><span>MetaBear</span></div>
+      </div>
+    </div>
+    <canvas id="fx" width="1080" height="1920"></canvas>
+    <div id="fine" class="fine" style="opacity: 0">真實數據：S&amp;P 500 每日收盤價（Yahoo Finance ^GSPC）1950.01.03–2026.11.23<br>單日漲跌＝收盤對前一日收盤 · 距高點＝前一日收盤對歷史最高收盤 · 非投資建議</div>
+  </div>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/companies.js"></script>
+  <script src="assets/js/film.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const filmTl = gsap.timeline({ paused: true });
+    filmTl.fromTo("#fine", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out" }, 89.6);
+    filmTl.set({}, {}, 97.5);
+    window.__timelines["film"] = filmTl;
+  </script>
+</template>

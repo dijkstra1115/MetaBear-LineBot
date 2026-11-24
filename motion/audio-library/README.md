@@ -10,6 +10,7 @@
 | --- | --- | --- | --- |
 | `ensena-a-amar.mp3` | 「ENSEÑA A AMAR」320k，原檔名 `ENSEÑA A AMAR_320k.mp3`（原本散放在 `motion/`） | flow-arena/highlights、highlights-live（專案內複本 `assets/audio/song.mp3`） | 使用者提供，不進 Git |
 | `montagem-pegadora-slowed.mp3` | 「MONTAGEM PEGADORA (Slowed)」320k，原檔名 `MONTAGEM PEGADORA (Slowed)_320k.mp3`（原本散放在 `motion/`） | academy-drop（專案內複本 `assets/audio/song.mp3`） | 使用者提供，不進 Git |
+| `barrete.mp3` | 「BARRETE」，約 130 BPM，原檔名 `BARRETE.mp3`（原本放在 `motion/`）；母帶約 −5.7 LUFS 且削峰 | explainers/best-days（專案內複本 `assets/audio/barrete.mp3`，`scripts/audio.sh` 降 8.3 dB 成 −14 LUFS） | 使用者提供，不進 Git |
 | `raya-sped-up.mp3` | 「Raya (Sped Up)」，從 `flow-arena/surge/assets/audio/raya.mp3` 複製 | flow-arena/surge、surge-916（專案內各有 `raya.mp3`；surge 另有解碼後的 `raya.wav`） | 使用者提供、已取得授權，不進 Git |
 
 ## sfx/ — 音效

@@ -14,6 +14,7 @@
 | [replays/](replays/) | 策略實戰覆盤片（9:16 旁白，Charon 男聲＋程式合成音效）：`2025-12-09/`（策略實戰 01，製作中，接續步驟見其 BRIEF.md）、`2026-02-06/`（第一部原型） | HyperFrames：Canvas 繪圖＋CSS 3D 攝影機 |
 | [platform/showreel/](platform/showreel/BRIEF.md) | 30 秒「實盤覆盤＋盤面旁白＋訂單流軟體」片：同一段行情一鏡到底連開四筆，止盈爆發時拉遠成整面案例牆，收在功能環繞；配樂與音效全部程式合成，16:9 60 fps | HyperFrames：實機逐格錄影 |
 | [explainers/ergodicity-kelly/](explainers/ergodicity-kelly/README.md) | 111 秒科普短片「遍歷性悖論與凱利公式」：英文旁白（ElevenLabs Brian）＋中英字幕，檯燈下的賭桌、硬幣與 1,000 疊籌碼（真實比例），9:16 | HyperFrames：Three.js 連續 3D 世界＋程式合成配樂 |
+| [explainers/best-days/](explainers/best-days/README.md) | 97.5 秒數據回放片「標普500 漲最多的 20 天」：無旁白、跟 BARRETE 配樂的拍子走，1950–2026 真實日收盤重播，紅色能量柱＋綠色閃電＋跟著鏡頭轉的 3D 公司磚牆，尾段變形成 200 日線與距高點兩張圖，9:16 | HyperFrames：Canvas 2D＋CSS 3D 鏡頭 |
 | [explainers/playbook/](explainers/playbook/README.md) | **科普短片爆款手冊**：兩支爆款參考片（觸控螢幕、iPhone 鍵盤）的逐段拆解、鉤子／節奏／視覺規則、新片檢查表，以及量測工具 `scripts/analyze.py`；做新的科普片前先讀 | — |
 | out/ | **所有完成的影片**，以及截圖、參考片與暫存（不進 Git）；見下方「成品在哪裡」 | — |
 | [audio-library/](audio-library/README.md) | **音樂、音效、人聲素材庫**：歌曲、下載音效、合成音效試做、旁白聲線試聽（只有 README 進 Git） | — |
@@ -29,6 +30,7 @@
 | `academy-voice-preview.mp4` | 學院旁白版，43.5 秒 1080p30（這個專案只渲染過預覽版） |
 | `academy-promo-tall-hq.mp4` | 學院宣傳片 9:16 高畫質版，46 秒 |
 | `academy-lesson-failed-auction.mp4` | 單課輸出：「掃過前低，收回才算數」（failed-auction），77 秒 1080p60 |
+| `explainers-best-days.mp4` | 「標普500 漲最多的 20 天」上傳版，97.5 秒 1080×1920 30fps，12 Mbps（母帶在專案的 `renders/best-days.mp4`） |
 | `flow-arena-launch.mp4`、`-gameplay`、`-promo`、`-trailer`、`-trailer-deep`、`-surge`、`-surge-916`、`-flagship-share`、`-highlights`、`-highlights-live` | FLOW ARENA 各版宣傳片（見 [flow-arena/README.md](flow-arena/README.md)） |
 | `website/` | 官網案例牆用的影片：6 支 `segment-*`、30 支 `trade-*` 原檔；`website/web/` 是實際上傳到 R2（media.metabear.io）的壓縮版與封面 |
 | `social/` | 曾發到社群的影片（使用者自行放入） |
