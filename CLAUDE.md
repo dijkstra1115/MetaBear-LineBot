@@ -83,7 +83,7 @@ pages/               Pages project root: wrangler.jsonc, functions/
 scripts/             Build, deployment-layout, image/asset generators, staging checks
 tests/               *.test.ts (backend, tsx) and *.test.mjs (academy, node --test)
 data/bingx-faq.json  FAQ seed data (also used by tests)
-motion/              tools/ (render/audio), academy/{showreel,promo,drop,voice,film}, flow-arena/*, out/ (renders), audio-library/
+motion/              tools/ (render/audio), academy/{showreel,promo,drop,voice,film}, flow-arena/*, explainers/ (science films + playbook/), out/ (renders), audio-library/
 docs/                Design, deployment and per-lesson plans (zh-Hant)
 archive/, experiments/   Frozen / paused, see scope rules
 legacy/              Retired FLOW ARENA V7 snapshot and recovery instructions
@@ -127,6 +127,15 @@ override): `npm run motion:audio -- <id>`, `npm run motion:render -- <id>`
 `motion/flow-arena/*` project is a separate HyperFrames project with its own
 `npm run dev/check/render` and its own CLAUDE.md, which applies inside that
 folder.
+
+Science explainer films (9:16, `motion/explainers/<id>/`) follow
+[motion/explainers/playbook/README.md](motion/explainers/playbook/README.md):
+the breakdown of the viral reference videos (hook, pacing, visuals, payoffs)
+and a checklist. Read it before scripting or designing a new explainer. When
+the owner adds a reference video, put it in `motion/out/ref/viral/`, run
+`py -I explainers/playbook/scripts/analyze.py out/ref/viral/<name>.mp4` from
+`motion/`, add a breakdown, and update the playbook instead of starting a new
+document.
 
 `scripts/test-openai.ts` calls the real OpenAI API and costs credits; run it
 only when asked.
