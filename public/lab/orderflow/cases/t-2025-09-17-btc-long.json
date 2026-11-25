@@ -1,0 +1,66 @@
+{
+  "title": "實盤 09/17 BTC多",
+  "date": "2025-09-17",
+  "tz": "+08:00",
+  "data": "t-2025-09-17-btc-long.data.json",
+  "trade": "2025-09-17-btc-long",
+  "steps": [
+    {
+      "at": "2025-09-17T18:54:00+08:00",
+      "speed": 594,
+      "tf": "15",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/09/17，BTC永續合約（Binance）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-09-17T19:34:00+08:00",
+      "caption": "點位群 19:34「幣種: BTC 開倉點位: 115510 計畫委託 - 市價 方向: 多 止損: 114330 止盈 TP1 116690 TP2 118000 TP3 123200」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-09-17T22:31:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 115510,
+        "stop": 114330,
+        "target": 116690
+      },
+      "caption": "掛單成交 115,510，停損 114,330，目標 116,690。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-09-17T22:31:01+08:00",
+      "caption": "開單邏輯：「BTC - 短期目標118k，昨天在1H級別的推進塊帶大家進場，前一段突破回調的斐波擴展1.13-1.272是上漲結構的階段性止盈點位，在那邊受阻做階段性平倉，如果直接突破就繼續往上拿到122k，沒在車上的可以關注116k左右有沒有回踩機會」",
+      "hold": 6000
+    },
+    {
+      "at": "2025-09-18T06:56:01+08:00",
+      "caption": "06:56 止盈，+1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-09-18T06:57:02+08:00",
+      "end": true
+    }
+  ]
+}

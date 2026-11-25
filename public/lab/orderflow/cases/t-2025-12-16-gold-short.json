@@ -1,0 +1,89 @@
+{
+  "title": "實盤 12/16 黃金空",
+  "date": "2025-12-16",
+  "tz": "+08:00",
+  "data": "t-2025-12-16-gold-short.data.json",
+  "trade": "2025-12-16-gold-short",
+  "notes": [
+    "群組報 4,291，交易紀錄表記 4,288。"
+  ],
+  "steps": [
+    {
+      "at": "2025-12-16T15:26:00+08:00",
+      "speed": 62,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/12/16，黃金永續合約（BingX）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-16T16:04:00+08:00",
+      "caption": "點位群 16:04「GOLD 黃金 空 4291」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-16T16:06:00+08:00",
+      "caption": "點位群 16:06「SL 4296 TP1 4284 TP2 4280」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-16T16:09:00+08:00",
+      "caption": "點位群 16:09「還沒反應過來就快 TP2…」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-16T16:14:00+08:00",
+      "caption": "點位群 16:14「FTP 4270」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-16T16:18:00+08:00",
+      "caption": "點位群 16:18「TP2 我已進行部份平倉」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-16T16:06:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 4291,
+        "stop": 4296,
+        "target": 4280
+      },
+      "caption": "進場 4,291，停損 4,296，目標 4,280。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-16T16:06:01+08:00",
+      "caption": "開單邏輯：「1m 獵取 EQH 在上方訂單塊進場，5m 上方重疊訂單塊反應良好」",
+      "hold": 6000
+    },
+    {
+      "at": "2025-12-16T16:17:01+08:00",
+      "caption": "16:17 止盈，+2.20R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-12-16T16:18:02+08:00",
+      "end": true
+    }
+  ]
+}

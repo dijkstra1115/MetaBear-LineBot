@@ -10,7 +10,7 @@ import { BINGX_WS, BingxBook, bingxTopics, gunzipText, parseBingxTrades } from "
 import { OKX_WS, OkxBook, parseOkxTrades } from "./okx.js";
 import { LIQ_EXCHANGES, liqFeeds } from "./liquidations.js";
 import { BIN as BTC_MAP_BIN, buildLiqMap, stepAt } from "./liqmap.js";
-import { MARKETS, marketOf, sized } from "./markets.js";
+import { MARKETS, REPLAY_MARKETS, marketOf, sized } from "./markets.js";
 import { readingsAt } from "./metrics.js";
 import { Notifier } from "./notify.js";
 import { Player, drawOverlay, prepare } from "./replay.js";
@@ -39,6 +39,8 @@ const MK_KEY = "metabear-orderflow-market";
 const MK = (() => {
   const asked = query.get("m");
   if (Object.hasOwn(MARKETS, asked ?? "")) return MARKETS[asked];
+  // Recorded cases can also be SOL or gold, which have no live data.
+  if (query.has("case") && Object.hasOwn(REPLAY_MARKETS, asked ?? "")) return REPLAY_MARKETS[asked];
   try {
     const saved = localStorage.getItem(MK_KEY);
     if (Object.hasOwn(MARKETS, saved ?? "")) return MARKETS[saved];
@@ -2088,7 +2090,7 @@ function drawLegend(L) {
   const narrow = L.plotW < 600;
   const gap = narrow ? " " : "  ";
   const parts = [
-    ...(narrow ? [] : [[MK.symbol, C.text], [` · ${replay || EX === "binance" ? "Binance" : EXN} · ${TF_NAMES[ui.tf.value] ?? ""}   `, C.muted]]),
+    ...(narrow ? [] : [[replay?.raw.label ?? MK.symbol, C.text], [` · ${replay ? replay.raw.source ?? "Binance" : EX === "binance" ? "Binance" : EXN} ·${TF_NAMES[ui.tf.value] ?? ""}   `, C.muted]]),
     ["O ", C.muted],
     [fmtPrice(b.o), C.text],
     [`${gap}H `, C.muted],
@@ -4005,8 +4007,8 @@ async function startReplay() {
   prefs.show.liq = false;
   document.title = `${script.title ?? CASE} · MetaBear 回放`;
   ui.live.dataset.state = "replay";
-  document.querySelector(".symbol small").textContent = "永續 · Binance";
-  $("source").textContent = `資料：${raw.source} BTCUSDT 永續合約歷史逐筆成交，依原本的時間逐秒重播；足跡格距 $${raw.tick}。OI 為交易所每 5 分鐘的公開數據。這是過去行情的回放，不是即時資料，也不是投資建議。`;
+  document.querySelector(".symbol small").textContent = `${mkPick.hidden ? `${raw.label ?? MK.symbol} ` : ""}永續 · ${raw.source ?? "Binance"}`;
+  $("source").textContent = raw.sourceText ?? `資料：${raw.source} ${raw.symbol ?? "BTCUSDT"} 永續合約歷史逐筆成交，依原本的時間逐秒重播；足跡格距 $${raw.tick}。${raw.note ?? ""}OI 為交易所每 5 分鐘的公開數據。這是過去行情的回放，不是即時資料，也不是投資建議。`;
   $("replay").hidden = false;
   notifyPanel.hidden = true; // a replay has no live events
   replayFeed();
@@ -4572,7 +4574,8 @@ $("bc-replay").addEventListener("click", replayPinnedBar);
 // BTC or ETH. Switching reloads the page: every series, stream and cache entry belongs to one market.
 const mkPick = $("mk");
 mkPick.value = MK.id;
-mkPick.disabled = !!CASE; // case replays are recorded BTC data
+mkPick.disabled = !!CASE; // a case is recorded data of one market
+if (CASE && !Object.hasOwn(MARKETS, MK.id)) mkPick.hidden = true;
 mkPick.addEventListener("change", () => {
   try {
     localStorage.setItem(MK_KEY, mkPick.value);

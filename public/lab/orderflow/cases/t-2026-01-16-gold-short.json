@@ -1,0 +1,77 @@
+{
+  "title": "實盤 01/16 黃金空",
+  "date": "2026-01-16",
+  "tz": "+08:00",
+  "data": "t-2026-01-16-gold-short.data.json",
+  "trade": "2026-01-16-gold-short",
+  "steps": [
+    {
+      "at": "2026-01-16T12:11:00+08:00",
+      "speed": 299,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/01/16，黃金永續合約（BingX）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-16T12:51:00+08:00",
+      "caption": "點位群 12:51「GOLD 空 4605」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-16T12:55:00+08:00",
+      "caption": "點位群 12:55「SL 4625 TP 4585」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-16T17:36:00+08:00",
+      "caption": "點位群 17:36「套保讓它跑」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-16T12:51:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 4605,
+        "stop": 4625,
+        "target": 4585
+      },
+      "caption": "進場 4,605，停損 4,625，目標 4,585。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-16T17:36:00+08:00",
+      "adjust": {
+        "stop": 4605
+      }
+    },
+    {
+      "at": "2026-01-16T18:05:01+08:00",
+      "caption": "18:05 保本，±0.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-01-16T18:06:02+08:00",
+      "end": true
+    }
+  ]
+}

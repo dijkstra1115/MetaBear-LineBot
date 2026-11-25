@@ -1,0 +1,76 @@
+{
+  "title": "實盤 12/25 ETH空",
+  "date": "2025-12-25",
+  "tz": "+08:00",
+  "data": "t-2025-12-25-eth-short.data.json",
+  "trade": "2025-12-25-eth-short",
+  "steps": [
+    {
+      "at": "2025-12-25T23:18:00+08:00",
+      "speed": 376,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/12/25，ETH永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-25T23:58:00+08:00",
+      "caption": "點位群 23:58「ETH 空 2965」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-26T00:02:00+08:00",
+      "caption": "點位群 00:02「SL 3000 TP 2920」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-26T01:47:00+08:00",
+      "caption": "點位群 01:47「目前對下方 FVG 有反應 保守的可以選擇平倉獲利或上套保」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-25T23:58:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 2965,
+        "stop": 3000,
+        "target": 2920
+      },
+      "caption": "進場 2,965，停損 3,000，目標 2,920。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-25T23:58:01+08:00",
+      "caption": "開單邏輯：「1H 延續下跌趨勢，15m 與 5m 對訂單塊有反應收針，獵取過上方流動性」",
+      "hold": 6000
+    },
+    {
+      "at": "2025-12-26T06:47:31+08:00",
+      "caption": "06:47 止盈，+1.29R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-12-26T06:48:32+08:00",
+      "end": true
+    }
+  ]
+}

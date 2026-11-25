@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#05090f" />
+    <meta name="robots" content="noindex" />
+    <meta name="description" content="MetaBear 在 LINE 點位群事前公開的每一筆實盤交易：進場、停損、目標、結果與當時的開單邏輯，用真實數據重畫。非投資建議。" />
+    <title>實盤交易紀錄｜MetaBear</title>
+    <link rel="icon" href="/metabear-logo-transparent-64.png" type="image/png" sizes="64x64" />
+    <link rel="stylesheet" href="/orderflow/motion/fonts/fonts.css" />
+    <link rel="stylesheet" href="/mb.css" />
+    <link rel="stylesheet" href="/track-record/track.css" />
+    <script src="/mb-boot.js"></script>
+    <script src="/track-record/page.js" type="module"></script>
+    <script src="/mb-init.js" type="module"></script>
+  </head>
+  <body class="tr-page mb-grain">
+    <header class="mb-header" data-header>
+      <a class="mb-brand" href="/" aria-label="MetaBear 首頁"
+        ><img src="/metabear-logo-transparent-64.png" alt="" width="34" height="34" /><span>MetaBear<small>TRADE LOG</small></span></a
+      >
+      <button class="mb-menu" type="button" aria-expanded="false" aria-controls="tr-nav" aria-label="開啟選單"><span></span></button>
+      <nav class="mb-nav" id="tr-nav" aria-label="主導覽">
+        <a href="/lab/orderflow/">即時訂單流</a><a href="/alerts/">關鍵位提醒</a><a href="/orderflow/">互動學院</a><a class="nav-arena" href="/arena/">FLOW ARENA</a><a href="/learn">新手教學</a>
+        <a class="mb-btn small" href="https://lin.ee/cbyuRJv" target="_blank" rel="noreferrer">在 LINE 問我 <span class="arrow" aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main class="mb-wrap tr-main">
+      <section class="tr-intro">
+        <p class="mb-eyebrow">TRADE <b>LOG</b></p>
+        <h1 class="mb-h3">實盤交易紀錄</h1>
+        <p class="tr-lead">
+          每一筆都是在 LINE 點位群<b>事前公開</b>的單，賺的賠的都列出來。圖是用交易所的真實數據重畫，畫出當時的進場、停損和目標；開單邏輯是當時在分析群寫下的原文，沒有留下說明的就照實寫沒有。
+        </p>
+        <p class="tr-small">損益用 R 表示：1R＝進場到停損的距離。百分比是價格變動，不含槓桿。這是交易紀錄，不是投資建議。</p>
+      </section>
+      <div id="cards" class="tr-cards" aria-live="polite"></div>
+    </main>
+  </body>
+</html>

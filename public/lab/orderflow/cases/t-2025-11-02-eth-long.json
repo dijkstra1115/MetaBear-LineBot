@@ -1,0 +1,69 @@
+{
+  "title": "實盤 11/02 ETH多",
+  "date": "2025-11-02",
+  "tz": "+08:00",
+  "data": "t-2025-11-02-eth-long.data.json",
+  "trade": "2025-11-02-eth-long",
+  "notes": [
+    "群組報 3,836，當時市價約 3,856；前一天分析群提到手上有一倉 3,835 的 ETH 多單，可能是同一倉。"
+  ],
+  "steps": [
+    {
+      "at": "2025-11-02T17:56:00+08:00",
+      "speed": 94,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/11/02，ETH永續合約（Binance）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-02T18:36:00+08:00",
+      "caption": "點位群 18:36「幣種: ETH 開倉點位: 3,836市價 方向: 多 止損：3,820 止盈：3,880」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-02T19:29:00+08:00",
+      "caption": "點位群 19:29「光速止盈」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-02T18:36:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 3836,
+        "stop": 3820,
+        "target": 3880
+      },
+      "caption": "進場 3,836，停損 3,820，目標 3,880。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-02T19:28:15+08:00",
+      "caption": "19:28 止盈，+2.75R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-11-02T19:29:16+08:00",
+      "end": true
+    }
+  ]
+}

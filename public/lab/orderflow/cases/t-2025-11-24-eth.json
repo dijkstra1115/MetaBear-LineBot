@@ -1,0 +1,90 @@
+{
+  "title": "實盤 11/24 ETH 空：大量買單推不動，掃過等高點就縮回",
+  "date": "2025-11-24",
+  "tz": "+08:00",
+  "data": "t-2025-11-24-eth.data.json",
+  "trade": "2025-11-24-eth-short",
+  "steps": [
+    {
+      "at": "09:50",
+      "speed": 90,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": { "profile": false, "prints": true, "vwap": false, "levels": false, "events": false, "lmap": false, "stats": false, "volume": true, "delta": false, "cvd": true, "oi": false, "doi": false, "funding": false, "ratio": false, "imb": false },
+      "caption": "2025 年 11 月 24 日早上，ETH 永續合約。這是點位群公開的一筆實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "10:05",
+      "caption": "10 點開始急拉：5 分鐘成交 10 萬顆 ETH，從 2,805 衝到 2,836。",
+      "hold": 2500
+    },
+    {
+      "at": "10:12",
+      "tf": "1",
+      "mode": "footprint",
+      "barW": 72,
+      "speed": 12,
+      "caption": "拉到 2,850 以上，切到 1 分鐘足跡。"
+    },
+    {
+      "at": "10:16",
+      "note": { "id": "vol", "at": "10:15:30", "price": 2864, "text": "成交 1.6 萬顆，主動買 +5,529\n高點只比上一根多 4 美元", "side": "above" },
+      "caption": "10:15 這根的量是前後的兩倍，買方很積極，價格卻幾乎沒動。",
+      "hold": 3500
+    },
+    {
+      "at": "10:18",
+      "line": { "id": "eqh", "price": 2864, "label": "等高點 2,864（10:15、10:17）" },
+      "caption": "10:17 又停在 2,864，形成兩個等高點，上方堆著買方的止損。",
+      "hold": 3000
+    },
+    {
+      "at": "10:20",
+      "note": { "id": "sweep", "at": "10:19:30", "price": 2865.3, "text": "掃過等高點 1.3 美元\n馬上縮回", "side": "above" },
+      "caption": "10:19 掃過等高點 1.3 美元就縮回來。「異常的大額成交量，但價格沒有如期突破，反而形成假突破。」",
+      "hold": 4000
+    },
+    {
+      "at": "10:20:30",
+      "position": { "side": "short", "entry": 2862, "stop": 2877, "target": 2818 },
+      "clear": ["note:vol"],
+      "caption": "「我判斷是莊家在此換手，果斷做空。」進場 2,862，停損 2,877，目標 2,818。",
+      "hold": 4000
+    },
+    {
+      "at": "10:21",
+      "tf": "5",
+      "mode": "candles",
+      "barW": 30,
+      "speed": 40,
+      "clear": ["note:sweep"],
+      "caption": ""
+    },
+    {
+      "at": "10:34",
+      "adjust": { "target": 2836 },
+      "caption": "10:34 目標改成分批：TP1 2,836、TP2 2,818。之後說到 TP1 就全部出場。",
+      "hold": 3000
+    },
+    {
+      "at": "10:36",
+      "note": { "id": "miss", "at": "10:32:30", "price": 2836.25, "text": "最低 2,836.25\n離 TP1 差 0.25", "side": "below" },
+      "caption": "10:30 這根急跌到 2,836.25，又差一點。",
+      "hold": 3000
+    },
+    {
+      "at": "10:37",
+      "clear": ["note:miss"],
+      "caption": ""
+    },
+    {
+      "at": "10:47:30",
+      "caption": "10:47 碰到 2,836 全部止盈，持倉 27 分鐘。",
+      "hold": 4500
+    },
+    { "at": "10:48", "end": true }
+  ]
+}

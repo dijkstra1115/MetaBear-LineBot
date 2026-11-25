@@ -1,0 +1,85 @@
+{
+  "title": "實盤 02/05 BTC空",
+  "date": "2026-02-05",
+  "tz": "+08:00",
+  "data": "t-2026-02-05-btc-short.data.json",
+  "trade": "2026-02-05-btc-short",
+  "notes": [
+    "19:45 預告跌破 69,750 量增就追空，20:15 喊空；實際成交價群組沒寫，以 69,750 計算。"
+  ],
+  "steps": [
+    {
+      "at": "2026-02-05T19:35:00+08:00",
+      "speed": 58,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/02/05，BTC永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-05T19:45:00+08:00",
+      "caption": "點位群 19:45「先預告一下 待會跌破 69750 如果伴隨量增我會直接市價追空」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-05T20:15:00+08:00",
+      "caption": "點位群 20:15「空」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-05T20:18:00+08:00",
+      "caption": "點位群 20:18「TP 68000 SL 71000」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-05T20:21:00+08:00",
+      "caption": "點位群 20:21「套保」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-05T20:15:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 69750,
+        "stop": 71000,
+        "target": 68000
+      },
+      "caption": "進場 69,750，停損 71,000，目標 68,000。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-05T20:21:00+08:00",
+      "adjust": {
+        "stop": 69750
+      }
+    },
+    {
+      "at": "2026-02-05T20:27:39+08:00",
+      "caption": "20:27 保本，±0.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-02-05T20:28:40+08:00",
+      "end": true
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "title": "實盤 01/20 黃金空",
+  "date": "2026-01-20",
+  "tz": "+08:00",
+  "data": "t-2026-01-20-gold-short.data.json",
+  "trade": "2026-01-20-gold-short",
+  "steps": [
+    {
+      "at": "2026-01-20T10:43:00+08:00",
+      "speed": 115,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/01/20，黃金永續合約（BingX）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-20T11:23:00+08:00",
+      "caption": "點位群 11:23「GOLD 空 4675」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-20T11:25:00+08:00",
+      "caption": "點位群 11:25「SL 4690 TP 4660」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-20T11:23:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 4675,
+        "stop": 4690,
+        "target": 4660
+      },
+      "caption": "進場 4,675，停損 4,690，目標 4,660。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-20T12:36:01+08:00",
+      "caption": "12:36 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-01-20T12:37:02+08:00",
+      "end": true
+    }
+  ]
+}

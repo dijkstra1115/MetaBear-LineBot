@@ -1,0 +1,73 @@
+{
+  "title": "實盤 11/29 ETH多",
+  "date": "2025-11-29",
+  "tz": "+08:00",
+  "data": "t-2025-11-29-eth-long.data.json",
+  "trade": "2025-11-29-eth-long",
+  "steps": [
+    {
+      "at": "2025-11-29T15:32:00+08:00",
+      "speed": 239,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/11/29，ETH永續合約（Binance）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-29T16:12:00+08:00",
+      "caption": "點位群 16:12「ETH 多 3000 限價 SL 2970 TP 3036」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-29T20:11:00+08:00",
+      "caption": "點位群 20:11「撤單 直接平保出場 反應不好 不等了」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-29T17:29:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 3000,
+        "stop": 2970,
+        "target": 3036
+      },
+      "caption": "掛單成交 3,000，停損 2,970，目標 3,036。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-29T20:11:00+08:00",
+      "close": {
+        "price": 3000,
+        "label": "保本出場"
+      }
+    },
+    {
+      "at": "2025-11-29T20:11:01+08:00",
+      "caption": "20:11 保本出場，±0.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-11-29T20:12:02+08:00",
+      "end": true
+    }
+  ]
+}

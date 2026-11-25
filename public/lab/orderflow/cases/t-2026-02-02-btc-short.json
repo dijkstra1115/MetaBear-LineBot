@@ -1,0 +1,82 @@
+{
+  "title": "實盤 02/02 BTC空",
+  "date": "2026-02-02",
+  "tz": "+08:00",
+  "data": "t-2026-02-02-btc-short.data.json",
+  "trade": "2026-02-02-btc-short",
+  "steps": [
+    {
+      "at": "2026-02-02T18:17:00+08:00",
+      "speed": 1530,
+      "tf": "15",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/02/02，BTC永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-02T18:57:00+08:00",
+      "caption": "點位群 18:57「BTC 空 77500 市價」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-02T19:00:00+08:00",
+      "caption": "點位群 19:00「SL 80,000 TP 75,000」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-04T01:03:00+08:00",
+      "caption": "點位群 01:03「上套保」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-02T18:57:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 77500,
+        "stop": 80000,
+        "target": 75000
+      },
+      "caption": "進場 77,500，停損 80,000，目標 75,000。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-02T18:57:01+08:00",
+      "caption": "開單邏輯：「比較想分享的是中間價格一度爬升的情況，OI 跟 CVD 沒有明顯上升，我覺得還不算太強的反轉，多空比也算高 暗示散戶做多為主，所以還是繼續堅定持有看空」",
+      "hold": 6000
+    },
+    {
+      "at": "2026-02-04T01:03:00+08:00",
+      "adjust": {
+        "stop": 77500
+      }
+    },
+    {
+      "at": "2026-02-04T01:49:01+08:00",
+      "caption": "01:49 止盈，+1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-02-04T01:50:02+08:00",
+      "end": true
+    }
+  ]
+}

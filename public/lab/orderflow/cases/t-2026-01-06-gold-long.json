@@ -1,0 +1,71 @@
+{
+  "title": "實盤 01/06 黃金多",
+  "date": "2026-01-06",
+  "tz": "+08:00",
+  "data": "t-2026-01-06-gold-long.data.json",
+  "trade": "2026-01-06-gold-long",
+  "steps": [
+    {
+      "at": "2026-01-06T12:48:00+08:00",
+      "speed": 70,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/01/06，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-06T13:28:00+08:00",
+      "caption": "點位群 13:28「GOLD 多 4465」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-06T13:31:00+08:00",
+      "caption": "點位群 13:31「SL 4456 TP 4485」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-06T13:28:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 4465,
+        "stop": 4456,
+        "target": 4485
+      },
+      "caption": "進場 4,465，停損 4,456，目標 4,485。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-06T13:28:01+08:00",
+      "caption": "開單邏輯：「雖然損了還是分享一下做單邏輯與復盤:，1m 5m OB 重疊，獵取完進場短多，可以改進的地方:，可以等 1h 下方訂單塊確認後再進場，這樣上漲動力比較足夠」",
+      "hold": 6000
+    },
+    {
+      "at": "2026-01-06T13:51:01+08:00",
+      "caption": "13:51 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-01-06T13:52:02+08:00",
+      "end": true
+    }
+  ]
+}

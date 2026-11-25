@@ -1,0 +1,83 @@
+{
+  "title": "實盤 12/02 BTC空",
+  "date": "2025-12-02",
+  "tz": "+08:00",
+  "data": "t-2025-12-02-btc-short.data.json",
+  "trade": "2025-12-02-btc-short",
+  "steps": [
+    {
+      "at": "2025-12-02T10:39:00+08:00",
+      "speed": 326,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/12/02，BTC永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-02T11:19:00+08:00",
+      "caption": "點位群 11:19「BTC 空 86,726 市價」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-02T11:20:00+08:00",
+      "caption": "點位群 11:20「SL 88,124 TP1 85,580 TP2 84,570 TP3 83,831」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-02T16:31:00+08:00",
+      "caption": "點位群 16:31「反應不好 這單先套保 TP1 改 86000 TP2 改 85580 TP3 改 84570」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-02T16:42:00+08:00",
+      "caption": "點位群 16:42「套保啦 沒進的就別進了 等更好的機會」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-02T11:19:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 86726,
+        "stop": 88124,
+        "target": 85580
+      },
+      "caption": "進場 86,726，停損 88,124，目標 85,580。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-02T16:31:00+08:00",
+      "adjust": {
+        "stop": 86726,
+        "target": 86000
+      }
+    },
+    {
+      "at": "2025-12-02T17:06:31+08:00",
+      "caption": "17:06 保本，±0.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-12-02T17:07:32+08:00",
+      "end": true
+    }
+  ]
+}

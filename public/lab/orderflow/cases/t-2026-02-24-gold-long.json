@@ -1,0 +1,76 @@
+{
+  "title": "實盤 02/24 黃金多",
+  "date": "2026-02-24",
+  "tz": "+08:00",
+  "data": "t-2026-02-24-gold-long.data.json",
+  "trade": "2026-02-24-gold-long",
+  "steps": [
+    {
+      "at": "2026-02-24T12:49:00+08:00",
+      "speed": 70,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/02/24，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-24T13:29:00+08:00",
+      "caption": "點位群 13:29「GOLD 多 5168」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-24T13:31:00+08:00",
+      "caption": "點位群 13:31「SL 5158 TP 5180」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-24T13:33:00+08:00",
+      "caption": "點位群 13:33「我已經進了 大家自己決定要不要市價進」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-24T13:29:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 5168,
+        "stop": 5158,
+        "target": 5180
+      },
+      "caption": "進場 5,168，停損 5,158，目標 5,180。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-24T13:29:01+08:00",
+      "caption": "開單邏輯：「回補 M1 OB 反應佳，目標瞄準上方流動性，止損放下方流動性，吃一個短的 耐心捕魚」",
+      "hold": 6000
+    },
+    {
+      "at": "2026-02-24T13:55:01+08:00",
+      "caption": "13:55 止盈，+1.20R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-02-24T13:56:02+08:00",
+      "end": true
+    }
+  ]
+}

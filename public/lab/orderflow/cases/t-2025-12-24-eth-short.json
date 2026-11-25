@@ -1,0 +1,83 @@
+{
+  "title": "實盤 12/24 ETH空",
+  "date": "2025-12-24",
+  "tz": "+08:00",
+  "data": "t-2025-12-24-eth-short.data.json",
+  "trade": "2025-12-24-eth-short",
+  "steps": [
+    {
+      "at": "2025-12-24T03:35:00+08:00",
+      "speed": 979,
+      "tf": "15",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/12/24，ETH永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-24T04:15:00+08:00",
+      "caption": "點位群 04:15「ETH 空 2972 限價預掛 SL 3050 TP 2886」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-24T23:33:00+08:00",
+      "caption": "點位群 23:33「2910 可以先平 入袋為安」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-24T23:34:00+08:00",
+      "caption": "點位群 23:34「已經往下獵取過 2887 了 好可惜」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-24T04:41:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 2972,
+        "stop": 3050,
+        "target": 2886
+      },
+      "caption": "掛單成交 2,972，停損 3,050，目標 2,886。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-24T04:41:01+08:00",
+      "caption": "開單邏輯：「獵取流動性後搭配 EQH 進場做空，目標放下方流動性，今天這單超可惜只差1點🥲，因為已經獵取過且下方FVG反應不錯，只好先平倉」",
+      "hold": 6000
+    },
+    {
+      "at": "2025-12-24T23:33:00+08:00",
+      "close": {
+        "price": 2910,
+        "label": "提前止盈"
+      }
+    },
+    {
+      "at": "2025-12-24T23:33:01+08:00",
+      "caption": "23:33 提前止盈，+0.79R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-12-24T23:34:02+08:00",
+      "end": true
+    }
+  ]
+}

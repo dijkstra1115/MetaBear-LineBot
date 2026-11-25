@@ -1,0 +1,81 @@
+{
+  "title": "實盤 11/21 ETH空",
+  "date": "2025-11-21",
+  "tz": "+08:00",
+  "data": "t-2025-11-21-eth-short-b.data.json",
+  "trade": "2025-11-21-eth-short-b",
+  "notes": [
+    "再進場的價格群組沒寫，交易紀錄表記 2,760。",
+    "用 BingX 的 K 線：23:06 套保之後 BingX 最高 2,759.57，沒有回到 2,760；Binance 有碰到 2,760.02。"
+  ],
+  "steps": [
+    {
+      "at": "2025-11-21T22:21:00+08:00",
+      "speed": 82,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/11/21，ETH永續合約（BingX）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-21T23:01:00+08:00",
+      "caption": "點位群 23:01「再進一次」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-21T23:06:00+08:00",
+      "caption": "點位群 23:06「套保」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-21T23:39:00+08:00",
+      "caption": "點位群 23:39「TP 止盈」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-21T23:01:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 2760,
+        "stop": 2790,
+        "target": 2706
+      },
+      "caption": "進場 2,760，停損 2,790，目標 2,706。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-21T23:07:00+08:00",
+      "adjust": {
+        "stop": 2760
+      }
+    },
+    {
+      "at": "2025-11-21T23:38:01+08:00",
+      "caption": "23:38 止盈，+1.80R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-11-21T23:39:02+08:00",
+      "end": true
+    }
+  ]
+}

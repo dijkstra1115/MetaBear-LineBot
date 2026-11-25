@@ -1,0 +1,76 @@
+{
+  "title": "實盤 03/02 黃金空",
+  "date": "2026-03-02",
+  "tz": "+08:00",
+  "data": "t-2026-03-02-gold-short.data.json",
+  "trade": "2026-03-02-gold-short",
+  "steps": [
+    {
+      "at": "2026-03-02T19:45:00+08:00",
+      "speed": 85,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/03/02，黃金永續合約（BingX）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-03-02T20:25:00+08:00",
+      "caption": "點位群 20:25「GOLD 空 5396」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-03-02T20:27:00+08:00",
+      "caption": "點位群 20:27「SL 5408 TP 5383」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-03-02T20:28:00+08:00",
+      "caption": "點位群 20:28「我用掛的 還沒進」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-03-02T21:06:00+08:00",
+      "caption": "點位群 21:06「損了 好可惜 又差點」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-03-02T20:42:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 5396,
+        "stop": 5408,
+        "target": 5383
+      },
+      "caption": "掛單成交 5,396，停損 5,408，目標 5,383。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-03-02T21:07:01+08:00",
+      "caption": "21:07 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-03-02T21:08:02+08:00",
+      "end": true
+    }
+  ]
+}

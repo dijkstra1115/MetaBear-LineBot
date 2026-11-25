@@ -71,8 +71,47 @@ test("a position closes at the first second that touches its target or stop", ()
   const player = new Player(script, prepare(data));
   player.seek(START + 5 * M);
   // Second 60 trades 120 (below the stop); second 130 trades 90, through the short's target.
-  assert.deepEqual(player.state.position.exit, { t: START + 131_000, price: 95, won: true });
+  const { t, price, won, kind, r } = player.state.position.exit;
+  assert.deepEqual({ t, price, won, kind, r }, { t: START + 131_000, price: 95, won: true, kind: "target", r: 1 });
   assert.deepEqual(pnl(player.state.position, 95), { r: 1, pct: (15 / 110) * 100 });
+});
+
+test("套保 moves the stop to the entry and the touch closes it at 0R", () => {
+  const script = {
+    date: "2026-09-14",
+    steps: [
+      { at: "20:00:01", position: { side: "long", entry: 100, stop: 90, target: 160 } },
+      { at: "20:01:30", adjust: { stop: 100 } },
+    ],
+  };
+  const player = new Player(script, prepare(data));
+  player.seek(START + 5 * M);
+  const p = player.state.position;
+  // Second 130 trades 90: through the original stop too, but the stop in force is the entry.
+  assert.deepEqual({ t: p.exit.t, price: p.exit.price, kind: p.exit.kind, r: p.exit.r, even: p.exit.even }, { t: START + 131_000, price: 100, kind: "even", r: 0, even: true });
+  // Seeking to just before the adjustment shows the first stop.
+  player.seek(START + 80_000);
+  assert.equal(player.state.position.leg.stop, 90);
+  assert.equal(player.state.position.exit, null);
+});
+
+test("partial closes add up to the position's result in R", () => {
+  const script = {
+    date: "2026-09-14",
+    steps: [
+      { at: "20:00:01", position: { side: "long", entry: 100, stop: 80, target: 200 } },
+      { at: "20:01:01", close: { price: 120, size: 0.5 } },
+      { at: "20:03:30", close: { price: 150, label: "全部平倉" } },
+    ],
+  };
+  const player = new Player(script, prepare(data));
+  player.seek(START + 2 * M);
+  assert.equal(player.state.position.exit, null, "half still open");
+  player.seek(START + 5 * M);
+  const { exit } = player.state.position;
+  assert.equal(exit.r, 0.5 * 1 + 0.5 * 2.5);
+  assert.equal(exit.label, "全部平倉");
+  assert.equal(exit.t, START + 210_000);
 });
 
 test("the recorded case script lines up with its data", async () => {

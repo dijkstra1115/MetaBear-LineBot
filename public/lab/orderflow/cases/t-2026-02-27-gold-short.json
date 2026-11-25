@@ -1,0 +1,86 @@
+{
+  "title": "實盤 02/27 黃金空",
+  "date": "2026-02-27",
+  "tz": "+08:00",
+  "data": "t-2026-02-27-gold-short.data.json",
+  "trade": "2026-02-27-gold-short",
+  "notes": [
+    "群組 20:12 說先撤單，自己的單已成交，在 5,188 出場。"
+  ],
+  "steps": [
+    {
+      "at": "2026-02-27T19:26:00+08:00",
+      "speed": 53,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/02/27，黃金永續合約（BingX）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-27T20:06:00+08:00",
+      "caption": "點位群 20:06「GOLD 空 5190-5192」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-27T20:08:00+08:00",
+      "caption": "點位群 20:08「SL 5210 TP 5165」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-27T20:12:00+08:00",
+      "caption": "點位群 20:12「先撤」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-27T20:13:00+08:00",
+      "caption": "點位群 20:13「已經獵取過了」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-27T20:06:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 5190,
+        "stop": 5210,
+        "target": 5165
+      },
+      "caption": "進場 5,190，停損 5,210，目標 5,165。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-27T20:12:00+08:00",
+      "close": {
+        "price": 5188,
+        "label": "提前出場"
+      }
+    },
+    {
+      "at": "2026-02-27T20:12:01+08:00",
+      "caption": "20:12 提前出場，+0.10R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-02-27T20:13:02+08:00",
+      "end": true
+    }
+  ]
+}

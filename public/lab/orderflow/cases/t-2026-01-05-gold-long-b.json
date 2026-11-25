@@ -1,0 +1,71 @@
+{
+  "title": "實盤 01/05 黃金多",
+  "date": "2026-01-05",
+  "tz": "+08:00",
+  "data": "t-2026-01-05-gold-long-b.data.json",
+  "trade": "2026-01-05-gold-long-b",
+  "steps": [
+    {
+      "at": "2026-01-05T13:49:00+08:00",
+      "speed": 463,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/01/05，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-05T14:29:00+08:00",
+      "caption": "點位群 14:29「黃金 GOLD 多 4404」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-05T14:32:00+08:00",
+      "caption": "點位群 14:32「TP 4455 SL 4368」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-05T14:29:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 4404,
+        "stop": 4368,
+        "target": 4455
+      },
+      "caption": "進場 4,404，停損 4,368，目標 4,455。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-05T14:29:01+08:00",
+      "caption": "開單邏輯：「大時區持續看漲，5m, 15m OB 重疊，等 1m 獵取完流動性，在下方 OB 進場」",
+      "hold": 6000
+    },
+    {
+      "at": "2026-01-05T23:08:01+08:00",
+      "caption": "23:08 止盈，+1.42R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-01-05T23:09:02+08:00",
+      "end": true
+    }
+  ]
+}

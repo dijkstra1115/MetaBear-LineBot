@@ -1,0 +1,69 @@
+{
+  "title": "實盤 11/06 ETH多",
+  "date": "2025-11-06",
+  "tz": "+08:00",
+  "data": "t-2025-11-06-eth-long.data.json",
+  "trade": "2025-11-06-eth-long",
+  "notes": [
+    "開單時群組沒有給停損與目標，3,211 與 3,375 是交易紀錄表上的數字；隔天 10:30 群組寫「可以設定套保，或 3211 全出」。"
+  ],
+  "steps": [
+    {
+      "at": "2025-11-06T23:18:00+08:00",
+      "speed": 1036,
+      "tf": "15",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/11/06，ETH永續合約（Binance）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-06T23:58:00+08:00",
+      "caption": "點位群 23:58「幣種: ETH 開倉點位: 3,290 市價 方向: 多」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-07T10:30:00+08:00",
+      "caption": "點位群 10:30「可以設定套保，或 3211 全出」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-06T23:58:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 3290,
+        "stop": 3211,
+        "target": 3375
+      },
+      "caption": "進場 3,290，停損 3,211，目標 3,375。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-07T20:29:01+08:00",
+      "caption": "20:29 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-11-07T20:30:02+08:00",
+      "end": true
+    }
+  ]
+}

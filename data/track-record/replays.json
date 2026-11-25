@@ -1,0 +1,693 @@
+{
+  "about": "每筆交易怎麼重畫（scripts/track-record/build-all.mjs 讀這份）。時間是台北時間 YYYY-MM-DD HH:MM[:SS]。source：binance＝Binance 永續逐筆成交（有足跡），bingx＝BingX 下單合約的 1 分鐘 K 線。fill：market＝開單時就成交，resting＝掛單，價格碰到才成交。target 是實際出場用的目標。events：adjust 改停損／目標（套保＝stop 改成進場價），close 手動平倉（size 0.5＝平一半）。entry、stop 沒寫就用 trades.json。手寫腳本的四筆（11/24 ETH、12/17 ETH、12/30 黃金、03/04 黃金）不在這裡。",
+  "replays": [
+    {
+      "id": "2025-09-17-btc-long",
+      "source": "binance",
+      "fill": "resting",
+      "target": 116690
+    },
+    {
+      "id": "2025-09-19-btc-long",
+      "source": "binance",
+      "target": 118518
+    },
+    {
+      "id": "2025-09-21-btc-long",
+      "source": "binance",
+      "target": 116010
+    },
+    {
+      "id": "2025-10-07-sol-long",
+      "source": "binance",
+      "fill": "resting",
+      "target": 236
+    },
+    {
+      "id": "2025-10-09-btc-long",
+      "source": "binance",
+      "target": 122400
+    },
+    {
+      "id": "2025-10-14-eth-short",
+      "source": "binance",
+      "fill": "resting",
+      "target": 3919
+    },
+    {
+      "id": "2025-10-15-btc-long",
+      "source": "binance",
+      "fill": "resting",
+      "target": 113655,
+      "events": [
+        {
+          "at": "2025-10-15 22:24",
+          "close": {
+            "price": 112000,
+            "size": 0.5,
+            "label": "部分平倉"
+          }
+        },
+        {
+          "at": "2025-10-15 23:35",
+          "close": {
+            "price": 110789,
+            "label": "剩餘保本出場"
+          }
+        }
+      ],
+      "notes": [
+        "部分平倉的比例群組沒寫，這裡以一半計算。"
+      ]
+    },
+    {
+      "id": "2025-10-20-eth-long",
+      "source": "binance",
+      "target": 4085
+    },
+    {
+      "id": "2025-10-21-eth-long",
+      "source": "binance",
+      "fill": "resting",
+      "target": 3996,
+      "notes": [
+        "群組喊 TP1 3,938、TP2 3,996 都到了，這裡以 TP2 出場計算。"
+      ]
+    },
+    {
+      "id": "2025-10-23-btc-long",
+      "source": "binance",
+      "target": 109650
+    },
+    {
+      "id": "2025-11-02-eth-long",
+      "source": "binance",
+      "target": 3880,
+      "notes": [
+        "群組報 3,836，當時市價約 3,856；前一天分析群提到手上有一倉 3,835 的 ETH 多單，可能是同一倉。"
+      ]
+    },
+    {
+      "id": "2025-11-03-eth-long",
+      "source": "binance",
+      "target": 3880
+    },
+    {
+      "id": "2025-11-06-eth-long",
+      "source": "binance",
+      "stop": 3211,
+      "target": 3375,
+      "notes": [
+        "開單時群組沒有給停損與目標，3,211 與 3,375 是交易紀錄表上的數字；隔天 10:30 群組寫「可以設定套保，或 3211 全出」。"
+      ]
+    },
+    {
+      "id": "2025-11-12-eth-short",
+      "source": "binance",
+      "target": 3400
+    },
+    {
+      "id": "2025-11-21-eth-short-a",
+      "source": "binance",
+      "target": 2706,
+      "events": [
+        {
+          "at": "2025-11-21 22:54",
+          "close": {
+            "price": 2765,
+            "label": "提前停損"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-11-21-eth-short-b",
+      "source": "bingx",
+      "open": "2025-11-21 23:01",
+      "entry": 2760,
+      "target": 2706,
+      "events": [
+        {
+          "at": "2025-11-21 23:07",
+          "adjust": {
+            "stop": 2760
+          }
+        }
+      ],
+      "notes": [
+        "再進場的價格群組沒寫，交易紀錄表記 2,760。",
+        "用 BingX 的 K 線：23:06 套保之後 BingX 最高 2,759.57，沒有回到 2,760；Binance 有碰到 2,760.02。"
+      ]
+    },
+    {
+      "id": "2025-11-22-eth-short-a",
+      "source": "binance",
+      "open": "2025-11-22 14:45",
+      "target": 2730
+    },
+    {
+      "id": "2025-11-22-eth-short-b",
+      "source": "binance",
+      "stop": 2758,
+      "target": 2706,
+      "events": [
+        {
+          "at": "2025-11-22 22:23:30",
+          "adjust": {
+            "stop": 2762
+          }
+        },
+        {
+          "at": "2025-11-22 23:46",
+          "adjust": {
+            "stop": 2748
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-11-23-eth-short-a",
+      "source": "binance",
+      "target": 2800,
+      "events": [
+        {
+          "at": "2025-11-23 13:47",
+          "adjust": {
+            "stop": 2831
+          }
+        }
+      ],
+      "notes": [
+        "13:47 說「利潤跑一半都要套保」，價格回到 2,831 撞到套保；14:56 群組說沒跟著套保的話這單會止盈。"
+      ]
+    },
+    {
+      "id": "2025-11-23-eth-short-b",
+      "source": "binance",
+      "stop": 2865,
+      "target": 2803,
+      "events": [
+        {
+          "at": "2025-11-23 22:37",
+          "adjust": {
+            "stop": 2846
+          }
+        },
+        {
+          "at": "2025-11-23 22:52",
+          "adjust": {
+            "stop": 2835
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-11-28-eth-short",
+      "source": "binance",
+      "fill": "resting",
+      "target": 3031,
+      "events": [
+        {
+          "at": "2025-11-28 19:06",
+          "adjust": {
+            "stop": 3060
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-11-29-eth-long",
+      "source": "binance",
+      "fill": "resting",
+      "target": 3036,
+      "events": [
+        {
+          "at": "2025-11-29 20:11",
+          "close": {
+            "price": 3000,
+            "label": "保本出場"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-11-30-eth-short",
+      "source": "binance",
+      "target": 3017,
+      "events": [
+        {
+          "at": "2025-11-30 22:59",
+          "adjust": {
+            "stop": 3046
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-12-01-eth-short",
+      "source": "binance",
+      "fill": "resting",
+      "target": 2810,
+      "events": [
+        {
+          "at": "2025-12-01 20:09",
+          "adjust": {
+            "stop": 2845
+          }
+        },
+        {
+          "at": "2025-12-01 20:33",
+          "close": {
+            "price": 2813,
+            "label": "提前止盈"
+          }
+        }
+      ],
+      "notes": [
+        "「平倉了 不等了差3點」，出場價以 2,813 計算。"
+      ]
+    },
+    {
+      "id": "2025-12-02-btc-short",
+      "source": "binance",
+      "target": 85580,
+      "events": [
+        {
+          "at": "2025-12-02 16:31",
+          "adjust": {
+            "stop": 86726,
+            "target": 86000
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-12-03-eth-short",
+      "source": "binance",
+      "target": 3014,
+      "events": [
+        {
+          "at": "2025-12-03 13:06",
+          "close": {
+            "price": 3060,
+            "label": "提前停損"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-12-05-eth-long",
+      "source": "binance",
+      "fill": "resting",
+      "target": 3204,
+      "notes": [
+        "限價 3,140 只插到 3,141，16:49 群組說不在意這幾點可以市價進。"
+      ]
+    },
+    {
+      "id": "2025-12-07-eth-short",
+      "source": "bingx",
+      "open": "2025-12-07 01:19",
+      "target": 3023,
+      "events": [
+        {
+          "at": "2025-12-07 04:09",
+          "adjust": {
+            "stop": 3055,
+            "target": 3010
+          }
+        }
+      ],
+      "notes": [
+        "用 BingX 的 K 線：Binance 在 03:32 碰到 3,023，BingX 差 0.7 沒碰到，最後撞套保出場。"
+      ]
+    },
+    {
+      "id": "2025-12-08-eth-short",
+      "source": "binance",
+      "stop": 3062,
+      "target": 2964,
+      "events": [
+        {
+          "at": "2025-12-08 01:03",
+          "adjust": {
+            "stop": 3082
+          }
+        }
+      ],
+      "notes": [
+        "進場後把停損從 3,062 放寬到 3,082；R 以原本的 3,062 計算。"
+      ]
+    },
+    {
+      "id": "2025-12-24-eth-short",
+      "source": "binance",
+      "fill": "resting",
+      "target": 2886,
+      "events": [
+        {
+          "at": "2025-12-24 23:33",
+          "close": {
+            "price": 2910,
+            "label": "提前止盈"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-12-25-eth-short",
+      "source": "binance",
+      "target": 2920
+    },
+    {
+      "id": "2026-02-02-btc-short",
+      "source": "binance",
+      "target": 75000,
+      "events": [
+        {
+          "at": "2026-02-04 01:03",
+          "adjust": {
+            "stop": 77500
+          }
+        }
+      ]
+    },
+    {
+      "id": "2026-02-05-btc-short",
+      "source": "binance",
+      "target": 68000,
+      "events": [
+        {
+          "at": "2026-02-05 20:21",
+          "adjust": {
+            "stop": 69750
+          }
+        }
+      ],
+      "notes": [
+        "19:45 預告跌破 69,750 量增就追空，20:15 喊空；實際成交價群組沒寫，以 69,750 計算。"
+      ]
+    },
+    {
+      "id": "2026-02-09-btc-short",
+      "source": "binance",
+      "target": 67000,
+      "events": [
+        {
+          "at": "2026-02-09 20:22",
+          "close": {
+            "price": 69050,
+            "label": "提前停損"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2026-02-11-btc-short",
+      "source": "binance",
+      "target": 66400
+    },
+    {
+      "id": "2026-02-25-btc-short",
+      "source": "binance",
+      "target": 64000
+    },
+    {
+      "id": "2025-11-21-gold-long",
+      "source": "bingx",
+      "fill": "resting",
+      "target": 4086,
+      "events": [
+        {
+          "at": "2025-11-21 17:32",
+          "adjust": {
+            "target": 4070
+          }
+        }
+      ],
+      "notes": [
+        "17:32 群組說 TP 改 4,070 並設套保。BingX 的成交價在 18:14～18:29 跌到 4,033～4,035，碰到或低於進場價 4,035，但紀錄是 20:45 止盈；可能是停損以標記價格觸發，或套保設得比進場價低。這裡照紀錄畫止盈，沒有畫出套保線。"
+      ]
+    },
+    {
+      "id": "2025-11-28-gold-short",
+      "source": "bingx",
+      "target": 4175,
+      "notes": [
+        "群組喊到 TP2 4,175；交易紀錄表以 TP1 4,181 計算。"
+      ]
+    },
+    {
+      "id": "2025-12-03-gold-long",
+      "source": "bingx",
+      "target": 4222,
+      "events": [
+        {
+          "at": "2025-12-03 16:27",
+          "close": {
+            "price": 4205,
+            "label": "保本出場"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-12-08-gold-short",
+      "source": "bingx",
+      "open": "2025-12-08 15:07",
+      "target": 4206,
+      "notes": [
+        "群組 15:07 掛空 4,217；BingX 在 15:07 之後最高 4,216.69，沒有碰到 4,217。紀錄以 4,217 成交，可能是更早就掛好的單（14:56～14:57 價格在 4,217～4,218），這裡從 15:07 起畫。",
+        "15:42 加上 TP2 4,206、TP3 4,199，16:08 到 TP2 後全部平倉。"
+      ]
+    },
+    {
+      "id": "2025-12-09-gold-short",
+      "source": "bingx",
+      "target": 4167,
+      "events": [
+        {
+          "at": "2025-12-09 15:22",
+          "close": {
+            "price": 4179,
+            "label": "提前止盈"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2025-12-09-gold-long",
+      "source": "bingx",
+      "open": "2025-12-09 15:26",
+      "target": 4197,
+      "events": [
+        {
+          "at": "2025-12-09 16:16",
+          "close": {
+            "price": 4189,
+            "size": 0.5,
+            "label": "TP1 部分止盈"
+          }
+        },
+        {
+          "at": "2025-12-09 17:03",
+          "close": {
+            "price": 4196,
+            "label": "全部止盈"
+          }
+        }
+      ],
+      "notes": [
+        "TP1 的平倉比例群組沒寫，這裡以一半計算。"
+      ]
+    },
+    {
+      "id": "2025-12-10-gold-long",
+      "source": "bingx",
+      "target": 4212
+    },
+    {
+      "id": "2025-12-15-gold-long",
+      "source": "bingx",
+      "fill": "resting",
+      "target": 4348
+    },
+    {
+      "id": "2025-12-16-gold-short",
+      "source": "bingx",
+      "open": "2025-12-16 16:06",
+      "target": 4280,
+      "notes": [
+        "群組報 4,291，交易紀錄表記 4,288。"
+      ]
+    },
+    {
+      "id": "2025-12-18-gold-short",
+      "source": "bingx",
+      "open": "2025-12-18 15:03",
+      "entry": 4333,
+      "target": 4316,
+      "notes": [
+        "群組掛空 4,338，價格到 21:44 才碰到，那時已經止盈；這裡畫的是自己 15:03 市價 4,333 進場的單（交易紀錄表的數字）。照群組掛單的人這筆沒有成交。"
+      ]
+    },
+    {
+      "id": "2025-12-19-gold-long",
+      "source": "bingx",
+      "target": 4338,
+      "events": [
+        {
+          "at": "2025-12-19 14:00",
+          "adjust": {
+            "stop": 4318
+          }
+        }
+      ]
+    },
+    {
+      "id": "2026-01-05-gold-long-b",
+      "source": "bingx",
+      "target": 4455
+    },
+    {
+      "id": "2026-01-06-gold-long",
+      "source": "bingx",
+      "target": 4485
+    },
+    {
+      "id": "2026-01-07-gold-long",
+      "source": "bingx",
+      "target": 4475,
+      "notes": [
+        "群組報 4,452，交易紀錄表記 4,454。"
+      ]
+    },
+    {
+      "id": "2026-01-14-gold-long",
+      "source": "bingx",
+      "target": 4636,
+      "notes": [
+        "群組報 4,625／目標 4,636，交易紀錄表記 4,630／4,640。"
+      ]
+    },
+    {
+      "id": "2026-01-16-gold-short",
+      "source": "bingx",
+      "target": 4585,
+      "events": [
+        {
+          "at": "2026-01-16 17:36",
+          "adjust": {
+            "stop": 4605
+          }
+        }
+      ]
+    },
+    {
+      "id": "2026-01-20-gold-short",
+      "source": "bingx",
+      "target": 4660
+    },
+    {
+      "id": "2026-01-23-gold-long-a",
+      "source": "bingx",
+      "target": 4965
+    },
+    {
+      "id": "2026-01-23-gold-long-b",
+      "source": "bingx",
+      "fill": "resting",
+      "target": 4930
+    },
+    {
+      "id": "2026-01-27-gold-long",
+      "source": "bingx",
+      "fill": "resting",
+      "target": 5100
+    },
+    {
+      "id": "2026-01-30-gold-long",
+      "source": "bingx",
+      "fill": "resting",
+      "target": 5400,
+      "events": [
+        {
+          "at": "2026-01-30 02:06",
+          "adjust": {
+            "stop": 5320
+          }
+        }
+      ]
+    },
+    {
+      "id": "2026-02-13-gold-long",
+      "source": "bingx",
+      "target": 4960,
+      "events": [
+        {
+          "at": "2026-02-13 19:54",
+          "adjust": {
+            "stop": 4940
+          }
+        }
+      ]
+    },
+    {
+      "id": "2026-02-17-gold-long",
+      "source": "bingx",
+      "target": 4935
+    },
+    {
+      "id": "2026-02-18-gold-long",
+      "source": "bingx",
+      "target": 4930,
+      "notes": [
+        "自己成交在 4,919～4,920。"
+      ]
+    },
+    {
+      "id": "2026-02-24-gold-long",
+      "source": "bingx",
+      "target": 5180
+    },
+    {
+      "id": "2026-02-27-gold-short",
+      "source": "bingx",
+      "target": 5165,
+      "events": [
+        {
+          "at": "2026-02-27 20:12",
+          "close": {
+            "price": 5188,
+            "label": "提前出場"
+          }
+        }
+      ],
+      "notes": [
+        "群組 20:12 說先撤單，自己的單已成交，在 5,188 出場。"
+      ]
+    },
+    {
+      "id": "2026-03-02-gold-long-b",
+      "source": "bingx",
+      "target": 5412
+    },
+    {
+      "id": "2026-03-02-gold-short",
+      "source": "bingx",
+      "fill": "resting",
+      "target": 5383
+    },
+    {
+      "id": "2026-03-03-gold-long",
+      "source": "bingx",
+      "fill": "resting",
+      "target": 5370
+    }
+  ],
+  "skipped": {
+    "2025-10-24-btc-eth-long": "沒有進場價也沒有停損，無法畫出部位。",
+    "2025-11-10-sol-short": "點位群找不到開單訊息，開單時間未知。",
+    "2025-11-13-gold-long": "BingX 只剩 1 小時 K 線，Binance 黃金合約當時還沒上線。"
+  }
+}

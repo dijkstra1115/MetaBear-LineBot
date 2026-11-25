@@ -1,0 +1,61 @@
+{
+  "title": "實盤 10/20 ETH多",
+  "date": "2025-10-20",
+  "tz": "+08:00",
+  "data": "t-2025-10-20-eth-long.data.json",
+  "trade": "2025-10-20-eth-long",
+  "steps": [
+    {
+      "at": "2025-10-20T15:01:00+08:00",
+      "speed": 200,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/10/20，ETH永續合約（Binance）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-10-20T15:41:00+08:00",
+      "caption": "點位群 15:41「幣種: ETH (100x) 方向: 多 🔥進場價位 : 4052 ✅TP : 4,085 ❌SL : 4,023」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-10-20T15:41:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 4052,
+        "stop": 4023,
+        "target": 4085
+      },
+      "caption": "進場 4,052，停損 4,023，目標 4,085。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-10-20T18:46:21+08:00",
+      "caption": "18:46 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-10-20T18:47:22+08:00",
+      "end": true
+    }
+  ]
+}

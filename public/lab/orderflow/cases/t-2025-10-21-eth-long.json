@@ -1,0 +1,74 @@
+{
+  "title": "實盤 10/21 ETH多",
+  "date": "2025-10-21",
+  "tz": "+08:00",
+  "data": "t-2025-10-21-eth-long.data.json",
+  "trade": "2025-10-21-eth-long",
+  "notes": [
+    "群組喊 TP1 3,938、TP2 3,996 都到了，這裡以 TP2 出場計算。"
+  ],
+  "steps": [
+    {
+      "at": "2025-10-21T19:44:00+08:00",
+      "speed": 174,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/10/21，ETH永續合約（Binance）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-10-21T20:24:00+08:00",
+      "caption": "點位群 20:24「eth多 進場3883 止損3828 止盈 3938 3996 4177」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-10-21T22:21:00+08:00",
+      "caption": "點位群 22:21「TP1」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-10-21T22:57:00+08:00",
+      "caption": "點位群 22:57「TP2」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-10-21T20:59:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 3883,
+        "stop": 3828,
+        "target": 3996
+      },
+      "caption": "掛單成交 3,883，停損 3,828，目標 3,996。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-10-21T22:55:41+08:00",
+      "caption": "22:55 止盈，+2.05R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-10-21T22:56:42+08:00",
+      "end": true
+    }
+  ]
+}

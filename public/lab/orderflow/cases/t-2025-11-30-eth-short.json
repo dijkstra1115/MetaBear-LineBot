@@ -1,0 +1,82 @@
+{
+  "title": "實盤 11/30 ETH空",
+  "date": "2025-11-30",
+  "tz": "+08:00",
+  "data": "t-2025-11-30-eth-short.data.json",
+  "trade": "2025-11-30-eth-short",
+  "steps": [
+    {
+      "at": "2025-11-30T21:46:00+08:00",
+      "speed": 140,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/11/30，ETH永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-30T22:26:00+08:00",
+      "caption": "點位群 22:26「ETH 空 3046 市價」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-30T22:27:00+08:00",
+      "caption": "點位群 22:27「SL 3060 TP1 3017 TP2 3010」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-30T22:59:00+08:00",
+      "caption": "點位群 22:59「記得上套保」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-01T00:18:00+08:00",
+      "caption": "點位群 00:18「撞套 無損出場 可惜差6點就TP1」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-30T22:26:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 3046,
+        "stop": 3060,
+        "target": 3017
+      },
+      "caption": "進場 3,046，停損 3,060，目標 3,017。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-30T22:59:00+08:00",
+      "adjust": {
+        "stop": 3046
+      }
+    },
+    {
+      "at": "2025-12-01T00:21:21+08:00",
+      "caption": "00:21 保本，±0.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-12-01T00:22:22+08:00",
+      "end": true
+    }
+  ]
+}

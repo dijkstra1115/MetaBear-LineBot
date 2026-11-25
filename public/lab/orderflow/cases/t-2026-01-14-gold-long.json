@@ -1,0 +1,69 @@
+{
+  "title": "實盤 01/14 黃金多",
+  "date": "2026-01-14",
+  "tz": "+08:00",
+  "data": "t-2026-01-14-gold-long.data.json",
+  "trade": "2026-01-14-gold-long",
+  "notes": [
+    "群組報 4,625／目標 4,636，交易紀錄表記 4,630／4,640。"
+  ],
+  "steps": [
+    {
+      "at": "2026-01-14T17:28:00+08:00",
+      "speed": 60,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/01/14，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-14T18:08:00+08:00",
+      "caption": "點位群 18:08「GOLD 多 4625」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-14T18:09:00+08:00",
+      "caption": "點位群 18:09「SL 4616 TP 4636」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-14T18:08:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 4625,
+        "stop": 4616,
+        "target": 4636
+      },
+      "caption": "進場 4,625，停損 4,616，目標 4,636。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-14T18:23:01+08:00",
+      "caption": "18:23 止盈，+1.22R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-01-14T18:24:02+08:00",
+      "end": true
+    }
+  ]
+}

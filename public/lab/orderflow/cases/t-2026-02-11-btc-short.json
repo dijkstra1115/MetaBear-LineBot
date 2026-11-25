@@ -1,0 +1,66 @@
+{
+  "title": "實盤 02/11 BTC空",
+  "date": "2026-02-11",
+  "tz": "+08:00",
+  "data": "t-2026-02-11-btc-short.data.json",
+  "trade": "2026-02-11-btc-short",
+  "steps": [
+    {
+      "at": "2026-02-11T19:34:00+08:00",
+      "speed": 139,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/02/11，BTC永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-11T20:14:00+08:00",
+      "caption": "點位群 20:14「BTC 空 67100」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-11T20:14:00+08:00",
+      "caption": "點位群 20:14「SL 67700 TP 66400」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-11T20:14:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 67100,
+        "stop": 67700,
+        "target": 66400
+      },
+      "caption": "進場 67,100，停損 67,700，目標 66,400。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-11T22:03:07+08:00",
+      "caption": "22:03 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-02-11T22:04:08+08:00",
+      "end": true
+    }
+  ]
+}

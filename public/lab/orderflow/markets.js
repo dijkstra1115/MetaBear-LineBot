@@ -39,6 +39,13 @@ export const MARKETS = {
   },
 };
 export const MARKET_IDS = Object.keys(MARKETS);
+
+// Markets that only recorded replay cases use (?case=…&m=sol). Kept out of MARKETS so collectors,
+// the relay and alerts never subscribe to them. Same tick and scale rules as above.
+export const REPLAY_MARKETS = {
+  sol: { id: "sol", base: "SOL", symbol: "SOLUSDT", path: "solusdt", tick: 0.02, bookTick: 0.01, scale: 300, binance: "solusdt", okxInst: "SOL-USDT-SWAP", okxCt: 1, bingx: "SOL-USDT" },
+  xau: { id: "xau", base: "XAU", symbol: "XAUUSDT", path: "xauusdt", tick: 0.5, bookTick: 0.1, scale: 20, binance: "xauusdt", okxInst: "XAU-USDT-SWAP", okxCt: 0.001, bingx: "NCCOGOLD2USD-USDT" },
+};
 export const DEFAULT_MARKET = MARKETS.btc;
 
 /** The market for an id ("btc", "eth"); anything else is BTC, which every older link and object means. */

@@ -169,20 +169,64 @@ export class Player {
     if (step.position) {
       const p = step.position;
       const dir = p.side === "short" ? -1 : 1;
-      const risk = Math.abs(p.entry - p.stop);
-      s.position = { ...p, dir, risk, target: p.target ?? p.entry + dir * risk * (p.r ?? 2), openT: step.t, exit: null };
+      const risk = Math.abs(p.entry - p.stop); // R stays measured against the first stop
+      const target = p.target ?? p.entry + dir * risk * (p.r ?? 2);
+      s.position = { ...p, dir, risk, target, openT: step.t, legs: [{ t: step.t, stop: p.stop, target }], closes: [], exit: null };
     }
+    // A real trade's later instructions: 套保 or a new stop/target (adjust), and closing part or all
+    // of it by hand (close, size = share of the position, default the rest).
+    if (step.adjust && s.position) {
+      const last = s.position.legs.at(-1);
+      s.position.legs.push({ t: step.t, stop: step.adjust.stop ?? last.stop, target: step.adjust.target ?? last.target });
+    }
+    if (step.close && s.position) s.position.closes.push({ t: step.t, price: step.close.price, size: step.close.size ?? null, label: step.close.label ?? null });
     if (step.end) s.ended = true;
   }
 
-  /** Resolves the open position against the trades up to the clock. */
+  /**
+   * Resolves the position up to the clock: each leg's stop and target against the trades from the
+   * leg's start, and the scripted closes in between. A touch closes whatever is still open.
+   */
   settle() {
     const p = this.state.position;
     if (!p) return;
-    const up = p.dir > 0 ? p.target : p.stop;
-    const down = p.dir > 0 ? p.stop : p.target;
-    const touch = this.data.firstTouch(p.openT, this.t, up, down);
-    p.exit = touch ? { t: touch.t, price: touch.hit === "target-up" ? up : down, won: (touch.hit === "target-up") === p.dir > 0 } : null;
+    const closes = p.closes.filter((c) => c.t <= this.t);
+    const events = [...p.legs.map((l) => ({ t: l.t, leg: l })), ...closes.map((c) => ({ t: c.t, close: c }))].sort((a, b) => a.t - b.t);
+    let open = 1;
+    let leg = p.legs[0];
+    let from = p.openT;
+    const fills = [];
+    p.exit = null;
+    const touch = (to) => {
+      const up = p.dir > 0 ? leg.target : leg.stop;
+      const down = p.dir > 0 ? leg.stop : leg.target;
+      const hit = this.data.firstTouch(from, to, up, down);
+      if (!hit) return false;
+      const price = hit.hit === "target-up" ? up : down;
+      const won = (hit.hit === "target-up") === p.dir > 0;
+      fills.push({ t: hit.t, price, size: open, kind: won ? "target" : price === p.entry ? "even" : "stop" });
+      open = 0;
+      return true;
+    };
+    for (const e of events) {
+      if (e.t > p.openT && touch(e.t)) break;
+      from = Math.max(from, e.t);
+      if (e.leg) leg = e.leg;
+      if (e.close) {
+        const size = Math.min(open, e.close.size ?? open);
+        fills.push({ t: e.t, price: e.close.price, size, kind: "close", label: e.close.label });
+        open -= size;
+        if (open <= 1e-9) break;
+      }
+    }
+    if (open > 1e-9) touch(this.t);
+    p.leg = leg;
+    p.fills = fills;
+    if (open <= 1e-9 && fills.length) {
+      const last = fills.at(-1);
+      const r = fills.reduce((sum, f) => sum + f.size * pnl(p, f.price).r, 0);
+      p.exit = { t: last.t, price: last.price, kind: last.kind, label: last.label, r, won: r > 1e-9, even: Math.abs(r) <= 1e-9 };
+    }
   }
 }
 
@@ -190,6 +234,15 @@ export class Player {
 export function pnl(p, price) {
   const move = (price - p.entry) * p.dir;
   return { r: move / p.risk, pct: (move / p.entry) * 100 };
+}
+
+/** What a finished position's label says: 止盈, 停損, 保本, or the scripted close's own words. */
+export function exitLabel(exit) {
+  if (exit.label) return exit.label;
+  if (exit.kind === "target") return "止盈";
+  if (exit.kind === "even" || exit.even) return "保本";
+  if (exit.kind === "stop") return "停損";
+  return exit.won ? "平倉獲利" : "平倉";
 }
 
 const RGB = { gold: "232,189,125", buy: "120,225,213", sell: "240,154,90", text: "237,242,237" };
@@ -279,9 +332,12 @@ export function drawOverlay(player, g) {
     const endT = p.exit ? p.exit.t : t;
     // Like a charting tool's position box: at least eight bars wide, growing with the trade.
     const x1 = Math.min(plotW, Math.max(x0 + 8 * g.barW, (xAt(endT) ?? plotW) + 6));
+    // The box shows the stop and target in force (after 套保 the stop sits on the entry).
+    const stop = p.leg?.stop ?? p.stop;
+    const target = p.leg?.target ?? p.target;
     const yE = yOf(p.entry);
-    const yT = yOf(p.target);
-    const yS = yOf(p.stop);
+    const yT = yOf(target);
+    const yS = yOf(stop);
     ctx.fillStyle = `rgba(${RGB.buy},0.16)`;
     ctx.fillRect(x0, Math.min(yE, yT), x1 - x0, Math.abs(yT - yE));
     ctx.fillStyle = `rgba(${RGB.sell},0.16)`;
@@ -303,20 +359,33 @@ export function drawOverlay(player, g) {
       ctx.fillStyle = "#05090f";
       ctx.fillText(text, lx + 6, y);
     };
-    const rTarget = Math.abs(p.target - p.entry) / p.risk;
+    const rTarget = Math.abs(target - p.entry) / p.risk;
     const side = p.side === "short" ? "空" : "多";
-    const signed = (v, d) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(d)}`;
+    const signed = (v, d) => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(d)}`;
+    const even = stop === p.entry;
+    // Partial closes so far, marked where they happened.
+    for (const f of (p.fills ?? []).filter((f) => f.kind === "close" && f !== p.fills.at(-1))) {
+      const x = xAt(f.t);
+      if (x == null) continue;
+      ctx.fillStyle = `rgb(${RGB.gold})`;
+      ctx.beginPath();
+      ctx.arc(x, yOf(f.price), 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (p.exit) {
-      // The result sits where the trade ended; the entry keeps its price.
-      const { r, pct } = pnl(p, p.exit.price);
-      label(`${p.exit.won ? "止盈" : "停損"} ${signed(r, 1)}R (${signed(pct, 2)}%)`, yOf(p.exit.price), p.exit.won ? RGB.buy : RGB.sell);
-      label(p.exit.won ? `停損 ${fmtPrice(p.stop)}` : `目標 ${fmtPrice(p.target)}`, p.exit.won ? yS : yT, p.exit.won ? RGB.sell : RGB.buy);
-      label(`${side} ${fmtPrice(p.entry)}`, yE, RGB.text);
+      // The result sits where the trade ended; the entry keeps its price. R and % are for the whole
+      // position, partial closes included.
+      const pct = (p.exit.r * p.risk * 100) / p.entry;
+      const rgb = p.exit.won ? RGB.buy : p.exit.even ? RGB.text : RGB.sell;
+      label(`${exitLabel(p.exit)} ${signed(p.exit.r, 1)}R (${signed(pct, 2)}%)`, yOf(p.exit.price), rgb);
+      if (Math.abs(yOf(p.exit.price) - yE) > 16) label(`${side} ${fmtPrice(p.entry)}`, yE, RGB.text);
+      // Every finished trade still shows where its first stop was.
+      if (p.exit.kind !== "stop") label(`停損 ${fmtPrice(p.stop)}`, yOf(p.stop), RGB.sell);
     } else {
-      label(`目標 ${fmtPrice(p.target)} · ${rTarget.toFixed(rTarget % 1 ? 1 : 0)}R`, yT, RGB.buy);
-      label(`停損 ${fmtPrice(p.stop)}`, yS, RGB.sell);
+      label(`目標 ${fmtPrice(target)} · ${rTarget.toFixed(rTarget % 1 ? 1 : 0)}R`, yT, RGB.buy);
+      if (!even) label(`停損 ${fmtPrice(stop)}`, yS, RGB.sell);
       const { r, pct } = pnl(p, g.last);
-      label(`${side} ${fmtPrice(p.entry)}  ${signed(r, 2)}R (${signed(pct, 2)}%)`, yE, r >= 0 ? RGB.buy : RGB.sell);
+      label(`${side} ${fmtPrice(p.entry)}${even ? " · 已套保" : ""}  ${signed(r, 2)}R (${signed(pct, 2)}%)`, yE, r >= 0 ? RGB.buy : RGB.sell);
     }
   }
 

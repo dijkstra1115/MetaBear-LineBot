@@ -1,0 +1,76 @@
+{
+  "title": "實盤 01/23 黃金多",
+  "date": "2026-01-23",
+  "tz": "+08:00",
+  "data": "t-2026-01-23-gold-long-a.data.json",
+  "trade": "2026-01-23-gold-long-a",
+  "steps": [
+    {
+      "at": "2026-01-23T11:48:00+08:00",
+      "speed": 112,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/01/23，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-23T12:28:00+08:00",
+      "caption": "點位群 12:28「GOLD 多 4951」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-23T12:31:00+08:00",
+      "caption": "點位群 12:31「SL 4940 TP 4965」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-23T13:48:00+08:00",
+      "caption": "點位群 13:48「復仇成功」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-23T12:28:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 4951,
+        "stop": 4940,
+        "target": 4965
+      },
+      "caption": "進場 4,951，停損 4,940，目標 4,965。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-23T12:28:01+08:00",
+      "caption": "開單邏輯：「等1m獵取完進場，雖然沒有摸到下方訂單塊，但差一點基本可以看成已經獵取完，加上可以發現有大量市價賣單依然收上影線」",
+      "hold": 6000
+    },
+    {
+      "at": "2026-01-23T13:48:01+08:00",
+      "caption": "13:48 止盈，+1.27R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-01-23T13:49:02+08:00",
+      "end": true
+    }
+  ]
+}

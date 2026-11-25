@@ -1,0 +1,74 @@
+{
+  "title": "實盤 02/18 黃金多",
+  "date": "2026-02-18",
+  "tz": "+08:00",
+  "data": "t-2026-02-18-gold-long.data.json",
+  "trade": "2026-02-18-gold-long",
+  "notes": [
+    "自己成交在 4,919～4,920。"
+  ],
+  "steps": [
+    {
+      "at": "2026-02-18T17:21:00+08:00",
+      "speed": 178,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/02/18，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-18T18:01:00+08:00",
+      "caption": "點位群 18:01「GOLD 多 4917」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-18T18:02:00+08:00",
+      "caption": "點位群 18:02「SL 4905 TP 4930」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-18T18:04:00+08:00",
+      "caption": "點位群 18:04「大家自己決定要不要市價進 我接4919-4920」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-18T18:01:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 4917,
+        "stop": 4905,
+        "target": 4930
+      },
+      "caption": "進場 4,917，停損 4,905，目標 4,930。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-18T20:43:01+08:00",
+      "caption": "20:43 止盈，+1.08R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-02-18T20:44:02+08:00",
+      "end": true
+    }
+  ]
+}

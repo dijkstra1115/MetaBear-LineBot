@@ -1,0 +1,66 @@
+{
+  "title": "實盤 09/21 BTC多",
+  "date": "2025-09-21",
+  "tz": "+08:00",
+  "data": "t-2025-09-21-btc-long.data.json",
+  "trade": "2025-09-21-btc-long",
+  "steps": [
+    {
+      "at": "2025-09-21T01:28:00+08:00",
+      "speed": 446,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/09/21，BTC永續合約（Binance）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-09-21T02:08:00+08:00",
+      "caption": "點位群 02:08「幣種: BTC 開倉點位: 115606 方向: 多 止損: 115405 止盈: 116010」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-09-21T02:08:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 115606,
+        "stop": 115405,
+        "target": 116010
+      },
+      "caption": "進場 115,606，停損 115,405，目標 116,010。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-09-21T02:08:01+08:00",
+      "caption": "開單邏輯：「BTC 1h 等待回踩訂單塊後嘗試做一波短多 1.5R 或 2R 都行」",
+      "hold": 6000
+    },
+    {
+      "at": "2025-09-21T10:21:21+08:00",
+      "caption": "10:21 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-09-21T10:22:22+08:00",
+      "end": true
+    }
+  ]
+}

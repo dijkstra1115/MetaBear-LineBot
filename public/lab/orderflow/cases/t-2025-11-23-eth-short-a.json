@@ -1,0 +1,80 @@
+{
+  "title": "實盤 11/23 ETH空",
+  "date": "2025-11-23",
+  "tz": "+08:00",
+  "data": "t-2025-11-23-eth-short-a.data.json",
+  "trade": "2025-11-23-eth-short-a",
+  "notes": [
+    "13:47 說「利潤跑一半都要套保」，價格回到 2,831 撞到套保；14:56 群組說沒跟著套保的話這單會止盈。"
+  ],
+  "steps": [
+    {
+      "at": "2025-11-23T12:44:00+08:00",
+      "speed": 81,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/11/23，ETH永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-23T13:24:00+08:00",
+      "caption": "點位群 13:24「幣種: ETH 開倉點位: 2,831 市價 方向: 空 TP: 2,800 SL: 2,860」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-23T13:47:00+08:00",
+      "caption": "點位群 13:47「老樣子利潤跑一半都要套保」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-23T14:17:00+08:00",
+      "caption": "點位群 14:17「已經套保 沒進的別進了」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-23T13:24:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 2831,
+        "stop": 2860,
+        "target": 2800
+      },
+      "caption": "進場 2,831，停損 2,860，目標 2,800。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-23T13:47:00+08:00",
+      "adjust": {
+        "stop": 2831
+      }
+    },
+    {
+      "at": "2025-11-23T14:05:33+08:00",
+      "caption": "14:05 保本，±0.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-11-23T14:06:34+08:00",
+      "end": true
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "title": "實盤 03/04 黃金多：進場 4 分鐘被插針掃掉停損",
+  "date": "2026-03-04",
+  "tz": "+08:00",
+  "data": "t-2026-03-04-gold.data.json",
+  "trade": "2026-03-04-gold-long",
+  "steps": [
+    {
+      "at": "13:20",
+      "speed": 40,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 14,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026 年 3 月 4 日下午，BingX 黃金合約。這是點位群公開的一筆實盤多單，當時沒有留下開單說明。",
+      "hold": 3500
+    },
+    {
+      "at": "14:02",
+      "caption": "14:01 一分鐘從 5,155 跌到 5,142，成交量約是前一小時平均的 8 倍。",
+      "hold": 3000
+    },
+    {
+      "at": "14:02:30",
+      "position": {
+        "side": "long",
+        "entry": 5144,
+        "stop": 5134,
+        "target": 5160
+      },
+      "caption": "14:02 市價做多，停損 5,134，目標 5,160。",
+      "hold": 3500
+    },
+    {
+      "at": "14:02:31",
+      "speed": 20,
+      "caption": ""
+    },
+    {
+      "at": "14:07",
+      "caption": "14:06 一根下影線插到 5,120，成交量約平均的 14 倍，打掉停損後收在 5,138。",
+      "hold": 4000
+    },
+    {
+      "at": "14:20",
+      "caption": "停損之後 15 分鐘內，價格回到 5,151。",
+      "hold": 4000
+    },
+    {
+      "at": "14:21",
+      "end": true
+    }
+  ],
+  "notes": [
+    "群組只寫「GOLD 市價多」沒有報價，進場價依 BingX 14:02 那根收盤 5,143.92 記為 5,144。"
+  ]
+}

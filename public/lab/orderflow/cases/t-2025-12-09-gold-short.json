@@ -1,0 +1,83 @@
+{
+  "title": "實盤 12/09 黃金空",
+  "date": "2025-12-09",
+  "tz": "+08:00",
+  "data": "t-2025-12-09-gold-short.data.json",
+  "trade": "2025-12-09-gold-short",
+  "steps": [
+    {
+      "at": "2025-12-09T11:10:00+08:00",
+      "speed": 218,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/12/09，黃金永續合約（BingX）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-09T11:50:00+08:00",
+      "caption": "點位群 11:50「GOLD 黃金 空 4195」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-09T11:55:00+08:00",
+      "caption": "點位群 11:55「SL 4223 TP1 4167」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-09T15:22:00+08:00",
+      "caption": "點位群 15:22「這邊直接平倉 已經往下獵取完了」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-09T11:50:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 4195,
+        "stop": 4223,
+        "target": 4167
+      },
+      "caption": "進場 4,195，停損 4,223，目標 4,167。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-09T11:50:01+08:00",
+      "caption": "開單邏輯：「15m 獵取完流動性並收長下影線，同時打到 1H 的 OB，所以選擇提早止盈」",
+      "hold": 6000
+    },
+    {
+      "at": "2025-12-09T15:22:00+08:00",
+      "close": {
+        "price": 4179,
+        "label": "提前止盈"
+      }
+    },
+    {
+      "at": "2025-12-09T15:22:01+08:00",
+      "caption": "15:22 提前止盈，+0.57R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-12-09T15:23:02+08:00",
+      "end": true
+    }
+  ]
+}

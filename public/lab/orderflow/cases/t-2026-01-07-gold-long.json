@@ -1,0 +1,74 @@
+{
+  "title": "實盤 01/07 黃金多",
+  "date": "2026-01-07",
+  "tz": "+08:00",
+  "data": "t-2026-01-07-gold-long.data.json",
+  "trade": "2026-01-07-gold-long",
+  "notes": [
+    "群組報 4,452，交易紀錄表記 4,454。"
+  ],
+  "steps": [
+    {
+      "at": "2026-01-07T13:29:00+08:00",
+      "speed": 82,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/01/07，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-07T14:09:00+08:00",
+      "caption": "點位群 14:09「GOLD 多 4452」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-07T14:11:00+08:00",
+      "caption": "點位群 14:11「SL 4444 TP 4475」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-01-07T14:09:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 4452,
+        "stop": 4444,
+        "target": 4475
+      },
+      "caption": "進場 4,452，停損 4,444，目標 4,475。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-01-07T14:09:01+08:00",
+      "caption": "開單邏輯：「15m OB 反應良好，1h PB+ & OB 重疊，選在 5m 回補 FVG 進場，這張我個人復盤下來是非常好的配置，進場點位以及搭配的做多訊號，昨天與今天都是掃損就往上，我觀察下來是近期市場波動較大，比較適合低 RR 的設置，動態調整一下」",
+      "hold": 6000
+    },
+    {
+      "at": "2026-01-07T14:47:01+08:00",
+      "caption": "14:47 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-01-07T14:48:02+08:00",
+      "end": true
+    }
+  ]
+}

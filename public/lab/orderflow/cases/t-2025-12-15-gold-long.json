@@ -1,0 +1,71 @@
+{
+  "title": "實盤 12/15 黃金多",
+  "date": "2025-12-15",
+  "tz": "+08:00",
+  "data": "t-2025-12-15-gold-long.data.json",
+  "trade": "2025-12-15-gold-long",
+  "steps": [
+    {
+      "at": "2025-12-15T14:55:00+08:00",
+      "speed": 54,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/12/15，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-15T15:35:00+08:00",
+      "caption": "點位群 15:35「GOLD 黃金 多 4338 （限價預掛） SL 4334 TP1 4348 TP2 4352 TP3 4360」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-15T15:42:00+08:00",
+      "caption": "點位群 15:42「光速止損是哪招😐」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-15T15:39:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 4338,
+        "stop": 4334,
+        "target": 4348
+      },
+      "caption": "掛單成交 4,338，停損 4,334，目標 4,348。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-15T15:39:01+08:00",
+      "caption": "開單邏輯：「15m 訂單塊沒尊重，因為這波上漲力道很強，所以選擇在 FVG 上緣進場，結構被掃流動性後收一根很強的陽K，直接就衝上去 TP1 了」",
+      "hold": 6000
+    },
+    {
+      "at": "2025-12-15T15:42:01+08:00",
+      "caption": "15:42 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-12-15T15:43:02+08:00",
+      "end": true
+    }
+  ]
+}

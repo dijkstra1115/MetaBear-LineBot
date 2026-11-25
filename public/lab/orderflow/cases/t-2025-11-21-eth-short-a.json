@@ -1,0 +1,73 @@
+{
+  "title": "實盤 11/21 ETH空",
+  "date": "2025-11-21",
+  "tz": "+08:00",
+  "data": "t-2025-11-21-eth-short-a.data.json",
+  "trade": "2025-11-21-eth-short-a",
+  "steps": [
+    {
+      "at": "2025-11-21T22:10:00+08:00",
+      "speed": 51,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/11/21，ETH永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-21T22:50:00+08:00",
+      "caption": "點位群 22:50「幣種: ETH 開倉點位: 2,760 市價 方向: 空 止損：2,790 止盈：2,706」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-21T22:54:00+08:00",
+      "caption": "點位群 22:54「提前損出」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-21T22:50:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 2760,
+        "stop": 2790,
+        "target": 2706
+      },
+      "caption": "進場 2,760，停損 2,790，目標 2,706。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-21T22:54:00+08:00",
+      "close": {
+        "price": 2765,
+        "label": "提前停損"
+      }
+    },
+    {
+      "at": "2025-11-21T22:54:01+08:00",
+      "caption": "22:54 提前停損，−0.17R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-11-21T22:55:02+08:00",
+      "end": true
+    }
+  ]
+}

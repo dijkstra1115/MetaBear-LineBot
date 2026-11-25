@@ -1,0 +1,83 @@
+{
+  "title": "實盤 11/22 ETH空",
+  "date": "2025-11-22",
+  "tz": "+08:00",
+  "data": "t-2025-11-22-eth-short-b.data.json",
+  "trade": "2025-11-22-eth-short-b",
+  "steps": [
+    {
+      "at": "2025-11-22T21:43:00+08:00",
+      "speed": 135,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/11/22，ETH永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-22T22:23:00+08:00",
+      "caption": "點位群 22:23「幣種: ETH 開倉點位: 2,748 市價 方向: 空 TP: 2706 SL: 2758」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-22T22:23:00+08:00",
+      "caption": "點位群 22:23「SL 改 2762」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-22T23:46:00+08:00",
+      "caption": "點位群 23:46「兄弟們 利潤跑一半記得上套保唷」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-22T22:23:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 2748,
+        "stop": 2758,
+        "target": 2706
+      },
+      "caption": "進場 2,748，停損 2,758，目標 2,706。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-22T22:23:30+08:00",
+      "adjust": {
+        "stop": 2762
+      }
+    },
+    {
+      "at": "2025-11-22T23:46:00+08:00",
+      "adjust": {
+        "stop": 2748
+      }
+    },
+    {
+      "at": "2025-11-23T00:11:10+08:00",
+      "caption": "00:11 保本，±0.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-11-23T00:12:11+08:00",
+      "end": true
+    }
+  ]
+}

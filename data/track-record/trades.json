@@ -1,0 +1,4881 @@
+{
+  "about": "MetaBear 實盤交易紀錄（2025-09～2026-03）。來源：LINE【禁言-點位群】（每筆開單與後續指示）、【禁言-分析群】（開單邏輯與復盤）、Trading record.csv（2025-11-02 起的結算）。時間為台北時間。csv 欄位照原檔抄錄；issues 列出群組訊息、CSV、交易所 K 線三者對不上的地方，發布前由站長決定。logic.match：direct＝訊息明確指這一單；likely＝時間與內容吻合但沒點名；plan＝開單前的盤面看法；context＝持倉期間或相關的說明。",
+  "fields": {
+    "kind": "own（自己的單）| metadog（MetaDog 的單）| partner（合作社群報單，不算自己的戰績）",
+    "status": "closed | cancelled（撤單、沒成交）| unknown（群組沒有結算訊息）",
+    "result": "win | loss | breakeven | partial | cancelled | null（未知）"
+  },
+  "trades": [
+    {
+      "id": "2025-09-17-btc-long",
+      "posted": "2025-09-17T19:34+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "long",
+      "order": "計畫委託－市價",
+      "entry": 115510,
+      "sl": 114330,
+      "tp": [
+        116690,
+        118000,
+        123200
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-09-17T19:34+08:00",
+          "group": "分析群",
+          "text": "幣種: BTC 開倉點位: 115510 計畫委託 - 市價 方向: 多 止損: 114330 止盈 TP1 116690 TP2 118000 TP3 123200"
+        },
+        {
+          "t": "2025-09-19T00:25+08:00",
+          "group": "分析群",
+          "text": "有看到昨天分析的都賺麻了 昨天的多單繼續拿著"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-09-19T00:25+08:00",
+          "match": "direct",
+          "text": "BTC - 短期目標118k\n昨天在1H級別的推進塊帶大家進場\n前一段突破回調的斐波擴展1.13-1.272是上漲結構的階段性止盈點位，在那邊受阻做階段性平倉\n如果直接突破就繼續往上拿到122k\n沒在車上的可以關注116k左右有沒有回踩機會"
+        }
+      ],
+      "issues": [
+        "這單發在分析群，不在點位群。",
+        "沒有結算訊息，結果要用 K 線確認。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "TP1",
+        "at": "09-18 06:55",
+        "firstClose": 116235.7
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-09-19-btc-long",
+      "posted": "2025-09-19T00:12+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "long",
+      "order": "市價",
+      "entry": 117671,
+      "sl": 116855,
+      "tp": [
+        118518,
+        119221,
+        121751
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-09-19T00:12+08:00",
+          "text": "btc多 進場 117671 sl 116855 tp 118518 119221 121751"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-09-19T00:25+08:00",
+          "match": "plan",
+          "text": "BTC - 短期目標118k … 如果直接突破就繼續往上拿到122k"
+        },
+        {
+          "t": "2025-09-19T12:35+08:00",
+          "match": "plan",
+          "text": "比特 4h 與 1h 嘗試向上測試 OB-\n觀察未來幾根 k 棒，若沒有強烈上漲信號\n可以在 OB- 下緣接短線空單設 2R 止盈\n若強烈上漲則搭配之前的觀察\n直接乘著火箭上車了 🚀"
+        }
+      ],
+      "issues": [
+        "沒有結算訊息。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "SL",
+        "at": "09-19 07:00",
+        "firstClose": 117583.3
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-09-21-btc-long",
+      "posted": "2025-09-21T02:08+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "long",
+      "order": "市價",
+      "entry": 115606,
+      "sl": 115405,
+      "tp": [
+        116010
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-09-21T02:08+08:00",
+          "text": "幣種: BTC 開倉點位: 115606 方向: 多 止損: 115405 止盈: 116010"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-09-21T02:14+08:00",
+          "match": "direct",
+          "text": "BTC 1h 等待回踩訂單塊後嘗試做一波短多 1.5R 或 2R 都行"
+        }
+      ],
+      "issues": [
+        "沒有結算訊息。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "SL",
+        "at": "09-21 10:21",
+        "firstClose": 115683.4
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-09-21-sol-long-a",
+      "posted": "2025-09-21T02:32+08:00",
+      "kind": "metadog",
+      "symbol": "SOL",
+      "side": "long",
+      "order": "市價",
+      "entry": 237.45,
+      "sl": 236.77,
+      "tp": [
+        239.94
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-09-21T02:32+08:00",
+          "text": "幣種: SOL 開倉點位: 237.45 方向: 多 止損: 236.77 止盈: 239.94"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "MetaDog 發的單。"
+      ],
+      "klineCheck": {
+        "source": "Binance SOLUSDT 1m",
+        "outcome": "TP1",
+        "at": "09-21 05:28",
+        "firstClose": 238.5
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-09-21-sol-long-b",
+      "posted": "2025-09-21T16:24+08:00",
+      "kind": "metadog",
+      "symbol": "SOL",
+      "side": "long",
+      "order": "市價",
+      "entry": 238.79,
+      "sl": 237.96,
+      "tp": [
+        240.45,
+        241.82
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-09-21T16:24+08:00",
+          "text": "幣種: SOL 開倉點位: 238.79 方向: 多 止損: 237.96 TP1: 240.45 TP2: 241.82"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "MetaDog 發的單。"
+      ],
+      "klineCheck": {
+        "source": "Binance SOLUSDT 1m",
+        "outcome": "SL",
+        "at": "09-21 17:15",
+        "firstClose": 239.01
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-09-25-btc-long",
+      "posted": "2025-09-25T00:12+08:00",
+      "kind": "metadog",
+      "symbol": "BTC",
+      "side": "long",
+      "order": "計畫委託－市價",
+      "entry": 111950,
+      "sl": 110950,
+      "tp": [
+        112950,
+        113950,
+        115890
+      ],
+      "status": "unknown",
+      "result": null,
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-09-25T00:12+08:00",
+          "text": "幣種: BTC 開倉點位: 111950 計畫委託 - 市價 方向: 多 止損: 110950 TP1 112950 TP2 113950 TP3 115890"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-09-25T00:15+08:00",
+          "match": "direct",
+          "text": "BTC壓力測試失敗 開始有反彈跡象 1H底部有支撐 可望在那邊進場 結構反轉後的bos 希望能繼續延續"
+        },
+        {
+          "t": "2025-09-24T17:22+08:00",
+          "match": "plan",
+          "text": "目前回踩上漲波段的斐波回撤0.618\n從1H來看這根針對低點做了流動性獵取\n但還沒有出現結構轉換\n所以不能完全確定底部形成\n只能有看多的偏見\n15分級別這個訂單塊是可以嘗試的機會\n做一波短多到上面"
+        }
+      ],
+      "issues": [
+        "MetaDog 發的單。",
+        "開單時市價 113,122 已高於 TP1，計畫委託的觸發方式不明，K 線無法判斷。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "TP1",
+        "at": "09-25 00:12",
+        "firstClose": 113122.3
+      }
+    },
+    {
+      "id": "2025-09-28-sol-short",
+      "posted": "2025-09-28T22:24+08:00",
+      "kind": "metadog",
+      "symbol": "SOL",
+      "side": "short",
+      "order": "計畫委託－限價",
+      "entry": 202.9,
+      "sl": 205.55,
+      "tp": [
+        198,
+        194,
+        190
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-09-28T22:24+08:00",
+          "text": "幣種: SOL 開倉點位: 202.9 計畫委託 - 限價 方向: 空 止損: 205.55 TP1 198 TP2 194 TP3 190"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-09-28T18:30+08:00",
+          "match": "plan",
+          "text": "SOL (4H)\n下方 OB 的形成除了有成功掃蕩 Sellside liquidity 之外，也成功創造 FVG 缺口，更與之前的 OB 形成 PB。\n同時上方也形成 OB 並出現 FVG，但同時也留下大量的 Buyside Liquidity。\n目前需要特別注意未來幾根 K 棒，觀察哪一個方向先出現 BOS。\n這次不論是哪個方向，都有很高機會先去獵取更深處的散戶止損，再續力暴衝。"
+        }
+      ],
+      "issues": [
+        "MetaDog 發的單；分析群的 SOL 4H 是 MetaBear 同日稍早的看法，方向未定。"
+      ],
+      "klineCheck": {
+        "source": "Binance SOLUSDT 1m",
+        "outcome": "SL",
+        "at": "09-29 01:46",
+        "firstClose": 201.25
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-09-29-eth-long",
+      "posted": "2025-09-29T02:10+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "計畫委託－市價",
+      "entry": 3991,
+      "sl": 3963,
+      "tp": [
+        4019,
+        4047,
+        4148
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-09-29T02:10+08:00",
+          "text": "幣種: ETH 開倉點位: 3991計畫委託 - 市價 方向: 多 止損: 3963 TP1 4019 TP2 4047 TP3 4148"
+        },
+        {
+          "t": "2025-09-29T12:30+08:00",
+          "text": "沒上車的撤單 車速過快"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-09-27T23:47+08:00",
+          "match": "plan",
+          "text": "ETH（日線）之前講過的日線失衡區，這次確實帶來一波反彈，不過現在還沒辦法直接說「底部到了」。接下來兩種情況可以觀察：1. 看有沒有第二次回測，確認支撐夠不夠力。2. 或者等 4 小時圖突破 4227，這樣才有機會帶來短線結構轉多。"
+        }
+      ],
+      "issues": [
+        "沒有結算訊息；「車速過快」暗示觸發後很快往上。",
+        "開單時市價 4,035 已高於進場價，計畫委託的觸發方式不明，K 線無法判斷。",
+        "Binance 1 分鐘資料：發單後價格在 4,031～4,143，沒有回到 3,991，計畫委託沒有觸發，與「沒上車的撤單 車速過快」一致。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "09-29 02:10",
+        "firstClose": 4035.57
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-10-07-sol-long",
+      "posted": "2025-10-07T19:09+08:00",
+      "kind": "own",
+      "symbol": "SOL",
+      "side": "long",
+      "order": "預掛 228.5～228",
+      "entry": 228.5,
+      "sl": 220,
+      "tp": [
+        236,
+        245,
+        253
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-10-07T19:09+08:00",
+          "text": "幣種:SOL 方向:多 🔥進場價位:228.5 ～228預掛 ✅TP1 :236 ✅TP2 :245 ✅TP3 :253 ❌SL :220"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "格式和之後的合作社群報單一樣，但沒有註明合作；請確認是不是自己的單。",
+        "沒有結算訊息。"
+      ],
+      "klineCheck": {
+        "source": "Binance SOLUSDT 1m",
+        "outcome": "SL",
+        "at": "10-08 07:57",
+        "firstClose": 230.83
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-10-09-btc-long",
+      "posted": "2025-10-09T22:47+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "long",
+      "order": "市價",
+      "entry": 121455,
+      "sl": 120500,
+      "tp": [
+        122400,
+        124500
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-10-09T22:47+08:00",
+          "text": "幣種: BTC 開倉點位: 121455 市價 方向: 多 止損: 120500 TP1 122400 TP2 124500"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-10-08T16:25+08:00",
+          "match": "plan",
+          "text": "BTC 即時分析\n可以關注天圖 Fibo 回測 120K 左右的價位\n在 4H 級別正在測試 FVG\n並且下方有個 POI\n切換到更小級別後可以觀察到大量的流動性\n可以在 1H 級別出現 Liquidity sweep 後嘗試上車"
+        }
+      ],
+      "issues": [
+        "沒有結算訊息。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "SL",
+        "at": "10-10 00:53",
+        "firstClose": 120838.7
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-10-10-btc-short",
+      "posted": "2025-10-10T01:50+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "short",
+      "order": "限價",
+      "entry": 122652,
+      "sl": 123710,
+      "tp": [
+        120541
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-10-10T01:50+08:00",
+          "text": "幣種: BTC 開倉點位: 122,652 限價 方向: 空 止損: 123,710 止盈: 120,541"
+        },
+        {
+          "t": "2025-10-10T21:58+08:00",
+          "text": "行情已過 請撤單"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-10-10T01:03+08:00",
+          "match": "direct",
+          "text": "BTC 即時分析\n1H 劇烈下跌 上方產生 OB-\n並且形成 MSS 與 FVG\n平常有在跟教學影片的話\n應該都知道要往哪做吧？"
+        }
+      ],
+      "issues": [
+        "限價沒成交就撤單（同日深夜是 10/10 大崩跌，方向對但沒掛到）。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "never-filled",
+        "at": null,
+        "extreme": 122497
+      }
+    },
+    {
+      "id": "2025-10-14-eth-short",
+      "posted": "2025-10-14T00:19+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "掛單",
+      "entry": 4157,
+      "sl": 4276,
+      "tp": [
+        3919
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-10-14T00:19+08:00",
+          "text": "幣種: ETH 方向: 空 🔥進場價位 : 4,157 ✅TP : 3,919 ❌SL : 4,276"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "與下一筆同時發出，一空一多兩張掛單；沒有結算訊息。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "10-14 04:58",
+        "firstClose": 4145
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-10-14-eth-long",
+      "posted": "2025-10-14T00:21+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "掛單",
+      "entry": 3738,
+      "sl": 3594,
+      "tp": [
+        3978
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-10-14T00:21+08:00",
+          "text": "幣種: ETH 方向: 多 🔥進場價位 : 3,738 ✅TP : 3,954 ❌SL : 3,594"
+        },
+        {
+          "t": "2025-10-14T00:32+08:00",
+          "text": "TP 改 3,978"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "「TP 改 3,978」推定是這張多單。沒有結算訊息。",
+        "K 線：72 小時內最低 3,868，掛單 3,738 沒成交。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "never-filled",
+        "at": null,
+        "extreme": 3868.84
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-10-15-btc-long",
+      "posted": "2025-10-15T01:44+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "long",
+      "order": "計畫委託－市價",
+      "entry": 110789,
+      "sl": 109796,
+      "tp": [
+        113655
+      ],
+      "status": "closed",
+      "result": "partial",
+      "exit": 112000,
+      "timeline": [
+        {
+          "t": "2025-10-15T01:44+08:00",
+          "text": "幣種：BTC 多 🔥進場 : 110789（計畫委託市價） ✅TP : 113,655 ❌SL : 109796"
+        },
+        {
+          "t": "2025-10-15T22:24+08:00",
+          "text": "我已在 112,000 先進行部分平倉"
+        },
+        {
+          "t": "2025-10-15T23:35+08:00",
+          "text": "接下來波動較大 剩下倉位可以先平保離場"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "部分在 112,000 獲利、其餘保本；平倉比例沒寫。",
+        "開單時市價 112,608，計畫委託 110,789 的觸發方式不明。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "SL",
+        "at": "10-16 17:34",
+        "firstClose": 112608.7
+      }
+    },
+    {
+      "id": "2025-10-20-eth-long",
+      "posted": "2025-10-20T15:41+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "市價（100x）",
+      "entry": 4052,
+      "sl": 4023,
+      "tp": [
+        4085
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-10-20T15:41+08:00",
+          "text": "幣種: ETH (100x) 方向: 多 🔥進場價位 : 4052 ✅TP : 4,085 ❌SL : 4,023"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "沒有結算訊息。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "10-20 18:46",
+        "firstClose": 4062.52
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-10-21-eth-long",
+      "posted": "2025-10-21T20:24+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "市價",
+      "entry": 3883,
+      "sl": 3828,
+      "tp": [
+        3938,
+        3996,
+        4177
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 3996,
+      "timeline": [
+        {
+          "t": "2025-10-21T20:24+08:00",
+          "text": "eth多 進場3883 止損3828 止盈 3938 3996 4177"
+        },
+        {
+          "t": "2025-10-21T22:21+08:00",
+          "text": "TP1"
+        },
+        {
+          "t": "2025-10-21T22:57+08:00",
+          "text": "TP2"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "TP2 之後剩餘倉位沒有交代；exit 以 TP2 記。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "10-21 22:18",
+        "firstClose": 3913.38
+      }
+    },
+    {
+      "id": "2025-10-23-btc-long",
+      "posted": "2025-10-23T00:14+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "long",
+      "order": "市價",
+      "entry": 108250,
+      "sl": 106700,
+      "tp": [
+        109650,
+        111100,
+        115000
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-10-23T00:14+08:00",
+          "text": "幣種: BTC 開倉點位: 108250市價 方向: 多 止損：106700 TP1 109650 TP2 111100 TP3 115000"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "沒有結算訊息；10/24 又喊了 BTC ETH 長單，可能是同一波。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "SL",
+        "at": "10-23 05:11",
+        "firstClose": 108387.8
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-10-24-btc-eth-long",
+      "posted": "2025-10-24T19:54+08:00",
+      "kind": "own",
+      "symbol": "BTC+ETH",
+      "side": "long",
+      "order": "市價，5x 以下長單",
+      "entry": null,
+      "sl": null,
+      "tp": [
+        114000,
+        4100
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-10-24T19:54+08:00",
+          "text": "BTC ETH 直接市價進場 5x 槓桿以下 長單 止盈止損等我喊"
+        },
+        {
+          "t": "2025-10-26T20:23+08:00",
+          "text": "ETH 止盈 4,100 BTC 止盈 114,000"
+        },
+        {
+          "t": "2025-10-26T21:51+08:00",
+          "text": "拿不住的可以先出 差 10 點沒差"
+        },
+        {
+          "t": "2025-10-27T09:59+08:00",
+          "text": "帥啦止盈"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-10-24T21:02+08:00",
+          "match": "context",
+          "text": "CPI 比預期還低 升息機率又增加\n但這半小時的走勢明顯不如預期\n吃掉流動性沒有再往上突破\n也沒有大額買單的跡象\n說實在反而比較像\n散戶追車\n大戶在拋售"
+        }
+      ],
+      "issues": [
+        "沒有進場價也沒有止損；依原則 3（每筆都要畫停損），這筆不適合放進公開戰績，或要說明沒有停損。進場價可用 19:54 的 K 線收盤估。"
+      ]
+    },
+    {
+      "id": "2025-11-02-eth-long",
+      "posted": "2025-11-02T18:36+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "市價",
+      "entry": 3836,
+      "sl": 3820,
+      "tp": [
+        3880
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 3880,
+      "csv": {
+        "Date": "2025-11-2",
+        "Entry": 3836,
+        "Exit": 3880,
+        "TP": 3880,
+        "SL": 3820,
+        "Leverage": 120,
+        "Result": "Win",
+        "Pnl": "1.15%",
+        "RR": 2.75,
+        "Final_PnL": 137.64
+      },
+      "timeline": [
+        {
+          "t": "2025-11-02T18:36+08:00",
+          "text": "幣種: ETH 開倉點位: 3,836市價 方向: 多 止損：3,820 止盈：3,880"
+        },
+        {
+          "t": "2025-11-02T19:29+08:00",
+          "text": "光速止盈"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-11-01T18:10+08:00",
+          "match": "context",
+          "text": "我目前手上只有一倉 ETH 多單\n開倉價為 3,835"
+        },
+        {
+          "t": "2025-11-02T14:21+08:00",
+          "match": "plan",
+          "text": "[ETH 盤面分析]\n從清算熱力圖可以看出\n突破清算壓力位後沒有發生連鎖反應\n反而是收了一根上影線\n這是很明確的獵取信號\n同時\n空方依然聚集大量籌碼\n對莊家來說獵取的成本較小\n短多可在這時候出手\n切到小時間框架找入場點位\n並直接設套保 不適合握太久"
+        }
+      ],
+      "issues": [
+        "11/01 18:10 分析群寫「手上只有一倉 ETH 多單 開倉價為 3,835」，和這張可能是同一倉；確認後擇一。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "11-02 19:28",
+        "firstClose": 3856.3
+      }
+    },
+    {
+      "id": "2025-11-03-eth-long",
+      "posted": "2025-11-03T13:29+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "市價",
+      "entry": 3750,
+      "sl": 3620,
+      "tp": [
+        3880
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-11-03T13:29+08:00",
+          "text": "幣種: ETH 開倉點位: 3,750 市價 方向: 多 止損：3,620 止盈：3,880"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "CSV 沒有這筆。沒有結算訊息。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "11-03 23:30",
+        "firstClose": 3755.42
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2025-11-06-eth-long",
+      "posted": "2025-11-06T23:58+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "市價",
+      "entry": 3290,
+      "sl": 3211,
+      "tp": [
+        3375
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 3211,
+      "csv": {
+        "Date": "2025-11-6",
+        "Entry": 3290,
+        "Exit": 3211,
+        "TP": 3375,
+        "SL": 3211,
+        "Leverage": 30,
+        "Result": "Loss",
+        "Pnl": "-2.40%",
+        "RR": 1.08,
+        "Final_PnL": -72.04
+      },
+      "timeline": [
+        {
+          "t": "2025-11-06T23:58+08:00",
+          "text": "幣種: ETH 開倉點位: 3,290 市價 方向: 多"
+        },
+        {
+          "t": "2025-11-07T10:30+08:00",
+          "text": "可以設定套保，或 3211 全出"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "群組開單時沒有給 TP/SL；CSV 的 TP 3375、SL 3211 是事後補的。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "11-07 20:28",
+        "firstClose": 3297.01
+      }
+    },
+    {
+      "id": "2025-11-10-sol-short",
+      "posted": null,
+      "kind": "own",
+      "symbol": "SOL",
+      "side": "short",
+      "order": null,
+      "entry": 154.785,
+      "sl": 156.2,
+      "tp": [
+        152.901
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 152.901,
+      "csv": {
+        "Date": "2025-11-10",
+        "Entry": 154.785,
+        "Exit": 152.901,
+        "TP": 152.901,
+        "SL": 156.2,
+        "Leverage": 80,
+        "Result": "Win",
+        "Pnl": "1.22%",
+        "RR": 1.33,
+        "Final_PnL": 97.37
+      },
+      "timeline": [
+        {
+          "t": "2025-11-10T10:59+08:00",
+          "text": "SOL 可以止盈了 入袋為安"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "點位群找不到開單訊息（可能發在別處或已收回），只有止盈提醒。開單時間未知。"
+      ]
+    },
+    {
+      "id": "2025-11-12-eth-short",
+      "posted": "2025-11-12T16:00+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 3440,
+      "sl": 3464,
+      "tp": [
+        3400
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 3464,
+      "csv": {
+        "Date": "2025-11-12",
+        "Entry": 3440,
+        "Exit": 3464,
+        "TP": 3400,
+        "SL": 3464,
+        "Leverage": 110,
+        "Result": "Loss",
+        "Pnl": "-0.70%",
+        "RR": 1.67,
+        "Final_PnL": -76.74
+      },
+      "timeline": [
+        {
+          "t": "2025-11-12T16:00+08:00",
+          "text": "幣種: ETH 開倉點位: 3,440 市價 方向: 空 TP: 3400 SL: 3464"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "11-12 16:33",
+        "firstClose": 3427.92
+      }
+    },
+    {
+      "id": "2025-11-13-gold-long",
+      "posted": "2025-11-13T22:51+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4191.5,
+      "sl": 4179.5,
+      "tp": [
+        4203.5,
+        4215.5,
+        4235.5
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4203.5,
+      "csv": {
+        "Date": "2025-11-13",
+        "Entry": 4191.5,
+        "Exit": 4203.5,
+        "TP": 4203.5,
+        "SL": 4179.5,
+        "Leverage": 50,
+        "Result": "Win",
+        "Pnl": "0.29%",
+        "RR": 1,
+        "Final_PnL": 14.31
+      },
+      "timeline": [
+        {
+          "t": "2025-11-13T22:51+08:00",
+          "text": "幣種: GOLD 開倉點位: 4191.5 市價 方向: 多 止損：4179.5 TP1 4203.5 TP2 4215.5 TP3 4235.5"
+        },
+        {
+          "t": "2025-11-13T23:20+08:00",
+          "text": "TP1"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "CSV 的 Final_PnL 14.31 與 0.29%×50＝14.3 一致。"
+      ],
+      "klineCheck": {
+        "source": "BingX 1h",
+        "outcome": "TP1",
+        "at": "11-13 22:00",
+        "firstClose": 4195.85,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-11-17-gold-long-partner",
+      "posted": "2025-11-17T15:38+08:00",
+      "kind": "partner",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4067,
+      "sl": 4025,
+      "tp": [
+        4105,
+        4130,
+        4150
+      ],
+      "status": "unknown",
+      "result": null,
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-11-17T15:38+08:00",
+          "text": "幣種:GOLD 方向:多 🔥進場價位:4067市價 ✅TP1 :4105 ✅TP2 :4130 ✅TP3 :4150 ❌SL :4025 (合作社群報單-多綠）"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "合作社群報單，不列入自己的戰績。"
+      ]
+    },
+    {
+      "id": "2025-11-21-gold-long",
+      "posted": "2025-11-21T01:49+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "預掛",
+      "entry": 4035,
+      "sl": 4020,
+      "tp": [
+        4070
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4070,
+      "csv": {
+        "Date": "2025-11-21",
+        "Entry": 4035,
+        "Exit": 4070,
+        "TP": 4070,
+        "SL": 4020,
+        "Leverage": 100,
+        "Result": "Win",
+        "Pnl": "0.87%",
+        "RR": 2.33,
+        "Final_PnL": 86.74
+      },
+      "timeline": [
+        {
+          "t": "2025-11-21T01:49+08:00",
+          "text": "幣種:GOLD 方向:多 🔥進場價位 : 4035 預掛 ❌SL : 4020"
+        },
+        {
+          "t": "2025-11-21T01:50+08:00",
+          "text": "TP : 4086"
+        },
+        {
+          "t": "2025-11-21T17:32+08:00",
+          "text": "TP 改 4070 並設套保"
+        },
+        {
+          "t": "2025-11-21T20:45+08:00",
+          "text": "TP 到 止盈"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-11-24T11:08+08:00",
+          "match": "likely",
+          "text": "分享當初這單的開單邏輯\n15m 可以看出前面有多個支撐位\n所以再支撐被突破\n也就是流動性被獵取後\n價格出現強勁反彈\n所以果斷在訂單塊出手進場"
+        }
+      ],
+      "issues": [
+        "原 TP 4086，後改 4070。",
+        "11/24 11:08 的多單邏輯沒點名是哪一單，這段時間唯一的多單是這張；請確認。"
+      ],
+      "klineCheck": {
+        "source": "BingX 1h",
+        "outcome": "TP1",
+        "at": "11-21 20:00",
+        "firstClose": 4066.36,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-11-21-eth-short-a",
+      "posted": "2025-11-21T22:50+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 2760,
+      "sl": 2790,
+      "tp": [
+        2706
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 2765,
+      "csv": {
+        "Date": "2025-11-21",
+        "Entry": 2760,
+        "Exit": 2765,
+        "TP": 2706,
+        "SL": 2790,
+        "Leverage": 90,
+        "Result": "Loss",
+        "Pnl": "-0.18%",
+        "RR": 1.8,
+        "Final_PnL": -16.3
+      },
+      "timeline": [
+        {
+          "t": "2025-11-21T22:50+08:00",
+          "text": "幣種: ETH 開倉點位: 2,760 市價 方向: 空 止損：2,790 止盈：2,706"
+        },
+        {
+          "t": "2025-11-21T22:54+08:00",
+          "text": "提前損出"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "11-21 23:37",
+        "firstClose": 2753.24
+      }
+    },
+    {
+      "id": "2025-11-21-eth-short-b",
+      "posted": "2025-11-21T23:01+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價（再進一次）",
+      "entry": 2760,
+      "sl": 2790,
+      "tp": [
+        2706
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 2706,
+      "csv": {
+        "Date": "2025-11-21",
+        "Entry": 2760,
+        "Exit": 2706,
+        "TP": 2706,
+        "SL": 2790,
+        "Leverage": 90,
+        "Result": "Win",
+        "Pnl": "1.96%",
+        "RR": 1.8,
+        "Final_PnL": 176.09
+      },
+      "timeline": [
+        {
+          "t": "2025-11-21T23:01+08:00",
+          "text": "再進一次"
+        },
+        {
+          "t": "2025-11-21T23:06+08:00",
+          "text": "套保"
+        },
+        {
+          "t": "2025-11-21T23:39+08:00",
+          "text": "TP 止盈"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "再進場的價格沒寫，CSV 記 2760。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "11-21 23:37",
+        "firstClose": 2755.01
+      }
+    },
+    {
+      "id": "2025-11-22-eth-short-a",
+      "posted": "2025-11-22T14:41+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 2759,
+      "sl": 2771,
+      "tp": [
+        2730
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 2730,
+      "csv": {
+        "Date": "2025-11-22",
+        "Entry": 2759,
+        "Exit": 2730,
+        "TP": 2730,
+        "SL": 2771,
+        "Leverage": 100,
+        "Result": "Win",
+        "Pnl": "1.05%",
+        "RR": 2.42,
+        "Final_PnL": 105.11
+      },
+      "timeline": [
+        {
+          "t": "2025-11-22T14:41+08:00",
+          "text": "幣種: ETH 開倉點位: 2,759 市價 方向: 空"
+        },
+        {
+          "t": "2025-11-22T14:45+08:00",
+          "text": "SL 2771 TP 2730"
+        },
+        {
+          "t": "2025-11-22T15:04+08:00",
+          "text": "TP 2739"
+        },
+        {
+          "t": "2025-11-22T16:18+08:00",
+          "text": "止盈"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-11-24T11:12+08:00",
+          "match": "likely",
+          "text": "這兩單的開單邏輯比較類似\n從訂單簿深度可以看出上方有大量賣方掛單 Ask\n代表上方深度夠不容易被突破\n並且下方有階段流動性目標\n所以我判斷可以入場做空\n止盈止損都很好設定\n且盈虧比都非常好"
+        }
+      ],
+      "issues": [
+        "15:04「TP 2739」是改 TP 還是加一個目標不清楚；CSV 以 2730 出場。",
+        "11/24 11:12「這兩單」沒點名，推定是 11/22 的兩張空單之一或 11/23 的空單。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "11-22 16:22",
+        "firstClose": 2759.59
+      }
+    },
+    {
+      "id": "2025-11-22-eth-short-b",
+      "posted": "2025-11-22T22:23+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 2748,
+      "sl": 2762,
+      "tp": [
+        2706
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 2748,
+      "timeline": [
+        {
+          "t": "2025-11-22T22:23+08:00",
+          "text": "幣種: ETH 開倉點位: 2,748 市價 方向: 空 TP: 2706 SL: 2758"
+        },
+        {
+          "t": "2025-11-22T22:23+08:00",
+          "text": "SL 改 2762"
+        },
+        {
+          "t": "2025-11-22T23:46+08:00",
+          "text": "兄弟們 利潤跑一半記得上套保唷"
+        },
+        {
+          "t": "2025-11-23T00:32+08:00",
+          "text": "已經套保嚕 不要再進了"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "CSV 沒有這筆。訊息只說已套保，最後是保本還是止盈沒寫。",
+        "開單後 SL 從 2758 放寬到 2762。",
+        "K 線：沒到 TP，6:15 回到 SL 2762；群組 00:32 已套保，推定保本出場。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "11-23 06:15",
+        "firstClose": 2744.15
+      },
+      "resultSource": "group+kline"
+    },
+    {
+      "id": "2025-11-23-eth-short-a",
+      "posted": "2025-11-23T13:24+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 2831,
+      "sl": 2860,
+      "tp": [
+        2800
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 2831,
+      "csv": {
+        "Date": "2025-11-23",
+        "Entry": 2831,
+        "Exit": 2831,
+        "TP": null,
+        "SL": 2860,
+        "Leverage": null,
+        "Result": "Breakeven",
+        "Pnl": "0.00%",
+        "RR": null,
+        "Final_PnL": 0
+      },
+      "timeline": [
+        {
+          "t": "2025-11-23T13:24+08:00",
+          "text": "幣種: ETH 開倉點位: 2,831 市價 方向: 空 TP: 2,800 SL: 2,860"
+        },
+        {
+          "t": "2025-11-23T13:47+08:00",
+          "text": "老樣子利潤跑一半都要套保"
+        },
+        {
+          "t": "2025-11-23T14:17+08:00",
+          "text": "已經套保 沒進的別進了"
+        },
+        {
+          "t": "2025-11-23T14:56+08:00",
+          "text": "當然結果論來說 如果你沒跟我一起套保 這單會止盈"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-11-23T14:54+08:00",
+          "match": "context",
+          "text": "有人問甚麼是套保 這邊統一回覆\n就是當利潤已經跑一半時\n把止損移動到你的入場點位\n這樣可以保證你不虧錢\n為什麼我會套保?\n因為當利潤跑一半又突然大回撤\n通常暗示著行情的劇烈變化\n當然這只是根據我的經驗\n且我個人一直以來的心境都是\n寧可錯過不賺 也不願硬抗風險"
+        }
+      ],
+      "issues": [
+        "CSV 缺 TP（2800）與槓桿。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "11-23 15:03",
+        "firstClose": 2823.46
+      }
+    },
+    {
+      "id": "2025-11-23-eth-short-b",
+      "posted": "2025-11-23T22:18+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 2835,
+      "sl": 2846,
+      "tp": [
+        2803,
+        2778
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 2835,
+      "csv": {
+        "Date": "2025-11-23",
+        "Entry": 2835,
+        "Exit": 2835,
+        "TP": null,
+        "SL": 2865,
+        "Leverage": null,
+        "Result": "Breakeven",
+        "Pnl": "0.00%",
+        "RR": null,
+        "Final_PnL": 0
+      },
+      "timeline": [
+        {
+          "t": "2025-11-23T22:18+08:00",
+          "text": "幣種: ETH 開倉點位: 2,835 市價 方向: 空"
+        },
+        {
+          "t": "2025-11-23T22:20+08:00",
+          "text": "SL 2865 TP1 2803 TP2 2778"
+        },
+        {
+          "t": "2025-11-23T22:37+08:00",
+          "text": "SL 改 2846"
+        },
+        {
+          "t": "2025-11-23T22:52+08:00",
+          "text": "一樣記得套保"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-11-23T22:44+08:00",
+          "match": "direct",
+          "text": "預先覆盤一下\n老實說這張進慢了\n應該 2844 就要進場\n這樣 SL 可以無壓力放 2865\n但當下我遇到的情況是\n上下流動性太深\n我是第一次見那麼深\n所以有點影響我判斷惹\n又學到了 下次改進"
+        },
+        {
+          "t": "2025-11-23T22:46+08:00",
+          "match": "direct",
+          "text": "不過這行情真的誇張\n我是先在群組報 2835\n結果才過幾秒已經跳到 2828\n導致我進的點位也不太好"
+        }
+      ],
+      "issues": [
+        "CSV 的 SL 是原本的 2865，後來改 2846。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "11-24 00:58",
+        "firstClose": 2828.87
+      }
+    },
+    {
+      "id": "2025-11-24-eth-short",
+      "posted": "2025-11-24T10:20+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 2862,
+      "sl": 2877,
+      "tp": [
+        2836,
+        2818
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 2836,
+      "csv": {
+        "Date": "2025-11-24",
+        "Entry": 2862,
+        "Exit": 2836,
+        "TP": 2818,
+        "SL": 2877,
+        "Leverage": 100,
+        "Result": "Win",
+        "Pnl": "0.91%",
+        "RR": 2.93,
+        "Final_PnL": 90.85
+      },
+      "timeline": [
+        {
+          "t": "2025-11-24T10:20+08:00",
+          "text": "ETH 空"
+        },
+        {
+          "t": "2025-11-24T10:21+08:00",
+          "text": "2862"
+        },
+        {
+          "t": "2025-11-24T10:22+08:00",
+          "text": "SL 2877 TP 2818"
+        },
+        {
+          "t": "2025-11-24T10:34+08:00",
+          "text": "TP1 2836 TP2 2818"
+        },
+        {
+          "t": "2025-11-24T10:37+08:00",
+          "text": "又差1點 == 一樣記得套保"
+        },
+        {
+          "t": "2025-11-24T10:45+08:00",
+          "text": "如果有到 TP1 我會全部止盈"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-11-24T11:15+08:00",
+          "match": "direct",
+          "text": "早上這一單則是我的指標跳出通知\n有異常的大額成交量\n但價格沒有如期突破\n反而是形成假突破\n所以我判斷是莊家在此換手\n果斷做空"
+        },
+        {
+          "t": "2025-11-24T12:02+08:00",
+          "match": "likely",
+          "text": "再復盤一次還是很佩服自己開的這單\n在獵取完上方流動性後進場\n這單勝率會高我覺得關鍵原因是\n往上突破了前面的 EQH"
+        }
+      ],
+      "issues": [
+        "CSV 的 RR 2.93 是用 TP2 算的，實際出場在 TP1（1.73R）。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "11-24 10:47",
+        "firstClose": 2860.94
+      }
+    },
+    {
+      "id": "2025-11-25-eth-long",
+      "posted": "2025-11-25T16:03+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "市價",
+      "entry": 2891,
+      "sl": 2883,
+      "tp": [
+        2950,
+        2962
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-11-25T16:03+08:00",
+          "text": "ETH 多 2891"
+        },
+        {
+          "t": "2025-11-25T16:06+08:00",
+          "text": "SL 2883 TP1 2950 TP2 2962"
+        },
+        {
+          "t": "2025-11-25T16:16+08:00",
+          "text": "撤單 行情不好"
+        },
+        {
+          "t": "2025-11-25T16:22+08:00",
+          "text": "已經進場的就套保"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "CSV 沒有；已進場的人改套保，結果未交代。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "11-25 16:49",
+        "firstClose": 2899.39
+      }
+    },
+    {
+      "id": "2025-11-28-gold-short",
+      "posted": "2025-11-28T12:56+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "市價",
+      "entry": 4189,
+      "sl": 4195,
+      "tp": [
+        4181,
+        4175
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4175,
+      "csv": {
+        "Date": "2025-11-28",
+        "Entry": 4189,
+        "Exit": 4181,
+        "TP": 4175,
+        "SL": 4195,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.19%",
+        "RR": 2.33,
+        "Final_PnL": 57.29
+      },
+      "timeline": [
+        {
+          "t": "2025-11-28T12:56+08:00",
+          "text": "幣種: 黃金(GOLD) 方向: 空 🔥進場價位: 4189 市價 ✅TP1: 4181 ✅TP2: 4175 ❌SL: 4195"
+        },
+        {
+          "t": "2025-11-28T13:10+08:00",
+          "text": "TP1"
+        },
+        {
+          "t": "2025-11-28T13:13+08:00",
+          "text": "TP2"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-11-28T20:03+08:00",
+          "match": "direct",
+          "text": "分享早上這單黃金的做空邏輯\n切小時間框架可以很明顯發現價格卡住上不去\n且 delta 有明顯的減少趨勢\n我判斷莊家在此離場並讓散戶接盤\n並且 15m 也踩到上方的看跌訂單塊\n因此果斷做空"
+        }
+      ],
+      "issues": [
+        "群組喊到 TP2（4175），CSV 以 TP1 4181 出場，比群組保守。",
+        "同日 10:30 說接下來會發合作社群報單並特別註明；這張沒註明，視為自己的單。"
+      ],
+      "klineCheck": {
+        "source": "BingX 1h",
+        "outcome": "TP1",
+        "at": "11-28 12:00",
+        "firstClose": 4188.58,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-11-28-eth-short",
+      "posted": "2025-11-28T17:43+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "限價",
+      "entry": 3060,
+      "sl": 3090,
+      "tp": [
+        3031,
+        3008,
+        2980
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 3031,
+      "csv": {
+        "Date": "2025-11-28",
+        "Entry": 3060,
+        "Exit": 3031,
+        "TP": 3008,
+        "SL": 3090,
+        "Leverage": 100,
+        "Result": "Win",
+        "Pnl": "0.95%",
+        "RR": 1.73,
+        "Final_PnL": 94.77
+      },
+      "timeline": [
+        {
+          "t": "2025-11-28T17:43+08:00",
+          "text": "ETH 空 3060 限價 SL 3090"
+        },
+        {
+          "t": "2025-11-28T17:45+08:00",
+          "text": "TP1 3031 TP2 3008 TP3 2980"
+        },
+        {
+          "t": "2025-11-28T19:06+08:00",
+          "text": "套保 沒接到的不要接了"
+        },
+        {
+          "t": "2025-11-28T19:07+08:00",
+          "text": "這次是利潤還沒跑一半就提前套保 因為我覺得結構可能會變"
+        },
+        {
+          "t": "2025-11-28T19:15+08:00",
+          "text": "TP1"
+        },
+        {
+          "t": "2025-11-28T19:15+08:00",
+          "text": "帥 這下真的要套保了"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-11-29T16:22+08:00",
+          "match": "direct",
+          "text": "分享昨天 ETH 的做單邏輯\n從15m線圖可以觀察到\n一根綠K直衝上來卻收上影線\n獵取 Buy-Side Liquidity 後同時也突破前高\n接下來價格卻沒有跟著上漲\n反而 delta 量不增反而有下降趨勢\n判斷莊家此時在此區間慢慢出貨\n果斷做空"
+        }
+      ],
+      "issues": [
+        "TP1 後剩餘倉位套保，CSV 以 TP1 計。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "11-28 19:15",
+        "firstClose": 3049.98
+      }
+    },
+    {
+      "id": "2025-11-29-eth-long",
+      "posted": "2025-11-29T16:12+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "限價",
+      "entry": 3000,
+      "sl": 2970,
+      "tp": [
+        3036
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 3000,
+      "csv": {
+        "Date": "2025-11-29",
+        "Entry": 3000,
+        "Exit": 3000,
+        "TP": null,
+        "SL": 2970,
+        "Leverage": null,
+        "Result": "Breakeven",
+        "Pnl": "0.00%",
+        "RR": null,
+        "Final_PnL": 0
+      },
+      "timeline": [
+        {
+          "t": "2025-11-29T16:12+08:00",
+          "text": "ETH 多 3000 限價 SL 2970 TP 3036"
+        },
+        {
+          "t": "2025-11-29T20:11+08:00",
+          "text": "撤單 直接平保出場 反應不好 不等了"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "CSV 缺 TP（3036）。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "11-30 01:33",
+        "firstClose": 3005.81
+      }
+    },
+    {
+      "id": "2025-11-30-eth-short",
+      "posted": "2025-11-30T22:26+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 3046,
+      "sl": 3060,
+      "tp": [
+        3017,
+        3010
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 3046,
+      "csv": {
+        "Date": "2025-11-30",
+        "Entry": 3046,
+        "Exit": 3046,
+        "TP": 3017,
+        "SL": 3060,
+        "Leverage": null,
+        "Result": "Breakeven",
+        "Pnl": "0.00%",
+        "RR": 2.07,
+        "Final_PnL": 0
+      },
+      "timeline": [
+        {
+          "t": "2025-11-30T22:26+08:00",
+          "text": "ETH 空 3046 市價"
+        },
+        {
+          "t": "2025-11-30T22:27+08:00",
+          "text": "SL 3060 TP1 3017 TP2 3010"
+        },
+        {
+          "t": "2025-11-30T22:59+08:00",
+          "text": "記得上套保"
+        },
+        {
+          "t": "2025-12-01T00:18+08:00",
+          "text": "撞套 無損出場 可惜差6點就TP1"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "12-01 05:11",
+        "firstClose": 3038.71
+      }
+    },
+    {
+      "id": "2025-12-01-eth-short",
+      "posted": "2025-12-01T17:28+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "限價",
+      "entry": 2845,
+      "sl": 2867,
+      "tp": [
+        2810
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 2813,
+      "csv": {
+        "Date": "2025-12-1",
+        "Entry": 2845,
+        "Exit": 2810,
+        "TP": 2810,
+        "SL": 2867,
+        "Leverage": 100,
+        "Result": "Win",
+        "Pnl": "1.23%",
+        "RR": 1.59,
+        "Final_PnL": 123.02
+      },
+      "timeline": [
+        {
+          "t": "2025-12-01T17:28+08:00",
+          "text": "ETH 空 2845 限價 SL 2867 TP 2810"
+        },
+        {
+          "t": "2025-12-01T20:09+08:00",
+          "text": "我依然有上套保唷 大家可以自己決定要不要上"
+        },
+        {
+          "t": "2025-12-01T20:33+08:00",
+          "text": "平倉了 不等了差3點"
+        },
+        {
+          "t": "2025-12-01T20:48+08:00",
+          "text": "止盈了 不要跟我說沒人開單 去曬一下吧"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-01T12:34+08:00",
+          "match": "plan",
+          "text": "［BTC ETH 盤面分析］\n前幾天有提到 大趨勢依然是偏空\n沒有走出結構轉換之前都不建議長握多單\n目前大哥二哥都嘗試往下測試支撐位\n我會在往上獵取流動性後再做空\n背後的邏輯有兩點：\n1. 累積下方做多的籌碼 增強往下跌的吸引力\n2. 往上清走一部份的槓桿空單讓車子變輕"
+        },
+        {
+          "t": "2025-12-01T21:05+08:00",
+          "match": "direct",
+          "text": "分享今天的做單邏輯\n我在閒聊群一直有提到大趨勢還是看空\n從 Footprint 也可以看出在上方有非常深的買方成交\n但價格沒有如期上漲 這代表賣方掛單非常深\n所以在小時區配合獵取上方流動性後\n在看跌訂單塊進場做空"
+        }
+      ],
+      "issues": [
+        "自己在差 3 點（約 2813）時手動平倉，之後才到 TP 2810；CSV 記 2810。exit 這裡記 2813。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "12-01 20:46",
+        "firstClose": 2835.15
+      }
+    },
+    {
+      "id": "2025-12-02-btc-short",
+      "posted": "2025-12-02T11:19+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "short",
+      "order": "市價",
+      "entry": 86726,
+      "sl": 88124,
+      "tp": [
+        85580,
+        84570,
+        83831
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 86726,
+      "csv": {
+        "Date": "2025-12-2",
+        "Entry": 86726,
+        "Exit": 86726,
+        "TP": 85580,
+        "SL": 88124,
+        "Leverage": 125,
+        "Result": "Breakeven",
+        "Pnl": "0.00%",
+        "RR": 0.82,
+        "Final_PnL": 0
+      },
+      "timeline": [
+        {
+          "t": "2025-12-02T11:19+08:00",
+          "text": "BTC 空 86,726 市價"
+        },
+        {
+          "t": "2025-12-02T11:20+08:00",
+          "text": "SL 88,124 TP1 85,580 TP2 84,570 TP3 83,831"
+        },
+        {
+          "t": "2025-12-02T16:31+08:00",
+          "text": "反應不好 這單先套保 TP1 改 86000 TP2 改 85580 TP3 改 84570"
+        },
+        {
+          "t": "2025-12-02T16:42+08:00",
+          "text": "套保啦 沒進的就別進了 等更好的機會"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-11-28T10:26+08:00",
+          "match": "plan",
+          "text": "[BTC 分析]\n目前大趨勢的看跌結構還沒突破\n上方也有一個非常強的賣壓區間\n如果在 86,000 沒上到車的\n不建議在這個時候貿然接多\n主要是止損很難設定\n1. 到上方賣壓區間明顯受阻 -> 短空，止損設定在 EQH\n2. 到上方賣壓區間突破並展穩 -> 小倉位做多，止損設定在 Sell-side liquidity"
+        },
+        {
+          "t": "2025-12-01T12:34+08:00",
+          "match": "plan",
+          "text": "［BTC ETH 盤面分析］\n前幾天有提到 大趨勢依然是偏空\n沒有走出結構轉換之前都不建議長握多單\n目前大哥二哥都嘗試往下測試支撐位\n我會在往上獵取流動性後再做空\n背後的邏輯有兩點：\n1. 累積下方做多的籌碼 增強往下跌的吸引力\n2. 往上清走一部份的槓桿空單讓車子變輕"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "SL",
+        "at": "12-02 22:08",
+        "firstClose": 86490.1
+      }
+    },
+    {
+      "id": "2025-12-03-eth-short",
+      "posted": "2025-12-03T12:43+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 3056,
+      "sl": 3071,
+      "tp": [
+        3014
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 3060,
+      "csv": {
+        "Date": "2025-12-3",
+        "Entry": 3056,
+        "Exit": 3060,
+        "TP": 3014,
+        "SL": 3071,
+        "Leverage": 120,
+        "Result": "Loss",
+        "Pnl": "-0.13%",
+        "RR": 2.8,
+        "Final_PnL": -15.71
+      },
+      "timeline": [
+        {
+          "t": "2025-12-03T12:43+08:00",
+          "text": "ETH 空 3056 市價"
+        },
+        {
+          "t": "2025-12-03T12:46+08:00",
+          "text": "SL 3071 TP1 3014"
+        },
+        {
+          "t": "2025-12-03T13:06+08:00",
+          "text": "提前損出 3060"
+        },
+        {
+          "t": "2025-12-03T13:09+08:00",
+          "text": "剛剛上方訂單簿的 Ask 被瞬間關掉 形成流動性缺口 一點買盤就會往上衝 很明顯要上去獵取流動性"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-03T16:39+08:00",
+          "match": "direct",
+          "text": "提前損出把損失降到最小\n背後邏輯我覺得是個不錯的學習\n原本訂單簿可以看到 3065-3070 有很深的 Ask（賣方掛單）\n結果瞬間被拿掉 導致只要有一點點買量就能推動價格\n這是很常見的獵取流動性手法\n也很常被拿來做誘多、假突破"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "12-03 14:04",
+        "firstClose": 3049.97
+      }
+    },
+    {
+      "id": "2025-12-03-gold-long",
+      "posted": "2025-12-03T14:06+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4205,
+      "sl": 4199,
+      "tp": [
+        4222
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 4205,
+      "csv": {
+        "Date": "2025-12-3",
+        "Entry": 4205,
+        "Exit": 4205,
+        "TP": 4222,
+        "SL": 4199,
+        "Leverage": 300,
+        "Result": "Breakeven",
+        "Pnl": "0.00%",
+        "RR": 2.83,
+        "Final_PnL": 0
+      },
+      "timeline": [
+        {
+          "t": "2025-12-03T14:06+08:00",
+          "text": "GOLD 多 4205 市價"
+        },
+        {
+          "t": "2025-12-03T14:08+08:00",
+          "text": "SL 4199 TP 4222"
+        },
+        {
+          "t": "2025-12-03T16:27+08:00",
+          "text": "這單我會套保出場 反應不好 15m 形成一個新的看跌 OB"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-03T18:29+08:00",
+          "match": "direct",
+          "text": "今天下午原本有做一單黃金\n雖然也是提前套保離場\n想跟大家分享一下我是如何判斷\n及時逃離而沒有打到止損\n原本從下方訂單塊進場\n加上前面的 EQL 都被獵取掉\n原本覺得是個不錯的做多機會\n但 15m 看出價格對上方的 FVG 有反應\n收了上影線 並形成新的看跌 OB\n此時若要上漲需要更強推力\n因此我選擇提前套保離場"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "BingX 1h",
+        "outcome": "SL",
+        "at": "12-03 17:00",
+        "firstClose": 4208.29,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-12-05-eth-long-partner",
+      "posted": "2025-12-05T10:13+08:00",
+      "kind": "partner",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "掛單",
+      "entry": 3146,
+      "sl": 3060,
+      "tp": [
+        3238,
+        3330,
+        3577
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-12-05T10:13+08:00",
+          "text": "[觀點] 回踩頸線做多 止損放支撐底下 … 開倉價格: 3146 … 止損價格: 3060 [合作社群筆記 DY]"
+        },
+        {
+          "t": "2025-12-05T13:53+08:00",
+          "text": "撤單"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "合作社群報單。"
+      ]
+    },
+    {
+      "id": "2025-12-05-eth-long",
+      "posted": "2025-12-05T13:55+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "限價掛單",
+      "entry": 3140,
+      "sl": 3107,
+      "tp": [
+        3204
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 3107,
+      "csv": {
+        "Date": "2025-12-5",
+        "Entry": 3140,
+        "Exit": 3107,
+        "TP": 3204,
+        "SL": 3107,
+        "Leverage": 60,
+        "Result": "Loss",
+        "Pnl": "-1.05%",
+        "RR": 1.94,
+        "Final_PnL": -63.06
+      },
+      "timeline": [
+        {
+          "t": "2025-12-05T13:55+08:00",
+          "text": "ETH 多 3140 限價掛單 SL 3107 TP 3204"
+        },
+        {
+          "t": "2025-12-05T16:49+08:00",
+          "text": "只插到 3141 而已 不在意這幾點的話可以市價進"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-04T00:54+08:00",
+          "match": "plan",
+          "text": "[BTC ETH 盤面分析]\n大盤目前是個關鍵位置\nBTC 正在嘗試 93,000 的壓力位\nETH 則是嘗試 3,100 的壓力位\n若 4H 成功收在這兩個點位上\n那大趨勢就是走出一個結構轉換了\n若依然突破不了 BTC 大概要往 7樓看了"
+        },
+        {
+          "t": "2025-12-05T17:59+08:00",
+          "match": "direct",
+          "text": "分享下午這單的開倉邏輯\n1H 4H 都走出結構轉換\n所以一個多月以來都在做空就嘗試跟著趨勢做多\n5m 的下方有三個看漲 OB 做保護\n我選在跌破第一個 OB 獵取流動性後入場\n止盈放在上方流動性密集處\n止損放在下方訂單簿買方掛單最深處\n並且也在第三個 OB 中\n有小反彈到 3156 但力道不夠\n如果有可以改進的地方\n因為 BTC 的流動性比 ETH 更低\n可以搭配 BTC 做配置把入場點再放更低\n這樣RR更好就可以減少虧損"
+        }
+      ],
+      "issues": [
+        "限價只插到 3141 沒成交，群組建議市價進；實際成交價要確認。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "12-05 17:44",
+        "firstClose": 3152.05
+      }
+    },
+    {
+      "id": "2025-12-06-trx-long-partner",
+      "posted": "2025-12-06T16:11+08:00",
+      "kind": "partner",
+      "symbol": "TRX",
+      "side": "long",
+      "order": null,
+      "entry": 0.28856,
+      "sl": 0.2837,
+      "tp": [
+        0.2934,
+        0.2983,
+        0.3128,
+        0.5
+      ],
+      "status": "unknown",
+      "result": null,
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-12-06T16:11+08:00",
+          "text": "[開倉點位] 幣對: TRXUSDT 方向: 做多 開倉價格: 0.28856 … [合作社群筆記 Kai]"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "合作社群報單。"
+      ]
+    },
+    {
+      "id": "2025-12-07-eth-short",
+      "posted": "2025-12-07T01:17+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 3055,
+      "sl": 3072,
+      "tp": [
+        3023,
+        3010
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 3055,
+      "csv": {
+        "Date": "2025-12-7",
+        "Entry": 3055,
+        "Exit": 3023.7,
+        "TP": 3023,
+        "SL": 3072,
+        "Leverage": 120,
+        "Result": "Win",
+        "Pnl": "1.02%",
+        "RR": 1.88,
+        "Final_PnL": 122.95
+      },
+      "timeline": [
+        {
+          "t": "2025-12-07T01:17+08:00",
+          "text": "ETH 空 3055 TP 3023"
+        },
+        {
+          "t": "2025-12-07T01:19+08:00",
+          "text": "市價"
+        },
+        {
+          "t": "2025-12-07T01:25+08:00",
+          "text": "SL 3072"
+        },
+        {
+          "t": "2025-12-07T04:09+08:00",
+          "text": "加一個 TP2 設套保 睡覺 TP1 3023 TP2 3010"
+        },
+        {
+          "t": "2025-12-07T12:47+08:00",
+          "text": "套保 可惜 差0.71🥲"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-06T19:53+08:00",
+          "match": "plan",
+          "text": "首先我個人目前依然是看空居多\n主要原因是根據週期\n且隨著機構的入場\n數據指標 MVRV 依然處在高位\n我更傾向認為機構會讓價格能到一個更便宜的價位"
+        },
+        {
+          "t": "2025-12-07T13:10+08:00",
+          "match": "direct",
+          "text": "昨天差 0.73 止盈⋯\n一樣分享一下做單邏輯\n5m 突破箱體區間後收長上影線\n一樣是我們熟悉的獵取流動性誘多\n所以選擇在回踩 iFVG 時做空\n目標放下面訂單塊"
+        }
+      ],
+      "issues": [
+        "⚠ CSV 記為獲利（出場 3023.7、+122.95%），但群組兩次寫明差 0.7 點沒到 TP、最後撞套保。這裡改記保本；發布前請確認。",
+        "Binance 03:32 有碰到 3023，BingX 差 0.71 沒碰到；兩所價差造成，維持保本。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "12-07 03:32",
+        "firstClose": 3048.67
+      }
+    },
+    {
+      "id": "2025-12-08-eth-short",
+      "posted": "2025-12-08T00:05+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 3010,
+      "sl": 3082,
+      "tp": [
+        2964
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 3082,
+      "csv": {
+        "Date": "2025-12-8",
+        "Entry": 3010,
+        "Exit": 3082,
+        "TP": 2964,
+        "SL": 3082,
+        "Leverage": 50,
+        "Result": "Loss",
+        "Pnl": "-2.39%",
+        "RR": 0.64,
+        "Final_PnL": -119.6
+      },
+      "timeline": [
+        {
+          "t": "2025-12-08T00:05+08:00",
+          "text": "ETH 空 3010 市價 TP 2964 SL 3062"
+        },
+        {
+          "t": "2025-12-08T01:03+08:00",
+          "text": "SL 上移到 3082"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-08T01:50+08:00",
+          "match": "direct",
+          "text": "記錄一下這單被嘎掉的原因\n原本的開單邏輯\n大額買單成交 卻沒有推動價格\n（可以看出前面有很多綠 k 收上影線）\n加上上方有很深的賣方掛單\n大概 20k 顆的 ETH\n但後續掛單被瞬間撤掉\n造成典型的流動性真空\n直接噴上去\n如果有注意到\n可以像之前一樣少損失蠻多\n這就真的是沒辦法\n肯定要用程式才能實時偵測"
+        }
+      ],
+      "issues": [
+        "開單 SL 3062，進場後放寬到 3082（原本 -1.73%，實際 -2.39%）。公開時兩個都要標。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "12-08 01:23",
+        "firstClose": 3010.88
+      }
+    },
+    {
+      "id": "2025-12-08-eth-long",
+      "posted": "2025-12-08T11:06+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "long",
+      "order": "限價",
+      "entry": 3040,
+      "sl": 2990,
+      "tp": [
+        3160
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-12-08T11:06+08:00",
+          "text": "ETH 多 限價 3040 SL 2990 TP 3160"
+        },
+        {
+          "t": "2025-12-08T14:42+08:00",
+          "text": "掛單撤"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "never-filled",
+        "at": null,
+        "extreme": 3066.17
+      }
+    },
+    {
+      "id": "2025-12-08-gold-short",
+      "posted": "2025-12-08T15:07+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "限價",
+      "entry": 4217,
+      "sl": 4226,
+      "tp": [
+        4211,
+        4206,
+        4199
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4206,
+      "csv": {
+        "Date": "2025-12-8",
+        "Entry": 4217,
+        "Exit": 4206,
+        "TP": 4206,
+        "SL": 4226,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.26%",
+        "RR": 1.22,
+        "Final_PnL": 78.25
+      },
+      "timeline": [
+        {
+          "t": "2025-12-08T15:07+08:00",
+          "text": "GOLD 黃金 空 4217 限價 SL 4226 TP 4211"
+        },
+        {
+          "t": "2025-12-08T15:42+08:00",
+          "text": "TP2 4206 TP3 4199"
+        },
+        {
+          "t": "2025-12-08T15:42+08:00",
+          "text": "TP1 到"
+        },
+        {
+          "t": "2025-12-08T16:08+08:00",
+          "text": "TP2"
+        },
+        {
+          "t": "2025-12-08T16:10+08:00",
+          "text": "我先全部平倉 晚點有事不能繼續盯 記得套保 可以繼續等 TP3"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-09T00:12+08:00",
+          "match": "likely",
+          "text": "5m 訂單塊有尊重\n15m 回補 FVG 也有反應收上影線\n獵取流動性後\n判斷此時應該是莊家換手 進場做空"
+        }
+      ],
+      "issues": [
+        "12/09 00:12 的做空邏輯沒點名；前一天的空單有這張和 12/08 00:05 那張被嘎的 ETH，推定是這張。"
+      ],
+      "klineCheck": {
+        "source": "BingX 1h",
+        "outcome": "TP1",
+        "at": "12-08 15:00",
+        "firstClose": 4207.18,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-12-09-zec-long-partner",
+      "posted": "2025-12-09T00:01+08:00",
+      "kind": "partner",
+      "symbol": "ZEC",
+      "side": "long",
+      "order": null,
+      "entry": 403,
+      "sl": 372,
+      "tp": [
+        435,
+        466.5,
+        562,
+        1000
+      ],
+      "status": "unknown",
+      "result": null,
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-12-09T00:01+08:00",
+          "text": "[開倉點位] 幣對: ZECUSDT 方向: 做多 開倉價格: 403 … [合作社群筆記]"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "合作社群報單。"
+      ]
+    },
+    {
+      "id": "2025-12-09-gold-short",
+      "posted": "2025-12-09T11:50+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "市價",
+      "entry": 4195,
+      "sl": 4223,
+      "tp": [
+        4167
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4179,
+      "csv": {
+        "Date": "2025-12-9",
+        "Entry": 4195,
+        "Exit": 4179,
+        "TP": 4167,
+        "SL": 4223,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.38%",
+        "RR": 1,
+        "Final_PnL": 114.42
+      },
+      "timeline": [
+        {
+          "t": "2025-12-09T11:50+08:00",
+          "text": "GOLD 黃金 空 4195"
+        },
+        {
+          "t": "2025-12-09T11:55+08:00",
+          "text": "SL 4223 TP1 4167"
+        },
+        {
+          "t": "2025-12-09T15:22+08:00",
+          "text": "這邊直接平倉 已經往下獵取完了"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-09T15:58+08:00",
+          "match": "direct",
+          "text": "15m 獵取完流動性並收長下影線\n同時打到 1H 的 OB\n所以選擇提早止盈"
+        }
+      ],
+      "issues": [
+        "CSV 的 RR 1.00 是計畫 RR；實際提早出場約 0.57R。"
+      ],
+      "klineCheck": {
+        "source": "BingX 1h",
+        "outcome": "SL",
+        "at": "12-11 04:00",
+        "firstClose": 4194.57,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-12-09-gold-long",
+      "posted": "2025-12-09T15:24+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4179,
+      "sl": 4172,
+      "tp": [
+        4189,
+        4197
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4196,
+      "csv": {
+        "Date": "2025-12-9",
+        "Entry": 4179,
+        "Exit": 4196,
+        "TP": 4197,
+        "SL": 4172,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.41%",
+        "RR": 2.57,
+        "Final_PnL": 122.04
+      },
+      "timeline": [
+        {
+          "t": "2025-12-09T15:24+08:00",
+          "text": "GOLD 黃金 多 4179"
+        },
+        {
+          "t": "2025-12-09T15:26+08:00",
+          "text": "SL 4172"
+        },
+        {
+          "t": "2025-12-09T15:28+08:00",
+          "text": "TP1 4189"
+        },
+        {
+          "t": "2025-12-09T16:16+08:00",
+          "text": "光速止盈 TP2 可以放 4197 感覺蠻有望"
+        },
+        {
+          "t": "2025-12-09T17:03+08:00",
+          "text": "全出了 4196 就好"
+        },
+        {
+          "t": "2025-12-09T20:58+08:00",
+          "text": "TP1 我先平倉了"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-09T16:26+08:00",
+          "match": "direct",
+          "text": "開單邏輯就是這單提早止盈的原因（指上一張空單：15m 獵取完流動性並收長下影線，同時打到 1H 的 OB）"
+        }
+      ],
+      "issues": [
+        "20:58「TP1 我先平倉了」對不上任何單，可能是漏貼的另一張。"
+      ]
+    },
+    {
+      "id": "2025-12-10-gold-long",
+      "posted": "2025-12-10T13:30+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4203,
+      "sl": 4196,
+      "tp": [
+        4212,
+        4216,
+        4222
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4212,
+      "csv": {
+        "Date": "2025-12-10",
+        "Entry": 4203,
+        "Exit": 4212,
+        "TP": 4212,
+        "SL": 4196,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.21%",
+        "RR": 1.29,
+        "Final_PnL": 64.24
+      },
+      "timeline": [
+        {
+          "t": "2025-12-10T13:30+08:00",
+          "text": "GOLD 黃金 多 4203 SL 4196"
+        },
+        {
+          "t": "2025-12-10T13:33+08:00",
+          "text": "TP1 4212 TP2 4216 TP3 4222"
+        },
+        {
+          "t": "2025-12-10T13:45+08:00",
+          "text": "TP1"
+        },
+        {
+          "t": "2025-12-10T13:53+08:00",
+          "text": "我已進行部分平倉，並設置套保。"
+        },
+        {
+          "t": "2025-12-10T14:05+08:00",
+          "text": "提醒一下，像這種已經到過 TP 的單回來就不要再接嘍~"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "BingX 1h",
+        "outcome": "TP1",
+        "at": "12-10 13:00",
+        "firstClose": 4211.45,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-12-15-gold-long",
+      "posted": "2025-12-15T15:35+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "限價預掛",
+      "entry": 4338,
+      "sl": 4334,
+      "tp": [
+        4348,
+        4352,
+        4360
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 4334,
+      "csv": {
+        "Date": "2025-12-15",
+        "Entry": 4338,
+        "Exit": 4334,
+        "TP": 4334,
+        "SL": 4348,
+        "Leverage": 300,
+        "Result": "Loss",
+        "Pnl": "-0.09%",
+        "RR": 0.4,
+        "Final_PnL": -27.66
+      },
+      "timeline": [
+        {
+          "t": "2025-12-15T15:35+08:00",
+          "text": "GOLD 黃金 多 4338 （限價預掛） SL 4334 TP1 4348 TP2 4352 TP3 4360"
+        },
+        {
+          "t": "2025-12-15T15:42+08:00",
+          "text": "光速止損是哪招😐"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-15T17:03+08:00",
+          "match": "likely",
+          "text": "15m 訂單塊沒尊重\n因為這波上漲力道很強\n所以選擇在 FVG 上緣進場\n結構被掃流動性後收一根很強的陽K\n直接就衝上去 TP1 了"
+        }
+      ],
+      "issues": [
+        "⚠ CSV 的 TP 與 SL 欄位填反（TP 4334、SL 4348），RR 0.40 因此算錯；正確計畫 RR 是 2.5。",
+        "17:03 的邏輯說「衝上去 TP1」，與 15:42 止損對不上；推定是止損被掃之後價格才衝上 TP1，請確認。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "12-15 16:57",
+        "firstClose": 4336.26,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-12-15-zec-long-partner",
+      "posted": "2025-12-15T23:54+08:00",
+      "kind": "partner",
+      "symbol": "ZEC",
+      "side": "long",
+      "order": null,
+      "entry": 411,
+      "sl": 386,
+      "tp": [
+        436.5,
+        462,
+        950,
+        1600
+      ],
+      "status": "unknown",
+      "result": null,
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-12-15T23:54+08:00",
+          "text": "[開倉點位] 幣對: ZECUSDT 方向: 做多 開倉價格: 411 … [合作社群筆記]"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "合作社群報單。"
+      ]
+    },
+    {
+      "id": "2025-12-16-gold-short",
+      "posted": "2025-12-16T16:04+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "市價",
+      "entry": 4291,
+      "sl": 4296,
+      "tp": [
+        4284,
+        4280
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4280,
+      "csv": {
+        "Date": "2025-12-16",
+        "Entry": 4288,
+        "Exit": 4280,
+        "TP": 4280,
+        "SL": 4296,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.19%",
+        "RR": 1,
+        "Final_PnL": 55.97
+      },
+      "timeline": [
+        {
+          "t": "2025-12-16T16:04+08:00",
+          "text": "GOLD 黃金 空 4291"
+        },
+        {
+          "t": "2025-12-16T16:06+08:00",
+          "text": "SL 4296 TP1 4284 TP2 4280"
+        },
+        {
+          "t": "2025-12-16T16:09+08:00",
+          "text": "還沒反應過來就快 TP2…"
+        },
+        {
+          "t": "2025-12-16T16:14+08:00",
+          "text": "FTP 4270"
+        },
+        {
+          "t": "2025-12-16T16:18+08:00",
+          "text": "TP2 我已進行部份平倉"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-16T17:55+08:00",
+          "match": "direct",
+          "text": "1m 獵取 EQH 在上方訂單塊進場\n5m 上方重疊訂單塊反應良好"
+        }
+      ],
+      "issues": [
+        "群組報 4291，CSV 記 4288（可能是自己的實際成交價）。公開時用哪個要統一。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "12-16 16:12",
+        "firstClose": 4292.32,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-12-17-eth-short",
+      "posted": "2025-12-17T23:40+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 2990,
+      "sl": 3100,
+      "tp": [
+        2800
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 2820,
+      "csv": {
+        "Date": "2025-12-17",
+        "Entry": 2980,
+        "Exit": 2820,
+        "TP": 2820,
+        "SL": 3100,
+        "Leverage": 30,
+        "Result": "Win",
+        "Pnl": "5.37%",
+        "RR": 1.33,
+        "Final_PnL": 161.07
+      },
+      "timeline": [
+        {
+          "t": "2025-12-17T23:40+08:00",
+          "text": "ETH 空 2990"
+        },
+        {
+          "t": "2025-12-17T23:42+08:00",
+          "text": "SL 3100"
+        },
+        {
+          "t": "2025-12-17T23:42+08:00",
+          "text": "TP 2800"
+        },
+        {
+          "t": "2025-12-17T23:43+08:00",
+          "text": "我接在 2980"
+        },
+        {
+          "t": "2025-12-17T23:51+08:00",
+          "text": "2890 先平一半倉位 然後套保"
+        },
+        {
+          "t": "2025-12-18T00:30+08:00",
+          "text": "改 2820 全出"
+        },
+        {
+          "t": "2025-12-18T00:32+08:00",
+          "text": "如果在 2825 受阻 收長下影線的話 你們自己先平倉 我要去忙"
+        },
+        {
+          "t": "2025-12-18T02:43+08:00",
+          "text": "全止盈"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-16T23:50+08:00",
+          "match": "plan",
+          "text": "大趨勢看空\n小級別走出盤整區間往上獵取流動性\n也測試上方訂單塊 反應也給得不錯\n就可以順勢做空 止盈放下方的流動性\n這種就是勝率超高的 A+ 配置"
+        },
+        {
+          "t": "2025-12-18T02:09+08:00",
+          "match": "direct",
+          "text": "我當時看到了什麼？\n大趨勢看空\n小時區突破盤整高點\n量能沒有持續上升\n反而是有莊家拉升後出貨的跡象\n且從爆倉地圖也可以明顯看出\n多空爆倉比極度不平衡\n當時下方的掛單深度也明顯很淺\n往下洗更容易也更有吸引力"
+        }
+      ],
+      "issues": [
+        "一半在 2890 平、一半 2820；CSV 整筆記 2820（+5.37%），實際平均約 2855（+4.2%）。",
+        "群組報 2990，自己接 2980。",
+        "12/16 23:50 那段發在前一天，可能是另一張沒進點位群的單。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "12-18 03:07",
+        "firstClose": 2980.67
+      }
+    },
+    {
+      "id": "2025-12-18-gold-short",
+      "posted": "2025-12-18T15:03+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "限價預掛",
+      "entry": 4338,
+      "sl": 4345,
+      "tp": [
+        4323,
+        4316
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4316,
+      "csv": {
+        "Date": "2025-12-18",
+        "Entry": 4333,
+        "Exit": 4316,
+        "TP": 4316,
+        "SL": 4345,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.39%",
+        "RR": 1.42,
+        "Final_PnL": 117.7
+      },
+      "timeline": [
+        {
+          "t": "2025-12-18T15:03+08:00",
+          "text": "GOLD 黃金 空 4338 限價預掛"
+        },
+        {
+          "t": "2025-12-18T15:05+08:00",
+          "text": "SL 4345 TP1 4323 TP2 4316"
+        },
+        {
+          "t": "2025-12-18T15:17+08:00",
+          "text": "如果跑到 4324、4325 那附近就先撤單 在這之前我都會繼續掛著"
+        },
+        {
+          "t": "2025-12-18T15:56+08:00",
+          "text": "已經往上獵取過了 要上感覺只能市價 保守一點的就撤單唄"
+        },
+        {
+          "t": "2025-12-18T21:07+08:00",
+          "text": "TP2"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-18T21:13+08:00",
+          "match": "direct",
+          "text": "15m 5m 訂單塊重疊\n獵取完上方 EQH 後進場做空"
+        }
+      ],
+      "issues": [
+        "群組掛 4338，CSV 記 4333（推定是 15:56 後自己市價進）。群組成員照原掛單可能沒成交。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "12-19 00:12",
+        "firstClose": 4320.2,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-12-19-gold-long",
+      "posted": "2025-12-19T13:16+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4318,
+      "sl": 4310,
+      "tp": [
+        4328,
+        4332,
+        4338
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4338,
+      "csv": {
+        "Date": "2025-12-19",
+        "Entry": 4318,
+        "Exit": 4338,
+        "TP": 4338,
+        "SL": 4310,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.46%",
+        "RR": 2.5,
+        "Final_PnL": 138.95
+      },
+      "timeline": [
+        {
+          "t": "2025-12-19T13:16+08:00",
+          "text": "GOLD 黃金 多 4318 SL 4310"
+        },
+        {
+          "t": "2025-12-19T13:20+08:00",
+          "text": "TP1 4328 TP2 4332 TP3 4338"
+        },
+        {
+          "t": "2025-12-19T13:55+08:00",
+          "text": "TP1 這次開單時間很充裕應該有上到車吧"
+        },
+        {
+          "t": "2025-12-19T14:00+08:00",
+          "text": "老樣子套保繼續等"
+        },
+        {
+          "t": "2025-12-19T17:47+08:00",
+          "text": "TP2"
+        },
+        {
+          "t": "2025-12-19T22:46+08:00",
+          "text": "全壘打"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-19T16:12+08:00",
+          "match": "direct",
+          "text": "三角收斂突破回踩 5m 訂單塊"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "12-19 22:36",
+        "firstClose": 4314.62,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2025-12-23-kas-long-partner",
+      "posted": "2025-12-23T18:40+08:00",
+      "kind": "partner",
+      "symbol": "KAS",
+      "side": "long",
+      "order": null,
+      "entry": 0.0453,
+      "sl": 0.0436,
+      "tp": [
+        0.047,
+        0.0485,
+        0.05
+      ],
+      "status": "unknown",
+      "result": null,
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-12-23T18:40+08:00",
+          "text": "[開倉點位] 幣對: KASUSDT 方向: 做多 開倉價格: 0.0453 … ［合作社群筆記］"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "合作社群報單。"
+      ]
+    },
+    {
+      "id": "2025-12-24-eth-short",
+      "posted": "2025-12-24T04:15+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "限價預掛",
+      "entry": 2972,
+      "sl": 3050,
+      "tp": [
+        2886
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 2910,
+      "csv": {
+        "Date": "2025-12-24",
+        "Entry": 2972,
+        "Exit": 2924,
+        "TP": 2886,
+        "SL": 3050,
+        "Leverage": 100,
+        "Result": "Win",
+        "Pnl": "1.62%",
+        "RR": 1.1,
+        "Final_PnL": 161.51
+      },
+      "timeline": [
+        {
+          "t": "2025-12-24T04:15+08:00",
+          "text": "ETH 空 2972 限價預掛 SL 3050 TP 2886"
+        },
+        {
+          "t": "2025-12-24T23:33+08:00",
+          "text": "2910 可以先平 入袋為安"
+        },
+        {
+          "t": "2025-12-24T23:34+08:00",
+          "text": "已經往下獵取過 2887 了 好可惜"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-25T03:15+08:00",
+          "match": "likely",
+          "text": "獵取流動性後搭配 EQH 進場做空\n目標放下方流動性\n今天這單超可惜只差1點🥲\n因為已經獵取過且下方FVG反應不錯\n只好先平倉"
+        }
+      ],
+      "issues": [
+        "群組說 2910 平，CSV 記 2924；用哪個要確認。",
+        "12/25 03:15「只差1點」對上 2887 vs TP 2886，推定是這張。",
+        "K 線：72 小時內沒到 TP 2886，與「只差1點」一致。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "open-72h",
+        "at": null,
+        "firstClose": 2950.33
+      }
+    },
+    {
+      "id": "2025-12-25-eth-short",
+      "posted": "2025-12-25T23:58+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "市價",
+      "entry": 2965,
+      "sl": 3000,
+      "tp": [
+        2920
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 2920,
+      "csv": {
+        "Date": "2025-12-25",
+        "Entry": 2959,
+        "Exit": 2919,
+        "TP": 2920,
+        "SL": 3000,
+        "Leverage": 100,
+        "Result": "Win",
+        "Pnl": "1.35%",
+        "RR": 0.95,
+        "Final_PnL": 135.18
+      },
+      "timeline": [
+        {
+          "t": "2025-12-25T23:58+08:00",
+          "text": "ETH 空 2965"
+        },
+        {
+          "t": "2025-12-26T00:02+08:00",
+          "text": "SL 3000 TP 2920"
+        },
+        {
+          "t": "2025-12-26T01:47+08:00",
+          "text": "目前對下方 FVG 有反應 保守的可以選擇平倉獲利或上套保"
+        },
+        {
+          "t": "2025-12-26T09:41+08:00",
+          "text": "TP 到 起床領米米"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-26T11:48+08:00",
+          "match": "direct",
+          "text": "1H 延續下跌趨勢\n15m 與 5m 對訂單塊有反應收針\n獵取過上方流動性"
+        }
+      ],
+      "issues": [
+        "群組報 2965，CSV 記 2959／出場 2919。"
+      ],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "12-26 06:47",
+        "firstClose": 2959.8
+      }
+    },
+    {
+      "id": "2025-12-30-eth-short",
+      "posted": "2025-12-30T11:09+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "預掛",
+      "entry": 2970,
+      "sl": 3010,
+      "tp": [
+        2910
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2025-12-30T11:09+08:00",
+          "text": "ETH 空 2970 預掛 SL 3010 TP 2910"
+        },
+        {
+          "t": "2025-12-30T12:41+08:00",
+          "text": "先撤單 BTC 反應沒跟上"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "12-31 22:08",
+        "firstClose": 2924.03
+      }
+    },
+    {
+      "id": "2025-12-30-gold-long",
+      "posted": "2025-12-30T16:33+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4355,
+      "sl": 4345,
+      "tp": [
+        4370
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4370,
+      "csv": {
+        "Date": "2025-12-30",
+        "Entry": 4356,
+        "Exit": 4370,
+        "TP": 4370,
+        "SL": 4345,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.32%",
+        "RR": 1.27,
+        "Final_PnL": 96.42
+      },
+      "timeline": [
+        {
+          "t": "2025-12-30T16:33+08:00",
+          "text": "GOLD 黃金 多 4355"
+        },
+        {
+          "t": "2025-12-30T16:34+08:00",
+          "text": "SL 4345 TP 4370"
+        },
+        {
+          "t": "2025-12-30T17:08+08:00",
+          "text": "止盈啦 給各位的聖誕禮物"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2025-12-30T17:22+08:00",
+          "match": "direct",
+          "text": "1m 5m OB 重疊\n獵取後進場做多\n目標價位放在上方看跌訂單塊\n止損放下方FVG上緣"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "12-30 16:59",
+        "firstClose": 4361.81,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-02-eth-short",
+      "posted": "2026-01-02T01:31+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "掛單",
+      "entry": 3015,
+      "sl": 3045,
+      "tp": [
+        2980
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-01-02T01:31+08:00",
+          "text": "ETH 空 3015 SL 3045 TP 2980"
+        },
+        {
+          "t": "2026-01-02T01:42+08:00",
+          "text": "先撤單 上方掛單已經被提前消耗 就算接到有可能動力不足"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "SL",
+        "at": "01-02 17:10",
+        "firstClose": 3001.8
+      }
+    },
+    {
+      "id": "2026-01-02-gold-long",
+      "posted": "2026-01-02T13:21+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "預掛",
+      "entry": 4372,
+      "sl": 4362,
+      "tp": [
+        4385
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-01-02T13:21+08:00",
+          "text": "GOLD 黃金 多 4372 預掛 SL 4362 TP 4385"
+        },
+        {
+          "t": "2026-01-02T15:58+08:00",
+          "text": "先撤單唄 行情跑掉啦 差 0.1 就接到惹"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2026-01-02T16:14+08:00",
+          "match": "direct",
+          "text": "雖然差 0.1 接到 但還是分享一下邏輯\n1h 結構轉換看漲\n15m 不尊重訂單塊\n1m PB 進場最多"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "01-02 16:07",
+        "firstClose": 4374.98,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-05-gold-long-a",
+      "posted": "2026-01-05T14:24+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4415,
+      "sl": 4405,
+      "tp": [
+        4425
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-01-05T14:24+08:00",
+          "text": "黃金 GOLD 多 4415"
+        },
+        {
+          "t": "2026-01-05T14:25+08:00",
+          "text": "SL 4405 TP 4425"
+        },
+        {
+          "t": "2026-01-05T14:28+08:00",
+          "text": "靠背噴太快 先撤單"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "01-05 14:25",
+        "firstClose": 4419.16,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-05-gold-long-b",
+      "posted": "2026-01-05T14:29+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4404,
+      "sl": 4368,
+      "tp": [
+        4455
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4455,
+      "csv": {
+        "Date": "2026-1-5",
+        "Entry": 4404,
+        "Exit": 4455,
+        "TP": 4455,
+        "SL": 4368,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "1.16%",
+        "RR": 1.42,
+        "Final_PnL": 347.41
+      },
+      "timeline": [
+        {
+          "t": "2026-01-05T14:29+08:00",
+          "text": "黃金 GOLD 多 4404"
+        },
+        {
+          "t": "2026-01-05T14:32+08:00",
+          "text": "TP 4455 SL 4368"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2026-01-05T23:58+08:00",
+          "match": "direct",
+          "text": "大時區持續看漲\n5m, 15m OB 重疊\n等 1m 獵取完流動性\n在下方 OB 進場"
+        }
+      ],
+      "issues": [
+        "群組沒有止盈訊息，結果只在 CSV。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "01-06 10:13",
+        "firstClose": 4422.69,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-06-gold-long",
+      "posted": "2026-01-06T13:28+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4465,
+      "sl": 4456,
+      "tp": [
+        4485
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 4456,
+      "csv": {
+        "Date": "2026-1-6",
+        "Entry": 4465,
+        "Exit": 4456,
+        "TP": 4485,
+        "SL": 4456,
+        "Leverage": 300,
+        "Result": "Loss",
+        "Pnl": "-0.20%",
+        "RR": 2.22,
+        "Final_PnL": -60.47
+      },
+      "timeline": [
+        {
+          "t": "2026-01-06T13:28+08:00",
+          "text": "GOLD 多 4465"
+        },
+        {
+          "t": "2026-01-06T13:31+08:00",
+          "text": "SL 4456 TP 4485"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2026-01-06T17:30+08:00",
+          "match": "direct",
+          "text": "雖然損了還是分享一下做單邏輯與復盤:\n1m 5m OB 重疊\n獵取完進場短多\n可以改進的地方:\n可以等 1h 下方訂單塊確認後再進場\n這樣上漲動力比較足夠"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "01-06 13:51",
+        "firstClose": 4468.76,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-07-gold-long",
+      "posted": "2026-01-07T14:09+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4452,
+      "sl": 4444,
+      "tp": [
+        4475
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 4444,
+      "csv": {
+        "Date": "2026-1-7",
+        "Entry": 4454,
+        "Exit": 4444,
+        "TP": 4475,
+        "SL": 4444,
+        "Leverage": 300,
+        "Result": "Loss",
+        "Pnl": "-0.22%",
+        "RR": 2.1,
+        "Final_PnL": -67.36
+      },
+      "timeline": [
+        {
+          "t": "2026-01-07T14:09+08:00",
+          "text": "GOLD 多 4452"
+        },
+        {
+          "t": "2026-01-07T14:11+08:00",
+          "text": "SL 4444 TP 4475"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2026-01-07T16:54+08:00",
+          "match": "direct",
+          "text": "15m OB 反應良好\n1h PB+ & OB 重疊\n選在 5m 回補 FVG 進場\n這張我個人復盤下來是非常好的配置\n進場點位以及搭配的做多訊號\n昨天與今天都是掃損就往上\n我觀察下來是近期市場波動較大\n比較適合低 RR 的設置\n動態調整一下"
+        }
+      ],
+      "issues": [
+        "群組 4452，CSV 4454。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "01-07 14:46",
+        "firstClose": 4458.39,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-10-eth-short",
+      "posted": "2026-01-10T02:11+08:00",
+      "kind": "own",
+      "symbol": "ETH",
+      "side": "short",
+      "order": "限價預掛",
+      "entry": 3160,
+      "sl": 3200,
+      "tp": [
+        3100
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-01-10T02:11+08:00",
+          "text": "ETH 空 3160 限價預掛 SL 3200 TP 3100"
+        },
+        {
+          "t": "2026-01-11T20:48+08:00",
+          "text": "先撤單 另找機會 要週一了"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance ETHUSDT 1m",
+        "outcome": "TP1",
+        "at": "01-12 16:46",
+        "firstClose": 3108.27
+      }
+    },
+    {
+      "id": "2026-01-13-gold-long",
+      "posted": "2026-01-13T13:40+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "未註明",
+      "entry": 4572,
+      "sl": 4530,
+      "tp": [
+        4615
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-01-13T13:40+08:00",
+          "text": "GOLD 多 4572"
+        },
+        {
+          "t": "2026-01-13T13:41+08:00",
+          "text": "SL 4530 TP 4615"
+        },
+        {
+          "t": "2026-01-14T13:16+08:00",
+          "text": "先撤單唄 埋伏不到"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "CSV 沒有這筆。01/14「先撤單唄 埋伏不到」推定是撤這張（那就是掛單沒成交）；要用 K 線確認。",
+        "K 線：到 01-14 13:16 撤單前最低 4,574，4,572 沒成交，推定撤單。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "01-13 21:30",
+        "firstClose": 4593.75,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      },
+      "resultSource": "kline-estimate"
+    },
+    {
+      "id": "2026-01-13-gold-long-b",
+      "posted": "2026-01-13T14:58+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "限價預掛",
+      "entry": 4556,
+      "sl": 4515,
+      "tp": [
+        4595
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-01-13T14:58+08:00",
+          "text": "GOLD 多 4556 限價預掛 TP 4595 SL 4515"
+        },
+        {
+          "t": "2026-01-13T14:58+08:00",
+          "text": "這個撤掉 已經獵取過了"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "never-filled",
+        "at": null,
+        "extreme": 4574,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-14-gold-long",
+      "posted": "2026-01-14T18:08+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4625,
+      "sl": 4616,
+      "tp": [
+        4636
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4636,
+      "csv": {
+        "Date": "2026-1-14",
+        "Entry": 4630,
+        "Exit": 4640,
+        "TP": 4640,
+        "SL": 4616,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.22%",
+        "RR": 0.71,
+        "Final_PnL": 64.79
+      },
+      "timeline": [
+        {
+          "t": "2026-01-14T18:08+08:00",
+          "text": "GOLD 多 4625"
+        },
+        {
+          "t": "2026-01-14T18:09+08:00",
+          "text": "SL 4616 TP 4636"
+        },
+        {
+          "t": "2026-01-14T21:15+08:00",
+          "text": "沒接到的別接了 已經突破"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "群組 4625／TP 4636，CSV 4630／TP 4640；兩邊都不一樣。群組沒有止盈訊息。",
+        "分析群 01/14 22:25 只有 3 張圖，沒有文字。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "01-14 20:27",
+        "firstClose": 4629.29,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-16-gold-short",
+      "posted": "2026-01-16T12:51+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "市價",
+      "entry": 4605,
+      "sl": 4625,
+      "tp": [
+        4585
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 4605,
+      "csv": {
+        "Date": "2026-1-16",
+        "Entry": 4605,
+        "Exit": 4605,
+        "TP": 4585,
+        "SL": 4625,
+        "Leverage": 300,
+        "Result": "Breakeven",
+        "Pnl": "0.00%",
+        "RR": 1,
+        "Final_PnL": 0
+      },
+      "timeline": [
+        {
+          "t": "2026-01-16T12:51+08:00",
+          "text": "GOLD 空 4605"
+        },
+        {
+          "t": "2026-01-16T12:55+08:00",
+          "text": "SL 4625 TP 4585"
+        },
+        {
+          "t": "2026-01-16T17:36+08:00",
+          "text": "套保讓它跑"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "01-16 23:27",
+        "firstClose": 4605.45,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-20-gold-short",
+      "posted": "2026-01-20T11:23+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "市價",
+      "entry": 4675,
+      "sl": 4690,
+      "tp": [
+        4660
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 4690,
+      "csv": {
+        "Date": "2026-1-20",
+        "Entry": 4675,
+        "Exit": 4690,
+        "TP": 4660,
+        "SL": 4690,
+        "Leverage": 300,
+        "Result": "Loss",
+        "Pnl": "-0.32%",
+        "RR": 1,
+        "Final_PnL": -96.26
+      },
+      "timeline": [
+        {
+          "t": "2026-01-20T11:23+08:00",
+          "text": "GOLD 空 4675"
+        },
+        {
+          "t": "2026-01-20T11:25+08:00",
+          "text": "SL 4690 TP 4660"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "01-20 12:42",
+        "firstClose": 4673.24,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-22-gold-long",
+      "posted": "2026-01-22T13:21+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "掛單",
+      "entry": 4792,
+      "sl": 4781,
+      "tp": [
+        4805
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-01-22T13:21+08:00",
+          "text": "GOLD 多 4792 掛"
+        },
+        {
+          "t": "2026-01-22T13:23+08:00",
+          "text": "SL 4781 TP 4805"
+        },
+        {
+          "t": "2026-01-22T13:50+08:00",
+          "text": "先撤單唄 差兩點就掛上了"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "never-filled",
+        "at": null,
+        "extreme": 4794.7,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-23-gold-long-a",
+      "posted": "2026-01-23T12:28+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4951,
+      "sl": 4940,
+      "tp": [
+        4965
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4965,
+      "csv": {
+        "Date": "2026-1-23",
+        "Entry": 4951,
+        "Exit": 4965,
+        "TP": 4965,
+        "SL": 4940,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.28%",
+        "RR": 1.27,
+        "Final_PnL": 84.83
+      },
+      "timeline": [
+        {
+          "t": "2026-01-23T12:28+08:00",
+          "text": "GOLD 多 4951"
+        },
+        {
+          "t": "2026-01-23T12:31+08:00",
+          "text": "SL 4940 TP 4965"
+        },
+        {
+          "t": "2026-01-23T13:48+08:00",
+          "text": "復仇成功"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2026-01-23T14:04+08:00",
+          "match": "direct",
+          "text": "等1m獵取完進場\n雖然沒有摸到下方訂單塊\n但差一點基本可以看成已經獵取完\n加上可以發現有大量市價賣單依然收上影線"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "01-23 16:15",
+        "firstClose": 4945,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-23-gold-long-b",
+      "posted": "2026-01-23T17:15+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "掛單",
+      "entry": 4910,
+      "sl": 4900,
+      "tp": [
+        4930
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 4900,
+      "csv": {
+        "Date": "2026-1-23",
+        "Entry": 4910,
+        "Exit": 4900,
+        "TP": 4930,
+        "SL": 4900,
+        "Leverage": 300,
+        "Result": "Loss",
+        "Pnl": "-0.20%",
+        "RR": 2,
+        "Final_PnL": -61.1
+      },
+      "timeline": [
+        {
+          "t": "2026-01-23T17:15+08:00",
+          "text": "GOLD 多 4910 掛 TP 4930 SL 4900"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "群組沒有結算訊息，結果只在 CSV。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "01-23 18:18",
+        "firstClose": 4915.87,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-27-gold-long",
+      "posted": "2026-01-27T00:35+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "掛單",
+      "entry": 5046,
+      "sl": 4995,
+      "tp": [
+        5100
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 4995,
+      "csv": {
+        "Date": "2026-1-27",
+        "Entry": 5046,
+        "Exit": 4995,
+        "TP": 5100,
+        "SL": 4995,
+        "Leverage": 200,
+        "Result": "Loss",
+        "Pnl": "-1.01%",
+        "RR": 1.06,
+        "Final_PnL": -202.14
+      },
+      "timeline": [
+        {
+          "t": "2026-01-27T00:35+08:00",
+          "text": "GOLD 多 5046 掛 TP 5100 SL 4995"
+        },
+        {
+          "t": "2026-01-27T03:11+08:00",
+          "text": "已經吃10點了 想好睡的可以套保"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "群組建議可套保，自己的 CSV 是全額止損（-1.01%）；沒有後續訊息。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "01-27 05:36",
+        "firstClose": 5081.2,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-30-gold-long",
+      "posted": "2026-01-30T01:51+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "掛單",
+      "entry": 5320,
+      "sl": 5290,
+      "tp": [
+        5400
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 5320,
+      "csv": {
+        "Date": "2026-1-30",
+        "Entry": 5320,
+        "Exit": 5320,
+        "TP": 5400,
+        "SL": 5290,
+        "Leverage": 200,
+        "Result": "Breakeven",
+        "Pnl": "0.00%",
+        "RR": 2.67,
+        "Final_PnL": 0
+      },
+      "timeline": [
+        {
+          "t": "2026-01-30T01:51+08:00",
+          "text": "GOLD 多 5320 掛"
+        },
+        {
+          "t": "2026-01-30T01:55+08:00",
+          "text": "SL 5290 TP 5400"
+        },
+        {
+          "t": "2026-01-30T02:06+08:00",
+          "text": "上套"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2026-01-30T10:23+08:00",
+          "match": "direct",
+          "text": "分享一下昨天半夜很滿意的操作\nM1 下方多次測試沒跌破的價位\nM5 下方的看漲 FVG 失衡區\n再 M1 獵取流動性後 5320 進場\n反應瞬間就彈到 5360\n這種單就很舒服\n因為瞬間浮盈也可以有更多操作空間\n雖然沒吃到 3R 但最後也是保本沒虧"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "01-30 04:03",
+        "firstClose": 5344.19,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-01-31-gold-short",
+      "posted": "2026-01-31T00:18+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "掛單 5080-5085",
+      "entry": 5080,
+      "sl": 5150,
+      "tp": [
+        5010
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-01-31T00:18+08:00",
+          "text": "GOLD 空 5080-5085 掛"
+        },
+        {
+          "t": "2026-01-31T00:19+08:00",
+          "text": "TP 5010 SL 5150"
+        },
+        {
+          "t": "2026-01-31T01:25+08:00",
+          "text": "先撤單唄 趨勢跌破了"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "never-filled",
+        "at": null,
+        "extreme": 5028.6,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-02-02-btc-short",
+      "posted": "2026-02-02T18:57+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "short",
+      "order": "市價",
+      "entry": 77500,
+      "sl": 80000,
+      "tp": [
+        75000
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 75000,
+      "csv": {
+        "Date": "2026-2-2",
+        "Entry": 77500,
+        "Exit": 75000,
+        "TP": 75000,
+        "SL": 80000,
+        "Leverage": 100,
+        "Result": "Win",
+        "Pnl": "3.23%",
+        "RR": 1,
+        "Final_PnL": 322.58
+      },
+      "timeline": [
+        {
+          "t": "2026-02-02T18:57+08:00",
+          "text": "BTC 空 77500 市價"
+        },
+        {
+          "t": "2026-02-02T19:00+08:00",
+          "text": "SL 80,000 TP 75,000"
+        },
+        {
+          "t": "2026-02-04T01:03+08:00",
+          "text": "上套保"
+        },
+        {
+          "t": "2026-02-04T02:13+08:00",
+          "text": "TP啦 記得止盈 接下來會有波動"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2026-02-04T02:03+08:00",
+          "match": "direct",
+          "text": "比較想分享的是中間價格一度爬升的情況\nOI 跟 CVD 沒有明顯上升\n我覺得還不算太強的反轉\n多空比也算高 暗示散戶做多為主\n所以還是繼續堅定持有看空"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "TP1",
+        "at": "02-04 01:48",
+        "firstClose": 77474.2
+      }
+    },
+    {
+      "id": "2026-02-05-btc-short",
+      "posted": "2026-02-05T20:15+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "short",
+      "order": "市價（跌破 69750 量增追空）",
+      "entry": 69750,
+      "sl": 71000,
+      "tp": [
+        68000
+      ],
+      "status": "closed",
+      "result": "breakeven",
+      "exit": 69750,
+      "csv": {
+        "Date": "2026-2-5",
+        "Entry": 69750,
+        "Exit": 69750,
+        "TP": 68000,
+        "SL": 71000,
+        "Leverage": 100,
+        "Result": "Breakeven",
+        "Pnl": "0.00%",
+        "RR": 1.4,
+        "Final_PnL": 0
+      },
+      "timeline": [
+        {
+          "t": "2026-02-05T19:45+08:00",
+          "text": "先預告一下 待會跌破 69750 如果伴隨量增我會直接市價追空"
+        },
+        {
+          "t": "2026-02-05T20:15+08:00",
+          "text": "空"
+        },
+        {
+          "t": "2026-02-05T20:18+08:00",
+          "text": "TP 68000 SL 71000"
+        },
+        {
+          "t": "2026-02-05T20:21+08:00",
+          "text": "套保"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "實際成交價沒寫，CSV 記 69750。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "TP1",
+        "at": "02-05 23:14",
+        "firstClose": 69700.3
+      }
+    },
+    {
+      "id": "2026-02-09-btc-short",
+      "posted": "2026-02-09T20:03+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "short",
+      "order": "市價",
+      "entry": 69000,
+      "sl": 71000,
+      "tp": [
+        67000
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 69050,
+      "csv": {
+        "Date": "2026-2-9",
+        "Entry": 69000,
+        "Exit": 69050,
+        "TP": 67000,
+        "SL": 71000,
+        "Leverage": 100,
+        "Result": "Loss",
+        "Pnl": "-0.07%",
+        "RR": 1,
+        "Final_PnL": -7.25
+      },
+      "timeline": [
+        {
+          "t": "2026-02-09T20:03+08:00",
+          "text": "BTC 空 69,000"
+        },
+        {
+          "t": "2026-02-09T20:05+08:00",
+          "text": "SL 71000 TP 67000"
+        },
+        {
+          "t": "2026-02-09T20:22+08:00",
+          "text": "先出場 69050 我不喜歡這反應"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "SL",
+        "at": "02-10 01:44",
+        "firstClose": 68974.3
+      }
+    },
+    {
+      "id": "2026-02-11-btc-short",
+      "posted": "2026-02-11T20:14+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "short",
+      "order": "市價",
+      "entry": 67100,
+      "sl": 67700,
+      "tp": [
+        66400
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 67700,
+      "csv": {
+        "Date": "2026-2-11",
+        "Entry": 67100,
+        "Exit": 67700,
+        "TP": 66400,
+        "SL": 67700,
+        "Leverage": 100,
+        "Result": "Loss",
+        "Pnl": "-0.89%",
+        "RR": 1.17,
+        "Final_PnL": -89.42
+      },
+      "timeline": [
+        {
+          "t": "2026-02-11T20:14+08:00",
+          "text": "BTC 空 67100"
+        },
+        {
+          "t": "2026-02-11T20:14+08:00",
+          "text": "SL 67700 TP 66400"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "群組沒有結算訊息，結果只在 CSV。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "SL",
+        "at": "02-11 22:03",
+        "firstClose": 67058
+      }
+    },
+    {
+      "id": "2026-02-12-gold-long",
+      "posted": "2026-02-12T14:39+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "未註明",
+      "entry": 5048,
+      "sl": 5038,
+      "tp": [
+        5065
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-02-12T14:39+08:00",
+          "text": "GOLD 多 5048 SL 5038 TP 5065"
+        },
+        {
+          "t": "2026-02-12T14:56+08:00",
+          "text": "🚗跑了 撤"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "02-12 16:02",
+        "firstClose": 5053.32,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-02-13-gold-long",
+      "posted": "2026-02-13T19:25+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4940,
+      "sl": 4923,
+      "tp": [
+        4960
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4960,
+      "csv": {
+        "Date": "2026-2-13",
+        "Entry": 4940,
+        "Exit": 4960,
+        "TP": 4960,
+        "SL": 4923,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.40%",
+        "RR": 1.18,
+        "Final_PnL": 121.46
+      },
+      "timeline": [
+        {
+          "t": "2026-02-13T19:25+08:00",
+          "text": "GOLD 多 4940"
+        },
+        {
+          "t": "2026-02-13T19:27+08:00",
+          "text": "SL 4923 TP 4960"
+        },
+        {
+          "t": "2026-02-13T19:54+08:00",
+          "text": "套保"
+        },
+        {
+          "t": "2026-02-13T20:08+08:00",
+          "text": "TP啦"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2026-02-13T20:16+08:00",
+          "match": "direct",
+          "text": "獵取進場 玩到爛掉卻又簡單有效的策略\n同時 M15 下方的看漲 FVG 增加勝率"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "02-13 20:06",
+        "firstClose": 4938.19,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-02-17-gold-long",
+      "posted": "2026-02-17T16:43+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4919,
+      "sl": 4910,
+      "tp": [
+        4935
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4935,
+      "csv": {
+        "Date": "2026-2-17",
+        "Entry": 4919,
+        "Exit": 4935,
+        "TP": 4935,
+        "SL": 4910,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.33%",
+        "RR": 1.78,
+        "Final_PnL": 97.58
+      },
+      "timeline": [
+        {
+          "t": "2026-02-17T16:43+08:00",
+          "text": "GOLD 多 4919"
+        },
+        {
+          "t": "2026-02-17T16:44+08:00",
+          "text": "SL 4910 TP 4935"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "群組沒有結算訊息，結果只在 CSV。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "02-17 17:53",
+        "firstClose": 4919.52,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-02-18-gold-long",
+      "posted": "2026-02-18T18:01+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 4917,
+      "sl": 4905,
+      "tp": [
+        4930
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 4930,
+      "csv": {
+        "Date": "2026-2-18",
+        "Entry": 4917,
+        "Exit": 4930,
+        "TP": 4930,
+        "SL": 4905,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.26%",
+        "RR": 1.08,
+        "Final_PnL": 79.32
+      },
+      "timeline": [
+        {
+          "t": "2026-02-18T18:01+08:00",
+          "text": "GOLD 多 4917"
+        },
+        {
+          "t": "2026-02-18T18:02+08:00",
+          "text": "SL 4905 TP 4930"
+        },
+        {
+          "t": "2026-02-18T18:04+08:00",
+          "text": "大家自己決定要不要市價進 我接4919-4920"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "自己成交 4919-4920，CSV 記 4917。群組沒有結算訊息。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "02-18 20:17",
+        "firstClose": 4921.44,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-02-24-gold-long",
+      "posted": "2026-02-24T13:29+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 5168,
+      "sl": 5158,
+      "tp": [
+        5180
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 5180,
+      "csv": {
+        "Date": "2026-2-24",
+        "Entry": 5168,
+        "Exit": 5180,
+        "TP": 5180,
+        "SL": 5158,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.23%",
+        "RR": 1.2,
+        "Final_PnL": 69.66
+      },
+      "timeline": [
+        {
+          "t": "2026-02-24T13:29+08:00",
+          "text": "GOLD 多 5168"
+        },
+        {
+          "t": "2026-02-24T13:31+08:00",
+          "text": "SL 5158 TP 5180"
+        },
+        {
+          "t": "2026-02-24T13:33+08:00",
+          "text": "我已經進了 大家自己決定要不要市價進"
+        }
+      ],
+      "logic": [
+        {
+          "t": "2026-02-24T15:11+08:00",
+          "match": "direct",
+          "text": "回補 M1 OB 反應佳\n目標瞄準上方流動性\n止損放下方流動性\n吃一個短的 耐心捕魚"
+        }
+      ],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "TP1",
+        "at": "02-24 13:51",
+        "firstClose": 5170.5,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-02-25-btc-short",
+      "posted": "2026-02-25T17:06+08:00",
+      "kind": "own",
+      "symbol": "BTC",
+      "side": "short",
+      "order": "市價",
+      "entry": 65600,
+      "sl": 66400,
+      "tp": [
+        64000
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 66400,
+      "csv": {
+        "Date": "2026-2-25",
+        "Entry": 65600,
+        "Exit": 66400,
+        "TP": 64000,
+        "SL": 66400,
+        "Leverage": 100,
+        "Result": "Loss",
+        "Pnl": "-1.22%",
+        "RR": 2,
+        "Final_PnL": -121.95
+      },
+      "timeline": [
+        {
+          "t": "2026-02-25T17:06+08:00",
+          "text": "BTC 空 65600"
+        },
+        {
+          "t": "2026-02-25T17:08+08:00",
+          "text": "SL 66400 TP 64000"
+        },
+        {
+          "t": "2026-02-25T18:39+08:00",
+          "text": "跌到 64700 後上套"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "「跌到 64700 後上套」若是條件式（到了才套保），價格沒到就全額止損，與 CSV 一致；要用 K 線確認。"
+      ],
+      "klineCheck": {
+        "source": "Binance BTCUSDT 1m",
+        "outcome": "SL",
+        "at": "02-25 21:46",
+        "firstClose": 65446
+      }
+    },
+    {
+      "id": "2026-02-27-gold-short",
+      "posted": "2026-02-27T20:06+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "5190-5192",
+      "entry": 5190,
+      "sl": 5210,
+      "tp": [
+        5165
+      ],
+      "status": "closed",
+      "result": "win",
+      "exit": 5188,
+      "csv": {
+        "Date": "2026-2-27",
+        "Entry": 5190,
+        "Exit": 5188,
+        "TP": 5165,
+        "SL": 5210,
+        "Leverage": 300,
+        "Result": "Win",
+        "Pnl": "0.04%",
+        "RR": 1.25,
+        "Final_PnL": 11.56
+      },
+      "timeline": [
+        {
+          "t": "2026-02-27T20:06+08:00",
+          "text": "GOLD 空 5190-5192"
+        },
+        {
+          "t": "2026-02-27T20:08+08:00",
+          "text": "SL 5210 TP 5165"
+        },
+        {
+          "t": "2026-02-27T20:12+08:00",
+          "text": "先撤"
+        },
+        {
+          "t": "2026-02-27T20:13+08:00",
+          "text": "已經獵取過了"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "群組說撤單，CSV 是成交後 5188 小賺；對群組成員來說這張是撤單。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "02-27 21:07",
+        "firstClose": 5191.85,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-03-02-gold-long-a",
+      "posted": "2026-03-02T14:38+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "掛單",
+      "entry": 5372,
+      "sl": 5354,
+      "tp": [
+        5395
+      ],
+      "status": "cancelled",
+      "result": "cancelled",
+      "exit": null,
+      "timeline": [
+        {
+          "t": "2026-03-02T14:38+08:00",
+          "text": "GOLD 多 5372 掛（附圖：標的是這個 不要開錯）"
+        },
+        {
+          "t": "2026-03-02T14:40+08:00",
+          "text": "SL 5354 TP 5395"
+        },
+        {
+          "t": "2026-03-02T15:10+08:00",
+          "text": "撤掉吧 可惜只到 5373"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "03-02 22:22",
+        "firstClose": 5378.79,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-03-02-gold-long-b",
+      "posted": "2026-03-02T17:09+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 5396,
+      "sl": 5380,
+      "tp": [
+        5412
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 5380,
+      "csv": {
+        "Date": "2026-3-2",
+        "Entry": 5396,
+        "Exit": 5380,
+        "TP": 5412,
+        "SL": 5380,
+        "Leverage": 300,
+        "Result": "Loss",
+        "Pnl": "-0.30%",
+        "RR": 1,
+        "Final_PnL": -88.95
+      },
+      "timeline": [
+        {
+          "t": "2026-03-02T17:09+08:00",
+          "text": "GOLD 5396 多"
+        },
+        {
+          "t": "2026-03-02T17:11+08:00",
+          "text": "SL 5380"
+        },
+        {
+          "t": "2026-03-02T17:11+08:00",
+          "text": "TP 5312"
+        },
+        {
+          "t": "2026-03-02T17:12+08:00",
+          "text": "感謝提醒 5412 才對"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "03-02 18:06",
+        "firstClose": 5396.05,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-03-02-gold-short",
+      "posted": "2026-03-02T20:25+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "short",
+      "order": "掛單",
+      "entry": 5396,
+      "sl": 5408,
+      "tp": [
+        5383
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 5408,
+      "csv": {
+        "Date": "2026-3-2",
+        "Entry": 5396,
+        "Exit": 5408,
+        "TP": 5383,
+        "SL": 5408,
+        "Leverage": 300,
+        "Result": "Loss",
+        "Pnl": "-0.22%",
+        "RR": 1.08,
+        "Final_PnL": -66.72
+      },
+      "timeline": [
+        {
+          "t": "2026-03-02T20:25+08:00",
+          "text": "GOLD 空 5396"
+        },
+        {
+          "t": "2026-03-02T20:27+08:00",
+          "text": "SL 5408 TP 5383"
+        },
+        {
+          "t": "2026-03-02T20:28+08:00",
+          "text": "我用掛的 還沒進"
+        },
+        {
+          "t": "2026-03-02T21:06+08:00",
+          "text": "損了 好可惜 又差點"
+        }
+      ],
+      "logic": [],
+      "issues": [],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "03-02 21:06",
+        "firstClose": 5390.61,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-03-03-gold-long",
+      "posted": "2026-03-03T13:24+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "掛單",
+      "entry": 5349,
+      "sl": 5330,
+      "tp": [
+        5370
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 5330,
+      "csv": {
+        "Date": "2026-3-3",
+        "Entry": 5349,
+        "Exit": 5333,
+        "TP": 5370,
+        "SL": 5330,
+        "Leverage": 300,
+        "Result": "Loss",
+        "Pnl": "-0.30%",
+        "RR": 1.11,
+        "Final_PnL": -89.74
+      },
+      "timeline": [
+        {
+          "t": "2026-03-03T13:24+08:00",
+          "text": "GOLD 多 5349"
+        },
+        {
+          "t": "2026-03-03T13:25+08:00",
+          "text": "SL 5330 TP 5370"
+        },
+        {
+          "t": "2026-03-03T13:31+08:00",
+          "text": "忘了講我是掛單"
+        },
+        {
+          "t": "2026-03-03T13:39+08:00",
+          "text": "損🥲"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "CSV 出場 5333 而 SL 是 5330；Pnl -0.30% 其實對應 5333。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "03-03 13:48",
+        "firstClose": 5355.99,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      }
+    },
+    {
+      "id": "2026-03-04-gold-long",
+      "posted": "2026-03-04T14:02+08:00",
+      "kind": "own",
+      "symbol": "GOLD",
+      "side": "long",
+      "order": "市價",
+      "entry": 5144,
+      "sl": 5134,
+      "tp": [
+        5160
+      ],
+      "status": "closed",
+      "result": "loss",
+      "exit": 5134,
+      "timeline": [
+        {
+          "t": "2026-03-04T14:02+08:00",
+          "text": "GOLD 市價多"
+        },
+        {
+          "t": "2026-03-04T14:02+08:00",
+          "text": "SL 5134"
+        },
+        {
+          "t": "2026-03-04T14:02+08:00",
+          "text": "TP 5160"
+        },
+        {
+          "t": "2026-03-04T14:06+08:00",
+          "text": "天崩"
+        }
+      ],
+      "logic": [],
+      "issues": [
+        "⚠ CSV 沒有這筆，而且 4 分鐘後「天崩」看起來是止損。點位群的最後一筆，公開戰績要補上。",
+        "群組沒報進場價；依 BingX 14:02 收盤 5,143.92 記 5,144。14:06 一根下影線插到 5,120.15 打掉停損 5,134，收在 5,138。"
+      ],
+      "klineCheck": {
+        "source": "Binance XAUUSDT 1m",
+        "outcome": "SL",
+        "at": "03-04 14:06",
+        "firstClose": 5143.02,
+        "caveat": "黃金用 Binance XAUUSDT 或 BingX 1h 檢查，和你下單的 BingX 合約有幾美元價差，止損又只有 5～20 點，這裡的黃金判斷只供參考。"
+      },
+      "resultSource": "kline-estimate"
+    }
+  ],
+  "klineCheckNote": "klineCheck 只比較 TP1 與開單時的 SL 誰先被碰到（72 小時內），不模擬套保、提前出場或改單；用來找出紀錄和行情明顯矛盾的地方。resultSource: kline-estimate 的結果是由 K 線推定，群組沒有結算訊息。"
+}

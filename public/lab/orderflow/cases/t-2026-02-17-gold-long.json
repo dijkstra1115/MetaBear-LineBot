@@ -1,0 +1,66 @@
+{
+  "title": "實盤 02/17 黃金多",
+  "date": "2026-02-17",
+  "tz": "+08:00",
+  "data": "t-2026-02-17-gold-long.data.json",
+  "trade": "2026-02-17-gold-long",
+  "steps": [
+    {
+      "at": "2026-02-17T16:03:00+08:00",
+      "speed": 108,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/02/17，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-17T16:43:00+08:00",
+      "caption": "點位群 16:43「GOLD 多 4919」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-17T16:44:00+08:00",
+      "caption": "點位群 16:44「SL 4910 TP 4935」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-17T16:43:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 4919,
+        "stop": 4910,
+        "target": 4935
+      },
+      "caption": "進場 4,919，停損 4,910，目標 4,935。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-17T18:12:01+08:00",
+      "caption": "18:12 止盈，+1.78R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-02-17T18:13:02+08:00",
+      "end": true
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "title": "實盤 11/28 黃金空",
+  "date": "2025-11-28",
+  "tz": "+08:00",
+  "data": "t-2025-11-28-gold-short.data.json",
+  "trade": "2025-11-28-gold-short",
+  "notes": [
+    "群組喊到 TP2 4,175；交易紀錄表以 TP1 4,181 計算。"
+  ],
+  "steps": [
+    {
+      "at": "2025-11-28T12:16:00+08:00",
+      "speed": 59,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/11/28，黃金永續合約（BingX）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-28T12:56:00+08:00",
+      "caption": "點位群 12:56「幣種: 黃金(GOLD) 方向: 空 🔥進場價位: 4189 市價 ✅TP1: 4181 ✅TP2: 4175 ❌SL: 4195」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-28T13:10:00+08:00",
+      "caption": "點位群 13:10「TP1」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-28T13:13:00+08:00",
+      "caption": "點位群 13:13「TP2」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-11-28T12:56:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 4189,
+        "stop": 4195,
+        "target": 4175
+      },
+      "caption": "進場 4,189，停損 4,195，目標 4,175。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-11-28T12:56:01+08:00",
+      "caption": "開單邏輯：「分享早上這單黃金的做空邏輯，切小時間框架可以很明顯發現價格卡住上不去，且 delta 有明顯的減少趨勢，我判斷莊家在此離場並讓散戶接盤，並且 15m 也踩到上方的看跌訂單塊，因此果斷做空」",
+      "hold": 6000
+    },
+    {
+      "at": "2025-11-28T13:10:01+08:00",
+      "caption": "13:10 止盈，+2.33R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-11-28T13:11:02+08:00",
+      "end": true
+    }
+  ]
+}

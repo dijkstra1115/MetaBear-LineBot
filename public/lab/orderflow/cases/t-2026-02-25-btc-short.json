@@ -1,0 +1,71 @@
+{
+  "title": "實盤 02/25 BTC空",
+  "date": "2026-02-25",
+  "tz": "+08:00",
+  "data": "t-2026-02-25-btc-short.data.json",
+  "trade": "2026-02-25-btc-short",
+  "steps": [
+    {
+      "at": "2026-02-25T16:26:00+08:00",
+      "speed": 276,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": true,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": true,
+        "delta": false,
+        "cvd": true,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/02/25，BTC永續合約（Binance）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-25T17:06:00+08:00",
+      "caption": "點位群 17:06「BTC 空 65600」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-25T17:08:00+08:00",
+      "caption": "點位群 17:08「SL 66400 TP 64000」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-25T18:39:00+08:00",
+      "caption": "點位群 18:39「跌到 64700 後上套」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-02-25T17:06:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 65600,
+        "stop": 66400,
+        "target": 64000
+      },
+      "caption": "進場 65,600，停損 66,400，目標 64,000。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-02-25T21:46:21+08:00",
+      "caption": "21:46 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-02-25T21:47:22+08:00",
+      "end": true
+    }
+  ]
+}

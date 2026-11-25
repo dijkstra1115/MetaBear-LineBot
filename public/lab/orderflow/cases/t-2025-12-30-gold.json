@@ -1,0 +1,43 @@
+{
+  "title": "實盤 12/30 黃金多：掃到 4,350 收回，止盈在上方賣壓",
+  "date": "2025-12-30",
+  "tz": "+08:00",
+  "data": "t-2025-12-30-gold.data.json",
+  "trade": "2025-12-30-gold-long",
+  "steps": [
+    {
+      "at": "16:20",
+      "speed": 40,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 14,
+      "ind": { "profile": false, "prints": false, "vwap": false, "levels": false, "events": false, "lmap": false, "stats": false, "volume": false, "delta": false, "cvd": false, "oi": false, "doi": false, "funding": false, "ratio": false, "imb": false },
+      "caption": "2025 年 12 月 30 日下午，BingX 黃金合約。這是點位群公開的一筆實盤多單。",
+      "hold": 3500
+    },
+    {
+      "at": "16:31",
+      "note": { "id": "sweep", "at": "16:30:30", "price": 4350.66, "text": "16:30 插到 4,350.66\n掃掉下方止損後收回", "side": "below" },
+      "caption": "16:30 往下插到 4,350，掃掉下方的流動性，下一分鐘就收回 4,358。",
+      "hold": 3500
+    },
+    {
+      "at": "16:33",
+      "position": { "side": "long", "entry": 4355, "stop": 4345, "target": 4370 },
+      "caption": "「1m、5m 訂單塊重疊，獵取後進場做多。目標放在上方看跌訂單塊，止損放下方 FVG 上緣。」",
+      "hold": 4500
+    },
+    {
+      "at": "16:33:01",
+      "speed": 30,
+      "clear": ["note:sweep"],
+      "caption": ""
+    },
+    {
+      "at": "17:09",
+      "caption": "17:08 碰到 4,370 止盈，持倉 35 分鐘。",
+      "hold": 4500
+    },
+    { "at": "17:10", "end": true }
+  ]
+}

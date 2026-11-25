@@ -15,8 +15,13 @@ import { inflateRawSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { parseSpotKlines } from "../public/lab/orderflow/binance.js";
 
-const SYMBOL = "BTCUSDT";
-const TICK = 10; // base price bin in USDT; the page can only merge bins upward
+// --symbol ETHUSDT --tick 0.5 builds another market (replay cases); the defaults are the lab's BTC.
+const flag = (name) => {
+  const i = process.argv.indexOf(`--${name}`);
+  return i > 0 ? process.argv[i + 1] : undefined;
+};
+const SYMBOL = flag("symbol") ?? "BTCUSDT";
+const TICK = Number(flag("tick") ?? 10); // base price bin in USDT; the page can only merge bins upward
 const ARCHIVE = "https://data.binance.vision/data";
 const BASE = `${ARCHIVE}/futures/um/daily`;
 const root = fileURLToPath(new URL("..", import.meta.url));

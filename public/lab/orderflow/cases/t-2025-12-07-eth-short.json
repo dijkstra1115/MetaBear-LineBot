@@ -1,0 +1,91 @@
+{
+  "title": "實盤 12/07 ETH空",
+  "date": "2025-12-07",
+  "tz": "+08:00",
+  "data": "t-2025-12-07-eth-short.data.json",
+  "trade": "2025-12-07-eth-short",
+  "notes": [
+    "用 BingX 的 K 線：Binance 在 03:32 碰到 3,023，BingX 差 0.7 沒碰到，最後撞套保出場。"
+  ],
+  "steps": [
+    {
+      "at": "2025-12-07T00:39:00+08:00",
+      "speed": 512,
+      "tf": "5",
+      "mode": "candles",
+      "barW": 14,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2025/12/07，ETH永續合約（BingX）。點位群公開的實盤空單。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-07T01:17:00+08:00",
+      "caption": "點位群 01:17「ETH 空 3055 TP 3023」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-07T01:19:00+08:00",
+      "caption": "點位群 01:19「市價」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-07T01:25:00+08:00",
+      "caption": "點位群 01:25「SL 3072」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-07T04:09:00+08:00",
+      "caption": "點位群 04:09「加一個 TP2 設套保 睡覺 TP1 3023 TP2 3010」",
+      "hold": 2500
+    },
+    {
+      "at": "2025-12-07T01:19:00+08:00",
+      "position": {
+        "side": "short",
+        "entry": 3055,
+        "stop": 3072,
+        "target": 3023
+      },
+      "caption": "進場 3,055，停損 3,072，目標 3,023。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-07T01:19:01+08:00",
+      "caption": "開單邏輯：「昨天差 0.73 止盈⋯，一樣分享一下做單邏輯，5m 突破箱體區間後收長上影線，一樣是我們熟悉的獵取流動性誘多，所以選擇在回踩 iFVG 時做空，目標放下面訂單塊」",
+      "hold": 6000
+    },
+    {
+      "at": "2025-12-07T04:09:00+08:00",
+      "adjust": {
+        "stop": 3055,
+        "target": 3010
+      }
+    },
+    {
+      "at": "2025-12-07T10:59:01+08:00",
+      "caption": "10:59 保本，±0.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-12-07T11:00:02+08:00",
+      "end": true
+    }
+  ]
+}

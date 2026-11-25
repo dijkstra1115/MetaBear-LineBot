@@ -1,0 +1,83 @@
+{
+  "title": "實盤 12/17 ETH 空：急拉之後量能跟不上，一半 2,890、一半 2,820",
+  "date": "2025-12-17",
+  "tz": "+08:00",
+  "data": "t-2025-12-17-eth.data.json",
+  "trade": "2025-12-17-eth-short",
+  "steps": [
+    {
+      "at": "23:20",
+      "speed": 60,
+      "tf": "15",
+      "mode": "candles",
+      "barW": 16,
+      "printMin": 50,
+      "ind": { "profile": false, "prints": true, "vwap": false, "levels": false, "events": false, "lmap": false, "stats": false, "volume": true, "delta": false, "cvd": true, "oi": false, "doi": false, "funding": false, "ratio": false, "imb": false },
+      "line": { "id": "high", "price": 3030, "label": "23:00 高點 3,030" },
+      "caption": "2025 年 12 月 17 日深夜，ETH 永續合約。22:45 一根 15 分 K 從 2,882 噴到 2,995，23:00 再衝到 3,030。",
+      "hold": 4000
+    },
+    {
+      "at": "23:20",
+      "caption": "「大趨勢看空，小時區突破盤整高點，量能沒有持續上升，反而是有莊家拉升後出貨的跡象。」",
+      "hold": 4500
+    },
+    {
+      "at": "23:30",
+      "tf": "1",
+      "mode": "candles",
+      "barW": 12,
+      "speed": 20,
+      "caption": "切到 1 分鐘。"
+    },
+    {
+      "at": "23:36",
+      "note": { "id": "sell", "at": "23:35:30", "price": 2983.5, "text": "一分鐘主動賣 2 萬顆", "side": "below" },
+      "caption": "23:35 一分鐘主動賣超過 2 萬顆，跌到 2,985。",
+      "hold": 3000
+    },
+    {
+      "at": "23:41",
+      "position": { "side": "short", "entry": 2980, "stop": 3100, "target": 2800 },
+      "clear": ["note:sell"],
+      "caption": "群組報 2,990，我接在 2,980。停損 3,100，目標 2,800。",
+      "hold": 4000
+    },
+    {
+      "at": "23:41:01",
+      "caption": "「從爆倉地圖也可以看出多空爆倉比極度不平衡，當時下方的掛單深度也明顯很淺，往下洗更容易也更有吸引力。」",
+      "hold": 4500
+    },
+    {
+      "at": "23:51",
+      "adjust": { "stop": 2980 },
+      "caption": "23:51 指示：到 2,890 先平一半，停損移到進場價（套保）。",
+      "hold": 3500
+    },
+    {
+      "at": "2025-12-18T00:14:30+08:00",
+      "close": { "price": 2890, "size": 0.5 },
+      "caption": "00:14 到 2,890，先平一半。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-18T00:30:00+08:00",
+      "adjust": { "target": 2820 },
+      "tf": "5",
+      "barW": 14,
+      "speed": 150,
+      "caption": "00:30 剩下一半改在 2,820 全部出場。",
+      "hold": 3000
+    },
+    {
+      "at": "2025-12-18T00:30:01+08:00",
+      "caption": ""
+    },
+    {
+      "at": "2025-12-18T02:43:30+08:00",
+      "caption": "02:43 碰到 2,820，全部止盈。整筆 +1.0R：一半 +0.75R、一半 +1.33R。",
+      "hold": 5000
+    },
+    { "at": "2025-12-18T02:44:00+08:00", "end": true }
+  ]
+}

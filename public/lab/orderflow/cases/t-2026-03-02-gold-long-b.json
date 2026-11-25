@@ -1,0 +1,76 @@
+{
+  "title": "實盤 03/02 黃金多",
+  "date": "2026-03-02",
+  "tz": "+08:00",
+  "data": "t-2026-03-02-gold-long-b.data.json",
+  "trade": "2026-03-02-gold-long-b",
+  "steps": [
+    {
+      "at": "2026-03-02T16:29:00+08:00",
+      "speed": 98,
+      "tf": "1",
+      "mode": "candles",
+      "barW": 10,
+      "printMin": 10,
+      "ind": {
+        "profile": false,
+        "prints": false,
+        "vwap": false,
+        "levels": false,
+        "events": false,
+        "lmap": false,
+        "stats": false,
+        "volume": false,
+        "delta": false,
+        "cvd": false,
+        "oi": false,
+        "doi": false,
+        "funding": false,
+        "ratio": false,
+        "imb": false
+      },
+      "caption": "2026/03/02，黃金永續合約（BingX）。點位群公開的實盤多單。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-03-02T17:09:00+08:00",
+      "caption": "點位群 17:09「GOLD 5396 多」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-03-02T17:11:00+08:00",
+      "caption": "點位群 17:11「SL 5380」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-03-02T17:11:00+08:00",
+      "caption": "點位群 17:11「TP 5312」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-03-02T17:12:00+08:00",
+      "caption": "點位群 17:12「感謝提醒 5412 才對」",
+      "hold": 2500
+    },
+    {
+      "at": "2026-03-02T17:09:00+08:00",
+      "position": {
+        "side": "long",
+        "entry": 5396,
+        "stop": 5380,
+        "target": 5412
+      },
+      "caption": "進場 5,396，停損 5,380，目標 5,412。",
+      "hold": 3000
+    },
+    {
+      "at": "2026-03-02T18:07:01+08:00",
+      "caption": "18:07 停損，−1.00R。",
+      "hold": 3500
+    },
+    {
+      "at": "2026-03-02T18:08:02+08:00",
+      "end": true
+    }
+  ]
+}
